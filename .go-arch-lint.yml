@@ -4,8 +4,7 @@ workdir: .
 allow:
   depOnAnyVendor: false
   deepScan: false
-  # Scaffold phase only: flip to false once every component directory exists.
-  ignoreNotFoundComponents: true
+  ignoreNotFoundComponents: false
 
 exclude:
   - test
@@ -49,6 +48,8 @@ components:
   main:        { in: cmd/tuisnip }
 
   testkit:     { in: internal/testkit/** }
+
+  languagegen: { in: internal/tools/languagegen }
 
 commonComponents:
   - domain
@@ -95,3 +96,7 @@ deps:
   testkit:
     mayDependOn: [ testkit ]
     canUse: [ assertions ]
+
+  languagegen:
+    mayDependOn: [ languagegen ]
+    canUse: [ highlighting ]

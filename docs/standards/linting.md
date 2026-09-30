@@ -46,6 +46,30 @@ return cfg.Editor
 
 More than four constructor arguments means the Action should be split, or should take an `<Action>Deps` struct (see [architecture](architecture.md)).
 
+## Blank lines
+
+A blank line separates each logical unit of a function: a step with its error check, a state change, the final `return`. wsl_v5 enforces it. Only one statement may sit directly above an `if` or `for`, and only when it assigns something the block uses. A `var` declaration never has a statement directly above it, and a `return` in a block of more than one line gets a blank line above it. nlreturn adds the same check for `break` and `continue`. Both have an auto-fix (`golangci-lint run --fix`):
+
+```go
+// ❌
+parsed, err := uuid.Parse(text)
+if err != nil {
+	return fmt.Errorf("sqltype.ID.Scan: %w: %w", domain.ErrCorruptRecord, err)
+}
+*id = ID(parsed)
+return nil
+
+// ✅
+parsed, err := uuid.Parse(text)
+if err != nil {
+	return fmt.Errorf("sqltype.ID.Scan: %w: %w", domain.ErrCorruptRecord, err)
+}
+
+*id = ID(parsed)
+
+return nil
+```
+
 ## Struct literals are complete
 
 exhaustruct checks every struct literal of a TuiSnip type, sqlc `Params` included. Each field is named, even when its value is zero:

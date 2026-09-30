@@ -1,0 +1,8 @@
+log-level: warn
+template: testify
+dir: "{{.InterfaceDir}}"
+filename: mocks_test.go
+pkgname: "{{.SrcPackageName}}_test"
+# mockery refuses an empty packages map. snippet stands in until the first interface is listed.
+packages:
+  github.com/DannyFestor/TuiSnip/internal/app/snippet: {}

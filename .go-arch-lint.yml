@@ -20,6 +20,7 @@ vendors:
   sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }
   migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
   assertions:      { in: [ github.com/stretchr/testify/** ] }
+  toml:            { in: [ github.com/BurntSushi/toml ] }
 
 components:
   domain:      { in: internal/domain/** }
@@ -32,6 +33,7 @@ components:
 
   sqlite:      { in: internal/adapters/sqlite/** }
   migrations:  { in: db/migrations }
+  default-config: { in: embeds/config }
   clipboard:   { in: internal/adapters/clipboard/** }
   config:      { in: internal/adapters/config/** }
   xdg:         { in: internal/adapters/xdg/** }
@@ -66,9 +68,14 @@ deps:
     canUse: [ sqlite-driver, migrator ]
   migrations:  { mayDependOn: [ migrations ] }
   clipboard:   { mayDependOn: [ clipboard ] }
-  config:      { mayDependOn: [ config ] }
+  default-config: { mayDependOn: [ default-config ] }
+  config:
+    mayDependOn: [ config, default-config ]
+    canUse: [ toml ]
   xdg:         { mayDependOn: [ xdg ] }
-  state:       { mayDependOn: [ state ] }
+  state:
+    mayDependOn: [ state ]
+    canUse: [ toml ]
   editor:
     mayDependOn: [ editor ]
     canUse: [ editor-launcher ]

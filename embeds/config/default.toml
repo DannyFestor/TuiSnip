@@ -1,0 +1,85 @@
+# TuiSnip configuration.
+#
+# TuiSnip writes this file with every default when it is missing and never
+# changes it afterwards. Delete it to get the defaults back. A key you remove
+# falls back to its default. The full reference is docs/spec/config.md.
+
+# Command that opens a Fragment for editing, run through `sh -c` so it may
+# carry arguments, for example "code --wait". Empty means $VISUAL, then
+# $EDITOR, then the first of nvim, vim, vi, nano on PATH.
+editor = ""
+
+# auto follows the terminal background and uses dark if the terminal does not
+# report one. light and dark force a scheme.
+theme = "auto"
+
+# Languages the Language picker offers, by chroma lexer name, for example
+# ["Go", "Bash", "YAML"]. Empty means every Language.
+languages = []
+
+[copy]
+# auto: a platform tool (pbcopy, wl-copy, xclip, xsel), or OSC 52 over SSH or
+# when no tool is installed. native: only a platform tool. osc52: only OSC 52.
+clipboard = "auto"
+trim_trailing_newline = true
+quit_after = false
+
+# Bindings: each name maps to a list of keys. [] unbinds it. Key names follow
+# Bubble Tea: "enter", "esc", "space", "tab", "up", "pgdown", "f1", "ctrl+s",
+# "alt+x". A shifted letter is written as the capital, "E", not "shift+e".
+# ctrl+c always quits and cannot be bound.
+
+# Active in the sidebar, the Snippet list, and the Snippet pane.
+[bindings.global]
+quit = ["q"]
+help = ["?"]
+search = ["/"]
+maximize = ["z"]
+new_snippet = ["n"]
+capture = ["p"]
+
+# Folder tree and Tag list.
+[bindings.sidebar]
+new_folder = ["N"]
+rename = ["r"]
+delete = ["d"]
+move = ["m"]
+
+[bindings.snippet_list]
+copy = ["y"]
+edit = ["e"]
+open_in_editor = ["E"]
+move = ["m"]
+duplicate = ["c"]
+delete = ["d"]
+cycle_sort = ["s"]
+
+# The Snippet pane while it shows the highlighted, read-only Fragment.
+[bindings.snippet_pane]
+copy = ["y"]
+edit = ["e"]
+open_in_editor = ["E"]
+wrap = ["w"]
+
+# The Snippet pane in edit mode. Keys here need a modifier or must be a
+# non-printing key, so they never swallow typing.
+[bindings.editor]
+save = ["ctrl+s"]
+cancel = ["esc"]
+pick_language = ["ctrl+l"]
+edit_tags = ["ctrl+t"]
+open_in_editor = ["ctrl+e"]
+
+[bindings.search]
+cancel = ["esc"]
+accept = ["enter"]
+
+# Language picker, Folder picker, and Tag editor.
+[bindings.picker]
+accept = ["enter"]
+cancel = ["esc"]
+
+# y/N confirmations. enter picks the default, No.
+[bindings.confirm]
+yes = ["y"]
+no = ["n", "esc", "enter"]

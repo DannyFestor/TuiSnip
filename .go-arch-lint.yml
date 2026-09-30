@@ -1,0 +1,83 @@
+version: 3
+workdir: .
+
+allow:
+  depOnAnyVendor: false
+  deepScan: false
+  # Scaffold phase only: flip to false once every component directory exists.
+  ignoreNotFoundComponents: true
+
+exclude:
+  - test
+
+excludeFiles:
+  - "^.*_test\\.go$"
+
+vendors:
+  tui-framework:   { in: [ charm.land/** ] }
+  highlighting:    { in: [ github.com/alecthomas/chroma/v2, github.com/alecthomas/chroma/v2/** ] }
+  editor-launcher: { in: [ github.com/charmbracelet/x/editor ] }
+  sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }
+  migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
+
+components:
+  domain:      { in: internal/domain/** }
+
+  app-snippet: { in: internal/app/snippet/** }
+  app-folder:  { in: internal/app/folder/** }
+  app-tag:     { in: internal/app/tag/** }
+  app-browse:  { in: internal/app/browse/** }
+  app-search:  { in: internal/app/search/** }
+
+  sqlite:      { in: internal/adapters/sqlite/** }
+  migrations:  { in: db/migrations }
+  clipboard:   { in: internal/adapters/clipboard/** }
+  config:      { in: internal/adapters/config/** }
+  xdg:         { in: internal/adapters/xdg/** }
+  state:       { in: internal/adapters/state/** }
+  editor:      { in: internal/adapters/editor/** }
+  memsearch:   { in: internal/adapters/memsearch/** }
+  system:      { in: internal/adapters/system/** }
+  logging:     { in: internal/adapters/logging/** }
+
+  tui:         { in: internal/adapters/tui/** }
+
+  bootstrap:   { in: internal/bootstrap/** }
+  main:        { in: cmd/tuisnip }
+
+commonComponents:
+  - domain
+
+# Every component lists itself: go-arch-lint does not let a component's own subpackages import each other otherwise.
+deps:
+  domain:      { mayDependOn: [ domain ] }
+
+  app-snippet: { mayDependOn: [ app-snippet ] }
+  app-folder:  { mayDependOn: [ app-folder ] }
+  app-tag:     { mayDependOn: [ app-tag ] }
+  app-browse:  { mayDependOn: [ app-browse ] }
+  app-search:  { mayDependOn: [ app-search ] }
+
+  sqlite:
+    mayDependOn: [ sqlite, migrations ]
+    canUse: [ sqlite-driver, migrator ]
+  migrations:  { mayDependOn: [ migrations ] }
+  clipboard:   { mayDependOn: [ clipboard ] }
+  config:      { mayDependOn: [ config ] }
+  xdg:         { mayDependOn: [ xdg ] }
+  state:       { mayDependOn: [ state ] }
+  editor:
+    mayDependOn: [ editor ]
+    canUse: [ editor-launcher ]
+  memsearch:   { mayDependOn: [ memsearch ] }
+  system:      { mayDependOn: [ system ] }
+  logging:     { mayDependOn: [ logging ] }
+
+  tui:
+    mayDependOn: [ tui, app-snippet, app-folder, app-tag, app-browse, app-search ]
+    canUse: [ tui-framework, highlighting ]
+
+  bootstrap:
+    anyProjectDeps: true
+    anyVendorDeps: true
+  main:        { mayDependOn: [ main, bootstrap, xdg ] }

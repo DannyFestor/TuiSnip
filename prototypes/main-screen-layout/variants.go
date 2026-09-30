@@ -9,7 +9,13 @@ import (
 func maximizedPane(m *model, w, h int) string {
 	switch m.focus {
 	case paneSidebar:
-		return box("Folders & Tags", m.sidebarRows(w-2, -1, true), w, h, true)
+		if !m.variant().sidebarSections() {
+			return box("Folders & Tags", m.sidebarRows(w-2, -1, true), w, h, true)
+		}
+		if m.sideSection == entryTag {
+			return box("Tags", m.sidebarRows(w-2, entryTag, true), w, h, true)
+		}
+		return box("Folders", m.sidebarRows(w-2, entryFolder, true), w, h, true)
 	case paneList:
 		return box(m.listTitle(), m.listRows(w-2, h-3), w, h, true)
 	}

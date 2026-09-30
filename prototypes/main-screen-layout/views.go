@@ -73,12 +73,17 @@ func row(text, count string, w int, isCursor, focused bool) string {
 }
 
 func (m *model) entryRow(e entry, w int, isCursor bool) string {
-	if m.inlineEdit != nil && isCursor {
-		if m.inlineEdit.isNew {
-			return row("  + "+m.inlineEdit.input.View(), "", w, false, false)
-		}
+	editing := m.inlineEdit != nil && isCursor && e == m.inlineEdit.target
+	if editing && !m.inlineEdit.isNew {
 		return row(strings.Repeat("  ", e.depth)+"✎ "+m.inlineEdit.input.View(), "", w, false, false)
 	}
+	if editing {
+		return m.plainEntryRow(e, w, isCursor) + "\n" + row(strings.Repeat("  ", e.depth+1)+"+ "+m.inlineEdit.input.View(), "", w, false, false)
+	}
+	return m.plainEntryRow(e, w, isCursor)
+}
+
+func (m *model) plainEntryRow(e entry, w int, isCursor bool) string {
 	var label string
 	switch e.kind {
 	case entryRoot:
@@ -314,7 +319,7 @@ func (m *model) render() string {
 }
 
 var shortHelp = map[string]string{
-	"sidebar":         "j/k move · enter open · N new Folder · r rename · d delete · z zoom · / search · ? help",
+	"sidebar":         "j/k move · enter open · N new · r rename · d delete · z zoom · / search · ? help",
 	"snippet_list":    "y copy · e edit · n new · s sort · z zoom · / search · ? help",
 	"snippet_pane":    "y copy · e edit · w wrap · z zoom · / search · ? help",
 	"editor":          "ctrl+s save · esc cancel · ↑/↓ field · ctrl+l Language",

@@ -564,6 +564,10 @@ func (m *model) commitInlineEdit() {
 		m.status = "Name cannot be blank"
 		return
 	}
+	if ie.isNew && ie.target.kind == entryTag {
+		m.createTag(name)
+		return
+	}
 	if ie.isNew {
 		parent := ""
 		if ie.target.kind == entryFolder {
@@ -584,6 +588,18 @@ func (m *model) commitInlineEdit() {
 		m.renameTag(ie.target.id, name)
 	}
 	m.status = "Renamed to " + name
+}
+
+func (m *model) createTag(name string) {
+	switch {
+	case strings.Contains(name, ","):
+		m.status = "Tag names cannot contain commas"
+	case containsFold(m.store.tags, name):
+		m.status = "Tag " + name + " already exists"
+	default:
+		m.store.ensureTags([]string{name})
+		m.status = "Created Tag " + name
+	}
 }
 
 func (m *model) renameTag(from, to string) {

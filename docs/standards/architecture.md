@@ -156,7 +156,7 @@ When the external editor exits, `tui` hands the content to an `EditedContentHand
 | Migrations | `db/migrations/*.sql` | embedded by `db/migrations/embed.go`, run by `sqlite` on start |
 | Default config | `embeds/config/default.toml` | embedded by `embeds/config/embed.go`, decoded by `config` under its defaults, written out when `config.toml` is missing |
 | Queries | `db/queries/*.sql`, configured by `sqlc.yaml` at the repo root | `internal/adapters/sqlite/sqlcgen/` |
-| Languages | chroma's lexer registry, via `make generate:languages` | `internal/domain/value/languages_gen.go` |
+| Languages | chroma's lexer registry, via `make generate-languages` | `internal/domain/value/languages_gen.go` |
 | Mocks | mockery, configured by `.mockery.yml` | `mocks_test.go` beside the consumer, in package `<pkg>_test` |
 | Enums | go-enum, via `//go:generate` beside the type | `*_enum.go` beside the type |
 

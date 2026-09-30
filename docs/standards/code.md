@@ -231,10 +231,10 @@ Never edit a file whose header says `// Code generated ... DO NOT EDIT.`. Change
 
 | Target | Runs | Source |
 |---|---|---|
-| `make generate:sql` | `sqlc generate` | `db/queries/*.sql`, `sqlc.yaml` |
-| `make generate:mocks` | `mockery` | `.mockery.yml` |
-| `make generate:enums` | `go generate ./...` | a `//go:generate go-enum` directive in the file declaring the enum |
-| `make generate:languages` | the Language generator | chroma's lexer registry, into `internal/domain/value/languages_gen.go` |
+| `make generate-sql` | `sqlc generate` | `db/queries/*.sql`, `sqlc.yaml` |
+| `make generate-mocks` | `mockery` | `.mockery.yml` |
+| `make generate-enums` | `go generate ./...` | a `//go:generate go-enum` directive in the file declaring the enum |
+| `make generate-languages` | the Language generator | chroma's lexer registry, into `internal/domain/value/languages_gen.go` |
 | `make generate` | all four, in that order | |
 
 Enums use go-enum only. It generates `String`, `Parse…`, `IsValid`, and, with `--marshal`, text marshalling, which the enums read from config, the database, and the state file need:

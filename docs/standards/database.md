@@ -76,7 +76,7 @@ v1's "exactly one Fragment" is a product limit, not a data rule. The domain enfo
 ## Queries
 
 - One query file per table in `db/queries/` (`snippets.sql`, `fragments.sql`). A query that reads several tables goes in the file of the table it returns.
-- sqlc generates `internal/adapters/sqlite/sqlcgen/` from `sqlc.yaml` with `make generate:sql`. Never edit the output.
+- sqlc generates `internal/adapters/sqlite/sqlcgen/` from `sqlc.yaml` with `make generate-sql`. Never edit the output.
 - Queries arrive with the Action that needs them. The adapter method that runs them is shaped by the Action's capability interface, not by the table.
 - `sqlc.yaml` maps every ID column to `sqltype.ID` and every timestamp column to `sqltype.Timestamp` with wildcard column overrides (`*.id`, `*.created_at`). A new ID or timestamp column with a different name needs its own override.
 - `sqltype` (`internal/adapters/sqlite/sqltype`) holds the `Scan`/`Value` types sqlc generates against. The standard library's `uuid.UUID` has neither method. A value that fails `Scan` becomes an error wrapping `domain.ErrCorruptRecord`.

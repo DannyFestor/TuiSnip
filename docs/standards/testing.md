@@ -95,7 +95,7 @@ A hand-written repository fake would be a second database that slowly stops matc
 
 ### Mocks
 
-mockery generates testify mocks from `.mockery.yml` into `mocks_test.go` beside the consumer (`make generate:mocks`). Build them with the generated `NewMock…(t)` constructor, which asserts expectations on cleanup. Set expectations with the typed `EXPECT()` API, not the string-based `On("Insert", …)`:
+mockery generates testify mocks from `.mockery.yml` into `mocks_test.go` beside the consumer (`make generate-mocks`). Build them with the generated `NewMock…(t)` constructor, which asserts expectations on cleanup. Set expectations with the typed `EXPECT()` API, not the string-based `On("Insert", …)`:
 
 ```go
 repo := NewMockCreateRepository(t)

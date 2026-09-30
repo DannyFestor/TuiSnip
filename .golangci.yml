@@ -32,10 +32,8 @@ linters:
     - gosmopolitan
     - goheader
     - lll
-    - nlreturn
     - noinlineerr
     - tagalign
-    - wsl_v5
 
   settings:
     cyclop:
@@ -158,6 +156,11 @@ linters:
       report-error-in-defer: false
     paralleltest:
       check-cleanup: true
+    recvcheck:
+      # database/sql treats a non-pointer argument as a driver.Valuer only when Value has a value
+      # receiver, while Scan needs a pointer receiver.
+      exclusions:
+        - "*.Value"
     revive:
       enable-default-rules: true
       rules:

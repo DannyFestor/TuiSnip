@@ -92,6 +92,8 @@ type model struct {
 	status       string
 	quitting     bool
 	lastSelected string
+	editPreview  viewport.Model
+	editShown    string
 }
 
 type inlineEdit struct {
@@ -104,7 +106,7 @@ func newModel(s *store, variants []variant, start int) *model {
 	search := textinput.New()
 	search.Prompt = "/ "
 	search.Placeholder = "Search title, Tags, Description, content"
-	m := &model{store: s, variants: variants, current: start, search: search, scroll: viewport.New(), sideSection: entryFolder, browseSection: entryFolder}
+	m := &model{store: s, variants: variants, current: start, search: search, scroll: viewport.New(), editPreview: viewport.New(), sideSection: entryFolder, browseSection: entryFolder}
 	m.status = "PROTOTYPE: nothing is saved. ` / ~ switch variant, ? help."
 	return m
 }
@@ -627,7 +629,11 @@ func (m *model) newSnippet(content string) *snippet {
 		lang = f.lang
 	}
 	now := time.Now()
-	return &snippet{folder: folderID, lang: lang, content: content, created: now, updated: now}
+	var tags []string
+	if e, ok := m.browseEntry(); ok && e.kind == entryTag {
+		tags = []string{e.id} // a new Snippet made while browsing a Tag lands at the Root carrying it
+	}
+	return &snippet{folder: folderID, lang: lang, content: content, tags: tags, created: now, updated: now}
 }
 
 func (m *model) startEditor(sn *snippet) {

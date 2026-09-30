@@ -17,4 +17,6 @@ go -C prototypes/main-screen-layout run .   # starts on D; -variant=A|B|C|D, -em
 | D (revision) | Folders over Tags, list, Snippet pane; the active left pane is tall; the focused pane widens a little | `tab`/`shift+tab` cycle all four; `h`/`l`/`←`/`→` treat Folders and Tags as one column (left returns to the one filling the list); `1`–`4` jump; `enter` drills in, `esc` backs out | separate stacked panes, each keeps its cursor; focus alone never changes the list, moving the cursor or `enter` does | centred popup: results left, highlighted preview right; `enter` reveals the Snippet in its Folder |
 | C | focused pane widens | `enter`/`l` drill in, `esc`/`h` back out, `1`/`2`/`3` jump | Folders and Tags stacked, `tab` hops | centred palette with preview; `enter` reveals the Snippet in its Folder |
 
+D only: edit mode is a near-fullscreen overlay over the dimmed main screen; `ctrl+t` or `enter` on Tags opens the Tag editor (filter, `enter` toggles or creates, `esc` done); content containing tabs is read-only in edit mode (use `ctrl+e`).
+
 Shared by all: edit mode (`e`; `↑`/`↓` between fields, `esc` leaves Content before cancelling, `tab`/`shift+tab` indent and dedent inside Content), overlays (`?` help, `m` Folder picker, `d` confirmations, `ctrl+l` Language picker), `z` maximize, `w` wrap, in-place Folder/Tag rename (`r`) and new Folder (`N`).

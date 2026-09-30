@@ -28,15 +28,19 @@ type editor struct {
 	field  int
 	// inBody is false while Content is the selected field but its textarea isn't entered.
 	inBody bool
-	inputs [fieldLanguage]textinput.Model
+	inputs [fieldTags]textinput.Model
+	tags   []string
 	lang   string
 	body   textarea.Model
+	// locked holds content with tabs, which the stock textarea would rewrite as spaces.
+	locked bool
 }
 
 func newEditor(sn *snippet) *editor {
-	e := &editor{target: sn, isNew: sn.id == "", lang: sn.lang, body: textarea.New()}
-	values := [fieldLanguage]string{sn.title, sn.desc, strings.Join(sn.tags, ", ")}
-	placeholders := [fieldLanguage]string{"required", "optional", "comma-separated"}
+	e := &editor{target: sn, isNew: sn.id == "", lang: sn.lang, tags: slices.Clone(sn.tags), body: textarea.New()}
+	e.locked = strings.Contains(sn.content, "\t")
+	values := [fieldTags]string{sn.title, sn.desc}
+	placeholders := [fieldTags]string{"required", "optional"}
 	for i := range e.inputs {
 		in := textinput.New()
 		in.Prompt = ""
@@ -58,12 +62,19 @@ func (e *editor) focusField(f int) {
 	e.body.Blur()
 	e.inBody = false
 	switch {
-	case f < fieldLanguage:
+	case f < fieldTags:
 		e.inputs[f].Focus()
-	case f == fieldContent:
+	case f == fieldContent && !e.locked:
 		e.inBody = true
 		e.body.Focus()
 	}
+}
+
+func (e *editor) content() string {
+	if e.locked {
+		return e.target.content
+	}
+	return e.body.Value()
 }
 
 func (e *editor) leaveBody() {
@@ -93,27 +104,21 @@ func (e *editor) dedent() {
 	e.body.SetCursorColumn(max(0, col-removed))
 }
 
-func (e *editor) tags() []string {
-	var out []string
-	for t := range strings.SplitSeq(e.inputs[fieldTags].Value(), ",") {
-		if t = strings.TrimSpace(t); t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
 func (e *editor) dirty() bool {
 	sn := e.target
 	return e.isNew ||
 		e.inputs[fieldTitle].Value() != sn.title ||
 		e.inputs[fieldDescription].Value() != sn.desc ||
-		!slices.Equal(e.tags(), sn.tags) ||
+		!slices.Equal(e.tags, sn.tags) ||
 		e.lang != sn.lang ||
-		e.body.Value() != sn.content
+		e.content() != sn.content
 }
 
 func (e *editor) update(m *model, msg tea.Msg) tea.Cmd {
+	if paste, ok := msg.(tea.PasteMsg); ok && e.inBody && strings.Contains(paste.Content, "\t") {
+		m.status = "Pasted text contains tabs; use ctrl+e to edit in $EDITOR"
+		return nil
+	}
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		if cmd, handled := e.binding(m, key.String()); handled {
 			return cmd
@@ -121,7 +126,7 @@ func (e *editor) update(m *model, msg tea.Msg) tea.Cmd {
 	}
 	var cmd tea.Cmd
 	switch {
-	case e.field < fieldLanguage:
+	case e.field < fieldTags:
 		e.inputs[e.field], cmd = e.inputs[e.field].Update(msg)
 	case e.inBody:
 		e.body, cmd = e.body.Update(msg)
@@ -137,6 +142,7 @@ func (e *editor) binding(m *model, key string) (tea.Cmd, bool) {
 		e.pickLanguage(m)
 	case "ctrl+t":
 		e.focusField(fieldTags)
+		m.overlay = newTagEditor(m, e)
 	case "ctrl+e":
 		m.status = "Would suspend and open the content in $EDITOR, then land it here as an unsaved change"
 	default:
@@ -179,6 +185,10 @@ func (e *editor) fieldBinding(m *model, key string) (tea.Cmd, bool) {
 		switch e.field {
 		case fieldLanguage:
 			e.pickLanguage(m)
+		case fieldTags:
+			m.overlay = newTagEditor(m, e)
+		case fieldContent:
+			e.focusField(fieldContent)
 		default:
 			e.focusField(min(fieldContent, e.field+1))
 		}
@@ -200,7 +210,7 @@ func (e *editor) save(m *model) {
 		return
 	}
 	sn := e.target
-	sn.title, sn.desc, sn.tags, sn.lang, sn.content = title, e.inputs[fieldDescription].Value(), e.tags(), e.lang, e.body.Value()
+	sn.title, sn.desc, sn.tags, sn.lang, sn.content = title, e.inputs[fieldDescription].Value(), slices.Clone(e.tags), e.lang, e.content()
 	sn.updated = time.Now()
 	if e.isNew {
 		sn.id = m.store.newID()

@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -232,4 +233,114 @@ func (p *searchPopup) view(m *model) string {
 		box(fmt.Sprintf("Search · %d results", len(hits)), b.String(), resultsW, h, true),
 		box("Preview", preview, w-resultsW, h, false),
 	)
+}
+
+// tagEditor toggles the edited Snippet's Tags; changes stay unsaved in the editor until ctrl+s.
+type tagEditor struct {
+	editor *editor
+	filter textinput.Model
+	cursor int
+}
+
+type tagRow struct {
+	name   string
+	count  int
+	create bool
+}
+
+func newTagEditor(_ *model, e *editor) *tagEditor {
+	f := textinput.New()
+	f.Prompt = "filter or new Tag: "
+	f.Focus()
+	return &tagEditor{editor: e, filter: f}
+}
+
+func (t *tagEditor) rows(m *model) []tagRow {
+	query := strings.TrimSpace(t.filter.Value())
+	names := slices.Clone(m.store.tags)
+	for _, tag := range t.editor.tags {
+		if !containsFold(names, tag) {
+			names = append(names, tag)
+		}
+	}
+	var out []tagRow
+	for _, n := range names {
+		if matches(n, query, true) {
+			out = append(out, tagRow{name: n, count: m.store.tagCount(n)})
+		}
+	}
+	if query != "" && !containsFold(names, query) {
+		out = append(out, tagRow{name: query, create: true})
+	}
+	return out
+}
+
+func containsFold(list []string, s string) bool {
+	return slices.ContainsFunc(list, func(x string) bool { return strings.EqualFold(x, s) })
+}
+
+func (t *tagEditor) toggle(name string) {
+	e := t.editor
+	if i := slices.IndexFunc(e.tags, func(x string) bool { return strings.EqualFold(x, name) }); i >= 0 {
+		e.tags = slices.Delete(e.tags, i, i+1)
+		return
+	}
+	e.tags = append(e.tags, name)
+}
+
+func (t *tagEditor) update(m *model, msg tea.KeyPressMsg) tea.Cmd {
+	rows := t.rows(m)
+	switch msg.String() {
+	case "esc":
+		m.overlay = nil
+		return nil
+	case "enter":
+		t.accept(m, rows)
+		return nil
+	case "up", "ctrl+p", "ctrl+k":
+		t.cursor = max(0, t.cursor-1)
+		return nil
+	case "down", "ctrl+n", "ctrl+j":
+		t.cursor = clamp(t.cursor+1, 0, max(0, len(rows)-1))
+		return nil
+	}
+	var cmd tea.Cmd
+	t.filter, cmd = t.filter.Update(msg)
+	t.cursor = 0
+	return cmd
+}
+
+func (t *tagEditor) accept(m *model, rows []tagRow) {
+	if len(rows) == 0 {
+		return
+	}
+	r := rows[t.cursor]
+	if r.create && strings.Contains(r.name, ",") {
+		m.status = "Tag names cannot contain commas"
+		return
+	}
+	t.toggle(r.name)
+	if r.create {
+		t.filter.Reset()
+		t.cursor = 0
+	}
+}
+
+func (t *tagEditor) view(m *model) string {
+	const w = 44
+	var b strings.Builder
+	b.WriteString(bold.Render("Tags") + dim.Render("  "+strings.Join(t.editor.tags, ", ")) + "\n" + t.filter.View() + "\n\n")
+	for i, r := range t.rows(m) {
+		mark := "  "
+		if containsFold(t.editor.tags, r.name) {
+			mark = "✓ "
+		}
+		label, count := mark+r.name, fmt.Sprint(r.count)
+		if r.create {
+			label, count = fmt.Sprintf("+ create %q", r.name), "new"
+		}
+		b.WriteString(row(label, count, w, i == t.cursor, true) + "\n")
+	}
+	b.WriteString("\n" + dim.Render("enter toggle / create · ↑/↓ move · esc done"))
+	return boxStyle.Width(w + 6).Render(b.String())
 }

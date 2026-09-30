@@ -216,16 +216,20 @@ func (m *model) snippetView(sn *snippet, vp *viewport.Model, shown *string, w, h
 		header += "\n" + fit(sn.desc, w)
 	}
 	header += "\n" + dim.Render(strings.Repeat("─", w))
+	return header + "\n" + m.snippetCode(sn, vp, shown, w, h-lipgloss.Height(header))
+}
+
+func (m *model) snippetCode(sn *snippet, vp *viewport.Model, shown *string, w, h int) string {
 	if *shown != sn.id+sn.content {
 		vp.SetContent(highlight(sn))
 		vp.GotoTop()
 		*shown = sn.id + sn.content
 	}
 	vp.SetWidth(w)
-	vp.SetHeight(max(1, h-lipgloss.Height(header)))
+	vp.SetHeight(max(1, h))
 	vp.SoftWrap = m.wrap
 	vp.LeftGutterFunc = lineNumbers
-	return header + "\n" + vp.View()
+	return vp.View()
 }
 
 func lineNumbers(c viewport.GutterContext) string {
@@ -258,21 +262,38 @@ func (m *model) editorBody(w, h int) string {
 		}
 		return dim.Render("  " + name)
 	}
-	for f := range fieldLanguage {
+	for f := range fieldTags {
 		e.inputs[f].SetWidth(max(10, w-16))
 		b.WriteString(label(f) + e.inputs[f].View() + "\n")
 	}
-	b.WriteString(label(fieldLanguage) + e.lang + dim.Render("   (enter or ctrl+l to pick)") + "\n")
-	contentHint := "enter or ↓ to edit"
-	if e.inBody {
-		contentHint = "esc leaves · tab indents · shift+tab dedents"
+	tags := dim.Render("none")
+	if len(e.tags) > 0 {
+		tags = "#" + strings.Join(e.tags, " #")
 	}
-	b.WriteString(label(fieldContent) + dim.Render(contentHint) + "\n")
-	e.body.SetWidth(w)
-	e.body.SetHeight(max(3, h-lipgloss.Height(b.String())-1))
-	b.WriteString(e.body.View() + "\n")
-	b.WriteString(dim.Render(fit("ctrl+s save · esc cancel · ↑/↓ field · ctrl+l Language · ctrl+t Tags · ctrl+e $EDITOR", w)))
+	b.WriteString(label(fieldTags) + tags + dim.Render("   (enter or ctrl+t to edit)") + "\n")
+	b.WriteString(label(fieldLanguage) + e.lang + dim.Render("   (enter or ctrl+l to pick)") + "\n")
+	b.WriteString(label(fieldContent) + dim.Render(m.contentHint()) + "\n")
+	bodyH := max(3, h-lipgloss.Height(b.String())-1)
+	if e.locked {
+		m.editPreview.SetWidth(w)
+		b.WriteString(m.snippetCode(e.target, &m.editPreview, &m.editShown, w, bodyH) + "\n")
+	} else {
+		e.body.SetWidth(w)
+		e.body.SetHeight(bodyH)
+		b.WriteString(e.body.View() + "\n")
+	}
+	b.WriteString(dim.Render(fit("ctrl+s save · esc cancel · ↑/↓ field · ctrl+t Tags · ctrl+l Language · ctrl+e $EDITOR", w)))
 	return b.String()
+}
+
+func (m *model) contentHint() string {
+	switch {
+	case m.editor.locked:
+		return "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)"
+	case m.editor.inBody:
+		return "esc leaves · tab indents · shift+tab dedents"
+	}
+	return "enter or ↓ to edit"
 }
 
 func (m *model) render() string {

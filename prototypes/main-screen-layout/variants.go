@@ -3,6 +3,7 @@ package main
 
 import (
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func maximizedPane(m *model, w, h int) string {
@@ -300,6 +301,20 @@ func (fourPanes) sidebarHeights(m *model, h int) (folders, tags int) {
 }
 
 func (v fourPanes) layout(m *model, w, h int) string {
+	if m.editor == nil {
+		return v.panes(m, w, h)
+	}
+	// Edit mode is a near-fullscreen overlay: draw the main screen without it, dimmed, underneath.
+	ed := m.editor
+	m.editor = nil
+	base := dim.Render(ansi.Strip(v.panes(m, w, h)))
+	m.editor = ed
+	ew, eh := w*9/10, h*9/10
+	edit := box(m.snippetPaneTitle(), m.editorBody(ew-2, eh-3), ew, eh, true)
+	return lipgloss.NewCompositor(lipgloss.NewLayer(base), lipgloss.NewLayer(edit).X((w-ew)/2).Y((h-eh)/2).Z(1)).Render()
+}
+
+func (v fourPanes) panes(m *model, w, h int) string {
 	if m.maximized {
 		return maximizedPane(m, w, h)
 	}

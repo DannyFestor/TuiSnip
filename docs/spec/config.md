@@ -57,6 +57,7 @@ tuisnip: invalid config ~/.config/tuisnip/config.toml:
 | `copy.clipboard` | `auto` \| `native` \| `osc52` | `auto` | How Copy reaches the clipboard. See [Clipboard](#clipboard). |
 | `copy.trim_trailing_newline` | bool | `true` | Copy drops one trailing newline from the Fragment. |
 | `copy.quit_after` | bool | `false` | TuiSnip quits after a successful Copy. |
+| `mouse` | bool | `true` | Mouse clicks and the wheel work in the TUI. While on, the terminal's own text selection needs a modifier key. See [the UI spec](ui.md#mouse). |
 | `bindings.<scope>.<name>` | array of key strings | see the default file | The keys of one Binding. See [Bindings](#bindings). |
 
 Values an Action needs that the user doesn't set, such as a Search result limit, are named constants in `bootstrap`. They are not config.
@@ -92,7 +93,7 @@ A Binding maps keys to one thing the user can do. Bindings are grouped by **Scop
 
 ```toml
 [bindings.snippet_list]
-copy = ["y", "enter"]
+copy = ["y", "ctrl+y"]
 delete = []
 ```
 
@@ -105,38 +106,45 @@ delete = []
 
 | Scope | Active when | Text entry |
 |---|---|---|
-| `global` | the sidebar, the Snippet list, or the Snippet pane's read-only view has focus | no |
-| `sidebar` | the Folder tree or the Tag list has focus | no |
+| `global` | a Pane has focus and no overlay is open | no |
+| `folders` | the Folders Pane has focus | no |
+| `tags` | the Tags Pane has focus | no |
 | `snippet_list` | the Snippet list has focus | no |
-| `snippet_pane` | the Snippet pane shows the read-only view | no |
-| `editor` | the Snippet pane is in edit mode | yes |
-| `search` | the Search input has focus | yes |
+| `snippet_pane` | the Snippet pane has focus | no |
+| `editor` | the edit overlay is open, outside the Content textarea | yes |
+| `content` | the edit overlay's Content textarea is entered | yes |
+| `search` | the Search popup is open | yes |
 | `picker` | the Language picker, the Folder picker, or the Tag editor is open | yes |
 | `confirm` | a y/N confirmation is open | no |
 
 Help closes with its own `help` key or with `esc`, so it has no Scope.
 
-`global` Bindings are active only in `sidebar`, `snippet_list`, and `snippet_pane`. Text-entry Scopes and `confirm` get none of them, so typing `q` in the editor types a `q`.
+`global` Bindings are active only alongside the four pane Scopes: `folders`, `tags`, `snippet_list`, and `snippet_pane`. Text-entry Scopes and `confirm` get none of them, so typing `q` in the editor types a `q`. How the Panes are laid out and moved between is in [the UI spec](ui.md).
 
 ### Names and defaults
 
 | Scope | Binding: default keys |
 |---|---|
-| `global` | `quit` q · `help` ? · `search` / · `maximize` z · `new_snippet` n · `capture` p |
-| `sidebar` | `new_folder` N · `rename` r · `delete` d · `move` m |
+| `global` | `quit` q · `help` ? · `search` / · `zoom` z · `new_snippet` n · `capture` p · `focus_next` tab · `focus_prev` shift+tab · `focus_right` l, right · `focus_left` h, left · `focus_folders` 1 · `focus_tags` 2 · `focus_list` 3 · `focus_snippet` 4 · `open` enter · `back` esc · `down` j, down · `up` k, up · `top` g, home · `bottom` G, end · `page_down` pgdown, ctrl+d · `page_up` pgup, ctrl+u |
+| `folders` | `new_folder` N · `rename` r · `delete` d · `move` m · `collapse` space |
+| `tags` | `new_tag` N · `rename` r · `delete` d |
 | `snippet_list` | `copy` y · `edit` e · `open_in_editor` E · `move` m · `duplicate` c · `delete` d · `cycle_sort` s |
 | `snippet_pane` | `copy` y · `edit` e · `open_in_editor` E · `wrap` w |
-| `editor` | `save` ctrl+s · `cancel` esc · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
-| `search` | `cancel` esc · `accept` enter |
-| `picker` | `accept` enter · `cancel` esc |
+| `editor` | `save` ctrl+s · `cancel` esc · `next_field` down, tab · `prev_field` up, shift+tab · `open_field` enter · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
+| `content` | `save` ctrl+s · `leave` esc · `indent` tab · `dedent` shift+tab · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
+| `search` | `down` down, ctrl+n, ctrl+j · `up` up, ctrl+p, ctrl+k · `accept` enter · `copy` ctrl+y · `cancel` esc |
+| `picker` | `down` down, ctrl+n, ctrl+j · `up` up, ctrl+p, ctrl+k · `accept` enter · `cancel` esc · `show_all_languages` ctrl+a |
 | `confirm` | `yes` y · `no` n, esc, enter |
 
-- `new_snippet` and `capture` act on the selected Folder or the Root, from any pane.
-- `rename`, `delete`, and `move` in `sidebar` act on the selected Folder or Tag. `move` only applies to Folders.
-- `search.accept` moves focus to the results.
+- `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag.
+- `rename` and `delete` act on the row under the cursor in `folders` or `tags`. `move` exists only for Folders.
+- `focus_right` and `focus_left` treat Folders and Tags as one column. `open` and `back` drill in and out. The details are in [the UI spec](ui.md#keyboard-navigation).
+- `up`, `down`, `top`, `bottom`, `page_up`, and `page_down` move the cursor in Folders, Tags, and the Snippet list, and scroll the Snippet pane.
+- `editor.open_field` moves on from a text field, opens the Tag editor or the Language picker on those fields, and enters the textarea on Content.
+- `search.accept` reveals the highlighted Snippet in its Folder and focuses the Snippet pane. `search.copy` copies it and closes the popup.
+- `picker.accept` picks and closes, except in the Tag editor, where it toggles the highlighted Tag or creates the typed one.
+- `picker.show_all_languages` only acts in the Language picker when `languages` is set.
 - In `confirm`, `enter` picks the default, No.
-
-Navigation Bindings (moving between panes, up and down, moving within pickers) are decided by the "Main screen layout and navigation" ticket, which may also change any default above. The default file is updated with it.
 
 ### Key strings
 
@@ -162,10 +170,10 @@ The validator is a fuzz target alongside the config parser (`docs/standards/test
 TuiSnip refuses to start when:
 
 - two Bindings in the same Scope share a key
-- a `global` Binding shares a key with a Binding in `sidebar`, `snippet_list`, or `snippet_pane`
+- a `global` Binding shares a key with a Binding in `folders`, `tags`, `snippet_list`, or `snippet_pane`
 - a text-entry Scope binds a printable key without a modifier, since it would swallow typing. `esc`, `enter`, `tab`, and `ctrl+…` are fine.
 
-The same key in two Scopes that are never active together, such as `d` in `sidebar` and `snippet_list`, is fine.
+The same key in two Scopes that are never active together, such as `d` in `folders` and `snippet_list`, or `save` in `editor` and `content`, is fine.
 
 ### ctrl+c
 
@@ -173,12 +181,17 @@ The same key in two Scopes that are never active together, such as `d` in `sideb
 
 ## State file
 
-The state file holds what TuiSnip remembers between runs. In v1 that is one key:
+The state file holds what TuiSnip remembers between runs. In v1 that is two keys:
 
 ```toml
 [snippet_list]
 sort = "title"   # title | updated | created
+
+[folders]
+collapsed = ["0192f1d4-7b3e-7c1a-9f00-3c5e8a2b4d61"]   # ids of collapsed Folders
 ```
+
+- An id in `collapsed` whose Folder no longer exists is ignored and dropped on the next write.
 
 - TuiSnip writes it to a temporary file in the same directory and renames it over the old one. With several instances the last writer wins.
 - A missing, unreadable, or invalid state file is logged at Warn and replaced by defaults. It never stops start-up, because the user doesn't edit it.

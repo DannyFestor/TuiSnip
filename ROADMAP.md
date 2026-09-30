@@ -33,13 +33,13 @@ Everything in the v1 spec.
 
 Unscheduled.
 
-- Syntax highlighting while editing in the TUI, once the Bubbles textarea supports it (bubbles#1030).
+- A TuiSnip-owned editor component replacing the stock Bubbles textarea. It keeps tab characters, so content with tabs becomes editable in the TUI, and it highlights syntax while editing. The stock textarea turns every tab into four spaces, and upstream highlighting (bubbles#1030) is unreviewed.
 - Language guessing via chroma: the title's file extension (`lexers.Match`), then content analysis (`lexers.Analyse`). Needs a research ticket on accuracy for short Snippets first.
 - Settings screen. The preferred design writes a separate `settings.toml` layered over the hand-edited `config.toml`, so the app never modifies a file a human edits. Comment-preserving writes to `config.toml` are the alternative. Research before deciding.
-- Remembered UI state in the state file: maximized pane, last selected Folder.
+- Remembered UI state in the state file: zoomed Pane, last Browse selection.
 - Favorites and pins.
 - SnippetsLab importer.
 - Homebrew tap.
 - Colour themes beyond the built-in light and dark schemes.
-- Mouse support.
+- Placing the textarea cursor by clicking.
 - Multi-select for bulk move, tag, and delete.

@@ -7,7 +7,7 @@ Domain terms (Snippet, Folder, Root, Capture, Copy, ...) come from [`CONTEXT.md`
 ## Vocabulary
 
 - **Action**: one operation the app performs for the user, such as creating a Snippet or moving a Folder. An Action is a struct in an `internal/app` package. Don't call it a use case, service, command, or interactor.
-- **Binding**: a key mapped to something in the TUI. Many Bindings trigger an Action. Others only change the UI, such as maximizing a pane. Never call a Binding an action.
+- **Binding**: a key mapped to something in the TUI. Many Bindings trigger an Action. Others only change the UI, such as zooming a Pane. Never call a Binding an action.
 - **Capability**: a one-method interface an Action needs from outside, named in Go `-er` style (`snippet.Inserter`).
 - **Adapter**: code in `internal/adapters` that talks to something outside the core, such as SQLite, the clipboard, the terminal, or the file system.
 

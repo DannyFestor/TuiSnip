@@ -1,0 +1,240 @@
+version: "2"
+
+run:
+  relative-path-mode: gomod
+  modules-download-mode: readonly
+  build-tags:
+    - feature
+    - e2e
+
+linters:
+  default: all
+  disable:
+    # Deprecated in v2.x, superseded by the *_v5 / *_v2 linter of the same name.
+    - exhaustruct
+    - gomodguard
+    - wsl
+    # Target libraries TuiSnip does not use.
+    - arangolint
+    - clickhouselint
+    - ginkgolinter
+    - promlinter
+    - protogetter
+    - spancheck
+    - zerologlint
+    # Duplicates of an enabled linter.
+    - gocyclo
+    - maintidx
+    - gomodguard_v2
+    - godoclint
+    # Opinion-only, no defect signal.
+    - decorder
+    - gosmopolitan
+    - goheader
+    - lll
+    - nlreturn
+    - noinlineerr
+    - tagalign
+    - wsl_v5
+
+  settings:
+    cyclop:
+      max-complexity: 10
+    depguard:
+      rules:
+        core-purity:
+          list-mode: strict
+          files:
+            - "**/internal/domain/**"
+            - "**/internal/app/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/DannyFestor/TuiSnip/internal/domain
+          deny:
+            - pkg: database/sql
+              desc: persistence belongs in internal/adapters/sqlite
+            - pkg: os
+              desc: file system, env and processes belong in an adapter
+            - pkg: net
+              desc: networking belongs in an adapter
+            - pkg: log
+              desc: the core returns errors; only adapters and tui log
+        repo-wide:
+          list-mode: lax
+          files:
+            - $all
+          deny:
+            - pkg: github.com/mattn/go-sqlite3
+              desc: CGO driver; use modernc.org/sqlite
+            - pkg: github.com/pkg/errors
+              desc: use standard errors
+            - pkg: io/ioutil
+              desc: deprecated; use io and os
+            - pkg: math/rand
+              desc: use crypto/rand
+            - pkg: github.com/stretchr/testify/suite
+              desc: suites cannot run in parallel; use table tests with helpers
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    exhaustive:
+      check:
+        - switch
+        - map
+    exhaustruct_v5:
+      enforce-patterns:
+        - ^github\.com/DannyFestor/TuiSnip/.+
+      allow-empty-returns: true
+    forbidigo:
+      forbid:
+        - pattern: ^(fmt\.Print(|f|ln)|print|println)$
+          msg: stdout belongs to the TUI; log with slog or return the value
+        - pattern: ^time\.Sleep$
+          msg: wait on a channel, timer or context instead
+        - pattern: ^context\.(Background|TODO)$
+          msg: pass the root context from main down
+    funlen:
+      lines: 50
+      statements: 30
+    gocognit:
+      min-complexity: 15
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - experimental
+        - opinionated
+      disabled-checks:
+        - hugeParam
+        - whyNoLint
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    iface:
+      enable:
+        - identical
+        - unused
+        - opaque
+        - unexported
+        - unusedmethod
+    importas:
+      no-unaliased: true
+      alias:
+        - pkg: charm.land/bubbletea/v2
+          alias: tea
+    interfacebloat:
+      max: 5
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - generic
+        - 'charm\.land/bubbletea/v2\.Model$'
+    nestif:
+      min-complexity: 2
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    nonamedreturns:
+      report-error-in-defer: false
+    paralleltest:
+      check-cleanup: true
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: argument-limit
+          arguments: [4]
+        - name: function-result-limit
+          arguments: [3]
+        - name: flag-parameter
+        - name: early-return
+        - name: deep-exit
+        - name: confusing-naming
+        - name: import-shadowing
+        - name: modifies-value-receiver
+        - name: unused-receiver
+        - name: bare-return
+        - name: use-any
+    sloglint:
+      no-global: all
+      context: scope
+      static-msg: true
+      kv-only: true
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1020
+        - -ST1021
+        - -ST1022
+    tagliatelle:
+      case:
+        rules:
+          toml: snake
+    testifylint:
+      enable-all: true
+    unparam:
+      check-exported: true
+    varnamelen:
+      ignore-type-assert-ok: true
+      ignore-map-index-ok: true
+      ignore-chan-recv-ok: true
+      ignore-names:
+        - id
+        - db
+        - tx
+
+  exclusions:
+    generated: strict
+    warn-unused: true
+    presets:
+      - comments
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - err113
+          - exhaustruct_v5
+          - funlen
+          - goconst
+          - varnamelen
+          - wrapcheck
+      - path: _test\.go
+        linters:
+          - forbidigo
+        text: time\.Sleep
+      - path: ^cmd/
+        linters:
+          - forbidigo
+        text: context\.(Background|TODO)
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+    - golines
+  settings:
+    gofumpt:
+      module-path: github.com/DannyFestor/TuiSnip
+      extra:
+        group-params: true
+        clothe-returns: true
+    goimports:
+      local-prefixes:
+        - github.com/DannyFestor/TuiSnip
+    golines:
+      max-len: 120
+      shorten-comments: false
+  exclusions:
+    generated: strict
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

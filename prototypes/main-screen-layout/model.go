@@ -73,12 +73,14 @@ type model struct {
 	wrap          bool
 	sort          sortOrder
 
-	sideCursor  int
+	sideCursor int
 	// otherSideCursor keeps the inactive section's place so switching Folders ⇄ Tags doesn't lose it.
 	otherSideCursor int
-	sideSection entryKind // entryFolder or entryTag when sections are separate
-	listCursor  int
-	scroll      viewport.Model
+	// browseSection is the sidebar section whose selection fills the list; focus alone never changes it.
+	browseSection entryKind
+	sideSection   entryKind // entryFolder or entryTag when sections are separate
+	listCursor    int
+	scroll        viewport.Model
 
 	searching     bool
 	searchFocused bool
@@ -102,7 +104,7 @@ func newModel(s *store, variants []variant, start int) *model {
 	search := textinput.New()
 	search.Prompt = "/ "
 	search.Placeholder = "Search title, Tags, Description, content"
-	m := &model{store: s, variants: variants, current: start, search: search, scroll: viewport.New(), sideSection: entryFolder}
+	m := &model{store: s, variants: variants, current: start, search: search, scroll: viewport.New(), sideSection: entryFolder, browseSection: entryFolder}
 	m.status = "PROTOTYPE: nothing is saved. ` / ~ switch variant, ? help."
 	return m
 }
@@ -307,6 +309,7 @@ func (m *model) moveCursor(key string) bool {
 	switch m.focus {
 	case paneSidebar:
 		m.sideCursor = clamp(m.sideCursor+delta, 0, len(m.visibleEntries())-1)
+		m.browseSection = m.sideSection
 		m.listCursor = 0
 	case paneList:
 		m.listCursor = clamp(m.listCursor+delta, 0, len(m.listed())-1)
@@ -354,6 +357,31 @@ func (m *model) selectedEntry() (entry, bool) {
 	return es[m.sideCursor], true
 }
 
+func (m *model) sectionEntries(section entryKind) []entry {
+	return slices.DeleteFunc(m.entries(), func(e entry) bool { return (e.kind == entryTag) != (section == entryTag) })
+}
+
+// entryAt is the cursor's entry in either sidebar section, focused or not.
+func (m *model) entryAt(section entryKind) (entry, bool) {
+	if section == m.sideSection {
+		return m.selectedEntry()
+	}
+	es := m.sectionEntries(section)
+	if len(es) == 0 {
+		return entry{}, false
+	}
+	m.otherSideCursor = clamp(m.otherSideCursor, 0, len(es)-1)
+	return es[m.otherSideCursor], true
+}
+
+// browseEntry is the Folder, Root, or Tag whose Snippets the list shows.
+func (m *model) browseEntry() (entry, bool) {
+	if !m.variant().sidebarSections() {
+		return m.selectedEntry()
+	}
+	return m.entryAt(m.browseSection)
+}
+
 func (m *model) entryName(e entry) string {
 	switch e.kind {
 	case entryRoot:
@@ -378,7 +406,7 @@ func (m *model) entryCount(e entry) int {
 
 // browseFolder is the Folder new Snippets land in: the selected Folder, else the Root.
 func (m *model) browseFolder() string {
-	if e, ok := m.selectedEntry(); ok && e.kind == entryFolder {
+	if e, ok := m.browseEntry(); ok && e.kind == entryFolder {
 		return e.id
 	}
 	return ""
@@ -388,7 +416,7 @@ func (m *model) listed() []*snippet {
 	if m.searching && m.search.Value() != "" {
 		return m.store.search(m.search.Value())
 	}
-	e, ok := m.selectedEntry()
+	e, ok := m.browseEntry()
 	if !ok {
 		return nil
 	}
@@ -494,6 +522,7 @@ func (m *model) setSection(k entryKind) {
 
 func (m *model) revealSnippet(sn *snippet) {
 	m.setSection(entryFolder)
+	m.browseSection = entryFolder
 	for i, e := range m.visibleEntries() {
 		if (sn.folder == "" && e.kind == entryRoot) || (e.kind == entryFolder && e.id == sn.folder) {
 			m.sideCursor = i

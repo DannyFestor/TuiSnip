@@ -95,13 +95,17 @@ func (m *model) entryRow(e entry, w int, isCursor bool) string {
 	default:
 		label = "# " + e.id
 	}
-	return row(label, fmt.Sprint(m.entryCount(e)), w, isCursor, m.focus == paneSidebar)
+	focused := m.focus == paneSidebar && (!m.variant().sidebarSections() || (e.kind == entryTag) == (m.sideSection == entryTag))
+	return row(label, fmt.Sprint(m.entryCount(e)), w, isCursor, focused)
 }
 
 // sidebarRows renders the Folder tree and Tag list; section filters to one of them (-1 = both).
 func (m *model) sidebarRows(w int, section entryKind, cursorOn bool) string {
 	var b strings.Builder
 	sel, _ := m.selectedEntry()
+	if section >= 0 {
+		sel, _ = m.entryAt(section)
+	}
 	wroteTagHeader := false
 	for _, e := range m.entries() {
 		isTag := e.kind == entryTag
@@ -168,7 +172,7 @@ func (m *model) listTitle() string {
 	if m.searching {
 		return fmt.Sprintf("Search · %d results", len(m.listed()))
 	}
-	e, _ := m.selectedEntry()
+	e, _ := m.browseEntry()
 	if e.kind == entryTag {
 		return "# " + e.id + " · by " + sortNames[m.sort]
 	}
@@ -200,6 +204,11 @@ func (m *model) snippetPaneBody(w, h int) string {
 		}
 		return dim.Render("No Snippet selected.")
 	}
+	return m.snippetView(sn, &m.scroll, &m.lastSelected, w, h)
+}
+
+// snippetView renders a Snippet read-only into vp; shown caches which content vp holds.
+func (m *model) snippetView(sn *snippet, vp *viewport.Model, shown *string, w, h int) string {
 	header := bold.Render(fit(sn.title, w)) + "\n" +
 		dim.Render(fit(fmt.Sprintf("%s · %s · #%s", m.store.path(sn.folder), sn.lang, strings.Join(sn.tags, " #")), w)) + "\n" +
 		dim.Render(fmt.Sprintf("created %s · updated %s", sn.created.Format("2006-01-02"), sn.updated.Format("2006-01-02 15:04")))
@@ -207,29 +216,26 @@ func (m *model) snippetPaneBody(w, h int) string {
 		header += "\n" + fit(sn.desc, w)
 	}
 	header += "\n" + dim.Render(strings.Repeat("─", w))
-	codeHeight := max(1, h-lipgloss.Height(header))
-	m.configureScroll(sn, w, codeHeight)
-	return header + "\n" + m.scroll.View()
+	if *shown != sn.id+sn.content {
+		vp.SetContent(highlight(sn))
+		vp.GotoTop()
+		*shown = sn.id + sn.content
+	}
+	vp.SetWidth(w)
+	vp.SetHeight(max(1, h-lipgloss.Height(header)))
+	vp.SoftWrap = m.wrap
+	vp.LeftGutterFunc = lineNumbers
+	return header + "\n" + vp.View()
 }
 
-func (m *model) configureScroll(sn *snippet, w, h int) {
-	if m.lastSelected != sn.id+sn.content {
-		m.scroll.SetContent(highlight(sn))
-		m.scroll.GotoTop()
-		m.lastSelected = sn.id + sn.content
+func lineNumbers(c viewport.GutterContext) string {
+	switch {
+	case c.Soft:
+		return dim.Render("     │ ")
+	case c.Index >= c.TotalLines:
+		return dim.Render("   ~ │ ")
 	}
-	m.scroll.SetWidth(w)
-	m.scroll.SetHeight(h)
-	m.scroll.SoftWrap = m.wrap
-	m.scroll.LeftGutterFunc = func(c viewport.GutterContext) string {
-		switch {
-		case c.Soft:
-			return dim.Render("     │ ")
-		case c.Index >= c.TotalLines:
-			return dim.Render("   ~ │ ")
-		}
-		return dim.Render(fmt.Sprintf("%4d │ ", c.Index+1))
-	}
+	return dim.Render(fmt.Sprintf("%4d │ ", c.Index+1))
 }
 
 func highlight(sn *snippet) string {
@@ -299,7 +305,7 @@ func (m *model) switcher() string {
 	case m.searching:
 		mode = "search"
 	}
-	sel, _ := m.selectedEntry()
+	sel, _ := m.browseEntry()
 	state := fmt.Sprintf("scope=%s  mode=%s  browse=%s  max=%v  wrap=%v", m.scope(), mode, m.entryName(sel), m.maximized, m.wrap)
 	label := fmt.Sprintf(" PROTOTYPE  ~ ◀  %c — %s  ▶ `  │ %s ", 'A'+m.current, m.variant().name(), state)
 	return pillBar.Render(clip(label, m.width))

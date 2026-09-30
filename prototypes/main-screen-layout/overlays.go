@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -161,18 +162,19 @@ func (helpOverlay) view(m *model) string {
 
 // searchPopup is Search as a centred popup in the Language picker's style.
 type searchPopup struct {
-	input  textinput.Model
-	cursor int
+	input   textinput.Model
+	cursor  int
+	preview viewport.Model
+	shown   string
 }
 
-const searchPopupRows = 12
 
 func newSearchPopup() *searchPopup {
 	in := textinput.New()
 	in.Prompt = "/ "
 	in.Placeholder = "title, Tags, Description, content"
 	in.Focus()
-	return &searchPopup{input: in}
+	return &searchPopup{input: in, preview: viewport.New()}
 }
 
 func (p *searchPopup) results(m *model) []*snippet {
@@ -208,17 +210,26 @@ func (p *searchPopup) update(m *model, msg tea.KeyPressMsg) tea.Cmd {
 }
 
 func (p *searchPopup) view(m *model) string {
-	const w = 64
-	var b strings.Builder
+	w, h := m.width*4/5, (m.height-2)*4/5
+	resultsW := w * 2 / 5
 	hits := p.results(m)
-	b.WriteString(bold.Render("Search") + dim.Render(fmt.Sprintf("  %d results", len(hits))) + "\n" + p.input.View() + "\n\n")
+	var b strings.Builder
+	b.WriteString(p.input.View() + "\n\n")
 	if len(hits) == 0 {
 		b.WriteString(dim.Render("Type to search every Snippet.") + "\n")
 	}
-	start := max(0, p.cursor-searchPopupRows+1)
-	for i := start; i < len(hits) && i < start+searchPopupRows; i++ {
-		b.WriteString(row(hits[i].title, strings.TrimPrefix(m.store.path(hits[i].folder), "Root / "), w, i == p.cursor, true) + "\n")
+	rows := h - 7
+	start := max(0, p.cursor-rows+1)
+	for i := start; i < len(hits) && i < start+rows; i++ {
+		b.WriteString(row(hits[i].title, strings.TrimPrefix(m.store.path(hits[i].folder), "Root / "), resultsW-2, i == p.cursor, true) + "\n")
 	}
-	b.WriteString("\n" + dim.Render("↑/↓ ctrl+n/p move · enter reveals in its Folder · esc close"))
-	return boxStyle.Width(w + 6).Render(b.String())
+	b.WriteString("\n" + dim.Render("↑/↓ move · enter reveal · esc close"))
+	preview := dim.Render("No result selected.")
+	if len(hits) > 0 {
+		preview = m.snippetView(hits[p.cursor], &p.preview, &p.shown, w-resultsW-2, h-3)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		box(fmt.Sprintf("Search · %d results", len(hits)), b.String(), resultsW, h, true),
+		box("Preview", preview, w-resultsW, h, false),
+	)
 }

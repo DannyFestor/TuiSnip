@@ -83,8 +83,8 @@ func (stacked) nav(m *model, key string) bool {
 		if m.focus != paneSidebar {
 			return false
 		}
-		m.sideSection = entryFolder + entryTag - m.sideSection
-		m.sideCursor, m.listCursor = 0, 0
+		m.setSection(entryFolder + entryTag - m.sideSection)
+		m.browseSection = m.sideSection
 	default:
 		return m.moveCursor(key)
 	}
@@ -135,8 +135,8 @@ func (focusWidens) nav(m *model, key string) bool {
 		if m.focus != paneSidebar {
 			return false
 		}
-		m.sideSection = entryFolder + entryTag - m.sideSection
-		m.sideCursor, m.listCursor = 0, 0
+		m.setSection(entryFolder + entryTag - m.sideSection)
+		m.browseSection = m.sideSection
 	default:
 		return m.moveCursor(key)
 	}
@@ -207,7 +207,7 @@ func (fourPanes) sidebarSections() bool { return true }
 func (fourPanes) popupSearch()          {}
 
 func (fourPanes) navHelp() []string {
-	return []string{"tab / shift+tab next / prev pane", "l → next pane · h ← prev pane", "1 2 3 4 jump to pane", "enter drill in (Folders/Tags → list → Snippet)", "esc back out", "j/k ↑/↓ move within pane", "/ Search popup"}
+	return []string{"tab / shift+tab cycle all four panes", "l/→ right · h/← left (Folders and Tags are one column)", "1 2 3 4 jump to pane", "enter drill in (Folders/Tags → list → Snippet)", "esc back out", "j/k ↑/↓ move within pane", "/ Search popup"}
 }
 
 func stop(m *model) int {
@@ -241,24 +241,39 @@ func (fourPanes) nav(m *model, key string) bool {
 	case "shift+tab":
 		setStop(m, (s+stopCount-1)%stopCount)
 	case "l", "right":
-		setStop(m, min(s+1, stopSnippet))
+		stepRight(m, s)
 	case "h", "left":
-		setStop(m, max(s-1, stopFolders))
+		stepLeft(m, s)
 	case "1", "2", "3", "4":
 		setStop(m, int(key[0]-'1'))
 	case "enter":
+		if m.focus == paneSidebar {
+			m.browseSection = m.sideSection
+		}
 		setStop(m, min(max(s+1, stopList), stopSnippet))
 	case "esc":
-		switch s {
-		case stopList:
-			m.focus = paneSidebar // back to whichever of Folders or Tags chose the list
-		case stopSnippet:
-			setStop(m, stopList)
+		if s >= stopList {
+			stepLeft(m, s)
 		}
 	default:
 		return m.moveCursor(key)
 	}
 	return true
+}
+
+// stepRight and stepLeft treat Folders and Tags as one column, so sideways moves skip Tags.
+func stepRight(m *model, s int) {
+	setStop(m, min(max(s+1, stopList), stopSnippet))
+}
+
+func stepLeft(m *model, s int) {
+	switch s {
+	case stopSnippet:
+		setStop(m, stopList)
+	case stopList:
+		m.focus = paneSidebar
+		m.setSection(m.browseSection)
+	}
 }
 
 func (fourPanes) widths(m *model) (side, list int) {
@@ -271,22 +286,17 @@ func (fourPanes) widths(m *model) (side, list int) {
 	return 22, 32
 }
 
-// sidebarHeights gives Folders its content height when both fit, so no gap opens above Tags.
+// sidebarHeights makes the active left pane tall: the focused one, else the one filling the list.
 func (fourPanes) sidebarHeights(m *model, h int) (folders, tags int) {
-	var nFolders, nTags int
-	for _, e := range m.entries() {
-		if e.kind == entryTag {
-			nTags++
-		} else {
-			nFolders++
-		}
+	tall := m.browseSection
+	if m.focus == paneSidebar {
+		tall = m.sideSection
 	}
-	const chrome, minH = 3, 5
-	if nFolders+nTags+2*chrome <= h {
-		return nFolders + chrome, h - nFolders - chrome
+	big := h * 2 / 3
+	if tall == entryTag {
+		return h - big, big
 	}
-	folders = clamp(h*nFolders/max(1, nFolders+nTags), minH, h-minH)
-	return folders, h - folders
+	return big, h - big
 }
 
 func (v fourPanes) layout(m *model, w, h int) string {
@@ -297,8 +307,8 @@ func (v fourPanes) layout(m *model, w, h int) string {
 	paneW := w - sideW - listW
 	foldersH, tagsH := v.sidebarHeights(m, h)
 	s := stop(m)
-	folders := box("1 Folders", m.sidebarRows(sideW-2, entryFolder, s == stopFolders || m.sideSection == entryFolder), sideW, foldersH, s == stopFolders)
-	tags := box("2 Tags", m.sidebarRows(sideW-2, entryTag, s == stopTags || m.sideSection == entryTag), sideW, tagsH, s == stopTags)
+	folders := box("1 Folders", m.sidebarRows(sideW-2, entryFolder, true), sideW, foldersH, s == stopFolders)
+	tags := box("2 Tags", m.sidebarRows(sideW-2, entryTag, true), sideW, tagsH, s == stopTags)
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		lipgloss.JoinVertical(lipgloss.Left, folders, tags),
 		box("3 "+m.listTitle(), m.listRows(listW-2, h-3), listW, h, s == stopList),

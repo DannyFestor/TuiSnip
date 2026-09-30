@@ -44,7 +44,7 @@ func (q *Query) Run(ctx context.Context, in QueryInput) ([]Hit, error) {
 	return q.index.Search(ctx, in.Text, 50, time.Now())
 }
 
-// ✅ the limit comes from config through bootstrap, the time from Clock
+// ✅ the limit comes from bootstrap, the time from Clock
 func (q *Query) Run(ctx context.Context, in QueryInput) ([]Hit, error) {
 	return q.index.Search(ctx, in.Text, q.limit, q.clock.Now())
 }

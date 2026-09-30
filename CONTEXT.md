@@ -61,3 +61,13 @@ _Avoid_: Import, paste, grab
 **Copy**:
 Placing a Fragment's content on the system clipboard.
 _Avoid_: Yank, export
+
+### Interaction
+
+**Binding**:
+One thing the user can do from the keyboard, such as Copy or opening help, together with the keys that trigger it. The user can change the keys of every Binding.
+_Avoid_: Keybinding, shortcut, hotkey, action
+
+**Scope**:
+The part of the screen a Binding belongs to, such as the Snippet list or the editor. A Binding works only while its Scope has focus, so one key can mean different things in different Scopes.
+_Avoid_: Context, keymap, layer

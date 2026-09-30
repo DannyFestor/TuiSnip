@@ -17,6 +17,11 @@ theme = "auto"
 # ["Go", "Bash", "YAML"]. Empty means every Language.
 languages = []
 
+# Mouse clicks and the wheel. While it is on, the terminal's own text
+# selection needs a modifier key: Shift on most Linux terminals, Option in
+# iTerm2, fn in Terminal.app.
+mouse = true
+
 [copy]
 # auto: a platform tool (pbcopy, wl-copy, xclip, xsel), or OSC 52 over SSH or
 # when no tool is installed. native: only a platform tool. osc52: only OSC 52.
@@ -29,21 +34,44 @@ quit_after = false
 # "alt+x". A shifted letter is written as the capital, "E", not "shift+e".
 # ctrl+c always quits and cannot be bound.
 
-# Active in the sidebar, the Snippet list, and the Snippet pane.
+# Active in every Pane while no overlay is open.
 [bindings.global]
 quit = ["q"]
 help = ["?"]
 search = ["/"]
-maximize = ["z"]
+zoom = ["z"]
 new_snippet = ["n"]
 capture = ["p"]
+# Panes in order: 1 Folders, 2 Tags, 3 Snippet list, 4 Snippet pane.
+focus_next = ["tab"]
+focus_prev = ["shift+tab"]
+# Right and left treat Folders and Tags as one column.
+focus_right = ["l", "right"]
+focus_left = ["h", "left"]
+focus_folders = ["1"]
+focus_tags = ["2"]
+focus_list = ["3"]
+focus_snippet = ["4"]
+open = ["enter"]
+back = ["esc"]
+down = ["j", "down"]
+up = ["k", "up"]
+top = ["g", "home"]
+bottom = ["G", "end"]
+page_down = ["pgdown", "ctrl+d"]
+page_up = ["pgup", "ctrl+u"]
 
-# Folder tree and Tag list.
-[bindings.sidebar]
+[bindings.folders]
 new_folder = ["N"]
 rename = ["r"]
 delete = ["d"]
 move = ["m"]
+collapse = ["space"]
+
+[bindings.tags]
+new_tag = ["N"]
+rename = ["r"]
+delete = ["d"]
 
 [bindings.snippet_list]
 copy = ["y"]
@@ -54,30 +82,50 @@ duplicate = ["c"]
 delete = ["d"]
 cycle_sort = ["s"]
 
-# The Snippet pane while it shows the highlighted, read-only Fragment.
 [bindings.snippet_pane]
 copy = ["y"]
 edit = ["e"]
 open_in_editor = ["E"]
 wrap = ["w"]
 
-# The Snippet pane in edit mode. Keys here need a modifier or must be a
-# non-printing key, so they never swallow typing.
+# The edit overlay, outside the Content textarea. Keys in the edit overlay,
+# Search, and pickers need a modifier or must be a non-printing key, so they
+# never swallow typing.
 [bindings.editor]
 save = ["ctrl+s"]
 cancel = ["esc"]
+next_field = ["down", "tab"]
+prev_field = ["up", "shift+tab"]
+open_field = ["enter"]
 pick_language = ["ctrl+l"]
 edit_tags = ["ctrl+t"]
 open_in_editor = ["ctrl+e"]
 
+# Inside the Content textarea.
+[bindings.content]
+save = ["ctrl+s"]
+leave = ["esc"]
+indent = ["tab"]
+dedent = ["shift+tab"]
+pick_language = ["ctrl+l"]
+edit_tags = ["ctrl+t"]
+open_in_editor = ["ctrl+e"]
+
+# The Search popup.
 [bindings.search]
-cancel = ["esc"]
+down = ["down", "ctrl+n", "ctrl+j"]
+up = ["up", "ctrl+p", "ctrl+k"]
 accept = ["enter"]
+copy = ["ctrl+y"]
+cancel = ["esc"]
 
 # Language picker, Folder picker, and Tag editor.
 [bindings.picker]
+down = ["down", "ctrl+n", "ctrl+j"]
+up = ["up", "ctrl+p", "ctrl+k"]
 accept = ["enter"]
 cancel = ["esc"]
+show_all_languages = ["ctrl+a"]
 
 # y/N confirmations. enter picks the default, No.
 [bindings.confirm]

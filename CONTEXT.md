@@ -71,3 +71,7 @@ _Avoid_: Keybinding, shortcut, hotkey, action
 **Scope**:
 The part of the screen a Binding belongs to, such as the Snippet list or the editor. A Binding works only while its Scope has focus, so one key can mean different things in different Scopes.
 _Avoid_: Context, keymap, layer
+
+**Pane**:
+One of the four areas of the main screen: Folders, Tags, the Snippet list, and the Snippet pane. Exactly one Pane has focus, and each has its own Scope.
+_Avoid_: Panel, view, window, column

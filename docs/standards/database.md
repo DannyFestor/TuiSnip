@@ -59,7 +59,7 @@ v1's "exactly one Fragment" is a product limit, not a data rule. The domain enfo
 
 | Entity | Bumped by | Not bumped by |
 |---|---|---|
-| Snippet | an edit in the Snippet pane: title, Description, Tags, Fragment content or Language | moving it; renaming, merging, or deleting a Tag it carries |
+| Snippet | an edit in the edit overlay: title, Description, Tags, Fragment content or Language | moving it; renaming, merging, or deleting a Tag it carries |
 | Fragment | its content or Language changing (which also bumps the Snippet) | |
 | Folder | a rename or a Default Language change | moving it |
 | Tag | a rename; being the surviving Tag of a merge | |

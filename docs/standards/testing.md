@@ -7,7 +7,7 @@ How to write tests in this repo. The tiers and where they live are in [architect
 | Tier | Where | Tag | Covers |
 |---|---|---|---|
 | Unit | beside the code, `<pkg>_test` | none | one type: value objects, entities, one Action against mocked capabilities, one adapter |
-| Feature | `test/feature/` | `feature` | Actions wired through `bootstrap` against in-memory SQLite |
+| Feature | `test/feature/` | `feature` | Actions wired through `bootstrap` against a temporary SQLite file |
 | e2e | `test/e2e/` | `e2e` | the whole TUI driven by teatest |
 
 Put a test in the lowest tier that can observe the behaviour. Anything stateful is a feature test, such as whether a moved Snippet shows up in its new Folder. Unit tests have no repository to hold state; see [Test doubles](#test-doubles).
@@ -72,7 +72,7 @@ testify `suite` is denied, because suites can't run in parallel. Replace a suite
 func newTestApp(t *testing.T) *bootstrap.App {
 	t.Helper()
 
-	app, err := bootstrap.New(t.Context(), bootstrap.Options{DatabasePath: ":memory:"})
+	app, err := bootstrap.New(t.Context(), bootstrap.Options{DatabasePath: filepath.Join(t.TempDir(), "tuisnip.db")})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, app.Close()) })
 	return app
@@ -116,7 +116,7 @@ Set only the fields the test is about. A test that states every field hides whic
 
 ## Feature tests
 
-- Build the app with `newTestApp(t)`. Each test gets its own `:memory:` database, so parallel tests share nothing.
+- Build the app with `newTestApp(t)`. Each test gets its own database file in `t.TempDir()`, so parallel tests share nothing and run with production's pragmas. Why not `:memory:`: [database](database.md#tests).
 - Drive and check behaviour **only through Actions**. Create a Snippet with `snippet.Create`, then read it back with `browse.SnippetsInFolder`. Raw SQL would tie the tier to the schema, and this tier exists to test behaviour.
 
 ## e2e tests

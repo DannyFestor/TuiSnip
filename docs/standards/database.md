@@ -16,13 +16,14 @@ How TuiSnip stores its data in SQLite: the schema conventions, migrations, queri
 | `snippets` | Snippets; `folder_id` NULL means at the Root | its Fragments and Tag links |
 | `fragments` | Fragments, ordered by `position` within their Snippet | nothing else |
 | `tags` | Tags | their links; the Snippets stay |
-| `snippet_tags` | which Snippet carries which Tag | nothing else |
+| `snippet_tag` | which Snippet carries which Tag | nothing else |
 
 The Root is not stored. It is the absence of a Folder, so `folder_id IS NULL` and `parent_id IS NULL` mean "at the Root".
 
 ### Conventions
 
 - Every table is `STRICT`, so SQLite refuses a value of the wrong type rather than storing it.
+- **Table names**: entity tables are plural (`snippets`, `folders`). Join tables name both nouns in the singular, in alphabetical order (`snippet_tag`).
 - **IDs** are UUIDv7 as lowercase `TEXT`, generated in Go by the `IDGenerator`. The schema never generates one.
 - **Timestamps** are `INTEGER` Unix nanoseconds, UTC. Every entity table has `created_at` and `updated_at`. Join tables have none.
 - **Optional text** is `NOT NULL DEFAULT ''`. The domain doesn't distinguish "no Description" from an empty one, so NULL would only add a pointer.

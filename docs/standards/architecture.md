@@ -19,7 +19,8 @@ db/
   migrations/                goose SQL files, embedded by embed.go
   queries/                   sqlc query files
 internal/
-  domain/                    entities, invariants, search weights, sentinel errors
+  domain/                    entities, invariants, search weights, FieldError, sentinel errors
+    value/                   value objects (Title, FolderName, TagName, Language) and their rule sentinels
   app/
     snippet/                 Create, Update, Delete, Move, Duplicate, Capture, Copy
     folder/                  Create, Rename, Move, Delete, SetDefaultLanguage
@@ -39,6 +40,7 @@ internal/
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program
   bootstrap/                 composition root
+  testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/
   feature/                   Actions against in-memory SQLite (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
@@ -51,7 +53,8 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 
 | Layer | Owns | Must not |
 |---|---|---|
-| `domain` | Snippet, Fragment, Folder, Tag, Language, IDs; every rule from `docs/spec/v1.md` that needs no I/O; the search weight table; sentinel errors | import anything outside the standard library; generate IDs or read the clock |
+| `domain` | Snippet, Fragment, Folder, Tag, IDs; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
+| `domain/value` | Title, FolderName, TagName, Language: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter, or `bootstrap` |
 | `tui` | screens, Bindings, `tui.Settings`, turning errors into status text | import driven adapters or `config` |
@@ -124,7 +127,7 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 
 ## Errors
 
-- `domain` declares sentinel errors, and their messages carry the package name: `errors.New("domain: title is blank")`. The sentinels include `ErrNotFound`, `ErrConflict` (the save is refused because the Snippet changed elsewhere), `ErrMissingDependency`, and the validation errors.
+- `domain` and `domain/value` declare sentinel errors, and their messages carry the package name. `domain` holds `ErrNotFound`, `ErrConflict` (the save is refused because the Snippet changed elsewhere), `ErrMissingDependency`, `ErrCorruptRecord`, and the entity invariants. `value` holds the sentinel for each value rule, beside the rule: `errors.New("value: title is blank")`. Validation is detailed in [code](code.md#validation).
 - Adapters convert outside errors into those sentinels. For example, `sql.ErrNoRows` becomes `domain.ErrNotFound`.
 - Every exported function or method that returns an error from another package wraps it with its own qualified name and `%w`: `fmt.Errorf("sqlite.Repository.Insert: %w", err)`, then `fmt.Errorf("snippet.Create: %w", err)`. A log line reads `snippet.Create: sqlite.Repository.Insert: database is locked`. The rightmost name is where the error started.
 - Unexported helpers do not wrap again. The exported entry point already names the package.
@@ -147,8 +150,10 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 |---|---|---|
 | Migrations | `db/migrations/*.sql` | embedded by `db/migrations/embed.go`, run by `sqlite` on start |
 | Queries | `db/queries/*.sql`, configured by `sqlc.yaml` at the repo root | `internal/adapters/sqlite/sqlcgen/` |
-| Mocks | mockery, via `go generate` | `mocks_test.go` beside the consumer, in package `<pkg>_test` |
-| Enums | go-enum or stringer, via `go generate` | `*_enum.go` or `*_string.go` beside the type |
+| Mocks | mockery, configured by `.mockery.yml` | `mocks_test.go` beside the consumer, in package `<pkg>_test` |
+| Enums | go-enum, via `//go:generate` beside the type | `*_enum.go` beside the type |
+
+`make generate` runs every generator. Each has its own target, listed in [code](code.md#generated-code).
 
 Never edit a file whose header says `// Code generated ... DO NOT EDIT.`. Change the source and regenerate. Only `sqlite` may import `db/migrations`. Mocks live in `_test.go` files, so none of them reach the production build or go-arch-lint.
 
@@ -164,7 +169,7 @@ go-arch-lint excludes `test/` and every `_test.go` file.
 
 - `.go-arch-lint.yml` defines one component per package group above and the edges between them. Each component lists itself in `mayDependOn`, because go-arch-lint otherwise rejects imports between a component's own subpackages. `depOnAnyVendor: false` makes every third-party import an explicit grant. A Go file outside every component is a warning.
 - `ignoreNotFoundComponents: true` stays on until the scaffold has created every component directory. Then it goes to `false`.
-- depguard, inside golangci-lint, covers what go-arch-lint cannot, because go-arch-lint always allows the standard library. In `domain` and `app` it allows only the standard library and `internal/domain`, and denies `database/sql`, `os`, `os/exec`, `net/...`, `log`, and `log/slog`. Everywhere it denies `github.com/mattn/go-sqlite3`, `github.com/pkg/errors`, and `io/ioutil`.
+- depguard, inside golangci-lint, covers what go-arch-lint cannot, because go-arch-lint always allows the standard library. In `domain` and `app` it allows only the standard library and `internal/domain`, and denies `database/sql`, `os`, `os/exec`, `net/...`, `log`, and `log/slog`. Everywhere it denies `github.com/mattn/go-sqlite3`, `github.com/pkg/errors`, and `io/ioutil`. Outside `_test.go` files it denies `internal/testkit`, which go-arch-lint lists as its own component with the testify grant.
 - Run `make arch-lint`, which runs `go-arch-lint check`. CI runs it on every PR.
 
 ### Adding a package

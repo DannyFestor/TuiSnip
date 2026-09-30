@@ -67,6 +67,8 @@ When a field is added, every literal that doesn't set it fails lint, so no calle
   - bans `fmt.Print*`, `print`, and `println`, because stdout belongs to the TUI
   - bans `time.Sleep` outside tests
   - bans `context.Background` and `context.TODO` outside `cmd/`, because there is one root context from `main`
+  - bans `context.WithValue`, because dependencies are passed explicitly
+  - bans `panic` outside tests, because every failure is a returned error (see [code](code.md#errors))
 - containedctx: no `context.Context` fields in structs. The one exception is the TUI root model (see [architecture](architecture.md)).
 - nonamedreturns: no named results, except where a deferred function changes the returned error (`defer func() { err = errors.Join(err, rows.Close()) }()`).
 
@@ -88,6 +90,11 @@ depguard covers what go-arch-lint can't, because go-arch-lint always allows the 
   - `io/ioutil`
   - `math/rand` and `math/rand/v2`: use `crypto/rand`
   - testify `suite`: suites can't run in parallel
+- **testkit-in-tests**: `internal/testkit` may be imported only from `_test.go` files.
+
+## Logging
+
+sloglint allows only typed attributes (`attr-only`), with keys as snake_case constants (`no-raw-keys`, `key-naming-case`). It also requires static messages, the `…Context` methods when a context is in scope, and no global logger. What to log is in [code](code.md#logging).
 
 importas pins `charm.land/bubbletea/v2` to `tea`.
 

@@ -19,6 +19,7 @@ vendors:
   editor-launcher: { in: [ github.com/charmbracelet/x/editor ] }
   sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }
   migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
+  assertions:      { in: [ github.com/stretchr/testify/** ] }
 
 components:
   domain:      { in: internal/domain/** }
@@ -44,6 +45,8 @@ components:
 
   bootstrap:   { in: internal/bootstrap/** }
   main:        { in: cmd/tuisnip }
+
+  testkit:     { in: internal/testkit/** }
 
 commonComponents:
   - domain
@@ -81,3 +84,7 @@ deps:
     anyProjectDeps: true
     anyVendorDeps: true
   main:        { mayDependOn: [ main, bootstrap, xdg ] }
+
+  testkit:
+    mayDependOn: [ testkit ]
+    canUse: [ assertions ]

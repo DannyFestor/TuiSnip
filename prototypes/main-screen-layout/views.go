@@ -293,9 +293,9 @@ func (m *model) render() string {
 }
 
 var shortHelp = map[string]string{
-	"sidebar":         "j/k move · enter open · N new Folder · r rename · d delete · / search · ? help",
-	"snippet_list":    "y copy · e edit · n new · / search · s sort · ? help",
-	"snippet_pane":    "y copy · e edit · w wrap · / search · ? help",
+	"sidebar":         "j/k move · enter open · N new Folder · r rename · d delete · z zoom · / search · ? help",
+	"snippet_list":    "y copy · e edit · n new · s sort · z zoom · / search · ? help",
+	"snippet_pane":    "y copy · e edit · w wrap · z zoom · / search · ? help",
 	"editor":          "ctrl+s save · esc cancel · ↑/↓ field · ctrl+l Language",
 	"search":          "↑/↓ move · enter open · esc close",
 	"picker":          "↑/↓ move · enter pick · esc close",

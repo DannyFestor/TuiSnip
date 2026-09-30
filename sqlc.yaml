@@ -1,0 +1,27 @@
+version: "2"
+sql:
+  - engine: sqlite
+    schema: db/migrations
+    queries: db/queries
+    gen:
+      go:
+        package: sqlcgen
+        out: internal/adapters/sqlite/sqlcgen
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        emit_interface: false
+        overrides:
+          - column: "*.id"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "ID" }
+          - column: "*.snippet_id"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "ID" }
+          - column: "*.tag_id"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "ID" }
+          - column: "*.folder_id"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "ID", pointer: true }
+          - column: "*.parent_id"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "ID", pointer: true }
+          - column: "*.created_at"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "Timestamp" }
+          - column: "*.updated_at"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "Timestamp" }

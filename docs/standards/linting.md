@@ -101,7 +101,7 @@ importas pins `charm.land/bubbletea/v2` to `tea`.
 ## Tests
 
 - testpackage: tests are black-box `_test` packages.
-- paralleltest: every test and subtest calls `t.Parallel()`. Feature tests each open their own `:memory:` database.
+- paralleltest: every test and subtest calls `t.Parallel()`. Feature tests each open their own database file in `t.TempDir()`.
 - testifylint, with all checks on: use `require` when the rest of the test depends on the result, `assert` otherwise.
 - Relaxed in `_test.go` files: dupl, err113, exhaustruct, funlen, goconst, varnamelen, wrapcheck. Their premise doesn't hold for table tests.
 - `run.build-tags` lists `feature` and `e2e`. Without them, `test/feature` and `test/e2e` are never linted.

@@ -120,7 +120,7 @@ func NewTitle(raw string) (Title, error) {
 func (t Title) String() string { return t.value }
 ```
 
-- The constructor normalises, and the normalised form is the one stored. `Title` and `FolderName` are trimmed. `TagName` is trimmed, keeps the user's spelling, and has `Key()` returning the case-folded form. SQLite's unique index and memsearch both compare on `Key()`. `Language` is parsed from the known set.
+- The constructor normalises, and the normalised form is the one stored. `Title` and `FolderName` are trimmed. `TagName` is trimmed, keeps the user's spelling, and has `Key()` returning the case-folded form. SQLite's unique index and memsearch both compare on `Key()`. `Language` is parsed from the known set: chroma's canonical lexer names, generated into `value` because `value` may not import chroma. A chroma upgrade that renames or drops a name shows up in the drift check's diff and needs a data migration for stored Fragments ([database](database.md#conventions)).
 - `value` imports only the standard library, and `domain` imports `value`. The sentinel for a value rule lives in `value` beside the rule, prefixed `value:` (`errors.New("value: title is blank")`). `domain` keeps `ErrNotFound`, `ErrConflict`, `ErrMissingDependency`, `ErrCorruptRecord`, and the entity-invariant sentinels.
 
 ### Validation
@@ -234,7 +234,8 @@ Never edit a file whose header says `// Code generated ... DO NOT EDIT.`. Change
 | `make generate:sql` | `sqlc generate` | `db/queries/*.sql`, `sqlc.yaml` |
 | `make generate:mocks` | `mockery` | `.mockery.yml` |
 | `make generate:enums` | `go generate ./...` | a `//go:generate go-enum` directive in the file declaring the enum |
-| `make generate` | all three, in that order | |
+| `make generate:languages` | the Language generator | chroma's lexer registry, into `internal/domain/value/languages_gen.go` |
+| `make generate` | all four, in that order | |
 
 Enums use go-enum only. It generates `String`, `Parse…`, `IsValid`, and, with `--marshal`, text marshalling, which the enums read from config, the database, and the state file need:
 

@@ -20,3 +20,4 @@ Before writing or reviewing Go, read the matching file in `docs/standards/`:
 - `code.md`: conventions no linter checks (validation, context, logging, generated code)
 - `testing.md`: choosing a tier, naming, test doubles
 - `linting.md`: why a linter rule exists, before adding a `//nolint`
+- `database.md`: schema conventions, migrations, queries, connections, start-up

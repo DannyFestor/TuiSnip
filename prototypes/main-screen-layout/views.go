@@ -292,8 +292,25 @@ func (m *model) render() string {
 	return lipgloss.NewCompositor(lipgloss.NewLayer(screen), lipgloss.NewLayer(top).X(x).Y(y).Z(1)).Render()
 }
 
+var shortHelp = map[string]string{
+	"sidebar":         "j/k move · enter open · N new Folder · r rename · d delete · / search · ? help",
+	"snippet_list":    "y copy · e edit · n new · / search · s sort · ? help",
+	"snippet_pane":    "y copy · e edit · w wrap · / search · ? help",
+	"editor":          "ctrl+s save · esc cancel · ↑/↓ field · ctrl+l Language",
+	"search":          "↑/↓ move · enter open · esc close",
+	"picker":          "↑/↓ move · enter pick · esc close",
+	"confirm":         "y yes · n no",
+	"sidebar(rename)": "enter save · esc cancel",
+}
+
+// statusLine shows the last message on the left and the focused Scope's main Bindings on the right.
 func (m *model) statusLine() string {
-	return clip(" "+m.status, m.width)
+	hint := dim.Render(shortHelp[m.scope()] + " ")
+	gap := m.width - lipgloss.Width(hint) - 1
+	if gap < 10 {
+		return clip(" "+m.status, m.width)
+	}
+	return clip(" "+m.status, gap) + hint
 }
 
 // switcher is the prototype's own chrome, deliberately loud so it is not judged as design.

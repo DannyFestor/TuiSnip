@@ -75,6 +75,14 @@ linters:
               desc: use crypto/rand
             - pkg: github.com/stretchr/testify/suite
               desc: suites cannot run in parallel; use table tests with helpers
+        testkit-in-tests:
+          list-mode: lax
+          files:
+            - $all
+            - "!$test"
+          deny:
+            - pkg: github.com/DannyFestor/TuiSnip/internal/testkit
+              desc: test fixtures; import only from _test.go files
     dupl:
       threshold: 100
     errcheck:
@@ -96,6 +104,10 @@ linters:
           msg: wait on a channel, timer or context instead
         - pattern: ^context\.(Background|TODO)$
           msg: pass the root context from main down
+        - pattern: ^context\.WithValue$
+          msg: pass dependencies explicitly; context carries only cancellation and deadlines
+        - pattern: ^panic$
+          msg: return an error; Bubble Tea already recovers and restores the terminal
     funlen:
       lines: 50
       statements: 30
@@ -166,7 +178,9 @@ linters:
       no-global: all
       context: scope
       static-msg: true
-      kv-only: true
+      attr-only: true
+      no-raw-keys: true
+      key-naming-case: snake
     staticcheck:
       checks:
         - all
@@ -209,7 +223,7 @@ linters:
       - path: _test\.go
         linters:
           - forbidigo
-        text: time\.Sleep
+        text: (time\.Sleep|panic)
       - path: ^cmd/
         linters:
           - forbidigo

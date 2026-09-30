@@ -26,6 +26,8 @@ type editor struct {
 	target *snippet
 	isNew  bool
 	field  int
+	// inBody is false while Content is the selected field but its textarea isn't entered.
+	inBody bool
 	inputs [fieldLanguage]textinput.Model
 	lang   string
 	body   textarea.Model
@@ -54,12 +56,41 @@ func (e *editor) focusField(f int) {
 		e.inputs[i].Blur()
 	}
 	e.body.Blur()
+	e.inBody = false
 	switch {
 	case f < fieldLanguage:
 		e.inputs[f].Focus()
 	case f == fieldContent:
+		e.inBody = true
 		e.body.Focus()
 	}
+}
+
+func (e *editor) leaveBody() {
+	e.inBody = false
+	e.body.Blur()
+}
+
+// dedent removes one indent level (a tab, or up to four spaces) from the cursor's line.
+func (e *editor) dedent() {
+	lines := strings.Split(e.body.Value(), "\n")
+	row, col := e.body.Line(), e.body.Column()
+	line := lines[row]
+	trimmed := strings.TrimPrefix(line, "\t")
+	if trimmed == line {
+		trimmed = strings.TrimPrefix(line, strings.Repeat(" ", min(4, len(line)-len(strings.TrimLeft(line, " ")))))
+	}
+	removed := len(line) - len(trimmed)
+	if removed == 0 {
+		return
+	}
+	lines[row] = trimmed
+	e.body.SetValue(strings.Join(lines, "\n"))
+	e.body.MoveToBegin()
+	for range row {
+		e.body.CursorDown()
+	}
+	e.body.SetCursorColumn(max(0, col-removed))
 }
 
 func (e *editor) tags() []string {
@@ -92,7 +123,7 @@ func (e *editor) update(m *model, msg tea.Msg) tea.Cmd {
 	switch {
 	case e.field < fieldLanguage:
 		e.inputs[e.field], cmd = e.inputs[e.field].Update(msg)
-	case e.field == fieldContent:
+	case e.inBody:
 		e.body, cmd = e.body.Update(msg)
 	}
 	return cmd
@@ -102,31 +133,55 @@ func (e *editor) binding(m *model, key string) (tea.Cmd, bool) {
 	switch key {
 	case "ctrl+s":
 		e.save(m)
-	case "esc":
-		m.confirmIfDirty("Discard unsaved changes?", func() tea.Cmd { m.editor = nil; return nil })
 	case "ctrl+l":
 		e.pickLanguage(m)
 	case "ctrl+t":
 		e.focusField(fieldTags)
 	case "ctrl+e":
 		m.status = "Would suspend and open the content in $EDITOR, then land it here as an unsaved change"
-	case "tab":
-		if e.field == fieldContent {
-			e.body.InsertString("\t")
-			return nil, true
+	default:
+		if e.inBody {
+			return e.bodyBinding(key)
 		}
-		e.focusField(e.field + 1)
+		return e.fieldBinding(m, key)
+	}
+	return nil, true
+}
+
+func (e *editor) bodyBinding(key string) (tea.Cmd, bool) {
+	switch key {
+	case "esc":
+		e.leaveBody()
+	case "tab":
+		e.body.InsertString("\t")
 	case "shift+tab":
-		e.focusField((e.field + fieldCount - 1) % fieldCount)
-	case "enter":
-		if e.field == fieldContent {
+		e.dedent()
+	case "up":
+		if e.body.Line() > 0 {
 			return nil, false
 		}
-		if e.field == fieldLanguage {
+		e.focusField(fieldLanguage)
+	default:
+		return nil, false
+	}
+	return nil, true
+}
+
+func (e *editor) fieldBinding(m *model, key string) (tea.Cmd, bool) {
+	switch key {
+	case "esc":
+		m.confirmIfDirty("Discard unsaved changes?", func() tea.Cmd { m.editor = nil; return nil })
+	case "up", "shift+tab":
+		e.focusField(max(0, e.field-1))
+	case "down", "tab":
+		e.focusField(min(fieldContent, e.field+1))
+	case "enter":
+		switch e.field {
+		case fieldLanguage:
 			e.pickLanguage(m)
-			return nil, true
+		default:
+			e.focusField(min(fieldContent, e.field+1))
 		}
-		e.focusField(e.field + 1)
 	default:
 		return nil, false
 	}

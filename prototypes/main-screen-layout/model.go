@@ -59,6 +59,9 @@ type variant interface {
 	sidebarSections() bool
 }
 
+// popupSearcher marks a variant whose Search is a centred popup rather than a mode of the list.
+type popupSearcher interface{ popupSearch() }
+
 type model struct {
 	store    *store
 	variants []variant
@@ -71,6 +74,8 @@ type model struct {
 	sort          sortOrder
 
 	sideCursor  int
+	// otherSideCursor keeps the inactive section's place so switching Folders ⇄ Tags doesn't lose it.
+	otherSideCursor int
 	sideSection entryKind // entryFolder or entryTag when sections are separate
 	listCursor  int
 	scroll      viewport.Model
@@ -174,6 +179,10 @@ func (m *model) global(key string) bool {
 	case "?":
 		m.overlay = &helpOverlay{}
 	case "/":
+		if _, ok := m.variant().(popupSearcher); ok {
+			m.overlay = newSearchPopup()
+			return true
+		}
 		m.openSearch()
 	case "z":
 		m.maximized = !m.maximized
@@ -469,10 +478,22 @@ func (m *model) acceptSearch() {
 func (m *model) revealSelected() {
 	sn := m.selectedSnippet()
 	m.closeSearch()
-	if sn == nil {
+	if sn != nil {
+		m.revealSnippet(sn)
+	}
+}
+
+func (m *model) setSection(k entryKind) {
+	if m.sideSection == k {
 		return
 	}
-	m.sideSection = entryFolder
+	m.sideSection = k
+	m.sideCursor, m.otherSideCursor = m.otherSideCursor, m.sideCursor
+	m.listCursor = 0
+}
+
+func (m *model) revealSnippet(sn *snippet) {
+	m.setSection(entryFolder)
 	for i, e := range m.visibleEntries() {
 		if (sn.folder == "" && e.kind == entryRoot) || (e.kind == entryFolder && e.id == sn.folder) {
 			m.sideCursor = i

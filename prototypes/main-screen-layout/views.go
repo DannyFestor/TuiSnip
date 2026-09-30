@@ -28,6 +28,7 @@ func box(title string, body string, w, h int, focused bool) string {
 	if focused {
 		border = accent
 	}
+	title = fit(title, max(1, w-4))
 	head := dim.Render(" " + title + " ")
 	if focused {
 		head = bold.Foreground(accent).Render(" " + title + " ")
@@ -256,11 +257,15 @@ func (m *model) editorBody(w, h int) string {
 		b.WriteString(label(f) + e.inputs[f].View() + "\n")
 	}
 	b.WriteString(label(fieldLanguage) + e.lang + dim.Render("   (enter or ctrl+l to pick)") + "\n")
-	b.WriteString(label(fieldContent) + dim.Render("tab inserts a tab here; shift+tab leaves") + "\n")
+	contentHint := "enter or ↓ to edit"
+	if e.inBody {
+		contentHint = "esc leaves · tab indents · shift+tab dedents"
+	}
+	b.WriteString(label(fieldContent) + dim.Render(contentHint) + "\n")
 	e.body.SetWidth(w)
 	e.body.SetHeight(max(3, h-lipgloss.Height(b.String())-1))
 	b.WriteString(e.body.View() + "\n")
-	b.WriteString(dim.Render(fit("ctrl+s save · esc cancel · tab/shift+tab field · ctrl+t Tags · ctrl+e $EDITOR", w)))
+	b.WriteString(dim.Render(fit("ctrl+s save · esc cancel · ↑/↓ field · ctrl+l Language · ctrl+t Tags · ctrl+e $EDITOR", w)))
 	return b.String()
 }
 

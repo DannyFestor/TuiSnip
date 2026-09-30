@@ -189,3 +189,119 @@ func (focusWidens) withPalette(m *model, base string, w, h int) string {
 		lipgloss.NewLayer(palette).X((w-pw)/2).Y((h-ph)/2).Z(1),
 	).Render()
 }
+
+// D — revision after feedback: Folders and Tags stacked as panes 1 and 2, list 3, Snippet pane 4.
+type fourPanes struct{}
+
+const (
+	stopFolders = iota
+	stopTags
+	stopList
+	stopSnippet
+	stopCount
+)
+
+func (fourPanes) name() string          { return "Four panes · 1 Folders 2 Tags 3 list 4 Snippet" }
+func (fourPanes) searchAsPalette() bool { return false }
+func (fourPanes) sidebarSections() bool { return true }
+func (fourPanes) popupSearch()          {}
+
+func (fourPanes) navHelp() []string {
+	return []string{"tab / shift+tab next / prev pane", "l → next pane · h ← prev pane", "1 2 3 4 jump to pane", "enter drill in (Folders/Tags → list → Snippet)", "esc back out", "j/k ↑/↓ move within pane", "/ Search popup"}
+}
+
+func stop(m *model) int {
+	if m.focus == paneSidebar {
+		if m.sideSection == entryTag {
+			return stopTags
+		}
+		return stopFolders
+	}
+	return int(m.focus) + 1
+}
+
+func setStop(m *model, s int) {
+	switch s {
+	case stopFolders:
+		m.focus = paneSidebar
+		m.setSection(entryFolder)
+	case stopTags:
+		m.focus = paneSidebar
+		m.setSection(entryTag)
+	default:
+		m.focus = pane(s - 1)
+	}
+}
+
+func (fourPanes) nav(m *model, key string) bool {
+	s := stop(m)
+	switch key {
+	case "tab":
+		setStop(m, (s+1)%stopCount)
+	case "shift+tab":
+		setStop(m, (s+stopCount-1)%stopCount)
+	case "l", "right":
+		setStop(m, min(s+1, stopSnippet))
+	case "h", "left":
+		setStop(m, max(s-1, stopFolders))
+	case "1", "2", "3", "4":
+		setStop(m, int(key[0]-'1'))
+	case "enter":
+		setStop(m, min(max(s+1, stopList), stopSnippet))
+	case "esc":
+		switch s {
+		case stopList:
+			m.focus = paneSidebar // back to whichever of Folders or Tags chose the list
+		case stopSnippet:
+			setStop(m, stopList)
+		}
+	default:
+		return m.moveCursor(key)
+	}
+	return true
+}
+
+func (fourPanes) widths(m *model) (side, list int) {
+	switch m.focus {
+	case paneSidebar:
+		return 32, 34
+	case paneList:
+		return 24, 44
+	}
+	return 22, 32
+}
+
+// sidebarHeights gives Folders its content height when both fit, so no gap opens above Tags.
+func (fourPanes) sidebarHeights(m *model, h int) (folders, tags int) {
+	var nFolders, nTags int
+	for _, e := range m.entries() {
+		if e.kind == entryTag {
+			nTags++
+		} else {
+			nFolders++
+		}
+	}
+	const chrome, minH = 3, 5
+	if nFolders+nTags+2*chrome <= h {
+		return nFolders + chrome, h - nFolders - chrome
+	}
+	folders = clamp(h*nFolders/max(1, nFolders+nTags), minH, h-minH)
+	return folders, h - folders
+}
+
+func (v fourPanes) layout(m *model, w, h int) string {
+	if m.maximized {
+		return maximizedPane(m, w, h)
+	}
+	sideW, listW := v.widths(m)
+	paneW := w - sideW - listW
+	foldersH, tagsH := v.sidebarHeights(m, h)
+	s := stop(m)
+	folders := box("1 Folders", m.sidebarRows(sideW-2, entryFolder, s == stopFolders || m.sideSection == entryFolder), sideW, foldersH, s == stopFolders)
+	tags := box("2 Tags", m.sidebarRows(sideW-2, entryTag, s == stopTags || m.sideSection == entryTag), sideW, tagsH, s == stopTags)
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.JoinVertical(lipgloss.Left, folders, tags),
+		box("3 "+m.listTitle(), m.listRows(listW-2, h-3), listW, h, s == stopList),
+		box("4 "+m.snippetPaneTitle(), m.snippetPaneBody(paneW-2, h-3), paneW, h, s == stopSnippet),
+	)
+}

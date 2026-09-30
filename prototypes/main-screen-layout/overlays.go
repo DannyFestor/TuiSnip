@@ -149,7 +149,7 @@ func (helpOverlay) view(m *model) string {
 		{"sidebar", "N new Folder", "r rename", "d delete", "m move Folder", "space collapse"},
 		{"snippet_list", "y copy", "e edit", "E $EDITOR", "m move", "c duplicate", "d delete", "s cycle sort"},
 		{"snippet_pane", "y copy", "e edit", "E $EDITOR", "w wrap", "j/k pgup/pgdn scroll"},
-		{"editor", "ctrl+s save", "esc cancel", "tab/shift+tab field", "ctrl+l Language", "ctrl+e $EDITOR"},
+		{"editor", "ctrl+s save", "esc leave Content, then cancel", "↑/↓ field (tab too)", "tab / shift+tab indent in Content", "ctrl+l Language", "ctrl+e $EDITOR"},
 	}
 	cols := make([]string, len(sections))
 	for i, s := range sections {
@@ -157,4 +157,68 @@ func (helpOverlay) view(m *model) string {
 	}
 	body := lipgloss.JoinHorizontal(lipgloss.Top, cols[:3]...) + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols[3:]...)
 	return boxStyle.Render(body + "\n\n" + dim.Render(fmt.Sprintf("? or esc closes · focus: %s", paneNames[m.focus])))
+}
+
+// searchPopup is Search as a centred popup in the Language picker's style.
+type searchPopup struct {
+	input  textinput.Model
+	cursor int
+}
+
+const searchPopupRows = 12
+
+func newSearchPopup() *searchPopup {
+	in := textinput.New()
+	in.Prompt = "/ "
+	in.Placeholder = "title, Tags, Description, content"
+	in.Focus()
+	return &searchPopup{input: in}
+}
+
+func (p *searchPopup) results(m *model) []*snippet {
+	if strings.TrimSpace(p.input.Value()) == "" {
+		return nil
+	}
+	return m.store.search(p.input.Value())
+}
+
+func (p *searchPopup) update(m *model, msg tea.KeyPressMsg) tea.Cmd {
+	hits := p.results(m)
+	switch msg.String() {
+	case "esc":
+		m.overlay = nil
+		return nil
+	case "enter":
+		if len(hits) > 0 {
+			m.overlay = nil
+			m.revealSnippet(hits[p.cursor])
+		}
+		return nil
+	case "up", "ctrl+p", "ctrl+k":
+		p.cursor = max(0, p.cursor-1)
+		return nil
+	case "down", "ctrl+n", "ctrl+j":
+		p.cursor = clamp(p.cursor+1, 0, max(0, len(hits)-1))
+		return nil
+	}
+	var cmd tea.Cmd
+	p.input, cmd = p.input.Update(msg)
+	p.cursor = 0
+	return cmd
+}
+
+func (p *searchPopup) view(m *model) string {
+	const w = 64
+	var b strings.Builder
+	hits := p.results(m)
+	b.WriteString(bold.Render("Search") + dim.Render(fmt.Sprintf("  %d results", len(hits))) + "\n" + p.input.View() + "\n\n")
+	if len(hits) == 0 {
+		b.WriteString(dim.Render("Type to search every Snippet.") + "\n")
+	}
+	start := max(0, p.cursor-searchPopupRows+1)
+	for i := start; i < len(hits) && i < start+searchPopupRows; i++ {
+		b.WriteString(row(hits[i].title, strings.TrimPrefix(m.store.path(hits[i].folder), "Root / "), w, i == p.cursor, true) + "\n")
+	}
+	b.WriteString("\n" + dim.Render("↑/↓ ctrl+n/p move · enter reveals in its Folder · esc close"))
+	return boxStyle.Width(w + 6).Render(b.String())
 }

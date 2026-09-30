@@ -13,11 +13,11 @@ import (
 )
 
 func main() {
-	start := flag.String("variant", "A", "variant to start on: A, B, or C")
+	start := flag.String("variant", "D", "variant to start on: A, B, C, or D")
 	empty := flag.Bool("empty", false, "start with no Snippets or Folders, to see the empty-screen hint")
 	flag.Parse()
 
-	variants := []variant{threeColumns{}, stacked{}, focusWidens{}}
+	variants := []variant{threeColumns{}, stacked{}, focusWidens{}, fourPanes{}}
 	idx := int(strings.ToUpper(*start)[0] - 'A')
 	if idx < 0 || idx >= len(variants) {
 		idx = 0

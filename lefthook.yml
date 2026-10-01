@@ -6,7 +6,8 @@ pre-commit:
       stage_fixed: true
     - name: shellcheck
       glob: "*.sh"
-      run: shellcheck {staged_files}
+      # -x follows sourced files, which a single staged script can't resolve otherwise.
+      run: shellcheck -x {staged_files}
 
 commit-msg:
   jobs:

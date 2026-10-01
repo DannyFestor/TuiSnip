@@ -20,6 +20,7 @@ vendors:
   migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
   assertions:      { in: [ github.com/stretchr/testify/** ] }
   toml:            { in: [ github.com/BurntSushi/toml ] }
+  fuzzy-matcher:   { in: [ github.com/junegunn/fzf/src/algo, github.com/junegunn/fzf/src/util ] }
 
 components:
   domain:      { in: internal/domain/** }
@@ -80,8 +81,10 @@ deps:
   editor:
     mayDependOn: [ editor ]
     canUse: [ editor-launcher ]
-  memsearch:   { mayDependOn: [ memsearch ] }
-  system:      { mayDependOn: [ system ] }
+  memsearch:
+    mayDependOn: [ memsearch ]
+    canUse: [ fuzzy-matcher ]
+  system:    { mayDependOn: [ system ] }
   logging:     { mayDependOn: [ logging ] }
 
   tui:

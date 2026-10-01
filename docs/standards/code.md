@@ -126,6 +126,8 @@ func NewTitle(raw string) (Title, error) {
 func (t Title) String() string { return t.value }
 ```
 
+A value object owns every rule about its value: validation and normalisation in its constructor, and any later transformation as a method that returns a new value, such as `Content.WithoutTrailingNewline()`. Actions call these methods and never work on the underlying string. Adapters only convert values to and from their storage or wire form.
+
 - The constructor normalises, and the normalised form is the one stored. `Title` and `FolderName` are trimmed. `TagName` is trimmed, keeps the user's spelling, and has `Key()` returning the case-folded form. SQLite's unique index and memsearch both compare on `Key()`. `Language` is parsed from the known set by exact, case-sensitive match: chroma's canonical lexer names, generated into `value` because `value` may not import chroma. A chroma upgrade that renames or drops a name shows up in the drift check's diff and needs a data migration for stored Fragments ([database](database.md#conventions)).
 - `value` imports only the standard library, and `domain` imports `value`. The sentinel for a value rule lives in `value` beside the rule, prefixed `value:` (`errors.New("value: title is blank")`). `domain` keeps `ErrNotFound`, `ErrConflict`, `ErrMissingDependency`, `ErrCorruptRecord`, and the entity-invariant sentinels.
 
@@ -192,7 +194,7 @@ A context carries cancellation and deadlines only. Loggers, IDs, and settings ar
 
 Bubble Tea runs each `tea.Cmd` on its own goroutine, and that is the only concurrency in production code. There are no `go` statements. If fan-out is ever needed, use `errgroup` with the Action's `ctx`.
 
-Anything a Cmd can reach may be called concurrently: the memsearch index, repositories, the clipboard adapter. Make each safe for concurrent use with a `sync.RWMutex` field (never a package-level one), and cover it with a test that `go test -race` exercises.
+Anything a Cmd can reach may be called concurrently: the memsearch index, repositories, the clipboard adapter. Make each safe for concurrent use: keep it immutable after construction, or guard its mutable state with a `sync.RWMutex` field (never a package-level one), and cover it with a `-race` test.
 
 ## Logging
 

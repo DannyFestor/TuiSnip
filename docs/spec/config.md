@@ -82,7 +82,7 @@ Each entry is a chroma lexer name, parsed by `value.NewLanguage`. An unknown nam
 
 ### Clipboard
 
-- `auto` writes with the platform tool (`pbcopy`, `wl-copy`, `xclip`, `xsel`). Over SSH, or when no tool is installed, it sends OSC 52 instead.
+- `auto` writes with the platform tool (`pbcopy`, `wl-copy`, `xclip`, `xsel`). Over SSH, when no tool is installed, or when the tool fails or times out, it sends OSC 52 instead.
 - `native` only uses a platform tool. If none is installed, Copy fails and the status line says "No clipboard tool found (pbcopy, wl-copy, xclip, xsel)".
 - `osc52` always sends OSC 52 and never runs a tool.
 

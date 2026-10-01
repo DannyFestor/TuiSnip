@@ -47,6 +47,14 @@ lint: ## Run golangci-lint
 arch-lint: ## Check the layer rules with go-arch-lint
 	go-arch-lint check
 
+.PHONY: lint-shell
+lint-shell: ## Run shellcheck on every tracked shell script
+	git ls-files -z '*.sh' | xargs -0 shellcheck
+
+.PHONY: vulncheck
+vulncheck: ## Check dependencies for known vulnerabilities
+	govulncheck ./...
+
 .PHONY: fmt
 fmt: ## Format with golangci-lint
 	golangci-lint fmt
@@ -54,6 +62,10 @@ fmt: ## Format with golangci-lint
 .PHONY: fix
 fix: ## Apply pending go fix rewrites
 	go fix -tags $(TEST_TAGS) ./...
+
+.PHONY: fix-check
+fix-check: ## Fail if go fix has rewrites pending
+	go fix -diff -tags $(TEST_TAGS) ./...
 
 ##@ Test
 

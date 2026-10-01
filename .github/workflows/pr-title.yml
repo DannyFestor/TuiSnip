@@ -1,0 +1,29 @@
+name: PR title
+
+# Separate from CI because a title edit must re-run this check without re-running every other job.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: cocogitto
+      # cog aborts without a git identity, even when it only verifies a string. It reads it through
+      # libgit2, which ignores git's GIT_CONFIG_* environment variables.
+      - run: |
+          git config --global user.name pr-title-check
+          git config --global user.email pr-title-check@localhost
+      # No --ignore-fixup-commits: the title becomes the squash commit on main.
+      - run: cog verify "$PR_TITLE"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}

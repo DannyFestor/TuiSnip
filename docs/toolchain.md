@@ -44,6 +44,29 @@ The hook passes `--ignore-fixup-commits`, because `rebase --autosquash` folds th
 
 Rejected: commitlint (needs Node). committed and a hand-written regex script were passed over by preference: cocogitto parses the full spec, so no parsing code has to be maintained here.
 
+## CI and release
+
+GitHub Actions runs every check the hooks run, plus the ones too slow for them. Each job calls a Makefile target, so a failing job can be reproduced locally with the same command.
+
+| Workflow | Trigger | Jobs |
+|---|---|---|
+| `ci.yml` | every PR, every push to `main` | `lint` (golangci-lint and `fmt --diff`), `arch-lint`, `test` (unit, feature, e2e), `build (<os>, <arch>)` for darwin/linux × amd64/arm64, `govulncheck`, `generated` (`make generate` drift and `make fix-check`), `shellcheck` |
+| `pr-title.yml` | PR opened, edited, or updated | `pr-title`: `cog verify` on the title |
+| `nightly.yml` | daily at 03:00 UTC, and by hand | `fuzz` (5 minutes per target), `property-deep`, `mutation`. Report only, never required. |
+| `release.yml` | `v*` tags | goreleaser |
+
+`.github/actions/setup` installs the tools from `mise.toml` with `jdx/mise-action` and caches the Go build and module caches per job. The mise version is pinned there, because Dependabot can't update it and an unpinned mise changes under CI without a commit.
+
+The tests run only on Ubuntu. The builds cross-compile there too, which works because nothing uses CGO. A macOS test job comes with the first platform-specific code, the clipboard adapter.
+
+The PR-title check is its own workflow, so editing a title re-runs that check and nothing else. It runs `cog verify` without `--ignore-fixup-commits`, because the title becomes the squash commit on `main`. The title reaches the script through an env var, never interpolated, so a crafted title can't inject shell.
+
+Third-party actions are pinned by commit SHA with the version in a comment. A tag can be moved to other code. Dependabot updates the SHA and the comment together.
+
+The drift check runs `git add --intent-to-add` before `git diff --exit-code`, so a file a generator newly creates fails the check too, not only a changed one.
+
+**goreleaser 2.18.2** builds tar.gz archives for darwin/linux × amd64/arm64 and `checksums.txt`, and uses GitHub's generated release notes. There is no signing and no Homebrew tap. `goreleaser release --snapshot --clean` tries a release locally without a tag.
+
 ## Code generation
 
 | Tool | Why | Rejected |

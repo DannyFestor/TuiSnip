@@ -19,7 +19,7 @@ type ClipItem struct{}
 func (r *Repository) SnippetsAtRoot(ctx context.Context) ([]domain.Snippet, error)
 ```
 
-The Root is spelled `Root` in code, as in `AtRoot()` and `folder.MoveToRoot`. A nil Folder never stands in for it. A new concept gets its `CONTEXT.md` entry before it gets code.
+The Root is spelled `Root` in code, as in `AtRoot()` and `folder.MoveToRoot`. In Go it is the zero `domain.FolderID`, never a nil pointer, and code asks `AtRoot()` rather than comparing IDs. A new concept gets its `CONTEXT.md` entry before it gets code.
 
 ## Files and packages
 
@@ -59,11 +59,13 @@ The same reason keeps timeouts out of Actions (see [Context](#context)).
 ```go
 type CreateInput struct {
 	Title    string
-	FolderID *uuid.UUID
+	FolderID domain.FolderID
 	Language string
 	Content  string
 }
 ```
+
+An ID is already a domain type when the TUI holds it, so Inputs carry it as one. The zero `FolderID` means the Root.
 
 Optional parameters are Input or `<Action>Deps` fields, never functional options (`WithX(...)`). exhaustruct makes every caller state every field, so there is no hidden default.
 
@@ -96,9 +98,13 @@ func (s Snippet) Rename(title value.Title, now time.Time) Snippet {
 
 `Rename` can't fail because a `value.Title` is valid by construction. Entity invariants that span fields ("exactly one Fragment") are checked in `domain` and reported with `domain` sentinels.
 
+- Each entity's ID is its own type over `uuid.UUID` (`domain.SnippetID`, `domain.FragmentID`, `domain.FolderID`), so one can't be passed where another belongs. A constructor rejects the Nil UUID as the entity's own ID.
+- `NewSnippet` and `NewFragment` take every field positionally. revive's `argument-limit` is lifted for `internal/domain` only, because the distinct value and ID types already catch most swapped arguments. The same constructor serves `snippet.Create` and the `sqlite` rebuild from rows.
+- The constructors also repeat the schema's timestamp CHECKs (after the epoch, storable as `int64` nanoseconds, `updatedAt >= createdAt`), so the domain never accepts a value a save would reject.
+
 ### Value objects
 
-A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.FolderName`, `value.TagName`, `value.Language`. A value with no rule stays a plain type. Fragment content is a `string` because it may be empty and is never altered.
+A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.Description`, `value.Content`, `value.FolderName`, `value.TagName`, `value.Language`. A value with no rule stays a plain type. A length cap counts as a rule: Title (200 runes), Description (2,000 runes), and Content (256 KiB) are capped, and the schema repeats each cap ([database](database.md#constraints)). Description and Content are stored exactly as given, because whitespace in code matters and an all-blank Description is the user's choice.
 
 Each value object wraps an unexported field, so the constructor is the only way to get one:
 
@@ -120,7 +126,7 @@ func NewTitle(raw string) (Title, error) {
 func (t Title) String() string { return t.value }
 ```
 
-- The constructor normalises, and the normalised form is the one stored. `Title` and `FolderName` are trimmed. `TagName` is trimmed, keeps the user's spelling, and has `Key()` returning the case-folded form. SQLite's unique index and memsearch both compare on `Key()`. `Language` is parsed from the known set: chroma's canonical lexer names, generated into `value` because `value` may not import chroma. A chroma upgrade that renames or drops a name shows up in the drift check's diff and needs a data migration for stored Fragments ([database](database.md#conventions)).
+- The constructor normalises, and the normalised form is the one stored. `Title` and `FolderName` are trimmed. `TagName` is trimmed, keeps the user's spelling, and has `Key()` returning the case-folded form. SQLite's unique index and memsearch both compare on `Key()`. `Language` is parsed from the known set by exact, case-sensitive match: chroma's canonical lexer names, generated into `value` because `value` may not import chroma. A chroma upgrade that renames or drops a name shows up in the drift check's diff and needs a data migration for stored Fragments ([database](database.md#conventions)).
 - `value` imports only the standard library, and `domain` imports `value`. The sentinel for a value rule lives in `value` beside the rule, prefixed `value:` (`errors.New("value: title is blank")`). `domain` keeps `ErrNotFound`, `ErrConflict`, `ErrMissingDependency`, `ErrCorruptRecord`, and the entity-invariant sentinels.
 
 ### Validation

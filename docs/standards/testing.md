@@ -86,7 +86,7 @@ func newTestApp(t *testing.T) *bootstrap.App {
 | Need | Double |
 |---|---|
 | a capability in an Action unit test (`Inserter`, `CaptureClipboard`, `QueryIndex`) | mockery mock |
-| time | `testkit.FixedClock` or a steppable clock from `testkit` |
+| time | `testkit.FixedClock`, or `testkit.ManualClock` when the test moves time with `Advance` |
 | IDs | `testkit.SequentialIDs`, a deterministic UUIDv7 sequence |
 | a valid entity to start from | a `testkit` builder |
 | state that persists across calls | the feature tier, against real SQLite |

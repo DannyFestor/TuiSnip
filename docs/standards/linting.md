@@ -20,7 +20,7 @@ The thresholds enforce one responsibility per function:
 | cyclop | complexity 10 |
 | gocognit | cognitive complexity 15 |
 | nestif | 2 |
-| revive `argument-limit` | 4 parameters |
+| revive `argument-limit` | 4 parameters, except in `internal/domain` (entity constructors, see [code](code.md#entities)) |
 | revive `function-result-limit` | 3 results |
 | interfacebloat | 5 methods |
 | dupl | 100 tokens |

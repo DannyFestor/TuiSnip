@@ -22,7 +22,7 @@ embeds/
   config/                    default.toml, embedded by embed.go
 internal/
   domain/                    entities, invariants, search weights, FieldError, sentinel errors
-    value/                   value objects (Title, FolderName, TagName, Language) and their rule sentinels
+    value/                   value objects (Title, Description, Content, FolderName, TagName, Language) and their rule sentinels
   app/
     snippet/                 Create, Update, Delete, Move, Duplicate, Capture, Copy
     folder/                  Create, Rename, Move, Delete, SetDefaultLanguage
@@ -57,7 +57,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 | Layer | Owns | Must not |
 |---|---|---|
 | `domain` | Snippet, Fragment, Folder, Tag, IDs; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
-| `domain/value` | Title, FolderName, TagName, Language: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
+| `domain/value` | Title, Description, Content, FolderName, TagName, Language: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter, or `bootstrap` |
 | `tui` | screens, Bindings, `tui.Settings`, turning errors into status text | import driven adapters or `config` |

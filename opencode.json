@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "formatter": false,
+  "permission": {
+    "edit": {
+      "mise.toml": "ask",
+      ".github/workflows/*": "ask",
+      ".go-arch-lint.yml": "ask",
+      ".golangci.yml": "ask",
+      "lefthook.yml": "ask",
+      ".agents/hooks.json": "ask",
+      ".opencode/*": "ask",
+      ".claude/settings.json": "ask",
+      "scripts/agent/*": "ask",
+      "opencode.json": "deny",
+      "go.sum": "deny",
+      "*_enum.go": "deny",
+      "*/mocks_test.go": "deny",
+      "mocks_test.go": "deny",
+      "internal/domain/value/languages_gen.go": "deny",
+      "internal/adapters/sqlite/sqlcgen/*": "deny"
+    }
+  }
+}

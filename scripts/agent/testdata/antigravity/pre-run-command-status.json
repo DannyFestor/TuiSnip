@@ -1,0 +1,17 @@
+{
+  "conversationId": "8d2e4f10-6a7b-4c3d-9e1f-0a2b3c4d5e6f",
+  "workspacePaths": [
+    "{{REPO}}"
+  ],
+  "transcriptPath": "/Users/dev/.gemini/antigravity/brain/8d2e4f10-6a7b-4c3d-9e1f-0a2b3c4d5e6f/transcript.jsonl",
+  "artifactDirectoryPath": "/Users/dev/.gemini/antigravity/brain/8d2e4f10-6a7b-4c3d-9e1f-0a2b3c4d5e6f",
+  "modelName": "gemini-3-pro",
+  "stepIdx": 6,
+  "toolCall": {
+    "name": "run_command",
+    "args": {
+      "CommandLine": "git status --short",
+      "Cwd": "{{REPO}}"
+    }
+  }
+}

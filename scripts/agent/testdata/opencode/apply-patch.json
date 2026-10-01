@@ -1,0 +1,8 @@
+{
+  "tool": "apply_patch",
+  "sessionID": "ses_3f9a1c2b7d8e",
+  "callID": "call_01",
+  "args": {
+    "patchText": "*** Begin Patch\n*** Update File: internal/domain/snippet.go\n@@ func New\n-\treturn err\n+\treturn nil\n*** Add File: internal/domain/tag.go\n+package domain\n*** Update File: internal/domain/old.go\n*** Move to: internal/adapters/sqlite/sqlcgen/old.go\n*** Delete File: internal/domain/unused.go\n*** End Patch"
+  }
+}

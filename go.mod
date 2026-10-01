@@ -3,6 +3,7 @@ module github.com/DannyFestor/TuiSnip
 go 1.27.1
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/stretchr/testify v1.12.1

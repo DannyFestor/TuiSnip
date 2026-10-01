@@ -59,7 +59,7 @@ Creating a new Snippet from the clipboard's current content.
 _Avoid_: Import, paste, grab
 
 **Copy**:
-Placing a Fragment's content on the system clipboard.
+Placing a Fragment's content on the system clipboard. Over a remote session the content is sent to the terminal, which may not confirm it.
 _Avoid_: Yank, export
 
 ### Interaction

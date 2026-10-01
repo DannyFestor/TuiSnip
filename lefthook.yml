@@ -15,7 +15,23 @@ commit-msg:
       run: cog verify --ignore-fixup-commits --file {1}
 
 pre-push:
+  piped: true
   jobs:
     - name: refuse-push-to-main
       run: scripts/refuse-push-to-main.sh
       use_stdin: true
+    - name: lint-changed-packages
+      run: golangci-lint run $(scripts/changed-packages.sh)
+      skip:
+        - run: test -z "$(scripts/changed-packages.sh)"
+    - name: test-unit
+      run: make test-unit
+    # Feature and e2e tests can take minutes, so they run before a push only on request.
+    - name: test-feature
+      run: make test-feature
+      skip:
+        - run: test -z "${TUISNIP_SLOW_TESTS:-}"
+    - name: test-e2e
+      run: make test-e2e
+      skip:
+        - run: test -z "${TUISNIP_SLOW_TESTS:-}"

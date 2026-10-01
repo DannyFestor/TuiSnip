@@ -28,7 +28,11 @@ Rejected: Task, just, and mage. mise could pin any of them, but none comes prein
 |---|---|
 | pre-commit | `golangci-lint fmt` on staged Go files with `stage_fixed`, shellcheck on staged shell scripts |
 | commit-msg | `cog verify` |
-| pre-push | `scripts/refuse-push-to-main.sh` |
+| pre-push | `scripts/refuse-push-to-main.sh`, `golangci-lint run` on the packages changed since `origin/main`, the unit tests. The feature and e2e tests run only with `TUISNIP_SLOW_TESTS=1`. |
+
+The pre-push jobs are piped, so the first failure stops the rest.
+
+pre-push lints whole packages, not single files, because golangci-lint type-checks a package as a unit. `--new-from-rev` was rejected: it reports only issues on changed lines, so it misses issues in old lines that a change affects. The unit tests run on every package, because a change can break the tests of the packages that import it. The feature and e2e tests can take minutes, so they wait for CI unless asked for.
 
 `stage_fixed` was tested with partially staged files. lefthook hides the unstaged hunks while the hook runs and puts them back afterwards, so they are never formatted or staged. When the formatter changes a line that also has an unstaged edit, lefthook aborts the commit with `conflict while merging unstaged changes` and restores the worktree and index. Stage the whole file and commit again.
 

@@ -1,0 +1,22 @@
+version: 2
+
+project_name: tuisnip
+
+builds:
+  - main: ./cmd/tuisnip
+    binary: tuisnip
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+
+archives:
+  - formats: [tar.gz]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native

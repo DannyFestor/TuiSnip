@@ -8,6 +8,7 @@ import (
 	"github.com/junegunn/fzf/src/util"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 const (
@@ -25,13 +26,13 @@ func NewIndex(lister SnippetLister) *Index {
 	return &Index{lister: lister}
 }
 
-func (i *Index) Search(ctx context.Context, query string) ([]domain.SearchHit, error) {
+func (i *Index) Search(ctx context.Context, query value.SearchQuery) ([]domain.SearchHit, error) {
 	snippets, err := i.lister.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("memsearch.Index.Search: %w", err)
 	}
 
-	hits := matchAll(snippets, newPattern(query))
+	hits := matchAll(snippets, newPattern(query.String()))
 	slices.SortFunc(hits, domain.CompareSearchHits)
 
 	return hits, nil

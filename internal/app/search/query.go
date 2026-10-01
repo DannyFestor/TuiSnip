@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 type Query struct {
@@ -21,11 +22,12 @@ func NewQuery(searcher Searcher) (*Query, error) {
 }
 
 func (q *Query) Run(ctx context.Context, in QueryInput) ([]domain.SearchHit, error) {
-	if in.Text == "" {
+	query := value.NewSearchQuery(in.Text)
+	if query.IsBlank() {
 		return []domain.SearchHit{}, nil
 	}
 
-	hits, err := q.searcher.Search(ctx, in.Text)
+	hits, err := q.searcher.Search(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("search.Query: %w", err)
 	}

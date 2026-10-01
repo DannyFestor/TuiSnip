@@ -111,7 +111,7 @@ func TestIndex_Search(t *testing.T) {
 
 			index := memsearch.NewIndex(listerOf(t, buildSnippets(t, tt.snippets)))
 
-			hits, err := index.Search(t.Context(), tt.query)
+			hits, err := index.Search(t.Context(), value.NewSearchQuery(tt.query))
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOrder, hitTitles(hits))
@@ -128,7 +128,7 @@ func TestIndex_SearchBreaksTiesByMostRecentlyUpdated(t *testing.T) {
 		{Title: "curl newer", UpdatedAt: older.Add(time.Hour)},
 	})
 
-	hits, err := memsearch.NewIndex(listerOf(t, snippets)).Search(t.Context(), "curl")
+	hits, err := memsearch.NewIndex(listerOf(t, snippets)).Search(t.Context(), value.NewSearchQuery("curl"))
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"curl newer", "curl older"}, hitTitles(hits))
@@ -140,7 +140,7 @@ func TestIndex_SearchReturnsTheListError(t *testing.T) {
 	lister := NewMockSnippetLister(t)
 	lister.EXPECT().List(mock.Anything).Return(nil, errDatabaseLocked)
 
-	_, err := memsearch.NewIndex(lister).Search(t.Context(), "curl")
+	_, err := memsearch.NewIndex(lister).Search(t.Context(), value.NewSearchQuery("curl"))
 
 	require.ErrorIs(t, err, errDatabaseLocked)
 	assert.ErrorContains(t, err, "memsearch.Index.Search: ")
@@ -154,7 +154,7 @@ func TestIndex_SearchConcurrently(t *testing.T) {
 	var wg sync.WaitGroup
 	for range concurrentSearches {
 		wg.Go(func() {
-			hits, err := index.Search(t.Context(), "curl")
+			hits, err := index.Search(t.Context(), value.NewSearchQuery("curl"))
 			if assert.NoError(t, err) {
 				assert.Len(t, hits, 1)
 			}
@@ -175,7 +175,8 @@ func FuzzIndexSearch(f *testing.F) {
 			t.Skip()
 		}
 
-		_, err := memsearch.NewIndex(listerOf(t, []domain.Snippet{snippet})).Search(t.Context(), query)
+		_, err := memsearch.NewIndex(listerOf(t, []domain.Snippet{snippet})).
+			Search(t.Context(), value.NewSearchQuery(query))
 
 		assert.NoError(t, err)
 	})

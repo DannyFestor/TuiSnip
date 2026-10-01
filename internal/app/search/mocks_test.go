@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -48,7 +49,7 @@ func (_m *MockSearcher) EXPECT() *MockSearcher_Expecter {
 }
 
 // Search provides a mock function for the type MockSearcher
-func (_mock *MockSearcher) Search(ctx context.Context, query string) ([]domain.SearchHit, error) {
+func (_mock *MockSearcher) Search(ctx context.Context, query value.SearchQuery) ([]domain.SearchHit, error) {
 	ret := _mock.Called(ctx, query)
 
 	if len(ret) == 0 {
@@ -57,17 +58,17 @@ func (_mock *MockSearcher) Search(ctx context.Context, query string) ([]domain.S
 
 	var r0 []domain.SearchHit
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]domain.SearchHit, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, value.SearchQuery) ([]domain.SearchHit, error)); ok {
 		return returnFunc(ctx, query)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []domain.SearchHit); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, value.SearchQuery) []domain.SearchHit); ok {
 		r0 = returnFunc(ctx, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.SearchHit)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, value.SearchQuery) error); ok {
 		r1 = returnFunc(ctx, query)
 	} else {
 		r1 = ret.Error(1)
@@ -82,20 +83,20 @@ type MockSearcher_Search_Call struct {
 
 // Search is a helper method to define mock.On call
 //   - ctx context.Context
-//   - query string
+//   - query value.SearchQuery
 func (_e *MockSearcher_Expecter) Search(ctx any, query any) *MockSearcher_Search_Call {
 	return &MockSearcher_Search_Call{Call: _e.mock.On("Search", ctx, query)}
 }
 
-func (_c *MockSearcher_Search_Call) Run(run func(ctx context.Context, query string)) *MockSearcher_Search_Call {
+func (_c *MockSearcher_Search_Call) Run(run func(ctx context.Context, query value.SearchQuery)) *MockSearcher_Search_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 value.SearchQuery
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(value.SearchQuery)
 		}
 		run(
 			arg0,
@@ -110,7 +111,7 @@ func (_c *MockSearcher_Search_Call) Return(searchHits []domain.SearchHit, err er
 	return _c
 }
 
-func (_c *MockSearcher_Search_Call) RunAndReturn(run func(ctx context.Context, query string) ([]domain.SearchHit, error)) *MockSearcher_Search_Call {
+func (_c *MockSearcher_Search_Call) RunAndReturn(run func(ctx context.Context, query value.SearchQuery) ([]domain.SearchHit, error)) *MockSearcher_Search_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -2,6 +2,7 @@ package search_test
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
@@ -27,23 +29,25 @@ func TestNewQuery(t *testing.T) {
 func TestQuery_Run(t *testing.T) {
 	t.Parallel()
 
-	t.Run("returns no hits for an empty query without searching", func(t *testing.T) {
-		t.Parallel()
+	for _, blank := range []string{"", "   ", "\t\n"} {
+		t.Run("returns no hits for the blank query "+strconv.Quote(blank)+" without searching", func(t *testing.T) {
+			t.Parallel()
 
-		hits, err := newQuery(t, NewMockSearcher(t)).Run(t.Context(), search.QueryInput{Text: ""})
+			hits, err := newQuery(t, NewMockSearcher(t)).Run(t.Context(), search.QueryInput{Text: blank})
 
-		require.NoError(t, err)
-		assert.Empty(t, hits)
-		assert.NotNil(t, hits)
-	})
+			require.NoError(t, err)
+			assert.Empty(t, hits)
+			assert.NotNil(t, hits)
+		})
+	}
 
-	t.Run("passes a query of spaces to the searcher", func(t *testing.T) {
+	t.Run("passes the spaces around text to the searcher", func(t *testing.T) {
 		t.Parallel()
 
 		searcher := NewMockSearcher(t)
-		searcher.EXPECT().Search(mock.Anything, " ").Return([]domain.SearchHit{}, nil)
+		searcher.EXPECT().Search(mock.Anything, value.NewSearchQuery(" docker ")).Return([]domain.SearchHit{}, nil)
 
-		_, err := newQuery(t, searcher).Run(t.Context(), search.QueryInput{Text: " "})
+		_, err := newQuery(t, searcher).Run(t.Context(), search.QueryInput{Text: " docker "})
 
 		assert.NoError(t, err)
 	})
@@ -62,7 +66,7 @@ func TestQuery_Run(t *testing.T) {
 			),
 		}
 		searcher := NewMockSearcher(t)
-		searcher.EXPECT().Search(mock.Anything, "docker run").Return(want, nil)
+		searcher.EXPECT().Search(mock.Anything, value.NewSearchQuery("docker run")).Return(want, nil)
 
 		hits, err := newQuery(t, searcher).Run(t.Context(), search.QueryInput{Text: "docker run"})
 
@@ -74,7 +78,7 @@ func TestQuery_Run(t *testing.T) {
 		t.Parallel()
 
 		searcher := NewMockSearcher(t)
-		searcher.EXPECT().Search(mock.Anything, "curl").Return(nil, errDatabaseLocked)
+		searcher.EXPECT().Search(mock.Anything, value.NewSearchQuery("curl")).Return(nil, errDatabaseLocked)
 
 		_, err := newQuery(t, searcher).Run(t.Context(), search.QueryInput{Text: "curl"})
 

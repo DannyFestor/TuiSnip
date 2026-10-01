@@ -24,6 +24,8 @@ Everything in the v1 spec.
 - FTS5 full-text search behind the existing Search port.
 - Search scoped to the current Folder or Tag.
 - `#tag` filters in the query.
+- A cached in-memory Search index, refreshed after writes, if loading every Snippet on each query is too slow.
+- A cap on the number of Search hits.
 
 ## v2.0
 

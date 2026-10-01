@@ -69,6 +69,10 @@ func (s Snippet) Fragments() []Fragment {
 	return slices.Clone(s.fragments)
 }
 
+func (s Snippet) FirstFragment() Fragment {
+	return s.fragments[0]
+}
+
 func (s Snippet) CreatedAt() time.Time {
 	return s.createdAt
 }

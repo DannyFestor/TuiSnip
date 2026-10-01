@@ -175,6 +175,14 @@ func TestSnippet_Fragments(t *testing.T) {
 	assert.Equal(t, "original", snippet.Fragments()[0].Content().String())
 }
 
+func TestSnippet_FirstFragment(t *testing.T) {
+	t.Parallel()
+
+	snippet := testkit.Snippet(t, testkit.SnippetSpec{Fragment: testkit.FragmentSpec{Content: "echo hi"}})
+
+	assert.Equal(t, "echo hi", snippet.FirstFragment().Content().String())
+}
+
 func snippetID() domain.SnippetID {
 	return domain.SnippetID(uuid.MustParse(storedID))
 }

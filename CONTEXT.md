@@ -50,6 +50,10 @@ _Avoid_: Label, keyword, category
 Finding Snippets by matching a query against their title, Description, Tags, and Fragment content: fuzzily for the first three, as a literal substring for content.
 _Avoid_: Filter, find, query
 
+**Search hit**:
+A Snippet that matched a Search, together with its score: the best of its field scores after weighting. Search hits are ordered by score, then by the most recently updated Snippet, then by title.
+_Avoid_: Result, match
+
 **Browse**:
 Navigating the Folder tree or the Tag list to reach a Snippet without typing a query.
 _Avoid_: Explore, navigate

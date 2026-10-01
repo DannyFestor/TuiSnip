@@ -69,6 +69,26 @@ An ID is already a domain type when the TUI holds it, so Inputs carry it as one.
 
 Optional parameters are Input or `<Action>Deps` fields, never functional options (`WithX(...)`). exhaustruct makes every caller state every field, so there is no hidden default.
 
+### No behaviour switches
+
+A bool or enum that switches behaviour at one point is two functions, not a parameter. revive's `flag-parameter` catches the bool, and an enum used the same way is no better. The shared part goes into one unexported function that both call, and each caller passes in the part that differs:
+
+```go
+// ❌ the caller passes a switch, and Run branches on it
+func NewCopy(finder Finder, copier Copier, trimTrailingNewline bool) (*Copy, error)
+
+// ✅ two constructors over one shared function, each storing its own content strategy
+func NewCopy(finder Finder, copier Copier) (*Copy, error) {
+	return copyShapedBy(finder, copier, unchanged)
+}
+
+func NewCopyTrimmingTrailingNewline(finder Finder, copier Copier) (*Copy, error) {
+	return copyShapedBy(finder, copier, value.Content.WithoutTrailingNewline)
+}
+```
+
+`bootstrap` reads the config value and calls one constructor or the other.
+
 ## Domain types
 
 ### Entities

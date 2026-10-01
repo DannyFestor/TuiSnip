@@ -14,7 +14,8 @@ The same paths apply on macOS and Linux. v1 has no `--config` flag and no enviro
 ## Lifecycle
 
 - On every start, if `config.toml` is missing, TuiSnip creates the directory (`0755`) and writes the embedded default file byte for byte (`0644`), comments included.
-- It creates the file with `O_CREATE|O_EXCL`. When two instances start at once, the loser reads the winner's file.
+- It writes the defaults to a temporary file in the same directory and hard-links it to `config.toml`, so no instance reads a half-written file. When two instances start at once, the loser's link fails and it reads the winner's file. On a filesystem without hard links, it creates the file with `O_CREATE|O_EXCL` instead.
+- A `config.toml` that is a symlink is followed. A broken symlink, a directory, or a file over 1 MiB stops start-up with the path and the cause. TuiSnip never replaces it.
 - TuiSnip never modifies an existing `config.toml`. Changes take effect on the next start.
 
 ## Loading

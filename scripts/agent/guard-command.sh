@@ -14,6 +14,8 @@ readonly USE_EDIT_TOOLS="use the edit tools instead, so the post-edit format and
 readonly INTERPRETERS_PATTERN='^(python[0-9.]*|node|ruby|perl|php|deno|bun)$'
 # Standard-stream writes are output, not file writes.
 readonly STREAM_WRITES_PATTERN='std(out|err)\.write'
+# lefthook reads these to switch itself off, skip jobs, or load another config.
+readonly LEFTHOOK_OVERRIDE_PATTERN='^(LEFTHOOK|LEFTHOOK_EXCLUDE|LEFTHOOK_CONFIG)='
 readonly FILE_WRITE_CALLS_PATTERN='write|rename|unlink|remove\(|rmtree|shutil\.|copyFile|truncate|open\([^)]*['"'"'"]\+?[wax>]'
 
 deny() {
@@ -163,6 +165,12 @@ check_hook_bypass_flag() {
 			deny "Git hooks must not be skipped: fix what the hook reports instead of passing --no-verify."
 		fi
 	done
+}
+
+check_lefthook_override() {
+	if [[ "$1" =~ $LEFTHOOK_OVERRIDE_PATTERN ]]; then
+		deny "Git hooks must not be skipped: fix what the hook reports instead of setting ${BASH_REMATCH[1]}."
+	fi
 }
 
 check_commit() {
@@ -367,6 +375,7 @@ check_command() {
 	check_redirects "$command"
 	read -r -a words <<<"$command"
 	for ((i = 0; i < ${#words[@]}; i++)); do
+		check_lefthook_override "${words[i]}"
 		check_program "$(basename -- "${words[i]}")" "${words[@]:i+1}"
 	done
 }

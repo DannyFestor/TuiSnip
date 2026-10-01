@@ -20,6 +20,26 @@ macOS ships GNU Make 3.81. It reads an escaped colon (`generate\:sql`) literally
 
 Rejected: Task, just, and mage. mise could pin any of them, but none comes preinstalled.
 
+## Git hooks
+
+**lefthook 2.1.15** runs the local hooks from `lefthook.yml`. A fresh clone runs `lefthook install` once after `mise install`.
+
+| Hook | Job |
+|---|---|
+| pre-commit | `golangci-lint fmt` on staged Go files with `stage_fixed`, shellcheck on staged shell scripts |
+| commit-msg | `cog verify` |
+| pre-push | `scripts/refuse-push-to-main.sh` |
+
+`stage_fixed` was tested with partially staged files. lefthook hides the unstaged hunks while the hook runs and puts them back afterwards, so they are never formatted or staged. When the formatter changes a line that also has an unstaged edit, lefthook aborts the commit with `conflict while merging unstaged changes` and restores the worktree and index. Stage the whole file and commit again.
+
+Rejected: husky (needs Node) and pre-commit (needs Python). lefthook is a single binary that mise pins.
+
+**cocogitto 7.0.0** checks Conventional Commits. `cog verify --file` checks the commit-msg hook's message file, and `cog verify "<message>"` checks a plain string, which suits the PR-title check in CI. The default commit types are used, so there is no `cog.toml`. Only `verify` is used. Changelogs and version bumps are left to the release process.
+
+The hook passes `--ignore-fixup-commits`, because `rebase --autosquash` folds those commits away before a PR. The first commits predate the convention, so the history is never checked, only new messages.
+
+Rejected: commitlint (needs Node). committed and a hand-written regex script were passed over by preference: cocogitto parses the full spec, so no parsing code has to be maintained here.
+
 ## Code generation
 
 | Tool | Why | Rejected |

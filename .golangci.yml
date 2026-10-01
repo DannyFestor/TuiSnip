@@ -231,6 +231,11 @@ linters:
         linters:
           - forbidigo
         text: context\.(Background|TODO)
+      # Entity constructors take every field positionally; distinct value and ID types catch most swaps.
+      - path: ^internal/domain/
+        linters:
+          - revive
+        text: argument-limit
 
 formatters:
   enable:

@@ -1,0 +1,104 @@
+package domain_test
+
+import (
+	"testing"
+	"time"
+	"uuid"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+)
+
+func TestFragment_New(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name      string
+		id        domain.FragmentID
+		createdAt time.Time
+		updatedAt time.Time
+		wantErrs  []error
+	}{
+		{name: "accepts equal timestamps", id: fragmentID(), createdAt: created, updatedAt: created},
+		{name: "accepts a later update", id: fragmentID(), createdAt: created, updatedAt: created.Add(time.Second)},
+		{
+			name:      "rejects the nil id",
+			id:        domain.FragmentID{},
+			createdAt: created,
+			updatedAt: created,
+			wantErrs:  []error{domain.ErrNilID},
+		},
+		{
+			name:      "rejects an update before creation",
+			id:        fragmentID(),
+			createdAt: created,
+			updatedAt: created.Add(-time.Nanosecond),
+			wantErrs:  []error{domain.ErrUpdatedBeforeCreate},
+		},
+		{
+			name:      "reports every broken rule",
+			id:        domain.FragmentID{},
+			createdAt: time.Time{},
+			updatedAt: created,
+			wantErrs:  []error{domain.ErrNilID, domain.ErrTimestampOutOfRange},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := domain.NewFragment(tt.id, value.PlainText(), mustContent(t, "ls -la"), tt.createdAt, tt.updatedAt)
+
+			requireErrors(t, err, tt.wantErrs)
+		})
+	}
+}
+
+func TestFragment_Accessors(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+	updated := created.Add(time.Hour)
+	content := mustContent(t, "go test ./...")
+
+	fragment, err := domain.NewFragment(fragmentID(), value.PlainText(), content, created, updated)
+
+	require.NoError(t, err)
+	assert.Equal(t, fragmentID(), fragment.ID())
+	assert.Equal(t, value.PlainText(), fragment.Language())
+	assert.Equal(t, content, fragment.Content())
+	assert.Equal(t, created, fragment.CreatedAt())
+	assert.Equal(t, updated, fragment.UpdatedAt())
+}
+
+func fragmentID() domain.FragmentID {
+	return domain.FragmentID(uuid.MustParse(storedID))
+}
+
+func mustContent(t *testing.T, raw string) value.Content {
+	t.Helper()
+
+	content, err := value.NewContent(raw)
+	require.NoError(t, err)
+
+	return content
+}
+
+func requireErrors(t *testing.T, err error, want []error) {
+	t.Helper()
+
+	if len(want) == 0 {
+		require.NoError(t, err)
+
+		return
+	}
+
+	for _, sentinel := range want {
+		require.ErrorIs(t, err, sentinel)
+	}
+}

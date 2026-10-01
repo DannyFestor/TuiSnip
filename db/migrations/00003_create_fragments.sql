@@ -4,7 +4,7 @@ CREATE TABLE fragments (
     snippet_id TEXT    NOT NULL REFERENCES snippets (id) ON DELETE CASCADE CHECK (length(snippet_id) = 36),
     position   INTEGER NOT NULL CHECK (position >= 0),
     language   TEXT    NOT NULL CHECK (language <> ''),
-    content    TEXT    NOT NULL,
+    content    TEXT    NOT NULL CHECK (length(CAST(content AS BLOB)) <= 262144),
     created_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000000000 AS INTEGER)) CHECK (created_at > 0),
     updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000000000 AS INTEGER)),
     CHECK (updated_at >= created_at),

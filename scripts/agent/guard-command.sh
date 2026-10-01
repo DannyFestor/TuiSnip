@@ -17,6 +17,11 @@ readonly STREAM_WRITES_PATTERN='std(out|err)\.write'
 # lefthook reads these to switch itself off, skip jobs, or load another config.
 readonly LEFTHOOK_OVERRIDE_PATTERN='^(LEFTHOOK|LEFTHOOK_EXCLUDE|LEFTHOOK_CONFIG)='
 readonly FILE_WRITE_CALLS_PATTERN='write|rename|unlink|remove\(|rmtree|shutil\.|copyFile|truncate|open\([^)]*['"'"'"]\+?[wax>]'
+readonly ASSIGNMENT_PATTERN='^[A-Za-z_][A-Za-z0-9_]*='
+# These run the program named after them, so the word after them is not the program.
+readonly WRAPPERS_PATTERN='^(env|command|exec|sudo|nohup|nice|time|xargs)$'
+readonly REMOTE_PATH_PATTERN='^[^/]*:'
+readonly GIT_APPLY_READ_ONLY_PATTERN='^--(check|stat|numstat|summary)$'
 
 deny() {
 	echo "$1" >&2
@@ -112,6 +117,146 @@ check_tee() {
 			deny "tee may write only to /dev/null, /tmp, or \$TMPDIR: $USE_EDIT_TOOLS."
 		fi
 	done
+}
+
+# A relative path resolves against the working directory, as it does for the command.
+is_inside_repo() {
+	local root path
+
+	root="$(repo_root 2>/dev/null)" || return 1
+	path="$(canonical_path "$1")"
+	[[ "$path" == "$root" || "$path" == "$root/"* ]]
+}
+
+check_write_destination() {
+	local program="$1"
+	local destination="$2"
+
+	if is_allowed_write_target "$destination" || ! is_inside_repo "$destination"; then
+		return
+	fi
+	deny "$program must not write into the repo: $USE_EDIT_TOOLS."
+}
+
+last_operand() {
+	local last=""
+	local arg
+
+	for arg in "$@"; do
+		if [[ "$arg" != -* ]]; then
+			last="$arg"
+		fi
+	done
+	echo "$last"
+}
+
+target_directory() {
+	local previous=""
+	local arg
+
+	for arg in "$@"; do
+		case "$previous" in
+		-t | --target-directory) echo "$arg" && return ;;
+		esac
+		case "$arg" in
+		--target-directory=*) echo "${arg#*=}" && return ;;
+		-t?*) echo "${arg#-t}" && return ;;
+		esac
+		previous="$arg"
+	done
+}
+
+# cp, mv, install, and ln write to the -t directory when one is given, else to the last operand.
+check_copy() {
+	local program="$1"
+	shift
+	local destination
+
+	destination="$(target_directory "$@")"
+	if [[ -z "$destination" ]]; then
+		destination="$(last_operand "$@")"
+	fi
+	if [[ -n "$destination" ]]; then
+		check_write_destination "$program" "$destination"
+	fi
+}
+
+check_rsync() {
+	local destination
+
+	destination="$(last_operand "$@")"
+	if [[ -n "$destination" && ! "$destination" =~ $REMOTE_PATH_PATTERN ]]; then
+		check_write_destination rsync "$destination"
+	fi
+}
+
+check_dd() {
+	local arg
+
+	for arg in "$@"; do
+		if [[ "$arg" == of=* ]]; then
+			check_write_destination dd "${arg#of=}"
+		fi
+	done
+}
+
+# patch writes to the -o file when one is given, else beside the files it patches, which sit
+# under the -d directory or the working directory.
+check_patch() {
+	local output=""
+	local directory="."
+	local previous=""
+	local arg
+
+	for arg in "$@"; do
+		case "$arg" in
+		--dry-run) return ;;
+		--output=*) output="${arg#*=}" ;;
+		--directory=*) directory="${arg#*=}" ;;
+		esac
+		case "$previous" in
+		-o) output="$arg" ;;
+		-d) directory="$arg" ;;
+		esac
+		previous="$arg"
+	done
+	check_write_destination patch "${output:-$directory}"
+}
+
+is_command_prefix() {
+	local word="$1"
+
+	[[ "$word" =~ $ASSIGNMENT_PATTERN || "$(basename -- "$word")" =~ $WRAPPERS_PATTERN || "$word" == -* ]]
+}
+
+program_index() {
+	local -a words=("$@")
+	local i
+
+	for ((i = 0; i < ${#words[@]}; i++)); do
+		if ! is_command_prefix "${words[i]}"; then
+			echo "$i"
+			return
+		fi
+	done
+}
+
+# Only the program in command position counts, so `git mv` and `go install` pass.
+check_copy_programs() {
+	local -a words=("$@")
+	local i program
+
+	i="$(program_index "$@")"
+	if [[ -z "$i" ]]; then
+		return
+	fi
+	program="$(basename -- "${words[i]}")"
+	case "$program" in
+	cp | mv | install | ln) check_copy "$program" "${words[@]:i+1}" ;;
+	rsync) check_rsync "${words[@]:i+1}" ;;
+	dd) check_dd "${words[@]:i+1}" ;;
+	patch) check_patch "${words[@]:i+1}" ;;
+	esac
 }
 
 check_in_place_edit() {
@@ -314,6 +459,24 @@ check_stash() {
 	esac
 }
 
+# Even --cached writes, because it changes what the next commit holds without the edit hooks.
+check_apply() {
+	local read_only=0
+	local arg
+
+	for arg in "$@"; do
+		case "$arg" in
+		--apply) read_only=0 && break ;;
+		esac
+		if [[ "$arg" =~ $GIT_APPLY_READ_ONLY_PATTERN ]]; then
+			read_only=1
+		fi
+	done
+	if ((!read_only)); then
+		deny "git apply must not write into the repo: $USE_EDIT_TOOLS."
+	fi
+}
+
 check_git_subcommand() {
 	local subcommand="$1"
 	shift
@@ -327,6 +490,7 @@ check_git_subcommand() {
 	checkout) check_checkout "$@" ;;
 	restore) check_restore "$@" ;;
 	stash) check_stash "$@" ;;
+	apply) check_apply "$@" ;;
 	esac
 }
 
@@ -378,6 +542,7 @@ check_command() {
 		check_lefthook_override "${words[i]}"
 		check_program "$(basename -- "${words[i]}")" "${words[@]:i+1}"
 	done
+	check_copy_programs ${words[@]+"${words[@]}"}
 }
 
 uses_interpreter() {

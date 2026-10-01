@@ -82,8 +82,8 @@ every component ──> domain
 
 No other edges exist. In particular:
 
-- Concerns never import each other. When `folder.Delete` needs to remove Snippets, it declares its own interface, and `bootstrap` passes the same SQLite repository that `snippet` uses.
-- Driven adapters never import `app`. Go satisfies interfaces implicitly, so `sqlite.Repository` fits `snippet.CreateRepository` without importing `snippet`. `bootstrap` passing one into the other is the compile-time check.
+- Concerns never import each other. When `folder.Delete` needs to remove Snippets, it declares its own interface, and `bootstrap` passes the same `sqlite.SnippetRepository` that `snippet` uses.
+- Driven adapters never import `app`. Go satisfies interfaces implicitly, so `sqlite.SnippetRepository` fits `snippet.CreateRepository` without importing `snippet`. `bootstrap` passing one into the other is the compile-time check.
 - Third-party modules are granted per component: `charm.land/**` and chroma to `tui`, `x/editor` to `editor`, `modernc.org/sqlite` and goose to `sqlite`. The TOML library and the fuzzy matcher get a `vendors` entry when they are chosen.
 
 ## Actions
@@ -132,7 +132,7 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 
 - `domain` and `domain/value` declare sentinel errors, and their messages carry the package name. `domain` holds `ErrNotFound`, `ErrConflict` (the save is refused because the Snippet changed elsewhere), `ErrMissingDependency`, `ErrCorruptRecord`, and the entity invariants. `value` holds the sentinel for each value rule, beside the rule: `errors.New("value: title is blank")`. Validation is detailed in [code](code.md#validation).
 - Adapters convert outside errors into those sentinels. For example, `sql.ErrNoRows` becomes `domain.ErrNotFound`.
-- Every exported function or method that returns an error from another package wraps it with its own qualified name and `%w`: `fmt.Errorf("sqlite.Repository.Insert: %w", err)`, then `fmt.Errorf("snippet.Create: %w", err)`. A log line reads `snippet.Create: sqlite.Repository.Insert: database is locked`. The rightmost name is where the error started.
+- Every exported function or method that returns an error from another package wraps it with its own qualified name and `%w`: `fmt.Errorf("sqlite.SnippetRepository.Insert: %w", err)`, then `fmt.Errorf("snippet.Create: %w", err)`. A log line reads `snippet.Create: sqlite.SnippetRepository.Insert: database is locked`. The rightmost name is where the error started.
 - Unexported helpers do not wrap again. The exported entry point already names the package.
 - Only the TUI turns errors into text. It maps known sentinels with `errors.Is` to status messages and shows a generic message for everything else. In both cases it logs the full chain.
 

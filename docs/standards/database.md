@@ -83,18 +83,29 @@ v1's "exactly one Fragment" is a product limit, not a data rule. The domain enfo
 - Queries arrive with the Action that needs them. The adapter method that runs them is shaped by the Action's capability interface, not by the table.
 - `sqlc.yaml` maps every ID column to `sqltype.ID` and every timestamp column to `sqltype.Timestamp` with wildcard column overrides (`*.id`, `*.created_at`). A new ID or timestamp column with a different name needs its own override.
 - `sqltype` (`internal/adapters/sqlite/sqltype`) holds the `Scan`/`Value` types sqlc generates against. The standard library's `uuid.UUID` has neither method. A value that fails `Scan` becomes an error wrapping `domain.ErrCorruptRecord`.
+- `sqltype.ID` wraps a plain `uuid.UUID`, not the typed `domain.SnippetID`/`FolderID`. The adapter converts between them with `columnID` and `entityID[domain.SnippetID]`, which works because both share the `[16]byte` underlying type. A generic `sqltype.ID[E]` would need one sqlc override per typed column and can't name `domain`'s unexported entity types.
 - `emit_empty_slices` and `emit_pointers_for_null_types` are on. `emit_interface` is off, because nothing mocks `sqlcgen`: adapter tests run against real SQLite.
 - `sqlc verify` needs sqlc Cloud and is not used. The generated-code drift check in CI covers the output.
 
+## Repositories
+
+- `sqlite.Open` returns a `*sqlite.Database`, which owns the connection pool and `Close`. Each aggregate gets its own repository built over it: `sqlite.NewSnippetRepository(database, logger)`, and later a `FolderRepository` and a `TagRepository`.
+- Go has no overloading, so one repository for every aggregate would need the noun in every method (`InsertSnippet`, `InsertFolder`). Per-aggregate repositories keep method names short (`Insert`, `Find`, `List`), so capabilities read `snippet.Inserter { Insert(ctx, domain.Snippet) error }`.
+- An Action that needs two aggregates gets two repositories from `bootstrap`.
+
 ## Reading entities
 
-`sqlite` rebuilds entities with the same `domain` constructors the Actions use. There is no constructor that skips validation. An unexported function per entity (`snippetFromRows(snippet, fragments, tags)`) does the conversion. It wraps any failure in `domain.ErrCorruptRecord` and logs the row's ID.
+`sqlite` rebuilds entities with the same `domain` constructors the Actions use. There is no constructor that skips validation. An unexported function per entity (`snippetFromRows(snippet, fragments)`, later with Tags) does the conversion. It wraps any failure in `domain.ErrCorruptRecord`, and the repository logs the row's ID at Error.
+
+A corrupt row fails the whole read: `Find` and `List` both return the error, so `List` never returns a partial set. Search stays unusable until the row is fixed, but no Snippet silently disappears from it.
 
 Loading many Snippets, for the Search index or a Folder listing, runs one query per table (Snippets, Fragments, Tag links) in one read transaction and stitches them together in Go. It never runs one query per Snippet.
 
+Read transactions use `sql.TxOptions{ReadOnly: true}`. modernc begins those with a plain deferred `BEGIN` even under `_txlock=immediate`, so reads never wait for the write lock. Don't swap them for write transactions.
+
 ## Writing and transactions
 
-- Each capability method writes one whole aggregate in one transaction inside the adapter. `Insert(ctx, snippet)` writes the Snippet, its Fragments, and its Tag links together. Actions never see a transaction.
+- Each capability method writes one whole aggregate in one transaction inside the adapter. `SnippetRepository.Insert(ctx, snippet)` writes the Snippet, its Fragments, and its Tag links together. Actions never see a transaction.
 - **Optimistic concurrency.** Saving an edited Snippet updates `WHERE id = ? AND updated_at = ?` with the `updated_at` it loaded. If no row changed, the adapter looks the ID up again: it returns `domain.ErrNotFound` if the row is gone and `domain.ErrConflict` if it's there. Only Snippet saves are checked. Folder and Tag changes are last-write-wins.
 - **Tag merge.** Renaming a Tag onto an existing Tag's name keeps the existing Tag's ID, gives it the spelling the user typed, moves the renamed Tag's links over with `INSERT OR IGNORE`, and deletes the renamed Tag, all in one transaction.
 - **Folder cycles.** The domain rejects moving a Folder into its own subtree. The adapter's move method checks again with a recursive query inside its write transaction and returns `domain.ErrFolderCycle`. The second check exists because two instances can each pass the domain check with a tree the other is changing. Together they would leave a loop cut off from the Root.
@@ -104,7 +115,7 @@ Loading many Snippets, for the Search index or a Folder listing, runs one query 
 
 - `sql.ErrNoRows` becomes `domain.ErrNotFound`.
 - Constraint failures are `*sqlite.Error`. `Code()` is SQLite's extended code: `SQLITE_CONSTRAINT_UNIQUE` (2067), `SQLITE_CONSTRAINT_PRIMARYKEY` (1555, even though the message says "UNIQUE constraint failed"), `SQLITE_CONSTRAINT_FOREIGNKEY` (787), and `SQLITE_CONSTRAINT_CHECK` (275). Constants are in `modernc.org/sqlite/lib`. A failure the adapter expects, such as a Tag name clash, is converted to a sentinel. Any other failure is a bug and returns wrapped as it is.
-- Wrapping follows [architecture](architecture.md#errors): `"sqlite.Repository.<Method>: %w"`.
+- Wrapping follows [architecture](architecture.md#errors): `"sqlite.SnippetRepository.<Method>: %w"`.
 
 ## Connections
 
@@ -122,23 +133,23 @@ Each value is a named constant in the adapter.
 
 ## Start-up
 
-`sqlite` opens the database in this order:
+`sqlite.Open(ctx, sqlite.Options{Path, Logger, Clock})` runs the whole sequence in one call, so `bootstrap` can't open a database without migrating it. A `file:` prefix on `Path` is trimmed first (`BackupDir` trims it too), because the lock file, the backups, and the DSN all derive from the plain path and the adapter always builds the `file:` URI itself:
 
-1. Take an exclusive `flock` on `tuisnip.db.lock` beside the database. Two instances starting together (a tmux restore, say) then migrate one after the other. The kernel drops the lock if the process dies.
+1. Take an exclusive `flock` on `tuisnip.db.lock` beside the database. Two instances starting together (a tmux restore, say) then migrate one after the other. The kernel drops the lock if the process dies. The adapter polls a non-blocking `flock` every 50 ms, so cancelling `ctx` (Ctrl-C) ends the wait at once. After `lockTimeout` (30 s, a constant, not configurable) it gives up with `sqlite.ErrLockTimeout`, wrapped with the lock file's path.
 2. Open the database, creating the file if it doesn't exist.
-3. Compare the database's goose version with the newest embedded migration. If the database is newer, refuse to start: `The database was created by a newer TuiSnip (schema 7; this build knows 5). Upgrade TuiSnip.` goose itself would skip it silently, and an older build writing through an older model could lose data.
+3. Compare the database's goose version with the newest embedded migration. If the database is newer, refuse to start with `sqlite.NewerSchemaError{Database, Known}`, whose message is `The database was created by a newer TuiSnip (schema 7; this build knows 5). Upgrade TuiSnip.` `main` prints it unchanged. goose itself would skip it silently, and an older build writing through an older model could lose data.
 4. If an existing database has pending migrations, [back it up](#backups). If the backup fails, refuse to start.
 5. Run the pending migrations.
 6. Release the lock.
 
 ### Backups
 
-- Before migrating an existing database, `VACUUM INTO` a copy in `backups/` beside the database: `tuisnip-<UTC timestamp>-schema<from version>.db`. `VACUUM INTO` gives a consistent copy even while other instances hold the file in WAL mode.
-- Keep the latest 3 and delete older ones.
-- A new database, or one with nothing pending, gets no backup.
-- `tuisnip --paths` prints the backup directory.
+- Before migrating an existing database, `VACUUM INTO` a copy in `backups/` beside the database: `tuisnip-20261001T120000Z-schema4.db` (UTC to the second, from the injected `Clock`, then the schema version it was migrated from). `VACUUM INTO` gives a consistent copy even while other instances hold the file in WAL mode.
+- Keep the latest 3 and delete older ones. The name sorts by time, so pruning sorts by name. It only touches files matching `tuisnip-*-schema*.db` and leaves anything else in `backups/` alone.
+- A new database (goose version 0), or one with nothing pending, gets no backup.
+- `tuisnip --paths` prints the backup directory, from `sqlite.BackupDir(dbPath)`.
 
 ## Tests
 
 - Feature tests open a real database file in `t.TempDir()`, with production's exact pragmas and WAL, through `bootstrap`. Plain `:memory:` gives every pooled connection its own empty database. Shared-cache memory databases either leak between tests or lock differently from production.
-- The adapter's own tests (row conversion, error mapping, the cycle re-check, start-up ordering) use the same temp-file setup.
+- The adapter's own tests (row conversion, error mapping, the cycle re-check, start-up ordering) use the same temp-file setup. They assert only through `Open`, the repositories, and the files in `BackupDir`. Raw SQL and goose's `UpTo` only arrange state, such as a corrupt row or an older schema.

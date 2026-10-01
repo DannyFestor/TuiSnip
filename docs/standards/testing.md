@@ -83,6 +83,14 @@ func newTestApp(t *testing.T) *bootstrap.App {
 
 ## Test doubles
 
+### What to cover
+
+Test every behaviour a ticket or standard decided, and every branch that chooses between outcomes: Root or Folder, roll back or commit, refuse start-up or continue, log or stay quiet. Don't test a branch that only passes an I/O error up (`if err != nil { return fmt.Errorf("…: %w", err) }` after `Commit`, `Close`, or `os.Remove`). Reaching it needs a fake that fails on cue, which this section rules out, and wrapcheck and errcheck already make sure the error is wrapped and not dropped.
+
+Coverage is reported and has no threshold. A branch that shows red is fine when it is pass-through, and a gap when it is a decision. Mutation testing (`make test-mutation`) finds the second kind: a mutant that lives on a decision branch needs a test. Before opening the PR for a ticket that adds decision logic, run it on the package you changed (`make test-mutation PKG=./internal/adapters/sqlite`) and add the missing tests in the same PR.
+
+### Doubles
+
 | Need | Double |
 |---|---|
 | a capability in an Action unit test (`Inserter`, `CaptureClipboard`, `QueryIndex`) | mockery mock |

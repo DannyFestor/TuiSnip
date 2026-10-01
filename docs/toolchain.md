@@ -52,8 +52,10 @@ GitHub Actions runs every check the hooks run, plus the ones too slow for them. 
 |---|---|---|
 | `ci.yml` | every PR, every push to `main` | `lint` (golangci-lint and `fmt --diff`), `arch-lint`, `test` (unit, feature, e2e), `build (<os>, <arch>)` for darwin/linux × amd64/arm64, `govulncheck`, `generated` (`make generate` drift and `make fix-check`), `shellcheck` |
 | `pr-title.yml` | PR opened, edited, or updated | `pr-title`: `cog verify` on the title |
-| `nightly.yml` | daily at 03:00 UTC, and by hand | `fuzz` (5 minutes per target), `property-deep`, `mutation`. Report only, never required. |
+| `weekly.yml` | Mondays at 03:00 UTC, and by hand | `fuzz` (5 minutes per target), `property-deep`, `mutation`. Report only, never required. |
 | `release.yml` | `v*` tags | goreleaser |
+
+The deep tests run weekly, not nightly. Daily runs would mostly search code that hasn't changed, and the cached Go build cache keeps the fuzz corpus from one run to the next.
 
 `.github/actions/setup` installs the tools from `mise.toml` with `jdx/mise-action` and caches the Go build and module caches per job. The mise version is pinned there, because Dependabot can't update it and an unpinned mise changes under CI without a commit.
 

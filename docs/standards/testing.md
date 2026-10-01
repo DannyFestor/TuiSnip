@@ -129,7 +129,7 @@ Set only the fields the test is about. A test that states every field hides whic
 
 Both are ordinary unit tests: no tag, and their seed corpus or default 100 checks run under plain `go test`.
 
-- **Fuzz** (`testing.F`) parsers of hand-edited or foreign input: the config and keybinding loader, the Search matcher on arbitrary strings. A crasher found by the nightly job is committed to `testdata/fuzz/` as a regression seed.
+- **Fuzz** (`testing.F`) parsers of hand-edited or foreign input: the config and keybinding loader, the Search matcher on arbitrary strings. A crasher found by the weekly job is committed to `testdata/fuzz/` as a regression seed.
 - **Property** (`pgregory.net/rapid`) rules that must hold for every sequence, such as Folder moves never creating a cycle. A property that needs SQLite goes in the feature tier.
 
-The nightly deep runs, the mutation report, and the Makefile targets are described in [the research](../research/mutation-fuzz-property-testing.md).
+The weekly deep runs, the mutation report, and the Makefile targets are described in [the research](../research/mutation-fuzz-property-testing.md).

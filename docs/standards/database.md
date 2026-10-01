@@ -43,7 +43,7 @@ The database is the last line of defence. It repeats every rule we know, except 
 | Tag keys, Languages, and Default Languages are not blank | `<> ''` |
 | Fragment positions are not negative | `position >= 0` |
 | timestamps are sane | `created_at > 0`, `updated_at >= created_at` |
-| titles, Descriptions, and content are capped | `length(title) <= 200`, `length(description) <= 2000`, `length(CAST(content AS BLOB)) <= 262144` |
+| titles, Folder names, Descriptions, and content are capped | `length(title) <= 200`, `length(name) <= 200` on `folders`, `length(description) <= 2000`, `length(CAST(content AS BLOB)) <= 262144` |
 | a Folder is not its own parent | `parent_id <> id` |
 
 A CHECK may be weaker than the domain rule, never stricter. A stricter CHECK would reject a value the domain accepted, and the user would get a failed save with no explanation. `trim` above is an example: SQLite removes only the characters listed, while `strings.TrimSpace` removes all Unicode whitespace.

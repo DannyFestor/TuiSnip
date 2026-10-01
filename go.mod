@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/stretchr/testify v1.12.1
+	pgregory.net/rapid v1.3.0
 )
 
 require (

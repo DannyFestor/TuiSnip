@@ -104,7 +104,7 @@ func (s Snippet) Rename(title value.Title, now time.Time) Snippet {
 
 ### Value objects
 
-A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.Description`, `value.Content`, `value.FolderName`, `value.TagName`, `value.Language`. A value with no rule stays a plain type. A length cap counts as a rule: Title (200 runes), Description (2,000 runes), and Content (256 KiB) are capped, and the schema repeats each cap ([database](database.md#constraints)). Description and Content are stored exactly as given, because whitespace in code matters and an all-blank Description is the user's choice.
+A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.Description`, `value.Content`, `value.FolderName`, `value.TagName`, `value.Language`. A value with no rule stays a plain type. A length cap counts as a rule: Title (200 runes), FolderName (200 runes), Description (2,000 runes), and Content (256 KiB) are capped, and the schema repeats each cap ([database](database.md#constraints)). Description and Content are stored exactly as given, because whitespace in code matters and an all-blank Description is the user's choice.
 
 Each value object wraps an unexported field, so the constructor is the only way to get one:
 

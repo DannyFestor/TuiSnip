@@ -51,7 +51,7 @@ Coding agents get the same guardrails as git hooks, but earlier: before an edit 
 | Script | Runs | Does |
 |---|---|---|
 | `guard-path.sh` | before an edit | Denies generator output, asks before edits to guardrail files (both listed in `protected-paths`), denies files with a generated-code header |
-| `guard-command.sh` | before a shell command | Denies hook bypass, force-push, pushes to `main`, destructive git commands, and shell file writes |
+| `guard-command.sh` | before a shell command | Denies hook bypass (`--no-verify`, `commit -n`, `core.hooksPath`, `LEFTHOOK`, `LEFTHOOK_EXCLUDE`, `LEFTHOOK_CONFIG`), force-push, pushes to `main`, destructive git commands, and shell file writes |
 | `check-go-file.sh` | after a Go edit | `golangci-lint fmt` on the file, `go vet` on its package |
 | `verify-build.sh` | at end of turn | build, go-arch-lint, lint, and short unit tests on the packages changed since `origin/main`. Skips an unchanged Go diff, and blocks at most 3 times in a row. |
 
@@ -62,6 +62,8 @@ Every core script exits 0 to pass, 2 to deny, 3 to ask, with the way forward on 
 | Claude Code | `.claude/settings.json` | `scripts/agent/adapters/claude.sh` |
 | OpenCode | `.opencode/plugins/tuisnip-guards.ts`, `opencode.json` | the plugin itself |
 | Antigravity | `.agents/hooks.json` | `scripts/agent/adapters/antigravity.sh` (best effort, untested against a live agent) |
+
+**jq 1.8.2** reads the hook input JSON in the bash adapters. It is pinned in `mise.toml` because the hooks don't work without it, so a fresh clone needs `mise install` before an agent edits anything.
 
 `scripts/agent/protected-paths` is the single list of path rules. `make generate-agent-rules` turns it into OpenCode's `permission.edit` block in `opencode.json`, so OpenCode prompts for the ask tier itself, and the CI drift check catches a stale file.
 
@@ -111,6 +113,8 @@ mockery refuses a config with an empty `packages` map. `.mockery.yml` lists `int
 
 - **golangci-lint 2.14.0**, `default: all`. The catalogue and the rejected linters are in [the research](research/golangci-lint-catalogue.md).
 - **go-arch-lint 1.19.0** enforces the layer edges. arch-go was rejected because it matches packages against patterns and has no model of named components or injected dependencies. Details in [the research](research/go-arch-lint.md).
+- **shellcheck 0.11.0** lints the bash in `scripts/`. pre-commit checks the staged scripts, and CI checks every tracked script with `make lint-shell`. golangci-lint doesn't look at shell, and the hooks that guard everything else are shell.
+- **govulncheck 1.8.0** checks the dependencies against the Go vulnerability database in CI (`make vulncheck`). It reports only vulnerabilities in code the module calls, so an unused vulnerable function doesn't fail the build.
 
 ## Testing
 
@@ -133,4 +137,6 @@ Avoid gremlins' `-i` until [gremlins#272](https://github.com/go-gremlins/gremlin
 | `github.com/pressly/goose/v3` | `sqlite` | A 50/50 call with golang-migrate, which would have worked as well. goose reads the migrations from an `fs.FS`, and `GetDBVersion` plus `ListSources` give the newer-schema check at start-up. | Atlas: more than this app needs |
 | `github.com/BurntSushi/toml` | `config`, `state` | Decodes the config and reports unknown keys | `github.com/pelletier/go-toml/v2`: it reports unknown keys only as a `StrictMissingError` return, and research couldn't confirm the struct is still populated when that error comes back |
 
-A module enters `go.mod` with the first code that imports it, because `go mod tidy` drops the rest. When this was written, only chroma and testify were in.
+The **goose 3.28.0** CLI is pinned for people, not for scripts. `goose -dir db/migrations -s create <name> sql` writes the next sequentially numbered migration, and `goose sqlite3 <file> status` shows which migrations a database has applied. The app itself runs migrations through the library.
+
+A module enters `go.mod` with the first code that imports it, because `go mod tidy` drops the rest. When this was written, only chroma and testify were in. Their indirect modules (regexp2 for chroma's lexers, yaml for testify's `assert`) aren't listed.

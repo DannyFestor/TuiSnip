@@ -220,6 +220,8 @@ log.InfoContext(ctx, "snippet captured", slog.String(keySnippetID, id.String()),
 
 Names say what the code does. A comment says why it has to be this way: the constraint, the bug it avoids, the reason for an odd choice. A package comment in `doc.go` says why the package exists.
 
+An agent hook denies the first submission of every new comment, so each one is a deliberate decision. Submitting the same comment again asks the user.
+
 ```go
 // ❌ restates the code
 // Trim the title.

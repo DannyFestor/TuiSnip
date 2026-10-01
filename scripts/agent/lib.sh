@@ -15,12 +15,13 @@ repo_root() {
 }
 
 # The state directory sits in the common git dir so every worktree of a clone shares it.
+# Session ids come from the agent, so anything but a safe file name character is replaced.
 session_state_dir() {
 	local session="$1"
 	local common_dir
 
 	common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
-	echo "$common_dir/agent-hooks/$session"
+	echo "$common_dir/agent-hooks/$(printf '%s' "$session" | tr -c 'A-Za-z0-9_-' '_')"
 }
 
 # Resolves symlinks in the deepest existing ancestor, so a path to a file not yet created

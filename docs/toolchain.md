@@ -51,6 +51,7 @@ Coding agents get the same guardrails as git hooks, but earlier: before an edit 
 | Script | Runs | Does |
 |---|---|---|
 | `guard-path.sh` | before an edit | Denies generator output, asks before edits to guardrail files (both listed in `protected-paths`), denies files with a generated-code header |
+| `guard-go-comments.sh` | before a Go edit | Denies the first submission of a comment the edit adds, so the agent checks it against the [comment rule](standards/code.md#comments). The same comment submitted again in the session asks the user (passes in OpenCode, which can't ask from a plugin). Directives, `// Output:`, `doc.go`, and generated files are exempt |
 | `guard-command.sh` | before a shell command | Denies hook bypass (`--no-verify`, `commit -n`, `core.hooksPath`, `LEFTHOOK`, `LEFTHOOK_EXCLUDE`, `LEFTHOOK_CONFIG`), force-push, pushes to `main`, destructive git commands, and shell file writes |
 | `check-go-file.sh` | after a Go edit | `golangci-lint fmt` on the file, `go vet` on its package |
 | `verify-build.sh` | at end of turn | build, go-arch-lint, lint, and short unit tests on the packages changed since `origin/main`. Skips an unchanged Go diff, and blocks at most 3 times in a row. |
@@ -60,7 +61,7 @@ Every core script exits 0 to pass, 2 to deny, 3 to ask, with the way forward on 
 | System | Wiring | Adapter |
 |---|---|---|
 | Claude Code | `.claude/settings.json` | `scripts/agent/adapters/claude.sh` |
-| OpenCode | `.opencode/plugins/tuisnip-guards.ts`, `opencode.json` | the plugin itself |
+| OpenCode | `.opencode/plugins/tuisnip-guards.ts`, `opencode.json` | the plugin itself, plus `scripts/agent/adapters/opencode.sh` for the comment guard |
 | Antigravity | `.agents/hooks.json` | `scripts/agent/adapters/antigravity.sh` (best effort, untested against a live agent) |
 
 **jq 1.8.2** reads the hook input JSON in the bash adapters. It is pinned in `mise.toml` because the hooks don't work without it, so a fresh clone needs `mise install` before an agent edits anything.

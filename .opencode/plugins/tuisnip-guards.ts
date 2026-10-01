@@ -32,13 +32,17 @@ export const TuisnipGuards = async ({ client, $, directory, worktree }) => {
     return result.stdout.split("\n").filter(Boolean)
   }
 
-  const guardEdit = async (tool: string, args: ToolArgs) => {
+  const guardEdit = async (tool: string, sessionID: string, args: ToolArgs) => {
     const content = args.content ?? args.newString ?? args.patchText ?? ""
     for (const path of await editedPaths(tool, args)) {
       const result = await runScript("guard-path.sh", [path], content)
       if (result.status === EXIT_DENY) {
         throw new Error(result.message)
       }
+    }
+    const comments = await runScript("adapters/opencode.sh", ["pre-edit"], JSON.stringify({ tool, sessionID, args }))
+    if (comments.status === EXIT_DENY) {
+      throw new Error(comments.message)
     }
   }
 
@@ -71,7 +75,7 @@ export const TuisnipGuards = async ({ client, $, directory, worktree }) => {
   return {
     "tool.execute.before": async (input, output) => {
       if (FILE_TOOLS.has(input.tool)) {
-        await guardEdit(input.tool, output.args)
+        await guardEdit(input.tool, input.sessionID, output.args)
       }
       if (input.tool === "bash") {
         await guardCommand(output.args)

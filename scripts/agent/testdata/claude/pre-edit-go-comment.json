@@ -1,0 +1,15 @@
+{
+  "session_id": "4f6c2a9e-1d3b-4c8e-9a7f-2b5d8e0c1a36",
+  "transcript_path": "/Users/dev/.claude/projects/-repo/4f6c2a9e-1d3b-4c8e-9a7f-2b5d8e0c1a36.jsonl",
+  "cwd": "{{REPO}}",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "{{REPO}}/internal/domain/folder.go",
+    "old_string": "\treturn name",
+    "new_string": "\t// Trim the name.\n\treturn name",
+    "replace_all": false
+  },
+  "tool_use_id": "toolu_01Vb7Lq2XcNd8kP3mRt6sW4y"
+}

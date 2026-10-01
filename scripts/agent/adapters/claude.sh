@@ -15,7 +15,7 @@ pass_through_deny() {
 }
 
 ask() {
-	jq -n --arg reason "$CORE_MESSAGE" '{
+	jq -n --arg reason "$1" '{
 		hookSpecificOutput: {
 			hookEventName: "PreToolUse",
 			permissionDecision: "ask",
@@ -24,15 +24,39 @@ ask() {
 	}'
 }
 
+collect_ask() {
+	if ((CORE_STATUS == EXIT_ASK)); then
+		ASK_REASONS+=("$CORE_MESSAGE")
+	fi
+}
+
+guard_comments() {
+	local path="$1"
+	local content="$2"
+	local session
+
+	session="$(field '.session_id')"
+	if [[ "$(field '.tool_name')" == "Write" ]]; then
+		run_core "$AGENT_DIR/guard-go-comments.sh" "$session" "$path" "$(file_or_empty "$path")" <<<"$content"
+		return
+	fi
+	run_core "$AGENT_DIR/guard-go-comments.sh" "$session" "$path" <(field '.tool_input.old_string') <<<"$content"
+}
+
 pre_edit() {
 	local path content
+	local -a ASK_REASONS=()
 
 	path="$(field '.tool_input.file_path // .tool_input.notebook_path')"
 	content="$(field '.tool_input.content // .tool_input.new_string // .tool_input.new_source')"
 	run_core "$AGENT_DIR/guard-path.sh" "$path" <<<"$content"
 	pass_through_deny
-	if ((CORE_STATUS == EXIT_ASK)); then
-		ask
+	collect_ask
+	guard_comments "$path" "$content"
+	pass_through_deny
+	collect_ask
+	if ((${#ASK_REASONS[@]} > 0)); then
+		ask "$(printf '%s\n' "${ASK_REASONS[@]}")"
 	fi
 }
 

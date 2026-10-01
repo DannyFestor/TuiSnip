@@ -1,6 +1,7 @@
 LANGUAGES_OUT := internal/domain/value/languages_gen.go
 TEST_TAGS := feature,e2e
 FUZZTIME ?= 30s
+PKG ?= .
 PROPERTY_DEEP_CHECKS := 10000
 GENERATED_FILES := sqlcgen/|_gen\.go$$|_enum\.go$$|mocks_test\.go$$
 SUBMAKE := $(MAKE) --no-print-directory
@@ -102,8 +103,8 @@ test-property-deep: ## Run the property tests with 10000 checks
 	RAPID_CHECKS=$(PROPERTY_DEEP_CHECKS) go test -tags feature -run 'Property' ./...
 
 .PHONY: test-mutation
-test-mutation: ## Write the gremlins mutation report
-	gremlins unleash --tags feature --exclude-files '$(GENERATED_FILES)' --output mutation-report.json .
+test-mutation: ## Write the gremlins mutation report (PKG=./internal/... for one package)
+	gremlins unleash --tags feature --exclude-files '$(GENERATED_FILES)' --output mutation-report.json $(PKG)
 
 ##@ Build
 

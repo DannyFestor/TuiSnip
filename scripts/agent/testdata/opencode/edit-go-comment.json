@@ -1,0 +1,10 @@
+{
+  "tool": "edit",
+  "sessionID": "ses_3f9a1c2b7d8e",
+  "callID": "call_02",
+  "args": {
+    "filePath": "{{REPO}}/internal/domain/folder.go",
+    "oldString": "\treturn name",
+    "newString": "\t// Trim the name.\n\treturn name"
+  }
+}

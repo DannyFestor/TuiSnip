@@ -1,0 +1,8 @@
+{
+  "tool": "apply_patch",
+  "sessionID": "ses_3f9a1c2b7d8e",
+  "callID": "call_03",
+  "args": {
+    "patchText": "*** Begin Patch\n*** Update File: internal/domain/snippet.go\n@@ func New\n-\t// Validate first.\n+\t// Validate first.\n+\treturn nil\n*** Add File: internal/domain/tag.go\n+package domain\n+\n+// Tag is a tag.\n*** End Patch"
+  }
+}

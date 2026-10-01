@@ -9,6 +9,15 @@ field() {
 	jq -r "$1 // empty" <<<"$INPUT"
 }
 
+# The replaced text of a whole-file write is the file on disk, or nothing for a new file.
+file_or_empty() {
+	if [[ -f "$1" ]]; then
+		echo "$1"
+		return
+	fi
+	echo /dev/null
+}
+
 # Runs a core script, keeping its exit code and stderr instead of letting set -e exit.
 run_core() {
 	CORE_STATUS=0

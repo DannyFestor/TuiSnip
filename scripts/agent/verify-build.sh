@@ -96,7 +96,7 @@ main() {
 	if [[ -z "$packages" ]]; then
 		exit "$EXIT_PASS"
 	fi
-	state_dir="$(session_state_dir "$(printf '%s' "$session" | tr -c 'A-Za-z0-9_-' '_')")"
+	state_dir="$(session_state_dir "$session")"
 	mkdir -p "$state_dir"
 	fingerprint="$(go_fingerprint)"
 	if [[ "$fingerprint" == "$(read_state "$state_dir/passed-fingerprint")" ]]; then

@@ -29,11 +29,40 @@ new_content() {
 	field '.toolCall.args.CodeContent // .toolCall.args.ReplacementContent // ([.toolCall.args.ReplacementChunks[]?.ReplacementContent] | join("\n"))'
 }
 
+replaced_content() {
+	field '.toolCall.args.TargetContent // ([.toolCall.args.ReplacementChunks[]?.TargetContent] | join("\n"))'
+}
+
+guard_comments() {
+	local path="$1"
+	local session
+
+	session="$(field '.conversationId')"
+	if [[ "$(field '.toolCall.name')" == "write_to_file" ]]; then
+		run_core "$AGENT_DIR/guard-go-comments.sh" "$session" "$path" "$(file_or_empty "$path")" <<<"$(new_content)"
+		return
+	fi
+	run_core "$AGENT_DIR/guard-go-comments.sh" "$session" "$path" <(replaced_content) <<<"$(new_content)"
+}
+
+guard_edit() {
+	local path path_message
+
+	path="$(field '.toolCall.args.TargetFile')"
+	run_core "$AGENT_DIR/guard-path.sh" "$path" <<<"$(new_content)"
+	if ((CORE_STATUS == EXIT_DENY)); then
+		return
+	fi
+	path_message="$CORE_MESSAGE"
+	guard_comments "$path"
+	CORE_MESSAGE="$(printf '%s\n%s' "$path_message" "$CORE_MESSAGE" | sed '/./,$!d')"
+}
+
 pre() {
 	if [[ "$(field '.toolCall.name')" == "run_command" ]]; then
 		run_core "$AGENT_DIR/guard-command.sh" <<<"$(field '.toolCall.args.CommandLine')"
 	else
-		run_core "$AGENT_DIR/guard-path.sh" "$(field '.toolCall.args.TargetFile')" <<<"$(new_content)"
+		guard_edit
 	fi
 	answer_tool_call
 }

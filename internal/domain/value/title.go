@@ -1,10 +1,6 @@
 package value
 
-import (
-	"errors"
-	"strings"
-	"unicode/utf8"
-)
+import "errors"
 
 const maxTitleRunes = 200
 
@@ -13,21 +9,10 @@ var (
 	ErrTitleTooLong = errors.New("value: title is longer than 200 characters")
 )
 
-type Title struct{ value string }
+type Title = trimmedName[titleKind]
 
 func NewTitle(raw string) (Title, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return Title{}, ErrBlankTitle
-	}
-
-	if utf8.RuneCountInString(trimmed) > maxTitleRunes {
-		return Title{}, ErrTitleTooLong
-	}
-
-	return Title{value: trimmed}, nil
-}
-
-func (t Title) String() string {
-	return t.value
+	return parseTrimmedName[titleKind](
+		raw, nameRules{maxRunes: maxTitleRunes, errBlank: ErrBlankTitle, errTooLong: ErrTitleTooLong},
+	)
 }

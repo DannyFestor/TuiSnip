@@ -630,6 +630,7 @@ func TestGuardGoComments(t *testing.T) {
 			wantCode: exitPass,
 		},
 		{name: "passes a go directive", path: commentedPath, added: "//go:generate go-enum", wantCode: exitPass},
+		{name: "passes a go-enum declaration", path: commentedPath, added: "// ENUM(auto, dark).", wantCode: exitPass},
 		{
 			name:     "passes a nolint directive with its reason",
 			path:     commentedPath,

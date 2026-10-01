@@ -18,6 +18,11 @@ jobs:
         with:
           version: 2026.9.18
           install_args: cocogitto
+      # cog aborts without a git identity, even when it only verifies a string. It reads it through
+      # libgit2, which ignores git's GIT_CONFIG_* environment variables.
+      - run: |
+          git config --global user.name pr-title-check
+          git config --global user.email pr-title-check@localhost
       # No --ignore-fixup-commits: the title becomes the squash commit on main.
       - run: cog verify "$PR_TITLE"
         env:

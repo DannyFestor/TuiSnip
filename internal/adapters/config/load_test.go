@@ -83,7 +83,7 @@ func TestLoad(t *testing.T) {
 		assert.True(t, got.Mouse)
 		assert.Empty(t, got.Editor)
 		assert.Empty(t, got.Languages)
-		assert.Equal(t, []string{"q"}, got.Bindings[config.ScopeGlobal][config.BindingQuit])
+		assert.Equal(t, []string{"q"}, keyNames(got, config.ScopeGlobal, config.BindingQuit))
 	})
 
 	t.Run("matches the default file to every Scope and Binding", func(t *testing.T) {
@@ -120,7 +120,7 @@ mouse = false
 clipboard = "osc52"
 
 [bindings.global]
-search = ["s", "ctrl+f"]
+search = ["S", "ctrl+f"]
 zoom = []
 `)
 
@@ -133,10 +133,10 @@ zoom = []
 			config.Copy{Clipboard: config.ClipboardBackendOsc52, TrimTrailingNewline: true, QuitAfter: false},
 			got.Copy,
 		)
-		assert.Equal(t, []string{"s", "ctrl+f"}, got.Bindings[config.ScopeGlobal][config.BindingSearch])
+		assert.Equal(t, []string{"S", "ctrl+f"}, keyNames(got, config.ScopeGlobal, config.BindingSearch))
 		assert.Empty(t, got.Bindings[config.ScopeGlobal][config.BindingZoom])
-		assert.Equal(t, []string{"q"}, got.Bindings[config.ScopeGlobal][config.BindingQuit])
-		assert.Equal(t, []string{"y"}, got.Bindings[config.ScopeSnippetList][config.BindingCopy])
+		assert.Equal(t, []string{"q"}, keyNames(got, config.ScopeGlobal, config.BindingQuit))
+		assert.Equal(t, []string{"y"}, keyNames(got, config.ScopeSnippetList, config.BindingCopy))
 	})
 
 	t.Run("warns about unknown keys outside the Bindings and ignores them", func(t *testing.T) {
@@ -345,6 +345,17 @@ func languageNames(cfg config.Config) []string {
 	names := make([]string, 0, len(cfg.Languages))
 	for _, language := range cfg.Languages {
 		names = append(names, language.String())
+	}
+
+	return names
+}
+
+func keyNames(cfg config.Config, scope config.Scope, binding config.Binding) []string {
+	keys := cfg.Bindings[scope][binding]
+
+	names := make([]string, 0, len(keys))
+	for _, key := range keys {
+		names = append(names, key.String())
 	}
 
 	return names

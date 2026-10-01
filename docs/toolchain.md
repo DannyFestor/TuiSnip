@@ -52,7 +52,7 @@ Coding agents get the same guardrails as git hooks, but earlier: before an edit 
 |---|---|---|
 | `guard-path.sh` | before an edit | Denies generator output, asks before edits to guardrail files (both listed in `protected-paths`), denies files with a generated-code header |
 | `guard-go-comments.sh` | before a Go edit | Denies the first submission of a comment the edit adds, so the agent checks it against the [comment rule](standards/code.md#comments). The same comment submitted again in the session asks the user (passes in OpenCode, which can't ask from a plugin). Directives, `// Output:`, `doc.go`, and generated files are exempt |
-| `guard-command.sh` | before a shell command | Denies hook bypass (`--no-verify`, `commit -n`, `core.hooksPath`, `LEFTHOOK`, `LEFTHOOK_EXCLUDE`, `LEFTHOOK_CONFIG`), force-push, pushes to `main`, destructive git commands, and shell file writes |
+| `guard-command.sh` | before a shell command | Denies hook bypass (`--no-verify`, `commit -n`, `core.hooksPath`, `LEFTHOOK`, `LEFTHOOK_EXCLUDE`, `LEFTHOOK_CONFIG`), force-push, pushes to `main`, destructive git commands, and shell file writes, including copies, moves, links, and patches into the repo |
 | `check-go-file.sh` | after a Go edit | `golangci-lint fmt` on the file, `go vet` on its package |
 | `verify-build.sh` | at end of turn | build, go-arch-lint, lint, and short unit tests on the packages changed since `origin/main`. Skips an unchanged Go diff, and blocks at most 3 times in a row. |
 

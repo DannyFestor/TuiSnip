@@ -562,6 +562,23 @@ func TestGuardCommand(t *testing.T) {
 		},
 		{name: "passes reading core.hooksPath", command: "git config --get core.hooksPath", wantCode: exitPass},
 		{name: "passes unstaging the whole tree", command: "git restore --staged .", wantCode: exitPass},
+		{
+			name:     "passes a commit whose message mentions LEFTHOOK",
+			command:  `git commit -m "docs: deny LEFTHOOK=0"`,
+			wantCode: exitPass,
+		},
+		{name: "denies LEFTHOOK=0 before a command", command: "LEFTHOOK=0 git commit -m x", wantCode: exitDeny},
+		{name: "denies exporting LEFTHOOK", command: "export LEFTHOOK=false && git push", wantCode: exitDeny},
+		{
+			name:     "denies LEFTHOOK_EXCLUDE through env",
+			command:  "env LEFTHOOK_EXCLUDE=lint git push",
+			wantCode: exitDeny,
+		},
+		{
+			name:     "denies LEFTHOOK_CONFIG",
+			command:  "LEFTHOOK_CONFIG=/tmp/none.yml git commit -m x",
+			wantCode: exitDeny,
+		},
 		{name: "denies commit -n", command: "git commit -nm wip", wantCode: exitDeny},
 		{name: "denies --no-verify", command: "git push --no-verify", wantCode: exitDeny},
 		{

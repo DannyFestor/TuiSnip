@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -78,7 +79,7 @@ func newSandbox(t *testing.T) *sandbox {
 		writeFile(t, filepath.Join(stubDir, tool), stubScript, 0o755)
 	}
 
-	box.env = append(os.Environ(),
+	box.env = append(environWithoutGit(),
 		"PATH="+stubDir+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"STUB_LOG="+box.stubLog,
 		"STUB_FAIL=",
@@ -95,6 +96,12 @@ func newSandbox(t *testing.T) *sandbox {
 	box.git(t, "switch", "--quiet", "-c", "feature")
 
 	return box
+}
+
+func environWithoutGit() []string {
+	return slices.DeleteFunc(os.Environ(), func(entry string) bool {
+		return strings.HasPrefix(entry, "GIT_")
+	})
 }
 
 func (s *sandbox) git(t *testing.T, args ...string) {

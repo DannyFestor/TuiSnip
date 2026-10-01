@@ -20,6 +20,7 @@ generate: ## Run every generator, in order
 	@$(SUBMAKE) generate-mocks
 	@$(SUBMAKE) generate-enums
 	@$(SUBMAKE) generate-languages
+	@$(SUBMAKE) generate-agent-rules
 
 .PHONY: generate-sql
 generate-sql: ## Generate the sqlc query code
@@ -36,6 +37,10 @@ generate-enums: ## Generate the go-enum types
 .PHONY: generate-languages
 generate-languages: ## Generate the Language list from chroma
 	go run ./internal/tools/languagegen -out $(LANGUAGES_OUT)
+
+.PHONY: generate-agent-rules
+generate-agent-rules: ## Generate OpenCode's edit permissions from scripts/agent/protected-paths
+	scripts/agent/gen-opencode-rules.sh
 
 ##@ Code quality
 

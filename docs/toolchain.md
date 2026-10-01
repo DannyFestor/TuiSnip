@@ -44,6 +44,33 @@ The hook passes `--ignore-fixup-commits`, because `rebase --autosquash` folds th
 
 Rejected: commitlint (needs Node). committed and a hand-written regex script were passed over by preference: cocogitto parses the full spec, so no parsing code has to be maintained here.
 
+## Agent hooks
+
+Coding agents get the same guardrails as git hooks, but earlier: before an edit lands, after it, and before the agent ends its turn. The policy lives in bash scripts under `scripts/agent/`, and each agent system gets a thin adapter. The full spec is the [Agent hooks design resolution](https://github.com/DannyFestor/TuiSnip/issues/13#issuecomment-5904919452).
+
+| Script | Runs | Does |
+|---|---|---|
+| `guard-path.sh` | before an edit | Denies generator output, asks before edits to guardrail files (both listed in `protected-paths`), denies files with a generated-code header |
+| `guard-command.sh` | before a shell command | Denies hook bypass, force-push, pushes to `main`, destructive git commands, and shell file writes |
+| `check-go-file.sh` | after a Go edit | `golangci-lint fmt` on the file, `go vet` on its package |
+| `verify-build.sh` | at end of turn | build, go-arch-lint, lint, and short unit tests on the packages changed since `origin/main`. Skips an unchanged Go diff, and blocks at most 3 times in a row. |
+
+Every core script exits 0 to pass, 2 to deny, 3 to ask, with the way forward on stderr.
+
+| System | Wiring | Adapter |
+|---|---|---|
+| Claude Code | `.claude/settings.json` | `scripts/agent/adapters/claude.sh` |
+| OpenCode | `.opencode/plugins/tuisnip-guards.ts`, `opencode.json` | the plugin itself |
+| Antigravity | `.agents/hooks.json` | `scripts/agent/adapters/antigravity.sh` (best effort, untested against a live agent) |
+
+`scripts/agent/protected-paths` is the single list of path rules. `make generate-agent-rules` turns it into OpenCode's `permission.edit` block in `opencode.json`, so OpenCode prompts for the ask tier itself, and the CI drift check catches a stale file.
+
+The guards keep agents from making mistakes, but they aren't a security boundary. A command nested in `sh -c '...'` isn't inspected, and the deny on shell file writes exists so file changes go through the edit tools, where the post-edit format and vet run.
+
+`scripts/agent/hooks_test.go` pipes recorded hook input from `testdata/` through the adapters in a throwaway git repo, with `go`, `golangci-lint`, and `go-arch-lint` stubbed. It runs with the unit tests. bats was rejected so the repo keeps one test runner.
+
+Rejected: Claude Code permission rules alongside the hooks (a second copy of the path rules), and OpenCode's plugin `permission.ask` hook (legacy v1 API, and it only overrides a check that already happens).
+
 ## CI and release
 
 GitHub Actions runs every check the hooks run, plus the ones too slow for them. Each job calls a Makefile target, so a failing job can be reproduced locally with the same command.

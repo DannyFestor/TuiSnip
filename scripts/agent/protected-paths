@@ -1,0 +1,26 @@
+# Path rules for agent edits, read by guard-path.sh and turned into OpenCode's
+# permission.edit block by gen-opencode-rules.sh.
+#
+# Format: <deny|ask> <glob> <way forward shown to the agent>
+# Globs are repo-relative and * crosses /, matching OpenCode's wildcard.
+#
+# deny: generator output. Edit the generator's input instead.
+# ask:  files an agent may edit but could use to weaken its own guardrails.
+
+deny internal/adapters/sqlite/sqlcgen/* edit db/queries/*.sql or db/migrations/*.sql and run `make generate-sql`
+deny internal/domain/value/languages_gen.go run `make generate-languages`
+deny mocks_test.go edit .mockery.yml and run `make generate-mocks`
+deny */mocks_test.go edit .mockery.yml and run `make generate-mocks`
+deny *_enum.go edit the enum declaration and run `make generate-enums`
+deny go.sum run `go mod tidy`
+deny opencode.json edit scripts/agent/protected-paths and run `make generate-agent-rules`
+
+ask scripts/agent/* this file guards the agent hooks; the user must approve the edit
+ask .claude/settings.json this file wires the agent hooks; the user must approve the edit
+ask .opencode/* this file wires the agent hooks; the user must approve the edit
+ask .agents/hooks.json this file wires the agent hooks; the user must approve the edit
+ask lefthook.yml this file configures the git hooks; the user must approve the edit
+ask .golangci.yml this file configures the linters; the user must approve the edit
+ask .go-arch-lint.yml this file configures the layer rules; the user must approve the edit
+ask .github/workflows/* this file configures CI; the user must approve the edit
+ask mise.toml this file pins the toolchain; the user must approve the edit

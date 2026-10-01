@@ -1,0 +1,9 @@
+{
+  "tool": "bash",
+  "sessionID": "ses_3f9a1c2b7d8e",
+  "callID": "call_02",
+  "args": {
+    "command": "git commit --no-verify -m 'feat: add clip'",
+    "description": "Commit without hooks"
+  }
+}

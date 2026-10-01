@@ -8,5 +8,5 @@ type Config struct {
 	Languages []value.Language
 	Mouse     bool
 	Copy      Copy
-	Bindings  map[Scope]map[Binding][]string
+	Bindings  map[Scope]map[Binding][]Key
 }

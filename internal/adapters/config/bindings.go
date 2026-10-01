@@ -8,14 +8,17 @@ import (
 	"strings"
 )
 
-const keyBindings = "bindings"
+const (
+	keyBindings        = "bindings"
+	problemsPerBinding = 2
+)
 
-func layerBindings(defaults, user rawBindings) (map[Scope]map[Binding][]string, error) {
+func layerBindings(defaults, user rawBindings) (typedBindingMap, error) {
 	layered := cloneBindings(defaults)
 	overlayErr := overlayBindings(layered, user)
 	typed, typedErr := typedBindings(layered)
 
-	return typed, errors.Join(overlayErr, typedErr)
+	return typed, errors.Join(overlayErr, typedErr, checkBindings(typed))
 }
 
 func cloneBindings(bindings rawBindings) rawBindings {
@@ -60,11 +63,11 @@ func overlayScope(scope string, known, user map[string][]string) error {
 	return errors.Join(problems...)
 }
 
-func typedBindings(raw rawBindings) (map[Scope]map[Binding][]string, error) {
-	typed := make(map[Scope]map[Binding][]string, len(raw))
+func typedBindings(raw rawBindings) (typedBindingMap, error) {
+	typed := make(typedBindingMap, len(raw))
 	problems := make([]error, 0)
 
-	for scopeName, names := range raw {
+	for _, scopeName := range slices.Sorted(maps.Keys(raw)) {
 		scope, err := ParseScope(scopeName)
 		if err != nil {
 			problems = append(problems, atKey(scopeKey(scopeName), err))
@@ -72,15 +75,44 @@ func typedBindings(raw rawBindings) (map[Scope]map[Binding][]string, error) {
 			continue
 		}
 
-		typed[scope] = make(map[Binding][]string, len(names))
-		for name, keys := range names {
-			binding, err := ParseBinding(name)
-			problems = append(problems, atKey(bindingKey(scopeName, name), err))
-			typed[scope][binding] = keys
-		}
+		typed[scope], err = typedScope(scopeName, raw[scopeName])
+		problems = append(problems, err)
 	}
 
 	return typed, errors.Join(problems...)
+}
+
+func typedScope(scopeName string, raw map[string][]string) (map[Binding][]Key, error) {
+	typed := make(map[Binding][]Key, len(raw))
+	problems := make([]error, 0, len(raw)*problemsPerBinding)
+
+	for _, name := range slices.Sorted(maps.Keys(raw)) {
+		path := bindingKey(scopeName, name)
+		binding, bindingErr := ParseBinding(name)
+		keys, keysErr := parseKeys(path, raw[name])
+		problems = append(problems, atKey(path, bindingErr), keysErr)
+		typed[binding] = keys
+	}
+
+	return typed, errors.Join(problems...)
+}
+
+func parseKeys(path string, written []string) ([]Key, error) {
+	keys := make([]Key, 0, len(written))
+	problems := make([]error, 0)
+
+	for _, raw := range written {
+		key, err := ParseKey(raw)
+		if err != nil {
+			problems = append(problems, atKey(path, err))
+
+			continue
+		}
+
+		keys = append(keys, key)
+	}
+
+	return keys, errors.Join(problems...)
 }
 
 func unknownScopeError() error {

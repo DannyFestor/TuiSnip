@@ -155,16 +155,18 @@ Key strings use the names Bubble Tea v2 produces, because `key.Matches` compares
 - a named key: `enter`, `esc`, `space`, `tab`, `backspace`, `delete`, `insert`, `up`, `down`, `left`, `right`, `home`, `end`, `pgup`, `pgdown`, `f1` to `f12`
 - modifiers joined with `+`: `ctrl`, `alt`, `shift`, `meta`, `super`, `hyper`, for example `ctrl+s` or `shift+tab`
 
-The validator writes modifiers in Bubble Tea's order (`ctrl+alt+shift+meta+hyper+super`), so `shift+ctrl+up` is accepted as `ctrl+shift+up`. It rejects, with a hint:
+The validator writes modifiers in Bubble Tea's order (`ctrl+alt+shift+meta+hyper+super`), so `shift+ctrl+up` is accepted as `ctrl+shift+up`. Conflicts are checked on that form. It rejects a key that Bubble Tea never reports, with a hint:
 
 | Written | Error |
 |---|---|
-| `" "` | use `space` |
-| `shift+e` | Bubble Tea reports a shifted letter as the capital; write `E` |
-| `escape` | use `esc` |
-| an unknown name | not a key |
+| `" "` | `" " never matches; write "space"` |
+| `escape`, `alt+escape` | `"escape" never matches; write "esc"` |
+| `shift+e`, `shift+E` | `"shift+e" never matches; write "E"`. With only shift held, Bubble Tea reports the character typed. |
+| `shift+1` | `"shift+1" never matches; write the character it types`. The character depends on the keyboard layout. |
+| `ctrl+E` | `"ctrl+E" never matches; write "ctrl+shift+e"`. With any other modifier held, Bubble Tea reports the unshifted letter and `shift`. |
+| an unknown name, a repeated or capitalised modifier, `""` | `"f13" is not a key` |
 
-The validator is a fuzz target alongside the config parser (`docs/standards/testing.md`).
+`ParseKey` and the conflict rules are fuzz targets alongside the config loader (`FuzzParseKey`, `FuzzLoadBindings`; see `docs/standards/testing.md`).
 
 ### Conflicts
 
@@ -172,9 +174,11 @@ TuiSnip refuses to start when:
 
 - two Bindings in the same Scope share a key
 - a `global` Binding shares a key with a Binding in `folders`, `tags`, `snippet_list`, or `snippet_pane`
-- a text-entry Scope binds a printable key without a modifier, since it would swallow typing. `esc`, `enter`, `tab`, and `ctrl+…` are fine.
+- a text-entry Scope binds a printable key or `space` without a modifier, since it would swallow typing. `esc`, `enter`, `tab`, the arrows, and `ctrl+…` or `alt+…` are fine.
 
-The same key in two Scopes that are never active together, such as `d` in `folders` and `snippet_list`, or `save` in `editor` and `content`, is fine.
+The same key in two Scopes that are never active together, such as `d` in `folders` and `snippet_list`, or `save` in `editor` and `content`, is fine. So is a `global` key in a text-entry Scope or in `confirm`, because `global` is inactive there. A key listed twice in one Binding is not a conflict.
+
+A conflict is reported on the later Binding in alphabetical order, or on the `global` Binding when it clashes with a pane Scope.
 
 ### ctrl+c
 

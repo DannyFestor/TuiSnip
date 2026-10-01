@@ -1,8 +1,8 @@
-name: Nightly
+name: Weekly
 
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 permissions:

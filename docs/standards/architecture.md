@@ -42,6 +42,7 @@ internal/
     system/                  Clock and IDGenerator
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program
+      overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

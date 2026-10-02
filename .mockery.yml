@@ -21,6 +21,10 @@ packages:
       SnippetCopier: {}
       SnippetCreator: {}
       SnippetSearcher: {}
+  github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:
+    interfaces:
+      Overlay: {}
+      Parent: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/memsearch:
     interfaces:
       SnippetLister: {}

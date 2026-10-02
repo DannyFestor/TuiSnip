@@ -1,5 +1,7 @@
 package tui
 
+import tea "charm.land/bubbletea/v2"
+
 const (
 	leftColumnPercent    = 22
 	snippetListPercent   = 30
@@ -16,6 +18,10 @@ const (
 type size struct {
 	width  int
 	height int
+}
+
+func sizeOf(screen tea.WindowSizeMsg) size {
+	return size{width: screen.Width, height: screen.Height}
 }
 
 type columns struct {

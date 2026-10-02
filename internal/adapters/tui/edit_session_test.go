@@ -213,6 +213,25 @@ func TestModel_editOverlayPendingSave(t *testing.T) {
 		assert.NotContains(t, screen.screen(), editOverlayTitle)
 	})
 
+	t.Run("ctrl+c while a save is pending leaves no confirmation after it succeeds", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 1)
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().Run(mock.Anything, mock.Anything).Return(snippets[0], nil)
+		screen := start(t, savingModel(t, creator, snippets), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('x'))
+		screen.hold()
+		screen.press(ctrl('s'), ctrl('c'))
+		asked := screen.screen()
+		screen.release()
+
+		assert.Contains(t, asked, quitQuestion)
+		assert.NotContains(t, screen.screen(), quitQuestion)
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+	})
+
 	t.Run("a rejected save can be saved again", func(t *testing.T) {
 		t.Parallel()
 
@@ -371,6 +390,16 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 		screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), wideWidth, wideHeight)
 
 		screen.press(letter('n'), letter('x'), ctrl('c'), letter('y'))
+
+		assert.Contains(t, screen.emitted, tea.QuitMsg{})
+	})
+
+	t.Run("asks to quit instead while asking to discard", func(t *testing.T) {
+		t.Parallel()
+
+		screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('x'), special(tea.KeyEscape), ctrl('c'), letter('y'))
 
 		assert.Contains(t, screen.emitted, tea.QuitMsg{})
 	})

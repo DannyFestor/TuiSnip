@@ -23,6 +23,25 @@ func TestEmptyMainScreenLayout(t *testing.T) {
 	golden.RequireEqual(t, []byte(screen.screen()))
 }
 
+func TestEditOverlayLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+	screen.press(letter('n'))
+	screen.press(typed("Prune everything")...)
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
+func TestSearchPopupLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+	screen.press(letter('/'))
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
 func TestSmallTerminalLayout(t *testing.T) {
 	t.Parallel()
 

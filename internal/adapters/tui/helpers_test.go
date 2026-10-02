@@ -55,16 +55,52 @@ func defaultSettings() tui.Settings {
 		Folders:     tui.FoldersKeyMap{NewFolder: []string{"N"}},
 		SnippetList: tui.SnippetListKeyMap{Copy: []string{"y"}},
 		SnippetPane: tui.SnippetPaneKeyMap{Copy: []string{"y"}},
-		Location:    time.UTC,
+		Editor: tui.EditorKeyMap{
+			Save:      []string{"ctrl+s"},
+			Cancel:    []string{"esc"},
+			NextField: []string{"down", "tab"},
+			PrevField: []string{"up", "shift+tab"},
+			OpenField: []string{"enter"},
+		},
+		Content: tui.ContentKeyMap{Save: []string{"ctrl+s"}, Leave: []string{"esc"}},
+		Search: tui.SearchKeyMap{
+			Down:   []string{"down", "ctrl+n", "ctrl+j"},
+			Up:     []string{"up", "ctrl+p", "ctrl+k"},
+			Accept: []string{"enter"},
+			Copy:   []string{"ctrl+y"},
+			Cancel: []string{"esc"},
+		},
+		Confirm:  tui.ConfirmKeyMap{Yes: []string{"y"}, No: []string{"n", "esc", "enter"}},
+		Location: time.UTC,
 	}
 }
 
 func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetCopier) tui.Model {
 	t.Helper()
 
+	return modelWith(t, actions{
+		lister:   lister,
+		copier:   copier,
+		creator:  NewMockSnippetCreator(t),
+		searcher: NewMockSnippetSearcher(t),
+	})
+}
+
+type actions struct {
+	lister   tui.FolderSnippetsLister
+	copier   tui.SnippetCopier
+	creator  tui.SnippetCreator
+	searcher tui.SnippetSearcher
+}
+
+func modelWith(t *testing.T, with actions) tui.Model {
+	t.Helper()
+
 	model, err := tui.New(t.Context(), tui.Deps{
-		Lister:   lister,
-		Copier:   copier,
+		Lister:   with.lister,
+		Copier:   with.copier,
+		Creator:  with.creator,
+		Searcher: with.searcher,
 		Settings: defaultSettings(),
 		Logger:   slog.New(slog.DiscardHandler),
 	})
@@ -78,6 +114,22 @@ func listerOf(t *testing.T, snippets ...domain.Snippet) *MockFolderSnippetsListe
 
 	lister := NewMockFolderSnippetsLister(t)
 	lister.EXPECT().Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).Return(snippets, nil)
+
+	return lister
+}
+
+func listerReturning(t *testing.T, first, then []domain.Snippet) *MockFolderSnippetsLister {
+	t.Helper()
+
+	lister := NewMockFolderSnippetsLister(t)
+	lister.EXPECT().
+		Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).
+		Return(first, nil).
+		Once()
+	lister.EXPECT().
+		Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).
+		Return(then, nil).
+		Once()
 
 	return lister
 }
@@ -198,4 +250,13 @@ func special(code rune) tea.KeyPressMsg {
 
 func ctrl(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
+}
+
+func typed(text string) []tea.KeyPressMsg {
+	pressed := make([]tea.KeyPressMsg, 0, len(text))
+	for _, r := range text {
+		pressed = append(pressed, letter(r))
+	}
+
+	return pressed
 }

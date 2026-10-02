@@ -21,7 +21,7 @@ Everything in the v1 spec.
 
 ## v1.3
 
-- FTS5 full-text search behind the existing Search port.
+- FTS5 trigram search for Content behind the existing Search port. Title, Description, and Tags stay fuzzy-matched with fzf ([ADR 0002](docs/adr/0002-search-splits-fuzzy-fields-from-content.md)).
 - Search scoped to the current Folder or Tag.
 - `#tag` filters in the query.
 - A cached in-memory Search index, refreshed after writes, if loading every Snippet on each query is too slow.

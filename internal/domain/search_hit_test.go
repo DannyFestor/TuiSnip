@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/stretchr/testify/assert"
 
@@ -57,32 +58,58 @@ func TestCompareSearchHits(t *testing.T) {
 
 	older := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 	newer := older.Add(time.Hour)
+	first := domain.SnippetID(uuid.MustParse("0194c3a0-0000-7000-8000-000000000001"))
+	second := domain.SnippetID(uuid.MustParse("0194c3a0-0000-7000-8000-000000000002"))
 
 	tests := []struct {
 		name      string
 		hits      []searchHitSpec
-		wantOrder []string
+		wantOrder []domain.SnippetID
 	}{
 		{
 			name:      "orders by score, highest first",
-			hits:      []searchHitSpec{{title: "low", score: 1}, {title: "high", score: 9}},
-			wantOrder: []string{"high", "low"},
+			hits:      []searchHitSpec{{id: first, title: "low", score: 1}, {id: second, title: "high", score: 9}},
+			wantOrder: []domain.SnippetID{second, first},
 		},
 		{
 			name: "breaks a score tie by the most recently updated",
 			hits: []searchHitSpec{
-				{title: "older", score: 5, updatedAt: older},
-				{title: "newer", score: 5, updatedAt: newer},
+				{id: first, title: "older", score: 5, updatedAt: older},
+				{id: second, title: "newer", score: 5, updatedAt: newer},
 			},
-			wantOrder: []string{"newer", "older"},
+			wantOrder: []domain.SnippetID{second, first},
 		},
 		{
 			name: "breaks a full tie by title",
 			hits: []searchHitSpec{
-				{title: "zsh", score: 5, updatedAt: older},
-				{title: "awk", score: 5, updatedAt: older},
+				{id: first, title: "zsh", score: 5, updatedAt: older},
+				{id: second, title: "awk", score: 5, updatedAt: older},
 			},
-			wantOrder: []string{"awk", "zsh"},
+			wantOrder: []domain.SnippetID{second, first},
+		},
+		{
+			name: "orders titles case-insensitively",
+			hits: []searchHitSpec{
+				{id: first, title: "Bash", score: 5, updatedAt: older},
+				{id: second, title: "awk", score: 5, updatedAt: older},
+			},
+			wantOrder: []domain.SnippetID{second, first},
+		},
+		{
+			name: "breaks a tie on titles differing only in case by ID",
+			hits: []searchHitSpec{
+				{id: second, title: "Curl", score: 5, updatedAt: older},
+				{id: first, title: "curl", score: 5, updatedAt: older},
+			},
+			wantOrder: []domain.SnippetID{first, second},
+		},
+		{
+			name: "breaks a tie on identical titles by ID",
+			hits: []searchHitSpec{
+				{id: second, title: "curl", score: 5, updatedAt: older},
+				{id: first, title: "curl", score: 5, updatedAt: older},
+			},
+			wantOrder: []domain.SnippetID{first, second},
 		},
 	}
 	for _, tt := range tests {
@@ -93,12 +120,13 @@ func TestCompareSearchHits(t *testing.T) {
 
 			slices.SortFunc(hits, domain.CompareSearchHits)
 
-			assert.Equal(t, tt.wantOrder, hitTitles(hits))
+			assert.Equal(t, tt.wantOrder, hitIDs(hits))
 		})
 	}
 }
 
 type searchHitSpec struct {
+	id        domain.SnippetID
 	title     string
 	score     int
 	updatedAt time.Time
@@ -109,18 +137,18 @@ func buildSearchHits(t *testing.T, specs []searchHitSpec) []domain.SearchHit {
 
 	hits := make([]domain.SearchHit, 0, len(specs))
 	for _, spec := range specs {
-		snippet := testkit.Snippet(t, testkit.SnippetSpec{Title: spec.title, UpdatedAt: spec.updatedAt})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: spec.id, Title: spec.title, UpdatedAt: spec.updatedAt})
 		hits = append(hits, domain.NewSearchHit(snippet, domain.FieldScores{Content: spec.score}))
 	}
 
 	return hits
 }
 
-func hitTitles(hits []domain.SearchHit) []string {
-	titles := make([]string, 0, len(hits))
+func hitIDs(hits []domain.SearchHit) []domain.SnippetID {
+	ids := make([]domain.SnippetID, 0, len(hits))
 	for i := range hits {
-		titles = append(titles, hits[i].Snippet().Title().String())
+		ids = append(ids, hits[i].Snippet().ID())
 	}
 
-	return titles
+	return ids
 }

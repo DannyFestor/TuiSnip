@@ -67,7 +67,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 
 `domain` receives IDs and timestamps as arguments. Actions get them from the `IDGenerator` and `Clock` interfaces, so domain constructors stay deterministic in tests.
 
-The in-memory Search index loads Snippets through its own interface, and `bootstrap` gives it the SQLite repository. The FTS5 index on the roadmap replaces `memsearch` without touching `search.Query`. Both use the weight table in `domain`.
+The in-memory Search index loads Snippets through its own interface, and `bootstrap` gives it the SQLite repository. The FTS5 index on the roadmap takes over Content from `memsearch` without touching `search.Query`, and Title, Description, and Tags stay fuzzy-matched in memory ([ADR 0002](../adr/0002-search-splits-fuzzy-fields-from-content.md)). Both use the weight table in `domain`.
 
 Copy returns a delivery result. When it says the text still has to reach the terminal (OSC 52), the TUI sends `tea.SetClipboard`, because only a Bubble Tea command can write to the terminal safely. The TUI shows "Copied" or "Sent to terminal" based on the same result.
 

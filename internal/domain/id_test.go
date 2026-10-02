@@ -19,6 +19,31 @@ func TestID_String(t *testing.T) {
 	assert.Equal(t, storedID, id.String())
 }
 
+func TestID_Compare(t *testing.T) {
+	t.Parallel()
+
+	lower := domain.SnippetID(uuid.MustParse("0194c3a0-0000-7000-8000-000000000001"))
+	higher := domain.SnippetID(uuid.MustParse("0194c3a0-0000-7000-8000-0000000000a0"))
+
+	tests := []struct {
+		name  string
+		id    domain.SnippetID
+		other domain.SnippetID
+		want  int
+	}{
+		{name: "orders a lower ID first", id: lower, other: higher, want: -1},
+		{name: "orders a higher ID last", id: higher, other: lower, want: 1},
+		{name: "finds an ID equal to itself", id: lower, other: lower, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, tt.id.Compare(tt.other))
+		})
+	}
+}
+
 func TestID_IsNil(t *testing.T) {
 	t.Parallel()
 

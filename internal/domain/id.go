@@ -1,6 +1,9 @@
 package domain
 
-import "uuid"
+import (
+	"bytes"
+	"uuid"
+)
 
 // ID is generic over the entity it identifies, so a FolderID cannot be passed where a
 // SnippetID belongs, while the methods exist once.
@@ -20,6 +23,10 @@ type (
 
 func (id ID[E]) String() string {
 	return uuid.UUID(id).String()
+}
+
+func (id ID[E]) Compare(other ID[E]) int {
+	return bytes.Compare(id[:], other[:])
 }
 
 func (id ID[E]) IsNil() bool {

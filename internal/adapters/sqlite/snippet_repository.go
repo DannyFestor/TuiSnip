@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -65,6 +66,23 @@ func (r *SnippetRepository) List(ctx context.Context) ([]domain.Snippet, error) 
 	return snippets, nil
 }
 
+func (r *SnippetRepository) ListInFolder(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error) {
+	var snippets []domain.Snippet
+
+	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		var listErr error
+
+		snippets, listErr = r.listInFolderWith(ctx, queries, folderColumn(folderID))
+
+		return listErr
+	})
+	if err != nil {
+		return nil, fmt.Errorf("sqlite.SnippetRepository.ListInFolder: %w", err)
+	}
+
+	return snippets, nil
+}
+
 func (r *SnippetRepository) findWith(
 	ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID,
 ) (domain.Snippet, error) {
@@ -96,13 +114,35 @@ func (r *SnippetRepository) listWith(ctx context.Context, queries *sqlcgen.Queri
 		return nil, fmt.Errorf("list fragments: %w", err)
 	}
 
+	return r.rebuildAll(ctx, rows, fragmentRows)
+}
+
+func (r *SnippetRepository) listInFolderWith(
+	ctx context.Context, queries *sqlcgen.Queries, folderID *sqltype.ID,
+) ([]domain.Snippet, error) {
+	rows, err := queries.ListSnippetsInFolder(ctx, folderID)
+	if err != nil {
+		return nil, fmt.Errorf("list snippets in folder: %w", err)
+	}
+
+	fragmentRows, err := queries.ListFragmentsInFolder(ctx, folderID)
+	if err != nil {
+		return nil, fmt.Errorf("list fragments in folder: %w", err)
+	}
+
+	return r.rebuildAll(ctx, rows, fragmentRows)
+}
+
+func (r *SnippetRepository) rebuildAll(
+	ctx context.Context, rows []sqlcgen.Snippet, fragmentRows []sqlcgen.Fragment,
+) ([]domain.Snippet, error) {
 	fragments := fragmentsBySnippet(fragmentRows)
 	snippets := make([]domain.Snippet, 0, len(rows))
 
 	for _, row := range rows {
-		snippet, rebuildErr := r.rebuild(ctx, row, fragments[row.ID])
-		if rebuildErr != nil {
-			return nil, rebuildErr
+		snippet, err := r.rebuild(ctx, row, fragments[row.ID])
+		if err != nil {
+			return nil, err
 		}
 
 		snippets = append(snippets, snippet)

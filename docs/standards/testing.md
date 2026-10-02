@@ -127,11 +127,18 @@ Set only the fields the test is about. A test that states every field hides whic
 - Build the app with `newTestApp(t)`. Each test gets its own database file in `t.TempDir()`, so parallel tests share nothing and run with production's pragmas. Why not `:memory:`: [database](database.md#tests).
 - Drive and check behaviour **only through Actions**. Create a Snippet with `snippet.Create`, then read it back with `browse.SnippetsInFolder`. Raw SQL would tie the tier to the schema, and this tier exists to test behaviour.
 
+## TUI unit tests
+
+- Test the `tui` model with mocked Actions. Send it messages through `Update` and run the returned commands in the test, so every step is synchronous and the order never depends on timing.
+- Check what the user sees: the rendered `View()` with ANSI stripped, or the messages the model emitted (`tea.SetClipboard`, `tea.QuitMsg`). Not the model's fields.
+- A small number of golden-file snapshots guard the layout of the main screens. Each is the final `View()`, ANSI stripped, at 120×40, saved in `testdata/<Test>.golden` and compared with `golden.RequireEqual` from `github.com/charmbracelet/x/exp/golden`. The data comes from mocks, so dates and IDs never change. A golden of teatest's output stream would hold every intermediate frame, which depends on when asynchronous messages arrive. After an intended layout change, regenerate with `go test ./internal/adapters/tui/... -update` and review the snapshot diff in the PR.
+- Add a golden only for layout. Behaviour checks use substring assertions, because a golden breaks on every visual change.
+- One teatest test runs the model inside a real Bubble Tea program, to catch what the synchronous driver can't, such as a model that never quits.
+
 ## e2e tests
 
 - Drive the `bootstrap`-built TUI with teatest, and wait on output with `teatest.WaitFor` and a substring check.
-- A small number of golden-file snapshots guard the layout of the main screens: a saved copy of the rendered screen in `testdata/<Test>.golden`, compared with `teatest.RequireEqualOutput(t, tm.FinalOutput(t))`. Render them at a fixed terminal size (`teatest.WithInitialTermSize(120, 40)`) with the ASCII colour profile, so they don't depend on the machine running them. After an intended layout change, regenerate with `go test -tags e2e ./test/e2e/... -update` and review the snapshot diff in the PR.
-- Add a golden only for layout. Flow checks use `WaitFor`, because a golden breaks on every visual change.
+- e2e tests check flows, not layout. The layout goldens live with the `tui` unit tests.
 
 ## Fuzz and property tests
 

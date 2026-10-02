@@ -113,3 +113,43 @@ func (q *Queries) ListFragmentsBySnippet(ctx context.Context, snippetID sqltype.
 	}
 	return items, nil
 }
+
+const listFragmentsInFolder = `-- name: ListFragmentsInFolder :many
+SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
+       fragments.created_at, fragments.updated_at
+FROM fragments
+JOIN snippets ON snippets.id = fragments.snippet_id
+WHERE snippets.folder_id IS ?1
+ORDER BY fragments.snippet_id, fragments.position
+`
+
+func (q *Queries) ListFragmentsInFolder(ctx context.Context, folderID *sqltype.ID) ([]Fragment, error) {
+	rows, err := q.db.QueryContext(ctx, listFragmentsInFolder, folderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Fragment{}
+	for rows.Next() {
+		var i Fragment
+		if err := rows.Scan(
+			&i.ID,
+			&i.SnippetID,
+			&i.Position,
+			&i.Language,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

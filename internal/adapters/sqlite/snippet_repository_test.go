@@ -39,12 +39,7 @@ func TestSnippetRepository_Find(t *testing.T) {
 		path := newDatabasePath(t)
 		repository := newSnippetRepository(t, openDatabase(t, path))
 		folderID := testkit.NewSequentialIDs().NewFolderID()
-		execRaw(
-			t,
-			path,
-			"INSERT INTO folders (id, name, default_language, created_at, updated_at) VALUES (?, 'scripts', 'Bash', 1, 1)",
-			folderID.String(),
-		)
+		insertRawFolder(t, path, folderID)
 		snippet := testkit.Snippet(t, testkit.SnippetSpec{FolderID: folderID})
 		require.NoError(t, repository.Insert(t.Context(), snippet))
 
@@ -184,4 +179,70 @@ func TestSnippetRepository_List(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
+}
+
+func TestSnippetRepository_ListInFolder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns the Snippets at the Root by title, ignoring case", func(t *testing.T) {
+		t.Parallel()
+
+		path := newDatabasePath(t)
+		repository := newSnippetRepository(t, openDatabase(t, path))
+		ids := testkit.NewSequentialIDs()
+		folderID := ids.NewFolderID()
+		insertRawFolder(t, path, folderID)
+		zebra := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "zebra"})
+		apple := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "Apple"})
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
+
+		got, err := repository.ListInFolder(t.Context(), domain.FolderID{})
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Snippet{apple, zebra}, got)
+	})
+
+	t.Run("returns only the Snippets inside the Folder", func(t *testing.T) {
+		t.Parallel()
+
+		path := newDatabasePath(t)
+		repository := newSnippetRepository(t, openDatabase(t, path))
+		ids := testkit.NewSequentialIDs()
+		folderID := ids.NewFolderID()
+		insertRawFolder(t, path, folderID)
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root"})
+		filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
+
+		got, err := repository.ListInFolder(t.Context(), folderID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Snippet{filed}, got)
+	})
+
+	t.Run("returns no Snippets for an empty Folder", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+
+		got, err := repository.ListInFolder(t.Context(), domain.FolderID{})
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
+func insertSnippet(
+	t *testing.T,
+	repository *sqlite.SnippetRepository,
+	ids *testkit.SequentialIDs,
+	spec testkit.SnippetSpec,
+) domain.Snippet {
+	t.Helper()
+
+	spec.ID = ids.NewSnippetID()
+	spec.Fragment.ID = ids.NewFragmentID()
+	snippet := testkit.Snippet(t, spec)
+	require.NoError(t, repository.Insert(t.Context(), snippet))
+
+	return snippet
 }

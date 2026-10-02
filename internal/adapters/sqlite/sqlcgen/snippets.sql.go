@@ -91,3 +91,40 @@ func (q *Queries) ListSnippets(ctx context.Context) ([]Snippet, error) {
 	}
 	return items, nil
 }
+
+const listSnippetsInFolder = `-- name: ListSnippetsInFolder :many
+SELECT id, folder_id, title, description, created_at, updated_at
+FROM snippets
+WHERE folder_id IS ?1
+ORDER BY title COLLATE NOCASE, id
+`
+
+func (q *Queries) ListSnippetsInFolder(ctx context.Context, folderID *sqltype.ID) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listSnippetsInFolder, folderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Snippet{}
+	for rows.Next() {
+		var i Snippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

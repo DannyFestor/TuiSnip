@@ -16,6 +16,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/db/migrations"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
@@ -68,6 +69,17 @@ func execRaw(t *testing.T, path, statement string, args ...any) {
 
 	_, err = db.ExecContext(t.Context(), statement, args...)
 	require.NoError(t, err)
+}
+
+func insertRawFolder(t *testing.T, path string, folderID domain.FolderID) {
+	t.Helper()
+
+	execRaw(
+		t,
+		path,
+		"INSERT INTO folders (id, name, default_language, created_at, updated_at) VALUES (?, 'scripts', 'Bash', 1, 1)",
+		folderID.String(),
+	)
 }
 
 func migrateRawToPreviousSchema(t *testing.T, path string) {

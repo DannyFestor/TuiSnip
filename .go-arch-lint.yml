@@ -13,7 +13,7 @@ excludeFiles:
   - "^.*_test\\.go$"
 
 vendors:
-  tui-framework:   { in: [ charm.land/** ] }
+  tui-framework:   { in: [ charm.land/**, github.com/charmbracelet/x/ansi ] }
   highlighting:    { in: [ github.com/alecthomas/chroma/v2, github.com/alecthomas/chroma/v2/** ] }
   editor-launcher: { in: [ github.com/charmbracelet/x/editor ] }
   sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }

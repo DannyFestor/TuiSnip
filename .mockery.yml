@@ -12,6 +12,13 @@ packages:
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
+  github.com/DannyFestor/TuiSnip/internal/app/browse:
+    interfaces:
+      SnippetLister: {}
+  github.com/DannyFestor/TuiSnip/internal/adapters/tui:
+    interfaces:
+      FolderSnippetsLister: {}
+      SnippetCopier: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/memsearch:
     interfaces:
       SnippetLister: {}

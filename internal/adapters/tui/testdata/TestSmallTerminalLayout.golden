@@ -1,0 +1,20 @@
+╭ 4 Snippet ───────────────────────────────────────────────╮
+│Graceful HTTP shutdown                                    │
+│Root · Go                                                 │
+│created 2026-09-06 · updated 2026-09-27                   │
+│Stop accepting, drain, exit                               │
+│──────────────────────────────────────────────────────────│
+│   1 │ func run(ctx context.Context) error {              │
+│   2 │     return srv.Shutdown(ctx)                       │
+│   3 │ }                                                  │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+╰──────────────────────────────────────────────────────────╯
+               Terminal too small for all four Panes (80×24)

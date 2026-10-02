@@ -26,8 +26,7 @@ const (
 	entrySuffix      = " to edit"
 )
 
-type editOverlay struct {
-	open        bool
+type editForm struct {
 	keys        editorBindings
 	title       textinput.Model
 	description textinput.Model
@@ -37,9 +36,8 @@ type editOverlay struct {
 	invalid     []domain.Field
 }
 
-func newEditOverlay(keys editorBindings) (editOverlay, tea.Cmd) {
-	overlay := editOverlay{
-		open:        true,
+func newEditForm(keys editorBindings) (editForm, tea.Cmd) {
+	form := editForm{
 		keys:        keys,
 		title:       newLineInput(""),
 		description: newLineInput(""),
@@ -49,14 +47,10 @@ func newEditOverlay(keys editorBindings) (editOverlay, tea.Cmd) {
 		invalid:     nil,
 	}
 
-	return overlay.focused(domain.FieldTitle)
+	return form.focused(domain.FieldTitle)
 }
 
-func noEditOverlay() editOverlay {
-	return editOverlay{}
-}
-
-func (e editOverlay) update(msg tea.Msg) (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) update(msg tea.Msg) (editForm, editRequest, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if e.inContent {
@@ -71,7 +65,7 @@ func (e editOverlay) update(msg tea.Msg) (editOverlay, editRequest, tea.Cmd) {
 	return e, editStays, nil
 }
 
-func (e editOverlay) resized(outer size) editOverlay {
+func (e editForm) resized(outer size) editForm {
 	inner := innerSize(outer)
 	inputWidth := max(1, inner.width-len(fieldIndent)-fieldLabelWidth-cursorCell)
 
@@ -83,7 +77,7 @@ func (e editOverlay) resized(outer size) editOverlay {
 	return e
 }
 
-func (e editOverlay) withInvalid(fieldErrors []domain.FieldError) editOverlay {
+func (e editForm) withInvalid(fieldErrors []domain.FieldError) editForm {
 	e.invalid = make([]domain.Field, 0, len(fieldErrors))
 	for _, fieldErr := range fieldErrors {
 		e.invalid = append(e.invalid, fieldErr.Field)
@@ -92,11 +86,11 @@ func (e editOverlay) withInvalid(fieldErrors []domain.FieldError) editOverlay {
 	return e
 }
 
-func (e editOverlay) changed() bool {
+func (e editForm) changed() bool {
 	return e.title.Value() != "" || e.description.Value() != "" || e.content.Value() != ""
 }
 
-func (e editOverlay) input() snippet.CreateInput {
+func (e editForm) input() snippet.CreateInput {
 	return snippet.CreateInput{
 		Title:       e.title.Value(),
 		Description: e.description.Value(),
@@ -104,7 +98,7 @@ func (e editOverlay) input() snippet.CreateInput {
 	}
 }
 
-func (e editOverlay) hints() []key.Binding {
+func (e editForm) hints() []key.Binding {
 	if e.inContent {
 		return e.keys.contentHints()
 	}
@@ -112,7 +106,7 @@ func (e editOverlay) hints() []key.Binding {
 	return e.keys.fieldHints()
 }
 
-func (e editOverlay) view(styles styleSet, outer size) string {
+func (e editForm) view(styles styleSet, outer size) string {
 	lines := []string{
 		e.fieldLine(styles, domain.FieldTitle, e.title.View()),
 		e.fieldLine(styles, domain.FieldDescription, e.description.View()),
@@ -123,7 +117,7 @@ func (e editOverlay) view(styles styleSet, outer size) string {
 	return frame(styles.focused, e.frameTitle(), strings.Join(lines, "\n"), outer)
 }
 
-func (e editOverlay) fieldPressed(msg tea.KeyPressMsg) (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) fieldPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.Cmd) {
 	switch {
 	case key.Matches(msg, e.keys.save):
 		return e, editSaves, nil
@@ -138,7 +132,7 @@ func (e editOverlay) fieldPressed(msg tea.KeyPressMsg) (editOverlay, editRequest
 	return e.typed(msg)
 }
 
-func (e editOverlay) contentPressed(msg tea.KeyPressMsg) (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) contentPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.Cmd) {
 	switch {
 	case key.Matches(msg, e.keys.contentSave):
 		return e, editSaves, nil
@@ -151,7 +145,7 @@ func (e editOverlay) contentPressed(msg tea.KeyPressMsg) (editOverlay, editReque
 	return e.typed(msg)
 }
 
-func (e editOverlay) pasted(msg tea.PasteMsg) (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) pasted(msg tea.PasteMsg) (editForm, editRequest, tea.Cmd) {
 	if e.inContent && strings.Contains(msg.Content, tabCharacter) {
 		return e, editRefusesPaste, nil
 	}
@@ -159,7 +153,7 @@ func (e editOverlay) pasted(msg tea.PasteMsg) (editOverlay, editRequest, tea.Cmd
 	return e.typed(msg)
 }
 
-func (e editOverlay) typed(msg tea.Msg) (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) typed(msg tea.Msg) (editForm, editRequest, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch e.field {
@@ -176,7 +170,7 @@ func (e editOverlay) typed(msg tea.Msg) (editOverlay, editRequest, tea.Cmd) {
 	return e, editStays, cmd
 }
 
-func (e editOverlay) advanced() (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) advanced() (editForm, editRequest, tea.Cmd) {
 	if e.field == domain.FieldContent {
 		next, cmd := e.enteredContent()
 
@@ -188,13 +182,13 @@ func (e editOverlay) advanced() (editOverlay, editRequest, tea.Cmd) {
 	return next, editStays, cmd
 }
 
-func (e editOverlay) steppedBack() (editOverlay, editRequest, tea.Cmd) {
+func (e editForm) steppedBack() (editForm, editRequest, tea.Cmd) {
 	next, cmd := e.focused(e.fieldAt(-1))
 
 	return next, editStays, cmd
 }
 
-func (e editOverlay) focused(field domain.Field) (editOverlay, tea.Cmd) {
+func (e editForm) focused(field domain.Field) (editForm, tea.Cmd) {
 	e.field = field
 	e = e.leftContent()
 	e.title.Blur()
@@ -211,27 +205,27 @@ func (e editOverlay) focused(field domain.Field) (editOverlay, tea.Cmd) {
 	return e, nil
 }
 
-func (e editOverlay) enteredContent() (editOverlay, tea.Cmd) {
+func (e editForm) enteredContent() (editForm, tea.Cmd) {
 	e.inContent = true
 
 	return e, e.content.Focus()
 }
 
-func (e editOverlay) leftContent() editOverlay {
+func (e editForm) leftContent() editForm {
 	e.inContent = false
 	e.content.Blur()
 
 	return e
 }
 
-func (e editOverlay) fieldAt(offset int) domain.Field {
+func (e editForm) fieldAt(offset int) domain.Field {
 	fields := editFields()
 	index := slices.Index(fields, e.field) + offset
 
 	return fields[max(0, min(index, len(fields)-1))]
 }
 
-func (e editOverlay) fieldLine(styles styleSet, field domain.Field, entry string) string {
+func (e editForm) fieldLine(styles styleSet, field domain.Field, entry string) string {
 	cursor := fieldIndent
 	label := styles.plain
 
@@ -247,7 +241,7 @@ func (e editOverlay) fieldLine(styles styleSet, field domain.Field, entry string
 	return cursor + label.Render(fitWidth(fieldLabel(field), fieldLabelWidth)) + entry
 }
 
-func (e editOverlay) contentEntryHint(styles styleSet) string {
+func (e editForm) contentEntryHint(styles styleSet) string {
 	if e.inContent {
 		return ""
 	}
@@ -266,7 +260,7 @@ func (e editOverlay) contentEntryHint(styles styleSet) string {
 	return styles.dim.Render(strings.Join(entryKeys, entryKeysJoiner) + entrySuffix)
 }
 
-func (e editOverlay) frameTitle() string {
+func (e editForm) frameTitle() string {
 	if e.changed() {
 		return editOverlayTitle + unsavedMarker
 	}

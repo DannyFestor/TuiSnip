@@ -12,14 +12,11 @@ import (
 
 type SnippetRepository struct {
 	db     *sql.DB
-	loader snippetLoader
+	logger *slog.Logger
 }
 
 func NewSnippetRepository(database *Database, logger *slog.Logger) *SnippetRepository {
-	return &SnippetRepository{
-		db:     database.db,
-		loader: snippetLoader{db: database.db, logger: logger},
-	}
+	return &SnippetRepository{db: database.db, logger: logger}
 }
 
 func (r *SnippetRepository) Insert(ctx context.Context, snippet domain.Snippet) error {
@@ -34,7 +31,7 @@ func (r *SnippetRepository) Insert(ctx context.Context, snippet domain.Snippet) 
 }
 
 func (r *SnippetRepository) Find(ctx context.Context, id domain.SnippetID) (domain.Snippet, error) {
-	snippet, err := r.loader.loadOne(ctx, snippetByID(id))
+	snippet, err := r.loadOne(ctx, snippetByID(id))
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("sqlite.SnippetRepository.Find: %w", err)
 	}
@@ -43,7 +40,7 @@ func (r *SnippetRepository) Find(ctx context.Context, id domain.SnippetID) (doma
 }
 
 func (r *SnippetRepository) List(ctx context.Context) ([]domain.Snippet, error) {
-	snippets, err := r.loader.loadAll(ctx, allSnippets())
+	snippets, err := r.loadAll(ctx, allSnippets())
 	if err != nil {
 		return nil, fmt.Errorf("sqlite.SnippetRepository.List: %w", err)
 	}
@@ -52,7 +49,7 @@ func (r *SnippetRepository) List(ctx context.Context) ([]domain.Snippet, error) 
 }
 
 func (r *SnippetRepository) ListInFolder(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error) {
-	snippets, err := r.loader.loadAll(ctx, snippetsInFolder(folderID))
+	snippets, err := r.loadAll(ctx, snippetsInFolder(folderID))
 	if err != nil {
 		return nil, fmt.Errorf("sqlite.SnippetRepository.ListInFolder: %w", err)
 	}

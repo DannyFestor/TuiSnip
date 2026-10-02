@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
@@ -10,18 +9,13 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-type snippetLoader struct {
-	db     *sql.DB
-	logger *slog.Logger
-}
-
 type loadedRows struct {
 	snippets  []sqlcgen.Snippet
 	fragments map[sqltype.ID][]sqlcgen.Fragment
 }
 
-func (l snippetLoader) loadOne(ctx context.Context, selection snippetSelection) (domain.Snippet, error) {
-	rows, err := l.read(ctx, selection)
+func (r *SnippetRepository) loadOne(ctx context.Context, selection snippetSelection) (domain.Snippet, error) {
+	rows, err := r.read(ctx, selection)
 	if err != nil {
 		return domain.Snippet{}, err
 	}
@@ -30,11 +24,11 @@ func (l snippetLoader) loadOne(ctx context.Context, selection snippetSelection) 
 		return domain.Snippet{}, domain.ErrNotFound
 	}
 
-	return l.rebuild(ctx, rows, rows.snippets[0], slog.LevelError)
+	return r.rebuild(ctx, rows, rows.snippets[0], slog.LevelError)
 }
 
-func (l snippetLoader) loadAll(ctx context.Context, selection snippetSelection) ([]domain.Snippet, error) {
-	rows, err := l.read(ctx, selection)
+func (r *SnippetRepository) loadAll(ctx context.Context, selection snippetSelection) ([]domain.Snippet, error) {
+	rows, err := r.read(ctx, selection)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +36,7 @@ func (l snippetLoader) loadAll(ctx context.Context, selection snippetSelection) 
 	snippets := make([]domain.Snippet, 0, len(rows.snippets))
 
 	for _, row := range rows.snippets {
-		snippet, rebuildErr := l.rebuild(ctx, rows, row, slog.LevelWarn)
+		snippet, rebuildErr := r.rebuild(ctx, rows, row, slog.LevelWarn)
 		if rebuildErr != nil {
 			continue
 		}
@@ -53,10 +47,10 @@ func (l snippetLoader) loadAll(ctx context.Context, selection snippetSelection) 
 	return snippets, nil
 }
 
-func (l snippetLoader) read(ctx context.Context, selection snippetSelection) (loadedRows, error) {
+func (r *SnippetRepository) read(ctx context.Context, selection snippetSelection) (loadedRows, error) {
 	var rows loadedRows
 
-	err := inReadTransaction(ctx, l.db, func(queries *sqlcgen.Queries) error {
+	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
 		var selectErr error
 
 		rows, selectErr = selection.selectRows(ctx, queries)
@@ -67,12 +61,12 @@ func (l snippetLoader) read(ctx context.Context, selection snippetSelection) (lo
 	return rows, err
 }
 
-func (l snippetLoader) rebuild(
+func (r *SnippetRepository) rebuild(
 	ctx context.Context, rows loadedRows, row sqlcgen.Snippet, corruptLevel slog.Level,
 ) (domain.Snippet, error) {
 	snippet, err := snippetFromRows(row, rows.fragments[row.ID])
 	if err != nil {
-		l.logger.LogAttrs(
+		r.logger.LogAttrs(
 			ctx,
 			corruptLevel,
 			"snippet row is corrupt",

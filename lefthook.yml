@@ -1,5 +1,7 @@
 pre-commit:
   jobs:
+    - name: refuse-commit-to-main
+      run: scripts/refuse-commit-to-main.sh
     - name: fmt
       glob: "*.go"
       run: golangci-lint fmt {staged_files}

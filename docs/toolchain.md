@@ -26,7 +26,7 @@ Rejected: Task, just, and mage. mise could pin any of them, but none comes prein
 
 | Hook | Job |
 |---|---|
-| pre-commit | `golangci-lint fmt` on staged Go files with `stage_fixed`, shellcheck on staged shell scripts |
+| pre-commit | `scripts/refuse-commit-to-main.sh`, `golangci-lint fmt` on staged Go files with `stage_fixed`, shellcheck on staged shell scripts |
 | commit-msg | `cog verify` |
 | pre-push | `scripts/refuse-push-to-main.sh`, `golangci-lint run` on the packages changed since `origin/main`, the unit tests. The feature and e2e tests run only with `TUISNIP_SLOW_TESTS=1`. |
 

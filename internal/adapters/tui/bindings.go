@@ -12,6 +12,8 @@ const (
 	labelSearch     = "Search"
 	labelNewFolder  = "new Folder"
 	labelHelp       = "help"
+	labelNew        = "new"
+	labelSearchHint = "search"
 )
 
 type navigationBinding struct {
@@ -26,16 +28,23 @@ type movementBinding struct {
 
 type bindings struct {
 	quit        key.Binding
+	newSnippet  key.Binding
+	openSearch  key.Binding
 	navigations []navigationBinding
 	movements   []movementBinding
 	listCopy    key.Binding
 	paneCopy    key.Binding
 	emptyHints  []key.Binding
+	editor      editorBindings
+	search      searchBindings
+	confirm     confirmBindings
 }
 
 func newBindings(settings Settings) bindings {
 	return bindings{
 		quit:        unlabelled(settings.Global.Quit),
+		newSnippet:  labelled(settings.Global.NewSnippet, labelNew),
+		openSearch:  labelled(settings.Global.Search, labelSearchHint),
 		navigations: navigationBindings(settings.Global),
 		movements:   movementBindings(settings.Global),
 		listCopy:    labelled(settings.SnippetList.Copy, labelCopy),
@@ -47,7 +56,22 @@ func newBindings(settings Settings) bindings {
 			labelled(settings.Folders.NewFolder, labelNewFolder),
 			labelled(settings.Global.Help, labelHelp),
 		},
+		editor:  newEditorBindings(settings.Editor, settings.Content),
+		search:  newSearchBindings(settings.Search),
+		confirm: newConfirmBindings(settings.Confirm),
 	}
+}
+
+func (b bindings) paneHints(focus pane) []key.Binding {
+	switch focus {
+	case paneList:
+		return []key.Binding{b.listCopy, b.newSnippet, b.openSearch}
+	case paneSnippet:
+		return []key.Binding{b.paneCopy, b.openSearch}
+	case paneFolders, paneTags:
+	}
+
+	return []key.Binding{b.openSearch}
 }
 
 func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {

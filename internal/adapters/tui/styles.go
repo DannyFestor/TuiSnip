@@ -7,6 +7,7 @@ const (
 	mutedColor        = "#666666"
 	cursorTextColor   = "#FFFFFF"
 	cursorUnfocusedBg = "#3A3A3A"
+	invalidColor      = "#FF5F5F"
 )
 
 type paneLook struct {
@@ -20,6 +21,8 @@ type styleSet struct {
 	unfocused paneLook
 	dim       lipgloss.Style
 	bold      lipgloss.Style
+	plain     lipgloss.Style
+	invalid   lipgloss.Style
 }
 
 func newStyleSet() styleSet {
@@ -37,8 +40,10 @@ func newStyleSet() styleSet {
 			title:  lipgloss.NewStyle().Foreground(muted),
 			cursor: lipgloss.NewStyle().Background(lipgloss.Color(cursorUnfocusedBg)),
 		},
-		dim:  lipgloss.NewStyle().Foreground(muted),
-		bold: lipgloss.NewStyle().Bold(true),
+		dim:     lipgloss.NewStyle().Foreground(muted),
+		bold:    lipgloss.NewStyle().Bold(true),
+		plain:   lipgloss.NewStyle(),
+		invalid: lipgloss.NewStyle().Foreground(lipgloss.Color(invalidColor)).Bold(true),
 	}
 }
 

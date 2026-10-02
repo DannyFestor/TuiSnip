@@ -34,11 +34,18 @@ func TestNew(t *testing.T) {
 	settings := defaultSettings()
 	settings.Location = nil
 
-	_, err := tui.New(t.Context(), tui.Deps{Lister: nil, Copier: nil, Settings: settings, Logger: nil})
+	_, err := tui.New(t.Context(), tui.Deps{
+		Lister:   nil,
+		Copier:   nil,
+		Creator:  nil,
+		Searcher: nil,
+		Settings: settings,
+		Logger:   nil,
+	})
 
 	require.ErrorIs(t, err, domain.ErrMissingDependency)
 
-	for _, name := range []string{"lister", "copier", "logger", "location"} {
+	for _, name := range []string{"lister", "copier", "creator", "searcher", "logger", "location"} {
 		assert.ErrorContains(t, err, name)
 	}
 }

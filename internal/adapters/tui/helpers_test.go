@@ -189,12 +189,14 @@ type driver struct {
 	t       *testing.T
 	model   tea.Model
 	emitted []tea.Msg
+	holding bool
+	held    []tea.Cmd
 }
 
 func start(t *testing.T, model tui.Model, width, height int) *driver {
 	t.Helper()
 
-	screen := &driver{t: t, model: model, emitted: nil}
+	screen := &driver{t: t, model: model, emitted: nil, holding: false, held: nil}
 	screen.send(tea.WindowSizeMsg{Width: width, Height: height})
 	screen.run(model.Init())
 
@@ -217,10 +219,32 @@ func (d *driver) press(keys ...tea.KeyPressMsg) {
 	}
 }
 
+func (d *driver) hold() {
+	d.holding = true
+}
+
+func (d *driver) release() {
+	d.t.Helper()
+
+	held := d.held
+	d.holding = false
+	d.held = nil
+
+	for _, cmd := range held {
+		d.run(cmd)
+	}
+}
+
 func (d *driver) run(cmd tea.Cmd) {
 	d.t.Helper()
 
 	if cmd == nil {
+		return
+	}
+
+	if d.holding {
+		d.held = append(d.held, cmd)
+
 		return
 	}
 

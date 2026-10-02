@@ -43,7 +43,7 @@ type Model struct {
 	tags            tagPane
 	list            snippetList
 	preview         snippetPane
-	edit            editOverlay
+	edit            editSession
 	search          searchPopup
 	confirm         confirmation
 	status          string
@@ -81,7 +81,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		tags:            tagPane{},
 		list:            newSnippetList(languageOf),
 		preview:         newSnippetPane(styles, deps.Settings.Location),
-		edit:            noEditOverlay(),
+		edit:            noEditSession(),
 		search:          noSearchPopup(),
 		confirm:         noConfirmation(),
 		status:          "",
@@ -191,7 +191,7 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) quitRequested() (tea.Model, tea.Cmd) {
-	if m.edit.open && m.edit.changed() {
+	if m.edit.hasUnsavedChanges() {
 		return m.confirming(quitQuestion, quitting), nil
 	}
 
@@ -221,20 +221,22 @@ func (m Model) confirmPressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) editOpened() (tea.Model, tea.Cmd) {
-	edit, cmd := newEditOverlay(m.keys.editor)
+	edit, cmd := newEditSession(m.keys.editor)
 	m.edit = edit.resized(shareOf(m.screen, editOverlayPercent))
 
 	return m, cmd
 }
 
-func (m Model) editUpdated(edit editOverlay, request editRequest, cmd tea.Cmd) (tea.Model, tea.Cmd) {
+func (m Model) editUpdated(edit editSession, request editRequest, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 	m.edit = edit
 
 	switch request {
 	case editSaves:
 		return m, tea.Batch(cmd, m.createSnippet())
 	case editCancels:
-		return m.editCancelled(), cmd
+		return m.editClosed(), cmd
+	case editAsksDiscard:
+		return m.confirming(discardQuestion, discardingEdit), cmd
 	case editRefusesPaste:
 		m.status = pasteHasTabsText
 	case editStays:
@@ -243,16 +245,8 @@ func (m Model) editUpdated(edit editOverlay, request editRequest, cmd tea.Cmd) (
 	return m, cmd
 }
 
-func (m Model) editCancelled() Model {
-	if m.edit.changed() {
-		return m.confirming(discardQuestion, discardingEdit)
-	}
-
-	return m.editClosed()
-}
-
 func (m Model) editClosed() Model {
-	m.edit = noEditOverlay()
+	m.edit = noEditSession()
 
 	return m
 }
@@ -268,23 +262,19 @@ func (m Model) createSnippet() tea.Cmd {
 }
 
 func (m Model) snippetCreated(msg snippetCreatedMsg) (tea.Model, tea.Cmd) {
-	if msg.err != nil {
-		return m.saveFailed(msg.err), nil
+	edit, outcome := m.edit.saved(msg.err)
+	m.edit = edit
+
+	switch outcome {
+	case saveSucceeded:
+		return m.editClosed(), m.loadSnippets(msg.snippet.ID())
+	case saveRejected:
+		m.status = edit.notice
+	case saveFailed:
+		return m.failed(operationSave, msg.err), nil
 	}
 
-	return m.editClosed(), m.loadSnippets(msg.snippet.ID())
-}
-
-func (m Model) saveFailed(err error) Model {
-	fieldErrors := domain.FieldErrors(err)
-	if len(fieldErrors) == 0 {
-		return m.failed(operationSave, err)
-	}
-
-	m.edit = m.edit.withInvalid(fieldErrors)
-	m.status = fieldErrorText(fieldErrors[0])
-
-	return m
+	return m, nil
 }
 
 func (m Model) searchOpened() (tea.Model, tea.Cmd) {

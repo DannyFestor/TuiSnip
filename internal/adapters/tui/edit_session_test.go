@@ -174,6 +174,71 @@ func TestModel_editOverlaySave(t *testing.T) {
 	})
 }
 
+func TestModel_editOverlayPendingSave(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a second save while one is pending creates the Snippet once", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 1)
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().
+			Run(mock.Anything, snippet.CreateInput{Title: "x", Description: "", Content: ""}).
+			Return(snippets[0], nil).
+			Once()
+		screen := start(t, savingModel(t, creator, snippets), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('x'))
+		screen.hold()
+		screen.press(ctrl('s'), ctrl('s'))
+		screen.release()
+
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+	})
+
+	t.Run("esc while a save is pending leaves no confirmation after it succeeds", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 1)
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().Run(mock.Anything, mock.Anything).Return(snippets[0], nil)
+		screen := start(t, savingModel(t, creator, snippets), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('x'))
+		screen.hold()
+		screen.press(ctrl('s'), special(tea.KeyEscape))
+		screen.release()
+
+		assert.NotContains(t, screen.screen(), discardQuestion)
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+	})
+
+	t.Run("a rejected save can be saved again", func(t *testing.T) {
+		t.Parallel()
+
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().
+			Run(mock.Anything, mock.Anything).
+			Return(domain.Snippet{}, domain.OnField(domain.FieldTitle, value.ErrBlankTitle)).
+			Twice()
+		screen := start(t, editingModel(t, creator), wideWidth, wideHeight)
+
+		screen.press(letter('n'), ctrl('s'), ctrl('s'))
+	})
+
+	t.Run("a rejected save can be cancelled", func(t *testing.T) {
+		t.Parallel()
+
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().Run(mock.Anything, mock.Anything).Return(domain.Snippet{}, errDatabaseLocked)
+		screen := start(t, editingModel(t, creator), wideWidth, wideHeight)
+
+		screen.press(letter('n'), ctrl('s'), special(tea.KeyEscape))
+
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+	})
+}
+
 func TestModel_editOverlaySaveFailure(t *testing.T) {
 	t.Parallel()
 
@@ -385,8 +450,20 @@ func TestModel_editOverlayPaste(t *testing.T) {
 func editingModel(t *testing.T, creator *MockSnippetCreator) tui.Model {
 	t.Helper()
 
+	return creatingModel(t, creator, listerOf(t))
+}
+
+func savingModel(t *testing.T, creator *MockSnippetCreator, saved []domain.Snippet) tui.Model {
+	t.Helper()
+
+	return creatingModel(t, creator, listerReturning(t, nil, saved))
+}
+
+func creatingModel(t *testing.T, creator *MockSnippetCreator, lister *MockFolderSnippetsLister) tui.Model {
+	t.Helper()
+
 	return modelWith(t, actions{
-		lister:   listerOf(t),
+		lister:   lister,
 		copier:   NewMockSnippetCopier(t),
 		creator:  creator,
 		searcher: NewMockSnippetSearcher(t),

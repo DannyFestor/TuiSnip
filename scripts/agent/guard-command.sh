@@ -22,6 +22,9 @@ readonly ASSIGNMENT_PATTERN='^[A-Za-z_][A-Za-z0-9_]*='
 readonly WRAPPERS_PATTERN='^(env|command|exec|sudo|nohup|nice|time|xargs)$'
 readonly REMOTE_PATH_PATTERN='^[^/]*:'
 readonly GIT_APPLY_READ_ONLY_PATTERN='^--(check|stat|numstat|summary)$'
+readonly PERL_RECORD_SEPARATOR_PATTERN='^([xX][0-9A-Fa-f]*|[0-7]*)'
+readonly OCTAL_DIGITS_PATTERN='^[0-7]*'
+readonly PERL_UNICODE_FEATURES_PATTERN='^[0-9IOEioSADLa]*'
 
 deny() {
 	echo "$1" >&2
@@ -259,14 +262,86 @@ check_copy_programs() {
 	esac
 }
 
+is_short_flag_cluster() {
+	[[ "$1" == -[!-]* ]]
+}
+
+argument_matching() {
+	local pattern="$1"
+	local rest="$2"
+
+	[[ "$rest" =~ $pattern ]]
+	printf '%s' "${BASH_REMATCH[0]}"
+}
+
+# -l is left out because BSD sed takes no argument for it, and reading -li as -l -i errs on the
+# side of denying.
+sed_switch_argument() {
+	case "$1" in
+	e | f) printf '%s' "$2" ;;
+	esac
+}
+
+perl_switch_argument() {
+	case "$1" in
+	0) argument_matching "$PERL_RECORD_SEPARATOR_PATTERN" "$2" ;;
+	l) argument_matching "$OCTAL_DIGITS_PATTERN" "$2" ;;
+	C) argument_matching "$PERL_UNICODE_FEATURES_PATTERN" "$2" ;;
+	d | D | e | E | F | I | m | M | x) printf '%s' "$2" ;;
+	esac
+}
+
+switch_argument() {
+	case "$1" in
+	sed) sed_switch_argument "$2" "$3" ;;
+	perl) perl_switch_argument "$2" "$3" ;;
+	esac
+}
+
+# Walks the cluster switch by switch, skipping each switch's argument, so -0pi is caught and
+# the i in -Mstrict is not.
+cluster_has_switch() {
+	local program="$1"
+	local switches="$2"
+	local cluster="${3#-}"
+	local switch argument
+
+	while [[ -n "$cluster" ]]; do
+		switch="${cluster:0:1}"
+		if [[ "$switches" == *"$switch"* ]]; then
+			return 0
+		fi
+		cluster="${cluster:1}"
+		argument="$(switch_argument "$program" "$switch" "$cluster")"
+		cluster="${cluster:${#argument}}"
+	done
+	return 1
+}
+
+# BSD sed edits in place with -I as well as -i.
+is_sed_in_place_flag() {
+	[[ "$1" == --in-place* ]] || { is_short_flag_cluster "$1" && cluster_has_switch sed iI "$1"; }
+}
+
+is_perl_in_place_flag() {
+	is_short_flag_cluster "$1" && cluster_has_switch perl i "$1"
+}
+
+is_in_place_flag() {
+	case "$1" in
+	sed) is_sed_in_place_flag "$2" ;;
+	perl) is_perl_in_place_flag "$2" ;;
+	*) return 1 ;;
+	esac
+}
+
 check_in_place_edit() {
 	local program="$1"
-	local in_place_pattern="$2"
-	shift 2
+	shift
 	local arg
 
 	for arg in "$@"; do
-		if [[ "$arg" =~ $in_place_pattern ]]; then
+		if is_in_place_flag "$program" "$arg"; then
 			deny "$program must not edit files in place: $USE_EDIT_TOOLS."
 		fi
 	done
@@ -524,8 +599,7 @@ check_program() {
 
 	case "$program" in
 	git) check_git "$@" ;;
-	sed) check_in_place_edit sed '^(-[nErsuz]*i|--in-place)' "$@" ;;
-	perl) check_in_place_edit perl '^-[nplaswWtTuUcvhE]*i' "$@" ;;
+	sed | perl) check_in_place_edit "$program" "$@" ;;
 	awk | gawk) check_awk "$@" ;;
 	tee) check_tee "$@" ;;
 	esac

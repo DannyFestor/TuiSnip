@@ -95,9 +95,12 @@ v1's "exactly one Fragment" is a product limit, not a data rule. The domain enfo
 
 ## Reading entities
 
-`sqlite` rebuilds entities with the same `domain` constructors the Actions use. There is no constructor that skips validation. An unexported function per entity (`snippetFromRows(snippet, fragments)`, later with Tags) does the conversion. It wraps any failure in `domain.ErrCorruptRecord`, and the repository logs the row's ID at Error.
+`sqlite` rebuilds entities with the same `domain` constructors the Actions use. There is no constructor that skips validation. An unexported function per entity (`snippetFromRows(snippet, fragments)`, later with Tags) does the conversion. It wraps any failure in `domain.ErrCorruptRecord`, and the loader logs the row's ID and the error.
 
-A corrupt row fails the whole read: `Find` and `List` both return the error, so `List` never returns a partial set. Search stays unusable until the row is fixed, but no Snippet silently disappears from it.
+Every read goes through the private Snippet loader. A repository method names a selection (the Snippet query and its Fragment query) and the loader runs both in one read transaction. The loader also owns the corrupt-row policy:
+
+- `Find` on a corrupt Snippet returns the error and logs it at Error.
+- A list skips the corrupt Snippet, logs it at Warn, and returns the rest. Otherwise one bad row would break List, Search on every keystroke, and Browse, and a chroma upgrade that drops a lexer is enough to cause one.
 
 Loading many Snippets, for the Search index or a Folder listing, runs one query per table (Snippets, Fragments, Tag links) in one read transaction and stitches them together in Go. It never runs one query per Snippet.
 

@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"io/fs"
@@ -139,4 +140,24 @@ func newSnippetRepository(t *testing.T, database *sqlite.Database) *sqlite.Snipp
 	t.Helper()
 
 	return sqlite.NewSnippetRepository(database, slog.New(slog.DiscardHandler))
+}
+
+func newLoggingSnippetRepository(t *testing.T, path string, logged *bytes.Buffer) *sqlite.SnippetRepository {
+	t.Helper()
+
+	return sqlite.NewSnippetRepository(openDatabase(t, path), slog.New(slog.NewJSONHandler(logged, nil)))
+}
+
+func insertCorruptSnippet(
+	t *testing.T,
+	repository *sqlite.SnippetRepository,
+	path string,
+	ids *testkit.SequentialIDs,
+) domain.Snippet {
+	t.Helper()
+
+	snippet := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "corrupt"})
+	execRaw(t, path, "UPDATE fragments SET language = 'Klingon' WHERE snippet_id = ?", snippet.ID().String())
+
+	return snippet
 }

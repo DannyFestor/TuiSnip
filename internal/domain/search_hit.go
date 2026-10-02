@@ -2,7 +2,6 @@ package domain
 
 import (
 	"cmp"
-	"strings"
 )
 
 type SearchHit struct {
@@ -26,6 +25,7 @@ func CompareSearchHits(a, b SearchHit) int {
 	return cmp.Or(
 		cmp.Compare(b.score, a.score),
 		b.snippet.UpdatedAt().Compare(a.snippet.UpdatedAt()),
-		strings.Compare(a.snippet.Title().String(), b.snippet.Title().String()),
+		a.snippet.Title().CompareIgnoringCase(b.snippet.Title()),
+		a.snippet.ID().Compare(b.snippet.ID()),
 	)
 }

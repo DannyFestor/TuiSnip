@@ -34,3 +34,16 @@ func parseTrimmedName[K any](raw string, rules nameRules) (trimmedName[K], error
 func (n trimmedName[K]) String() string {
 	return n.value
 }
+
+// Only ASCII letters are folded, as SQLite's NOCASE does, so names order in Go the way Browse orders them.
+func (n trimmedName[K]) CompareIgnoringCase(other trimmedName[K]) int {
+	return strings.Compare(strings.Map(lowerASCIILetter, n.value), strings.Map(lowerASCIILetter, other.value))
+}
+
+func lowerASCIILetter(r rune) rune {
+	if 'A' <= r && r <= 'Z' {
+		return r + ('a' - 'A')
+	}
+
+	return r
+}

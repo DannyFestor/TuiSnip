@@ -42,3 +42,36 @@ func TestTitle_New(t *testing.T) {
 		})
 	}
 }
+
+func TestTitle_CompareIgnoringCase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		title string
+		other string
+		want  int
+	}{
+		{name: "orders a lowercase title before a later capitalised one", title: "awk", other: "Bash", want: -1},
+		{name: "orders a capitalised title after an earlier lowercase one", title: "Bash", other: "awk", want: 1},
+		{name: "finds titles differing only in ASCII case equal", title: "Curl", other: "cURL", want: 0},
+		{name: "folds to lowercase, so an underscore orders before a capital", title: "_x", other: "Zx", want: -1},
+		{name: "keeps non-ASCII letters unfolded", title: "Écrire", other: "écrire", want: -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, mustTitle(t, tt.title).CompareIgnoringCase(mustTitle(t, tt.other)))
+		})
+	}
+}
+
+func mustTitle(t *testing.T, raw string) value.Title {
+	t.Helper()
+
+	title, err := value.NewTitle(raw)
+	require.NoError(t, err)
+
+	return title
+}

@@ -51,7 +51,7 @@ Finding Snippets by matching a query against their title, Description, Tags, and
 _Avoid_: Filter, find, query
 
 **Search hit**:
-A Snippet that matched a Search, together with its score: the best of its field scores after weighting. Search hits are ordered by score, then by the most recently updated Snippet, then by title.
+A Snippet that matched a Search, together with its score: the best of its field scores after weighting. Search hits are ordered by score, then by the most recently updated Snippet, then by title ignoring case, then by ID, the same title order Browse uses.
 _Avoid_: Result, match
 
 **Browse**:

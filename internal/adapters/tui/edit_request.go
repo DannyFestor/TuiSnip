@@ -6,6 +6,5 @@ const (
 	editStays editRequest = iota
 	editSaves
 	editCancels
-	editAsksDiscard
 	editRefusesPaste
 )

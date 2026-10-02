@@ -79,3 +79,7 @@ _Avoid_: Context, keymap, layer
 **Pane**:
 One of the four areas of the main screen: Folders, Tags, the Snippet list, and the Snippet pane. Exactly one Pane has focus, and each has its own Scope.
 _Avoid_: Panel, view, window, column
+
+**Overlay**:
+A box drawn over the main screen, such as the edit overlay, the Search popup, or a confirmation. Overlays stack: only the top one has focus and its own Scope, and an Overlay opened from another closes with it.
+_Avoid_: Modal, dialog, layer

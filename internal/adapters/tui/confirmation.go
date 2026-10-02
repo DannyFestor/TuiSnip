@@ -4,6 +4,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
 )
 
 const (
@@ -14,47 +16,44 @@ const (
 	quitQuestion        = "Quit and discard the unsaved changes? y/N"
 )
 
-type confirmAnswer int
-
-const (
-	answerPending confirmAnswer = iota
-	answerYes
-	answerNo
-)
-
 type confirmation struct {
-	open     bool
 	keys     confirmBindings
+	styles   styleSet
 	question string
-	onYes    func(Model) (Model, tea.Cmd)
+	onYes    overlay.Outcome
 }
 
-func newConfirmation(keys confirmBindings, question string, onYes func(Model) (Model, tea.Cmd)) confirmation {
-	return confirmation{open: true, keys: keys, question: question, onYes: onYes}
+func newConfirmation(keys confirmBindings, styles styleSet, question string, onYes overlay.Outcome) confirmation {
+	return confirmation{keys: keys, styles: styles, question: question, onYes: onYes}
 }
 
-func noConfirmation() confirmation {
-	return confirmation{}
-}
-
-func (c confirmation) answer(msg tea.KeyPressMsg) confirmAnswer {
-	switch {
-	case key.Matches(msg, c.keys.yes):
-		return answerYes
-	case key.Matches(msg, c.keys.no):
-		return answerNo
+func (c confirmation) Update(msg tea.Msg) overlay.Step {
+	pressed, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return overlay.Stay(c)
 	}
 
-	return answerPending
+	switch {
+	case key.Matches(pressed, c.keys.yes):
+		return overlay.Close().Passing(c.onYes)
+	case key.Matches(pressed, c.keys.no):
+		return overlay.Close()
+	}
+
+	return overlay.Stay(c)
 }
 
-func (c confirmation) view(styles styleSet) string {
+func (c confirmation) Received(outcome overlay.Outcome) overlay.Step {
+	return overlay.Stay(c).Passing(outcome)
+}
+
+func (c confirmation) View() string {
 	width := max(ansi.StringWidth(c.question), ansi.StringWidth(confirmationTitle)+confirmationPadding)
 	outer := size{width: width + borderWidth, height: confirmationRows + borderWidth}
 
-	return frame(styles.focused, confirmationTitle, c.question, outer)
+	return frame(c.styles.focused, confirmationTitle, c.question, outer)
 }
 
-func (c confirmation) hints() []key.Binding {
+func (c confirmation) Hints() []key.Binding {
 	return c.keys.hints()
 }

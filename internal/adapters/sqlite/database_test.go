@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -29,6 +30,18 @@ func TestOpen(t *testing.T) {
 		require.NoError(t, openAndClose(t, path))
 
 		assert.Empty(t, backupNames(t, path))
+	})
+
+	t.Run("creates the missing data directory owner-only", func(t *testing.T) {
+		t.Parallel()
+
+		path := filepath.Join(t.TempDir(), "share", "tuisnip", databaseFileName)
+
+		require.NoError(t, openAndClose(t, path))
+
+		info, err := os.Stat(filepath.Dir(path))
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
 	})
 
 	t.Run("backs up a database with pending migrations before migrating it", func(t *testing.T) {

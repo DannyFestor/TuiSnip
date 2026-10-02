@@ -47,6 +47,7 @@ internal/
 test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
+  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool
 sqlc.yaml
 ```
 
@@ -61,7 +62,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter, or `bootstrap` |
 | `tui` | screens, Bindings, `tui.Settings`, turning errors into status text | import driven adapters or `config` |
-| `bootstrap` | building the object graph, converting `config.Config` into `tui.Settings`, creating the logger | hold behaviour beyond wiring |
+| `bootstrap` | building the object graph, converting `config.Config` into `tui.Settings`, creating the logger, running the Bubble Tea program (`App.Run`, since `cmd/tuisnip` may not import `tui`) | hold behaviour beyond wiring |
 | `cmd/tuisnip` | parsing flags, printing `--version` and `--paths` | import anything but `bootstrap` and `xdg` |
 
 `domain` receives IDs and timestamps as arguments. Actions get them from the `IDGenerator` and `Clock` interfaces, so domain constructors stay deterministic in tests.
@@ -138,7 +139,7 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 
 ## Context
 
-- `main` creates the only root context, with `signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)`. It passes the context to `bootstrap` and to Bubble Tea through `tea.WithContext`. Outside tests, nothing else calls `context.Background()` or `context.TODO()`.
+- `main` creates the only root context, with `signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)`. It passes the context to `bootstrap.New` and `App.Run`, which hands it to Bubble Tea through `tea.WithContext`. A cancelled context is a clean exit. Outside tests, nothing else calls `context.Background()` or `context.TODO()`.
 When the external editor exits, `tui` hands the content to an `EditedContentHandler` that `bootstrap` chooses. v1's handler puts it into edit mode as an unsaved change. Saving straight to the database instead is one new handler and one line in `bootstrap`.
 
 - `ctx context.Context` is the first parameter of every Action's `Run` and of every capability method that does I/O or can block (repositories, clipboard, index). `Clock` and `IDGenerator` never block, so they take no context. `domain` never sees one.
@@ -147,7 +148,7 @@ When the external editor exits, `tui` hands the content to an `EditedContentHand
 
 ## Logging
 
-`logging` builds one `*slog.Logger` writing to the XDG state directory. `bootstrap` passes it explicitly to every adapter and the TUI. Nothing calls `slog.SetDefault` or the package-level `slog` functions. `domain` and `app` don't log. They return errors, and the TUI logs the ones it shows.
+`logging` builds one `*slog.Logger` writing to the XDG state directory: text lines at Info with the source position and a `session` attribute (a UUIDv7 per start), so one run's lines can be picked out of the file. Neither macOS nor Linux rotates the file, so `logging.Open` does it at start-up: over 5 MiB, `tuisnip.log` becomes `tuisnip.log.1`, the old `.1` becomes `.2`, and the old `.2` is dropped. `bootstrap` passes it explicitly to every adapter and the TUI. Nothing calls `slog.SetDefault` or the package-level `slog` functions. `domain` and `app` don't log. They return errors, and the TUI logs the ones it shows.
 
 ## Generated code and SQL
 

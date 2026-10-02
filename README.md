@@ -73,8 +73,11 @@ The agent hooks for Claude Code, OpenCode, and Antigravity need jq. `mise instal
 | Target | Does |
 |---|---|
 | `make build` | Builds `bin/tuisnip`. |
+| `make run` | Starts TuiSnip on your own config and data. `ARGS=--paths` passes flags. |
 | `make test` | Runs the unit, feature, and e2e tests. |
 | `make test-unit` | Runs only the unit tests. |
+| `make test-platform` | Runs the unit tests plus those that use the real clipboard. They overwrite it and then restore it. |
+| `make snapshot` | Builds the release archives into `dist/` without publishing them. |
 | `make lint` | Runs golangci-lint. |
 | `make arch-lint` | Checks the layer rules with go-arch-lint. |
 | `make fmt` | Formats the Go code. |

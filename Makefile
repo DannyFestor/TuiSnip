@@ -1,5 +1,5 @@
 LANGUAGES_OUT := internal/domain/value/languages_gen.go
-TEST_TAGS := feature,e2e
+TEST_TAGS := feature,e2e,platform
 FUZZTIME ?= 30s
 PKG ?= .
 PROPERTY_DEEP_CHECKS := 10000
@@ -90,6 +90,10 @@ test-feature: ## Run the feature tests
 test-e2e: ## Run the e2e tests
 	go test -race -tags e2e ./test/e2e/...
 
+.PHONY: test-platform
+test-platform: ## Run the unit tests plus those against the real clipboard, which they overwrite and restore
+	go test -race -tags platform ./...
+
 ##@ Deep test
 
 .PHONY: test-fuzz
@@ -111,3 +115,15 @@ test-mutation: ## Write the gremlins mutation report (PKG=./internal/... for one
 .PHONY: build
 build: ## Build bin/tuisnip
 	go build -o bin/tuisnip ./cmd/tuisnip
+
+.PHONY: run
+run: ## Start tuisnip on your own config and data (ARGS=--paths to pass flags)
+	go run ./cmd/tuisnip $(ARGS)
+
+.PHONY: snapshot
+snapshot: ## Build the release archives into dist/ without publishing
+	goreleaser release --snapshot --clean
+
+.PHONY: release-check
+release-check: ## Check the goreleaser config
+	goreleaser check

@@ -135,12 +135,13 @@ Each value is a named constant in the adapter.
 
 `sqlite.Open(ctx, sqlite.Options{Path, Logger, Clock})` runs the whole sequence in one call, so `bootstrap` can't open a database without migrating it. A `file:` prefix on `Path` is trimmed first (`BackupDir` trims it too), because the lock file, the backups, and the DSN all derive from the plain path and the adapter always builds the `file:` URI itself:
 
-1. Take an exclusive `flock` on `tuisnip.db.lock` beside the database. Two instances starting together (a tmux restore, say) then migrate one after the other. The kernel drops the lock if the process dies. The adapter polls a non-blocking `flock` every 50 ms, so cancelling `ctx` (Ctrl-C) ends the wait at once. After `lockTimeout` (30 s, a constant, not configurable) it gives up with `sqlite.ErrLockTimeout`, wrapped with the lock file's path.
-2. Open the database, creating the file if it doesn't exist.
-3. Compare the database's goose version with the newest embedded migration. If the database is newer, refuse to start with `sqlite.NewerSchemaError{Database, Known}`, whose message is `The database was created by a newer TuiSnip (schema 7; this build knows 5). Upgrade TuiSnip.` `main` prints it unchanged. goose itself would skip it silently, and an older build writing through an older model could lose data.
-4. If an existing database has pending migrations, [back it up](#backups). If the backup fails, refuse to start.
-5. Run the pending migrations.
-6. Release the lock.
+1. Create the database's directory, owner-only (`0700`), if it's missing.
+2. Take an exclusive `flock` on `tuisnip.db.lock` beside the database. Two instances starting together (a tmux restore, say) then migrate one after the other. The kernel drops the lock if the process dies. The adapter polls a non-blocking `flock` every 50 ms, so cancelling `ctx` (Ctrl-C) ends the wait at once. After `lockTimeout` (30 s, a constant, not configurable) it gives up with `sqlite.ErrLockTimeout`, wrapped with the lock file's path.
+3. Open the database, creating the file if it doesn't exist.
+4. Compare the database's goose version with the newest embedded migration. If the database is newer, refuse to start with `sqlite.NewerSchemaError{Database, Known}`, whose message is `The database was created by a newer TuiSnip (schema 7; this build knows 5). Upgrade TuiSnip.` `main` prints it unchanged, through `bootstrap.StartupMessage`. goose itself would skip it silently, and an older build writing through an older model could lose data.
+5. If an existing database has pending migrations, [back it up](#backups). If the backup fails, refuse to start.
+6. Run the pending migrations.
+7. Release the lock.
 
 ### Backups
 

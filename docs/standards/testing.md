@@ -9,8 +9,11 @@ How to write tests in this repo. The tiers and where they live are in [architect
 | Unit | beside the code, `<pkg>_test` | none | one type: value objects, entities, one Action against mocked capabilities, one adapter |
 | Feature | `test/feature/` | `feature` | Actions wired through `bootstrap` against a temporary SQLite file |
 | e2e | `test/e2e/` | `e2e` | the whole TUI driven by teatest |
+| Platform | beside the code, in `*_platform_test.go` | `platform` plus the OS (`darwin && platform`) | one adapter against the real OS tool, such as `pbcopy` |
 
-Put a test in the lowest tier that can observe the behaviour. Anything stateful is a feature test, such as whether a moved Snippet shows up in its new Folder. Unit tests have no repository to hold state; see [Test doubles](#test-doubles).
+Put a test in the lowest tier that can observe the behaviour.
+
+Platform tests touch state the user owns, like the system clipboard, so they only run when asked: `make test-platform` locally, and in CI's `test-macos` job. They restore what they change, and they don't run in parallel. Anything stateful is a feature test, such as whether a moved Snippet shows up in its new Folder. Unit tests have no repository to hold state; see [Test doubles](#test-doubles).
 
 ## Naming
 
@@ -69,17 +72,16 @@ func TestTitle_New(t *testing.T) {
 testify `suite` is denied, because suites can't run in parallel. Replace a suite's `SetupTest` with a helper that returns what the test needs and registers its own cleanup:
 
 ```go
-func newTestApp(t *testing.T) *bootstrap.App {
+func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 	t.Helper()
 
-	app, err := bootstrap.New(t.Context(), bootstrap.Options{DatabasePath: filepath.Join(t.TempDir(), "tuisnip.db")})
+	app, err := h.Open(t, tool)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, app.Close()) })
+
 	return app
 }
 ```
-
-`bootstrap`'s API arrives with the walking skeleton. The example shows the helper pattern, not that API.
 
 ## Test doubles
 
@@ -124,7 +126,8 @@ Set only the fields the test is about. A test that states every field hides whic
 
 ## Feature tests
 
-- Build the app with `newTestApp(t)`. Each test gets its own database file in `t.TempDir()`, so parallel tests share nothing and run with production's pragmas. Why not `:memory:`: [database](database.md#tests).
+- Build the app with `test/testapp`, which the e2e tier shares: `testapp.Start(t, testapp.RecordingTool)`, or `testapp.NewHome(t)` when the test writes a `config.toml` or blocks a directory first. Each test gets its own HOME in `t.TempDir()`, so parallel tests share nothing and run with production's paths and pragmas. Why not `:memory:`: [database](database.md#tests).
+- The clipboard is faked at the OS boundary, not at the Copy capability. `bootstrap.Options` takes `Environ`, `LookPath`, and `GOOS`. The harness passes `darwin` and a `LookPath` that resolves `pbcopy` to a script that records its stdin (`RecordingTool`), exits 1 (`FailingTool`), or isn't there (`NoTool`). The real backend switch and the clipboard adapter run on every OS.
 - Drive and check behaviour **only through Actions**. Create a Snippet with `snippet.Create`, then read it back with `browse.SnippetsInFolder`. Raw SQL would tie the tier to the schema, and this tier exists to test behaviour.
 
 ## TUI unit tests
@@ -137,7 +140,8 @@ Set only the fields the test is about. A test that states every field hides whic
 
 ## e2e tests
 
-- Drive the `bootstrap`-built TUI with teatest, and wait on output with `teatest.WaitFor` and a substring check.
+- Drive the `bootstrap`-built TUI with teatest, and wait for a substring of the last full frame (`waitForFrame`). Bubble Tea writes only the cells that changed, so a word rarely reaches the output stream in one piece, and `teatest.WaitFor` on the stream times out.
+- Wait for text that only the next state shows. "Reclaim" is already on screen in the edit overlay's Description field before the save finishes. "Root · plaintext" in the Snippet pane only shows once it has.
 - e2e tests check flows, not layout. The layout goldens live with the `tui` unit tests.
 
 ## Fuzz and property tests

@@ -33,7 +33,7 @@ func (s editSession) Update(msg tea.Msg) overlay.Step {
 	case tea.KeyPressMsg, tea.PasteMsg:
 		return s.formUpdated(msg)
 	case tea.WindowSizeMsg:
-		return overlay.Stay(s.resized(size{width: msg.Width, height: msg.Height}))
+		return overlay.Stay(s.resized(sizeOf(msg)))
 	case snippetCreatedMsg:
 		return s.saved(msg)
 	}

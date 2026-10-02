@@ -43,10 +43,6 @@ func (c confirmation) Update(msg tea.Msg) overlay.Step {
 	return overlay.Stay(c)
 }
 
-func (c confirmation) Received(outcome overlay.Outcome) overlay.Step {
-	return overlay.Stay(c).Passing(outcome)
-}
-
 func (c confirmation) View() string {
 	width := max(ansi.StringWidth(c.question), ansi.StringWidth(confirmationTitle)+confirmationPadding)
 	outer := size{width: width + borderWidth, height: confirmationRows + borderWidth}

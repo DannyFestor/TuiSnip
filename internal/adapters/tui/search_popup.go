@@ -68,7 +68,7 @@ func (p searchPopup) Update(msg tea.Msg) overlay.Step {
 	case tea.PasteMsg:
 		return p.typed(msg)
 	case tea.WindowSizeMsg:
-		return overlay.Stay(p.resized(size{width: msg.Width, height: msg.Height}))
+		return overlay.Stay(p.resized(sizeOf(msg)))
 	case tea.BackgroundColorMsg:
 		return overlay.Stay(p.withCodeStyle(codeStyleFor(msg)))
 	case searchFinishedMsg:
@@ -76,10 +76,6 @@ func (p searchPopup) Update(msg tea.Msg) overlay.Step {
 	}
 
 	return overlay.Stay(p)
-}
-
-func (p searchPopup) Received(outcome overlay.Outcome) overlay.Step {
-	return overlay.Stay(p).Passing(outcome)
 }
 
 func (p searchPopup) View() string {
@@ -168,7 +164,7 @@ func (p searchPopup) typed(msg tea.Msg) overlay.Step {
 		return overlay.Stay(next.listing(next.browse)).Running(cmd)
 	}
 
-	return overlay.Stay(next).Passing(queryChanged{text: next.text()}).Running(cmd)
+	return overlay.Stay(next).Passing(searchTyped{text: next.text()}).Running(cmd)
 }
 
 func (p searchPopup) listing(snippets []domain.Snippet) searchPopup {

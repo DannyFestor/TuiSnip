@@ -21,7 +21,7 @@ type noticeShown struct {
 	text string
 }
 
-type queryChanged struct {
+type searchTyped struct {
 	text string
 }
 

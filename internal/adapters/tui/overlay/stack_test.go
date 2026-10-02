@@ -93,6 +93,16 @@ func TestStack_Update(t *testing.T) {
 		assert.Equal(t, []overlay.Outcome{relayed{by: "parent", outcome: heard{by: "child", what: "a"}}}, outcomes)
 	})
 
+	t.Run("passes an outcome by an overlay that takes none", func(t *testing.T) {
+		t.Parallel()
+
+		stack := stackOf(newFake("bottom").receiving(relaying), childlessOverlay{}, newFake("child"))
+
+		_, outcomes, _ := stack.Update(letter('a'))
+
+		assert.Equal(t, []overlay.Outcome{relayed{by: "bottom", outcome: heard{by: "child", what: "a"}}}, outcomes)
+	})
+
 	t.Run("keeps an outcome its parent consumes", func(t *testing.T) {
 		t.Parallel()
 

@@ -29,6 +29,20 @@ type fakeOverlay struct {
 	receives func(fakeOverlay, overlay.Outcome) overlay.Step
 }
 
+type childlessOverlay struct{}
+
+func (c childlessOverlay) Update(tea.Msg) overlay.Step {
+	return overlay.Stay(c)
+}
+
+func (childlessOverlay) View() string {
+	return "childless"
+}
+
+func (childlessOverlay) Hints() []key.Binding {
+	return nil
+}
+
 func newFake(name string) fakeOverlay {
 	return fakeOverlay{name: name, look: name, reacts: map[string]func(fakeOverlay) overlay.Step{}, receives: nil}
 }

@@ -6,16 +6,16 @@ import (
 )
 
 type Stack struct {
-	layers []Overlay
-	screen tea.WindowSizeMsg
+	overlays []Overlay
+	screen   tea.WindowSizeMsg
 }
 
 func NewStack() Stack {
-	return Stack{layers: nil, screen: tea.WindowSizeMsg{Width: 0, Height: 0}}
+	return Stack{overlays: nil, screen: tea.WindowSizeMsg{Width: 0, Height: 0}}
 }
 
 func (s Stack) Open() bool {
-	return len(s.layers) > 0
+	return len(s.overlays) > 0
 }
 
 func (s Stack) Hints() []key.Binding {
@@ -23,14 +23,14 @@ func (s Stack) Hints() []key.Binding {
 		return nil
 	}
 
-	return s.layers[len(s.layers)-1].Hints()
+	return s.overlays[len(s.overlays)-1].Hints()
 }
 
 func (s Stack) Pushed(pushed Overlay) (Stack, []Outcome, tea.Cmd) {
 	current := roundOver(s)
-	current.opened(len(s.layers)-1, pushed)
+	current.open(len(s.overlays)-1, pushed)
 
-	return current.finished()
+	return current.finish()
 }
 
 func (s Stack) Update(msg tea.Msg) (Stack, []Outcome, tea.Cmd) {
@@ -38,28 +38,28 @@ func (s Stack) Update(msg tea.Msg) (Stack, []Outcome, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg, tea.PasteMsg:
-		current.routedToTop(msg)
+		current.routeToTop(msg)
 	case tea.WindowSizeMsg:
 		current.screen = msg
-		current.delivered(msg)
+		current.deliver(msg)
 	default:
-		current.delivered(msg)
+		current.deliver(msg)
 	}
 
-	return current.finished()
+	return current.finish()
 }
 
 func (s Stack) Offered(outcome Outcome) (Stack, []Outcome, tea.Cmd) {
 	current := roundOver(s)
-	current.bubbled(len(s.layers)-1, outcome)
+	current.bubble(len(s.overlays)-1, outcome)
 
-	return current.finished()
+	return current.finish()
 }
 
 func (s Stack) Render(background string) string {
 	view := background
-	for _, layer := range s.layers {
-		view = centredOver(view, s.screen, layer.View())
+	for _, drawn := range s.overlays {
+		view = centredOver(view, s.screen, drawn.View())
 	}
 
 	return view

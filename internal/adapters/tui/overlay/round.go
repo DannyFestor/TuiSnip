@@ -7,68 +7,79 @@ import (
 )
 
 type round struct {
-	layers   []Overlay
+	overlays []Overlay
 	screen   tea.WindowSizeMsg
 	outcomes []Outcome
 	cmds     []tea.Cmd
 }
 
 func roundOver(stack Stack) *round {
-	return &round{layers: slices.Clone(stack.layers), screen: stack.screen, outcomes: nil, cmds: nil}
+	return &round{overlays: slices.Clone(stack.overlays), screen: stack.screen, outcomes: nil, cmds: nil}
 }
 
-func (r *round) routedToTop(msg tea.Msg) {
-	top := len(r.layers) - 1
+func (r *round) routeToTop(msg tea.Msg) {
+	top := len(r.overlays) - 1
 	if top >= 0 {
-		r.applied(top, r.layers[top].Update(msg))
+		r.apply(top, r.overlays[top].Update(msg))
 	}
 }
 
-func (r *round) delivered(msg tea.Msg) {
-	for index := range slices.Backward(r.layers) {
-		if index < len(r.layers) {
-			r.applied(index, r.layers[index].Update(msg))
+func (r *round) deliver(msg tea.Msg) {
+	for index := range slices.Backward(r.overlays) {
+		if r.stillOpen(index) {
+			r.apply(index, r.overlays[index].Update(msg))
 		}
 	}
 }
 
-func (r *round) applied(index int, step Step) {
+func (r *round) apply(index int, step Step) {
 	r.cmds = append(r.cmds, step.cmd)
-	r.replaced(index, step)
+	r.replace(index, step)
 
 	if step.outcome != nil {
-		r.bubbled(index-1, step.outcome)
+		r.bubble(index-1, step.outcome)
 	}
 }
 
-func (r *round) replaced(index int, step Step) {
+func (r *round) replace(index int, step Step) {
 	if step.closes {
-		r.layers = r.layers[:index]
+		r.overlays = r.overlays[:index]
 
 		return
 	}
 
-	r.layers[index] = step.next
+	r.overlays[index] = step.next
 	if step.child != nil {
-		r.opened(index, step.child)
+		r.open(index, step.child)
 	}
 }
 
-func (r *round) opened(parent int, child Overlay) {
-	r.layers = append(r.layers[:parent+1], child)
-	r.applied(parent+1, child.Update(r.screen))
+func (r *round) open(parent int, child Overlay) {
+	r.overlays = append(r.overlays[:parent+1], child)
+	r.apply(parent+1, child.Update(r.screen))
 }
 
-func (r *round) bubbled(index int, outcome Outcome) {
+func (r *round) bubble(index int, outcome Outcome) {
 	if index < 0 {
 		r.outcomes = append(r.outcomes, outcome)
 
 		return
 	}
 
-	r.applied(index, r.layers[index].Received(outcome))
+	parent, ok := r.overlays[index].(Parent)
+	if !ok {
+		r.bubble(index-1, outcome)
+
+		return
+	}
+
+	r.apply(index, parent.Received(outcome))
 }
 
-func (r *round) finished() (Stack, []Outcome, tea.Cmd) {
-	return Stack{layers: r.layers, screen: r.screen}, r.outcomes, tea.Batch(r.cmds...)
+func (r *round) stillOpen(index int) bool {
+	return index < len(r.overlays)
+}
+
+func (r *round) finish() (Stack, []Outcome, tea.Cmd) {
+	return Stack{overlays: r.overlays, screen: r.screen}, r.outcomes, tea.Batch(r.cmds...)
 }

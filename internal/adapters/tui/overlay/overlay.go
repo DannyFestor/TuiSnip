@@ -7,7 +7,6 @@ import (
 
 type Overlay interface {
 	Update(msg tea.Msg) Step
-	Received(outcome Outcome) Step
 	View() string
 	Hints() []key.Binding
 }

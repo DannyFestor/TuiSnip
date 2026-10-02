@@ -92,7 +92,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.screen = size{width: msg.Width, height: msg.Height}
+		m.screen = sizeOf(msg)
 
 		return m.arranged().overlaysUpdated(msg)
 	case tea.BackgroundColorMsg:
@@ -201,7 +201,7 @@ func (m Model) concluded(outcome overlay.Outcome) (Model, tea.Cmd) {
 		return m.failed(operationSave, outcome.err), nil
 	case noticeShown:
 		m.status = outcome.text
-	case queryChanged:
+	case searchTyped:
 		return m, m.querySnippets(outcome.text)
 	case snippetRevealed:
 		return m.revealed(outcome.id)

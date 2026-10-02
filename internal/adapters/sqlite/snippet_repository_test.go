@@ -2,7 +2,6 @@ package sqlite_test
 
 import (
 	"bytes"
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,28 +88,39 @@ func TestSnippetRepository_Insert(t *testing.T) {
 func TestSnippetRepository_corruptRow(t *testing.T) {
 	t.Parallel()
 
+	t.Run("Find rejects a Fragment with an unknown Language", func(t *testing.T) {
+		t.Parallel()
+
+		var logged bytes.Buffer
+
+		path := newDatabasePath(t)
+		repository := newLoggingSnippetRepository(t, path, &logged)
+		snippet := insertCorruptSnippet(t, repository, path, testkit.NewSequentialIDs())
+
+		_, err := repository.Find(t.Context(), snippet.ID())
+
+		require.ErrorIs(t, err, domain.ErrCorruptRecord)
+		assertCorruptRowLogged(t, &logged, "ERROR", snippet.ID())
+	})
+
 	tests := []struct {
 		name string
-		read func(t *testing.T, repository *sqlite.SnippetRepository, id domain.SnippetID) error
+		list func(t *testing.T, repository *sqlite.SnippetRepository) ([]domain.Snippet, error)
 	}{
 		{
-			name: "Find rejects a Fragment with an unknown Language",
-			read: func(t *testing.T, repository *sqlite.SnippetRepository, id domain.SnippetID) error {
+			name: "List skips a Snippet whose Fragment has an unknown Language",
+			list: func(t *testing.T, repository *sqlite.SnippetRepository) ([]domain.Snippet, error) {
 				t.Helper()
 
-				_, err := repository.Find(t.Context(), id)
-
-				return err
+				return repository.List(t.Context())
 			},
 		},
 		{
-			name: "List rejects a Fragment with an unknown Language",
-			read: func(t *testing.T, repository *sqlite.SnippetRepository, _ domain.SnippetID) error {
+			name: "ListInFolder skips a Snippet whose Fragment has an unknown Language",
+			list: func(t *testing.T, repository *sqlite.SnippetRepository) ([]domain.Snippet, error) {
 				t.Helper()
 
-				_, err := repository.List(t.Context())
-
-				return err
+				return repository.ListInFolder(t.Context(), domain.FolderID{})
 			},
 		},
 	}
@@ -121,19 +131,16 @@ func TestSnippetRepository_corruptRow(t *testing.T) {
 			var logged bytes.Buffer
 
 			path := newDatabasePath(t)
-			repository := sqlite.NewSnippetRepository(
-				openDatabase(t, path),
-				slog.New(slog.NewJSONHandler(&logged, nil)),
-			)
-			snippet := testkit.Snippet(t, testkit.SnippetSpec{})
-			require.NoError(t, repository.Insert(t.Context(), snippet))
-			execRaw(t, path, "UPDATE fragments SET language = 'Klingon'")
+			repository := newLoggingSnippetRepository(t, path, &logged)
+			ids := testkit.NewSequentialIDs()
+			healthy := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "healthy"})
+			corrupt := insertCorruptSnippet(t, repository, path, ids)
 
-			err := tt.read(t, repository, snippet.ID())
+			got, err := tt.list(t, repository)
 
-			require.ErrorIs(t, err, domain.ErrCorruptRecord)
-			assert.Contains(t, logged.String(), `"level":"ERROR"`)
-			assert.Contains(t, logged.String(), `"snippet_id":"`+snippet.ID().String()+`"`)
+			require.NoError(t, err)
+			assert.Equal(t, []domain.Snippet{healthy}, got)
+			assertCorruptRowLogged(t, &logged, "WARN", corrupt.ID())
 		})
 	}
 }
@@ -245,4 +252,12 @@ func insertSnippet(
 	require.NoError(t, repository.Insert(t.Context(), snippet))
 
 	return snippet
+}
+
+func assertCorruptRowLogged(t *testing.T, logged *bytes.Buffer, level string, id domain.SnippetID) {
+	t.Helper()
+
+	assert.Contains(t, logged.String(), `"level":"`+level+`"`)
+	assert.Contains(t, logged.String(), `"snippet_id":"`+id.String()+`"`)
+	assert.Contains(t, logged.String(), `"error":"`+domain.ErrCorruptRecord.Error())
 }

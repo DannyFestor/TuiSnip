@@ -173,7 +173,7 @@ func (c *Create) parse(in CreateInput) (value.Title, value.Language, error) {
 Data that doesn't come from the user is checked at its own boundary:
 
 - `config` and `state` validate their files against their own schemas. Those rules aren't domain rules.
-- `sqlite` rebuilds entities from rows through the same value constructors. There is no constructor that skips validation. A row that fails becomes an error wrapping `domain.ErrCorruptRecord`, and the log line carries the row's ID. A bug in an older build then shows up as an error, not as a broken Snippet on screen.
+- `sqlite` rebuilds entities from rows through the same value constructors. There is no constructor that skips validation. A row that fails becomes an error wrapping `domain.ErrCorruptRecord`, and the log line carries the row's ID. A list skips that row and returns the rest ([database](database.md#reading-entities)). A bug in an older build then shows up as an error, not as a broken Snippet on screen.
 
 ## Errors
 

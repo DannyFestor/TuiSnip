@@ -6,6 +6,7 @@ run:
   build-tags:
     - feature
     - e2e
+    - platform
 
 linters:
   default: all

@@ -9,6 +9,10 @@ set -euo pipefail
 # shellcheck source=scripts/agent/lib.sh
 source "$(dirname "$0")/lib.sh"
 
+# Shell syntax is ASCII, so bytes are enough, and under a UTF-8 locale macOS awk fails on
+# the partial character flatten_quotes takes when it walks a multibyte character byte by byte.
+export LC_ALL=C
+
 readonly PROTECTED_BRANCH="main"
 readonly USE_EDIT_TOOLS="use the edit tools instead, so the post-edit format and vet run"
 readonly INTERPRETERS_PATTERN='^(python[0-9.]*|node|ruby|perl|php|deno|bun)$'

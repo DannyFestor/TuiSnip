@@ -59,17 +59,22 @@ strip_heredoc_bodies() {
 }
 
 # Removes the quotes and, inside them, every character that could read as shell syntax,
-# so a commit message like "a -> b" is not taken for a redirect.
+# so a commit message like "a -> b" is not taken for a redirect. A quoted span left empty
+# becomes a placeholder, so `-m "" -n` still reads -n as a switch rather than as -m's value.
 flatten_quotes() {
 	awk '
-		BEGIN { keep = "[A-Za-z0-9_$/{}.:@%+=,~*-]" }
+		BEGIN { keep = "[A-Za-z0-9_$/{}.:@%+=,~*-]"; placeholder = "_" }
 		{
 			out = ""
 			for (i = 1; i <= length($0); i++) {
 				c = substr($0, i, 1)
 				if (quote == "" && c == "\\") { out = out c substr($0, i + 1, 1); i++; continue }
-				if (quote == "" && (c == "\"" || c == "'"'"'")) { quote = c; continue }
-				if (quote != "" && c == quote) { quote = ""; continue }
+				if (quote == "" && (c == "\"" || c == "'"'"'")) { quote = c; opened_at = length(out); continue }
+				if (quote != "" && c == quote) {
+					if (length(out) == opened_at) out = out placeholder
+					quote = ""
+					continue
+				}
 				if (quote == "\"" && c == "\\") { i++; c = substr($0, i, 1) }
 				if (quote != "" && c !~ keep) continue
 				out = out c
@@ -278,77 +283,112 @@ argument_matching() {
 	printf '%s' "${BASH_REMATCH[0]}"
 }
 
-# -l is left out because BSD sed takes no argument for it, and reading -li as -l -i errs on the
-# side of denying.
-sed_switch_argument() {
+# Switches that take a value from the rest of their cluster, or from the next word when the
+# cluster ends with them. sed -l is left out because BSD sed takes no argument for it, and
+# reading -li as -l -i errs on the side of denying.
+value_switches() {
 	case "$1" in
-	e | f) printf '%s' "$2" ;;
+	git-commit) printf '%s' mFCct ;;
+	git-push) printf '%s' o ;;
+	git-clean) printf '%s' e ;;
+	sed) printf '%s' ef ;;
+	perl) printf '%s' eE ;;
 	esac
 }
 
-perl_switch_argument() {
+# These take a value only from the rest of their cluster, so a bare one leaves the next word
+# alone.
+perl_attached_argument() {
 	case "$1" in
 	0) argument_matching "$PERL_RECORD_SEPARATOR_PATTERN" "$2" ;;
 	l) argument_matching "$OCTAL_DIGITS_PATTERN" "$2" ;;
 	C) argument_matching "$PERL_UNICODE_FEATURES_PATTERN" "$2" ;;
-	d | D | e | E | F | I | m | M | x) printf '%s' "$2" ;;
+	d | D | F | I | m | M | x) printf '%s' "$2" ;;
 	esac
 }
 
-switch_argument() {
-	case "$1" in
-	sed) sed_switch_argument "$2" "$3" ;;
-	perl) perl_switch_argument "$2" "$3" ;;
-	esac
+attached_argument() {
+	local program="$1"
+	local switch="$2"
+	local rest="$3"
+
+	if [[ "$(value_switches "$program")" == *"$switch"* ]]; then
+		printf '%s' "$rest"
+	elif [[ "$program" == perl ]]; then
+		perl_attached_argument "$switch" "$rest"
+	fi
 }
 
 # Walks the cluster switch by switch, skipping each switch's argument, so -0pi is caught and
-# the i in -Mstrict is not.
-cluster_has_switch() {
+# the i in -Mstrict is not. Succeeds when the last switch takes the next word as its value.
+cluster_switches() {
 	local program="$1"
-	local switches="$2"
-	local cluster="${3#-}"
+	local cluster="${2#-}"
 	local switch argument
 
 	while [[ -n "$cluster" ]]; do
 		switch="${cluster:0:1}"
-		if [[ "$switches" == *"$switch"* ]]; then
+		printf '%s' "$switch"
+		cluster="${cluster:1}"
+		argument="$(attached_argument "$program" "$switch" "$cluster")"
+		cluster="${cluster:${#argument}}"
+	done
+	[[ -z "$argument" && "$(value_switches "$program")" == *"$switch"* ]]
+}
+
+short_switches() {
+	local program="$1"
+	shift
+	local next_is_value=0
+	local arg
+
+	for arg in "$@"; do
+		if ((next_is_value)); then
+			next_is_value=0
+		elif is_short_flag_cluster "$arg" && cluster_switches "$program" "$arg"; then
+			next_is_value=1
+		fi
+	done
+}
+
+# Reads clusters through the program's value table, so the n in -m"Add login" is not -n.
+has_short_switch() {
+	local program="$1"
+	local switches="$2"
+	shift 2
+
+	[[ "$(short_switches "$program" "$@")" == *["$switches"]* ]]
+}
+
+has_arg_matching() {
+	local pattern="$1"
+	shift
+	local arg
+
+	for arg in "$@"; do
+		# shellcheck disable=SC2053 # the pattern is a glob on purpose
+		if [[ "$arg" == $pattern ]]; then
 			return 0
 		fi
-		cluster="${cluster:1}"
-		argument="$(switch_argument "$program" "$switch" "$cluster")"
-		cluster="${cluster:${#argument}}"
 	done
 	return 1
 }
 
 # BSD sed edits in place with -I as well as -i.
-is_sed_in_place_flag() {
-	[[ "$1" == --in-place* ]] || { is_short_flag_cluster "$1" && cluster_has_switch sed iI "$1"; }
-}
+is_in_place_edit() {
+	local program="$1"
+	shift
 
-is_perl_in_place_flag() {
-	is_short_flag_cluster "$1" && cluster_has_switch perl i "$1"
-}
-
-is_in_place_flag() {
-	case "$1" in
-	sed) is_sed_in_place_flag "$2" ;;
-	perl) is_perl_in_place_flag "$2" ;;
-	*) return 1 ;;
+	case "$program" in
+	sed) has_arg_matching '--in-place*' "$@" || has_short_switch sed iI "$@" ;;
+	perl) has_short_switch perl i "$@" ;;
 	esac
 }
 
 check_in_place_edit() {
-	local program="$1"
-	shift
-	local arg
-
-	for arg in "$@"; do
-		if is_in_place_flag "$program" "$arg"; then
-			deny "$program must not edit files in place: $USE_EDIT_TOOLS."
-		fi
-	done
+	if is_in_place_edit "$@"; then
+		deny "$1 must not edit files in place: $USE_EDIT_TOOLS."
+	fi
 }
 
 check_awk() {
@@ -368,13 +408,6 @@ is_whole_tree_path() {
 	. | ./ | :/ | '*' | ':/*') return 0 ;;
 	esac
 	return 1
-}
-
-is_short_flag_cluster_with() {
-	local flag="$1"
-	local arg="$2"
-
-	[[ "$arg" =~ ^-[A-Za-z]*${flag}[A-Za-z]*$ ]]
 }
 
 lowercase() {
@@ -398,22 +431,9 @@ check_lefthook_override() {
 }
 
 check_commit() {
-	local takes_value=0
-	local arg
-
-	for arg in "$@"; do
-		if ((takes_value)); then
-			takes_value=0
-			continue
-		fi
-		case "$arg" in
-		-m | -F | -C | -c | -t) takes_value=1 ;;
-		--*) ;;
-		-*) if is_short_flag_cluster_with n "$arg"; then
-			deny "Git hooks must not be skipped: fix what the hook reports instead of passing commit -n."
-		fi ;;
-		esac
-	done
+	if has_short_switch git-commit n "$@"; then
+		deny "Git hooks must not be skipped: fix what the hook reports instead of passing commit -n."
+	fi
 }
 
 check_config() {
@@ -436,16 +456,15 @@ current_branch() {
 	git symbolic-ref --short -q HEAD || true
 }
 
-is_force_push_arg() {
-	local arg="$1"
+deny_force_push() {
+	deny "Force-pushing is not allowed: push new commits instead, or ask the user to force-push."
+}
 
-	case "$arg" in
-	--force | --force-with-lease*) return 0 ;;
-	--*) return 1 ;;
-	+*) return 0 ;;
-	-*) is_short_flag_cluster_with f "$arg" ;;
-	*) return 1 ;;
+is_force_push_arg() {
+	case "$1" in
+	--force | --force-with-lease* | +*) return 0 ;;
 	esac
+	return 1
 }
 
 is_protected_refspec() {
@@ -460,9 +479,12 @@ check_push() {
 	local pushes_head=0
 	local arg
 
+	if has_short_switch git-push f "$@"; then
+		deny_force_push
+	fi
 	for arg in "$@"; do
 		if is_force_push_arg "$arg"; then
-			deny "Force-pushing is not allowed: push new commits instead, or ask the user to force-push."
+			deny_force_push
 		fi
 		if is_protected_refspec "$arg"; then
 			deny "Pushing to $PROTECTED_BRANCH is not allowed: push a branch and open a PR."
@@ -494,13 +516,9 @@ check_reset() {
 }
 
 check_clean() {
-	local arg
-
-	for arg in "$@"; do
-		if [[ "$arg" == "--force" ]] || is_short_flag_cluster_with f "$arg"; then
-			deny_destructive "clean -f"
-		fi
-	done
+	if has_short_switch git-clean f "$@" || has_arg_matching --force "$@"; then
+		deny_destructive "clean -f"
+	fi
 }
 
 check_checkout() {

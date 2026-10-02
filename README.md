@@ -58,7 +58,7 @@ Do this one time for each clone. The hooks do these checks:
 
 | Hook | Checks |
 |---|---|
-| pre-commit | Formats the staged Go files. Runs shellcheck on the staged shell scripts. |
+| pre-commit | Stops a commit on `main`. Formats the staged Go files. Runs shellcheck on the staged shell scripts. |
 | commit-msg | Makes sure that the message obeys [Conventional Commits](https://www.conventionalcommits.org/). |
 | pre-push | Stops a push to `main`. Lints the changed packages. Runs the unit tests. |
 

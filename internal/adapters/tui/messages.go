@@ -16,13 +16,6 @@ type copyFinishedMsg struct {
 	err    error
 }
 
-type snippetCreatedMsg struct {
-	snippet domain.Snippet
-	err     error
-}
-
-type searchFinishedMsg struct {
-	text string
-	hits []domain.SearchHit
-	err  error
+type searchFailedMsg struct {
+	err error
 }

@@ -11,9 +11,11 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
@@ -49,7 +51,7 @@ type Model struct {
 	tags            tagpane.Pane
 	list            snippetlist.List
 	preview         snippetpane.Pane
-	overlays        overlayStack
+	overlays        outcome.Stack
 	status          string
 }
 
@@ -85,7 +87,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		tags:            tagpane.New(deps.Settings.Keys, styles),
 		list:            snippetlist.New(deps.Settings.Keys, styles, snippetlist.Language),
 		preview:         snippetpane.New(deps.Settings.Keys, styles, deps.Settings.Location),
-		overlays:        newOverlayStack(),
+		overlays:        outcome.NewStack(),
 		status:          "",
 	}, nil
 }
@@ -106,14 +108,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.overlaysUpdated(msg)
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
-	case tea.PasteMsg, snippetCreatedMsg:
+	case tea.PasteMsg, editoverlay.SaveFinished, searchpopup.HitsFound:
 		return m.overlaysUpdated(msg)
 	case snippetsLoadedMsg:
 		return m.snippetsLoaded(msg), nil
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
-	case searchFinishedMsg:
-		return m.searchFinished(msg)
+	case searchFailedMsg:
+		return m.failed(operationSearch, msg.err), nil
 	}
 
 	return m, nil
@@ -153,9 +155,9 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case global.Matches(msg, binding.Quit):
 		return m, tea.Quit
 	case global.Matches(msg, binding.NewSnippet):
-		return m.opened(newEditSession(m.keys.editor, m.keys.confirm, m.styles))
+		return m.opened(editoverlay.New(m.keys.table, m.styles))
 	case global.Matches(msg, binding.Search):
-		return m.opened(newSearchPopup(m.keys.table, m.styles, m.preview.Cleared(), m.list.Snippets()))
+		return m.opened(searchpopup.New(m.keys.table, m.styles, m.preview.Cleared(), m.list.Snippets()))
 	}
 
 	if navigate, ok := m.keys.navigationFor(msg); ok {
@@ -195,7 +197,7 @@ func (m Model) previewUpdated(msg tea.Msg) (Model, tea.Cmd) {
 	return next.concludedAll(outcomes, cmd)
 }
 
-func (m Model) opened(opening outcomeOverlay, openCmd tea.Cmd) (Model, tea.Cmd) {
+func (m Model) opened(opening outcome.Overlay, openCmd tea.Cmd) (Model, tea.Cmd) {
 	next, cmd := m.settled(m.overlays.Pushed(opening))
 
 	return next, tea.Batch(openCmd, cmd)
@@ -205,7 +207,7 @@ func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {
 	return m.settled(m.overlays.Update(msg))
 }
 
-func (m Model) settled(overlays overlayStack, outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
+func (m Model) settled(overlays outcome.Stack, outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
 	next := m
 	next.overlays = overlays
 
@@ -254,26 +256,21 @@ func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 	return func() tea.Msg {
 		created, err := m.creator.Run(m.ctx, in)
 
-		return snippetCreatedMsg{snippet: created, err: err}
+		return editoverlay.SaveFinished{Snippet: created, Err: err}
 	}
 }
 
 func (m Model) querySnippets(text string) tea.Cmd {
-	in := search.QueryInput{Text: text}
+	query := search.QueryInput{Text: text}
 
 	return func() tea.Msg {
-		hits, err := m.searcher.Run(m.ctx, in)
+		hits, err := m.searcher.Run(m.ctx, query)
+		if err != nil {
+			return searchFailedMsg{err: err}
+		}
 
-		return searchFinishedMsg{text: in.Text, hits: hits, err: err}
+		return searchpopup.HitsFound{Text: query.Text, Hits: hits}
 	}
-}
-
-func (m Model) searchFinished(msg searchFinishedMsg) (Model, tea.Cmd) {
-	if msg.err != nil {
-		return m.failed(operationSearch, msg.err), nil
-	}
-
-	return m.overlaysUpdated(msg)
 }
 
 func (m Model) revealed(id domain.SnippetID) (Model, tea.Cmd) {

@@ -51,7 +51,7 @@ internal/
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
-      outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay stack over it
+      outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet

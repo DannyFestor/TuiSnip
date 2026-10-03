@@ -35,6 +35,7 @@ type Model struct {
 	searcher      SnippetSearcher
 	logger        *slog.Logger
 	forcedQuitKey string
+	quitAfterCopy bool
 	overlays      outcome.Stack
 }
 
@@ -62,6 +63,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		searcher:      deps.Searcher,
 		logger:        deps.Logger,
 		forcedQuitKey: deps.Settings.ForcedQuitKey,
+		quitAfterCopy: deps.Settings.QuitAfterCopy,
 		overlays:      overlays,
 	}, nil
 }
@@ -205,11 +207,24 @@ func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {
 	}
 
 	next, cmd := m.shown(text)
-	if msg.result.Delivery == domain.CopyDeliverySentToTerminal {
-		return next, tea.Batch(cmd, tea.SetClipboard(msg.result.Content.String()))
+
+	return next, tea.Sequence(tea.Batch(cmd, terminalClipboard(msg.result)), m.afterCopy())
+}
+
+func terminalClipboard(result snippet.CopyResult) tea.Cmd {
+	if result.Delivery != domain.CopyDeliverySentToTerminal {
+		return nil
 	}
 
-	return next, cmd
+	return tea.SetClipboard(result.Content.String())
+}
+
+func (m Model) afterCopy() tea.Cmd {
+	if !m.quitAfterCopy {
+		return nil
+	}
+
+	return tea.Quit
 }
 
 func (m Model) failed(operation string, err error) (Model, tea.Cmd) {

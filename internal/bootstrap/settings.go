@@ -13,6 +13,7 @@ func SettingsFrom(cfg config.Config, location *time.Location) tui.Settings {
 		Keys:          keysFrom(cfg.Bindings),
 		ForcedQuitKey: config.ForcedQuitKey().String(),
 		Location:      location,
+		QuitAfterCopy: cfg.Copy.QuitAfter,
 	}
 }
 

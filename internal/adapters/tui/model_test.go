@@ -3,6 +3,7 @@ package tui_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -111,12 +112,7 @@ func TestModel_copy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			snippets := sampleSnippets(t)
-			copier := NewMockSnippetCopier(t)
-			copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(tt.result, tt.err)
-			screen := start(t, newModel(t, listerOf(t, snippets...), copier), wideWidth, wideHeight)
-
-			screen.press(keypress.Letter('3'), keypress.Letter('y'))
+			screen := copyFirstSnippet(t, testsettings.Default(t), tt.result, tt.err)
 
 			assert.Contains(t, screen.screen(), tt.status)
 		})
@@ -138,13 +134,62 @@ func TestModel_copy(t *testing.T) {
 	t.Run("stays quiet when cancelled", func(t *testing.T) {
 		t.Parallel()
 
-		copier := NewMockSnippetCopier(t)
-		copier.EXPECT().Run(mock.Anything, mock.Anything).Return(snippet.CopyResult{}, context.Canceled)
-		screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), copier), wideWidth, wideHeight)
-
-		screen.press(keypress.Letter('3'), keypress.Letter('y'))
+		screen := copyFirstSnippet(t, testsettings.Default(t), snippet.CopyResult{}, context.Canceled)
 
 		assert.NotContains(t, screen.screen(), "Something went wrong")
+	})
+}
+
+func TestModel_quitAfterCopy(t *testing.T) {
+	t.Parallel()
+
+	t.Run("quits after a Copy placed on the clipboard", func(t *testing.T) {
+		t.Parallel()
+
+		screen := copyFirstSnippet(t, quittingAfterCopy(t), copied(t, domain.CopyDeliveryPlaced), nil)
+
+		assert.Contains(t, screen.emitted, tea.QuitMsg{})
+	})
+
+	t.Run("sends the content to the terminal before quitting", func(t *testing.T) {
+		t.Parallel()
+
+		screen := copyFirstSnippet(t, quittingAfterCopy(t), copied(t, domain.CopyDeliverySentToTerminal), nil)
+
+		clipboard := slices.Index(screen.emitted, tea.SetClipboard("echo copied")())
+		quit := slices.Index(screen.emitted, tea.Msg(tea.QuitMsg{}))
+
+		require.NotEqual(t, -1, clipboard)
+		require.NotEqual(t, -1, quit)
+		assert.Less(t, clipboard, quit)
+	})
+
+	failures := []struct {
+		name string
+		err  error
+	}{
+		{name: "stays open when no clipboard tool exists", err: domain.ErrNoClipboardTool},
+		{name: "stays open after a failed Copy", err: errDatabaseLocked},
+		{name: "stays open after a cancelled Copy", err: context.Canceled},
+	}
+
+	for _, tt := range failures {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen := copyFirstSnippet(t, quittingAfterCopy(t), snippet.CopyResult{}, tt.err)
+
+			assert.NotContains(t, screen.emitted, tea.QuitMsg{})
+		})
+	}
+
+	t.Run("stays open after a successful Copy when the setting is off", func(t *testing.T) {
+		t.Parallel()
+
+		screen := copyFirstSnippet(t, testsettings.Default(t), copied(t, domain.CopyDeliveryPlaced), nil)
+
+		assert.NotContains(t, screen.emitted, tea.QuitMsg{})
+		assert.Contains(t, screen.screen(), "Copied")
 	})
 }
 
@@ -162,6 +207,35 @@ func TestModel_quit(t *testing.T) {
 			assert.Contains(t, screen.emitted, tea.QuitMsg{})
 		})
 	}
+}
+
+func quittingAfterCopy(t *testing.T) tui.Settings {
+	t.Helper()
+
+	settings := testsettings.Default(t)
+	settings.QuitAfterCopy = true
+
+	return settings
+}
+
+func copyFirstSnippet(t *testing.T, settings tui.Settings, result snippet.CopyResult, err error) *driver {
+	t.Helper()
+
+	snippets := sampleSnippets(t)
+	copier := NewMockSnippetCopier(t)
+	copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(result, err)
+
+	model := modelWithSettings(t, actions{
+		lister:   listerOf(t, snippets...),
+		copier:   copier,
+		creator:  NewMockSnippetCreator(t),
+		searcher: NewMockSnippetSearcher(t),
+	}, settings)
+	screen := start(t, model, wideWidth, wideHeight)
+
+	screen.press(keypress.Letter('3'), keypress.Letter('y'))
+
+	return screen
 }
 
 func copied(t *testing.T, delivery domain.CopyDelivery) snippet.CopyResult {

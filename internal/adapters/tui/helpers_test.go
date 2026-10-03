@@ -2,6 +2,8 @@ package tui_test
 
 import (
 	"log/slog"
+	"reflect"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -184,13 +186,40 @@ func (d *driver) run(cmd tea.Cmd) {
 	switch msg := cmd().(type) {
 	case nil:
 	case tea.BatchMsg:
-		for _, batched := range msg {
+		// Batch promises no order, so running it backwards makes a test that needs an order fail unless the model used Sequence.
+		for _, batched := range slices.Backward(msg) {
 			d.run(batched)
 		}
 	default:
-		d.emitted = append(d.emitted, msg)
-		d.send(msg)
+		d.runSequenceOrSend(msg)
 	}
+}
+
+func (d *driver) runSequenceOrSend(msg tea.Msg) {
+	d.t.Helper()
+
+	if sequence, ok := sequenceSteps(msg); ok {
+		for _, step := range sequence {
+			d.run(step)
+		}
+
+		return
+	}
+
+	d.emitted = append(d.emitted, msg)
+	d.send(msg)
+}
+
+// tea.Sequence wraps its commands in an unexported slice type, so only its shape identifies it.
+func sequenceSteps(msg tea.Msg) ([]tea.Cmd, bool) {
+	cmds := reflect.TypeFor[[]tea.Cmd]()
+
+	value := reflect.ValueOf(msg)
+	if value.Kind() != reflect.Slice || !value.Type().ConvertibleTo(cmds) {
+		return nil, false
+	}
+
+	return reflect.TypeAssert[[]tea.Cmd](value.Convert(cmds))
 }
 
 func (d *driver) screen() string {

@@ -113,7 +113,7 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.database = opened.database
 	app.log = opened.log
 
-	app.model, err = tui.New(ctx, tui.Deps{
+	app.model, err = newModel(ctx, cfg, tui.Deps{
 		Lister:   app.SnippetsInFolder,
 		Copier:   app.Copy,
 		Creator:  app.Create,
@@ -126,6 +126,15 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	}
 
 	return app, nil
+}
+
+func newModel(ctx context.Context, cfg config.Config, deps tui.Deps) (tui.Model, error) {
+	build := tui.New
+	if cfg.Copy.QuitAfter {
+		build = tui.NewQuittingAfterCopy
+	}
+
+	return build(ctx, deps)
 }
 
 func newActions(cfg config.Config, options Options, repo *sqlite.SnippetRepository, logger *slog.Logger) (*App, error) {

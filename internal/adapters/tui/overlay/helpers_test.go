@@ -10,33 +10,49 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
 )
 
-type tickMsg struct{}
+type (
+	tickMsg struct{}
+	step    = overlay.Step[string]
+	stack   = overlay.Stack[string]
+)
 
-func overlayMock(t *testing.T) *MockOverlay {
+func overlayMock(t *testing.T) *MockOverlay[string] {
 	t.Helper()
 
-	mocked := NewMockOverlay(t)
-	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(overlay.Stay(mocked)).Maybe()
+	mocked := NewMockOverlay[string](t)
+	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(stay(mocked)).Maybe()
 
 	return mocked
 }
 
-func parentMock(t *testing.T) *MockParent {
+func parentMock(t *testing.T) *MockParent[string] {
 	t.Helper()
 
-	mocked := NewMockParent(t)
-	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(overlay.Stay(mocked)).Maybe()
+	mocked := NewMockParent[string](t)
+	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(stay(mocked)).Maybe()
 
 	return mocked
+}
+
+func stay(next overlay.Overlay[string]) step {
+	return overlay.Stay(next)
+}
+
+func closing() step {
+	return overlay.Close[string]()
+}
+
+func emptyStack() stack {
+	return overlay.NewStack[string]()
 }
 
 func hinting(name string) []key.Binding {
 	return []key.Binding{key.NewBinding(key.WithKeys(name), key.WithHelp(name, name))}
 }
 
-func hintKeys(stack overlay.Stack) []string {
-	keys := make([]string, 0, len(stack.Hints()))
-	for _, binding := range stack.Hints() {
+func hintKeys(of stack) []string {
+	keys := make([]string, 0, len(of.Hints()))
+	for _, binding := range of.Hints() {
 		keys = append(keys, binding.Keys()...)
 	}
 
@@ -47,11 +63,11 @@ func letter(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Text: string(r)}
 }
 
-func stackOf(overlays ...overlay.Overlay) overlay.Stack {
-	stack := overlay.NewStack()
+func stackOf(overlays ...overlay.Overlay[string]) stack {
+	built := emptyStack()
 	for _, pushed := range overlays {
-		stack, _, _ = stack.Pushed(pushed)
+		built, _, _ = built.Pushed(pushed)
 	}
 
-	return stack
+	return built
 }

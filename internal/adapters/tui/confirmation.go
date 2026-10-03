@@ -5,7 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 )
 
 const (
@@ -20,27 +20,27 @@ type confirmation struct {
 	keys     confirmBindings
 	styles   styleSet
 	question string
-	onYes    overlay.Outcome
+	onYes    outcome.Outcome
 }
 
-func newConfirmation(keys confirmBindings, styles styleSet, question string, onYes overlay.Outcome) confirmation {
+func newConfirmation(keys confirmBindings, styles styleSet, question string, onYes outcome.Outcome) confirmation {
 	return confirmation{keys: keys, styles: styles, question: question, onYes: onYes}
 }
 
-func (c confirmation) Update(msg tea.Msg) overlay.Step {
+func (c confirmation) Update(msg tea.Msg) step {
 	pressed, ok := msg.(tea.KeyPressMsg)
 	if !ok {
-		return overlay.Stay(c)
+		return stay(c)
 	}
 
 	switch {
 	case key.Matches(pressed, c.keys.yes):
-		return overlay.Close().Passing(c.onYes)
+		return closing().Passing(c.onYes)
 	case key.Matches(pressed, c.keys.no):
-		return overlay.Close()
+		return closing()
 	}
 
-	return overlay.Stay(c)
+	return stay(c)
 }
 
 func (c confirmation) View() string {

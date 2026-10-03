@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -44,7 +44,7 @@ type Model struct {
 	tags            tagPane
 	list            snippetList
 	preview         snippetPane
-	overlays        overlay.Stack
+	overlays        overlayStack
 	status          string
 }
 
@@ -80,7 +80,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		tags:            tagPane{},
 		list:            newSnippetList(languageOf),
 		preview:         newSnippetPane(styles, deps.Settings.Location),
-		overlays:        overlay.NewStack(),
+		overlays:        newOverlayStack(),
 		status:          "",
 	}, nil
 }
@@ -131,7 +131,7 @@ func (m Model) loadSnippets(selecting domain.SnippetID) tea.Cmd {
 
 func (m Model) pressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == forcedQuitKey {
-		return m.settled(m.overlays.Offered(quitAsked{}))
+		return m.settled(m.overlays.Offered(outcome.QuitAsked{}))
 	}
 
 	if m.overlays.Open() {
@@ -166,7 +166,7 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) opened(opening overlay.Overlay, openCmd tea.Cmd) (Model, tea.Cmd) {
+func (m Model) opened(opening outcomeOverlay, openCmd tea.Cmd) (Model, tea.Cmd) {
 	next, cmd := m.settled(m.overlays.Pushed(opening))
 
 	return next, tea.Batch(openCmd, cmd)
@@ -176,38 +176,39 @@ func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {
 	return m.settled(m.overlays.Update(msg))
 }
 
-func (m Model) settled(overlays overlay.Stack, outcomes []overlay.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
+func (m Model) settled(overlays overlayStack, outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
 	m.overlays = overlays
 	cmds := make([]tea.Cmd, 0, 1+len(outcomes))
 	cmds = append(cmds, cmd)
 
-	for _, outcome := range outcomes {
+	for _, reported := range outcomes {
 		var concludedCmd tea.Cmd
 
-		m, concludedCmd = m.concluded(outcome)
+		m, concludedCmd = m.concluded(reported)
 		cmds = append(cmds, concludedCmd)
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) concluded(outcome overlay.Outcome) (Model, tea.Cmd) {
-	switch outcome := outcome.(type) {
-	case saveRequested:
-		return m, m.createSnippet(outcome.input)
-	case snippetSaved:
-		return m, m.loadSnippets(outcome.id)
-	case saveFailed:
-		return m.failed(operationSave, outcome.err), nil
-	case noticeShown:
-		m.status = outcome.text
-	case searchTyped:
-		return m, m.querySnippets(outcome.text)
-	case snippetRevealed:
-		return m.revealed(outcome.id)
-	case copyRequested:
-		return m, m.copySnippet(outcome.id)
-	case quitAsked, quitConfirmed:
+func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
+	switch reported := reported.(type) {
+	case outcome.SaveRequested:
+		return m, m.createSnippet(reported.Input)
+	case outcome.SnippetSaved:
+		return m, m.loadSnippets(reported.ID)
+	case outcome.SaveFailed:
+		return m.failed(operationSave, reported.Err), nil
+	case outcome.NoticeShown:
+		m.status = reported.Text
+	case outcome.SearchTyped:
+		return m, m.querySnippets(reported.Text)
+	case outcome.SnippetRevealed:
+		return m.revealed(reported.ID)
+	case outcome.CopyRequested:
+		return m, m.copySnippet(reported.ID)
+	case outcome.DiscardConfirmed:
+	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
 	}
 

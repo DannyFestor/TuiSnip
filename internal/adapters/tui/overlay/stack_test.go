@@ -6,8 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
 )
 
 func TestStack_Update(t *testing.T) {
@@ -17,12 +15,12 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		top := overlayMock(t)
-		top.EXPECT().Update(letter('a')).Return(overlay.Stay(top).Passing("top pressed"))
+		top.EXPECT().Update(letter('a')).Return(stay(top).Passing("top pressed"))
 		stack := stackOf(overlayMock(t), top)
 
 		_, outcomes, _ := stack.Update(letter('a'))
 
-		assert.Equal(t, []overlay.Outcome{"top pressed"}, outcomes)
+		assert.Equal(t, []string{"top pressed"}, outcomes)
 	})
 
 	t.Run("routes a paste to the top overlay only", func(t *testing.T) {
@@ -30,51 +28,51 @@ func TestStack_Update(t *testing.T) {
 
 		paste := tea.PasteMsg{Content: "text"}
 		top := overlayMock(t)
-		top.EXPECT().Update(paste).Return(overlay.Stay(top).Passing("top pasted"))
+		top.EXPECT().Update(paste).Return(stay(top).Passing("top pasted"))
 		stack := stackOf(overlayMock(t), top)
 
 		_, outcomes, _ := stack.Update(paste)
 
-		assert.Equal(t, []overlay.Outcome{"top pasted"}, outcomes)
+		assert.Equal(t, []string{"top pasted"}, outcomes)
 	})
 
 	t.Run("delivers any other message to every overlay, top first", func(t *testing.T) {
 		t.Parallel()
 
 		bottom := overlayMock(t)
-		bottom.EXPECT().Update(tickMsg{}).Return(overlay.Stay(bottom).Passing("bottom ticked"))
+		bottom.EXPECT().Update(tickMsg{}).Return(stay(bottom).Passing("bottom ticked"))
 
 		top := overlayMock(t)
-		top.EXPECT().Update(tickMsg{}).Return(overlay.Stay(top).Passing("top ticked"))
+		top.EXPECT().Update(tickMsg{}).Return(stay(top).Passing("top ticked"))
 		stack := stackOf(bottom, top)
 
 		_, outcomes, _ := stack.Update(tickMsg{})
 
-		assert.Equal(t, []overlay.Outcome{"top ticked", "bottom ticked"}, outcomes)
+		assert.Equal(t, []string{"top ticked", "bottom ticked"}, outcomes)
 	})
 
 	t.Run("skips an overlay that closed earlier in the same delivery", func(t *testing.T) {
 		t.Parallel()
 
 		bottom := overlayMock(t)
-		bottom.EXPECT().Update(tickMsg{}).Return(overlay.Stay(bottom).Passing("bottom ticked"))
+		bottom.EXPECT().Update(tickMsg{}).Return(stay(bottom).Passing("bottom ticked"))
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("child ticked").Return(overlay.Close())
+		parent.EXPECT().Received("child ticked").Return(closing())
 
 		child := overlayMock(t)
-		child.EXPECT().Update(tickMsg{}).Return(overlay.Stay(child).Passing("child ticked"))
+		child.EXPECT().Update(tickMsg{}).Return(stay(child).Passing("child ticked"))
 		stack := stackOf(bottom, parent, child)
 
 		_, outcomes, _ := stack.Update(tickMsg{})
 
-		assert.Equal(t, []overlay.Outcome{"bottom ticked"}, outcomes)
+		assert.Equal(t, []string{"bottom ticked"}, outcomes)
 	})
 
 	t.Run("ignores a key with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		_, outcomes, cmd := overlay.NewStack().Update(letter('a'))
+		_, outcomes, cmd := emptyStack().Update(letter('a'))
 
 		assert.Empty(t, outcomes)
 		assert.Nil(t, cmd)
@@ -87,7 +85,7 @@ func TestStack_Update(t *testing.T) {
 		bottom.EXPECT().Hints().Return(hinting("bottom"))
 
 		top := overlayMock(t)
-		top.EXPECT().Update(letter('c')).Return(overlay.Close())
+		top.EXPECT().Update(letter('c')).Return(closing())
 		stack := stackOf(bottom, top)
 
 		stack, _, _ = stack.Update(letter('c'))
@@ -99,7 +97,7 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('c')).Return(overlay.Close())
+		only.EXPECT().Update(letter('c')).Return(closing())
 		stack := stackOf(only)
 
 		stack, _, _ = stack.Update(letter('c'))
@@ -111,40 +109,52 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("picked").Return(overlay.Stay(parent).Passing("saved"))
+		parent.EXPECT().Received("picked").Return(stay(parent).Passing("saved"))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(overlay.Stay(child).Passing("picked"))
+		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, child)
 
 		_, outcomes, _ := stack.Update(letter('a'))
 
-		assert.Equal(t, []overlay.Outcome{"saved"}, outcomes)
+		assert.Equal(t, []string{"saved"}, outcomes)
+	})
+
+	t.Run("hands on a zero-value outcome", func(t *testing.T) {
+		t.Parallel()
+
+		only := overlayMock(t)
+		only.EXPECT().Update(letter('a')).Return(stay(only).Passing(""))
+		stack := stackOf(only)
+
+		_, outcomes, _ := stack.Update(letter('a'))
+
+		assert.Equal(t, []string{""}, outcomes)
 	})
 
 	t.Run("passes an outcome by an overlay that takes none", func(t *testing.T) {
 		t.Parallel()
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("picked").Return(overlay.Stay(parent).Passing("saved"))
+		parent.EXPECT().Received("picked").Return(stay(parent).Passing("saved"))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(overlay.Stay(child).Passing("picked"))
+		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, overlayMock(t), child)
 
 		_, outcomes, _ := stack.Update(letter('a'))
 
-		assert.Equal(t, []overlay.Outcome{"saved"}, outcomes)
+		assert.Equal(t, []string{"saved"}, outcomes)
 	})
 
 	t.Run("keeps an outcome its parent consumes", func(t *testing.T) {
 		t.Parallel()
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("picked").Return(overlay.Stay(parent))
+		parent.EXPECT().Received("picked").Return(stay(parent))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(overlay.Stay(child).Passing("picked"))
+		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, child)
 
 		_, outcomes, _ := stack.Update(letter('a'))
@@ -159,10 +169,10 @@ func TestStack_Update(t *testing.T) {
 		bottom.EXPECT().Hints().Return(hinting("bottom"))
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("done").Return(overlay.Close())
+		parent.EXPECT().Received("done").Return(closing())
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(overlay.Stay(child).Passing("done"))
+		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("done"))
 		stack := stackOf(bottom, parent, child)
 
 		stack, _, _ = stack.Update(letter('a'))
@@ -177,7 +187,7 @@ func TestStack_Update(t *testing.T) {
 		child.EXPECT().Hints().Return(hinting("child"))
 
 		parent := overlayMock(t)
-		parent.EXPECT().Update(letter('o')).Return(overlay.Stay(parent).Opening(child))
+		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
 		stack := stackOf(parent)
 
 		stack, _, _ = stack.Update(letter('o'))
@@ -190,14 +200,14 @@ func TestStack_Update(t *testing.T) {
 
 		newChild := overlayMock(t)
 		newChild.EXPECT().Hints().Return(hinting("new child"))
-		newChild.EXPECT().Update(letter('c')).Return(overlay.Close())
+		newChild.EXPECT().Update(letter('c')).Return(closing())
 
 		parent := parentMock(t)
-		parent.EXPECT().Received("asked").Return(overlay.Stay(parent).Opening(newChild))
+		parent.EXPECT().Received("asked").Return(stay(parent).Opening(newChild))
 		parent.EXPECT().Hints().Return(hinting("parent"))
 
 		oldChild := overlayMock(t)
-		oldChild.EXPECT().Update(letter('a')).Return(overlay.Stay(oldChild).Passing("asked"))
+		oldChild.EXPECT().Update(letter('a')).Return(stay(oldChild).Passing("asked"))
 		stack := stackOf(parent, oldChild)
 
 		stack, _, _ = stack.Update(letter('a'))
@@ -212,11 +222,11 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		screen := tea.WindowSizeMsg{Width: 80, Height: 24}
-		child := NewMockOverlay(t)
-		child.EXPECT().Update(screen).Return(overlay.Stay(child)).Once()
+		child := NewMockOverlay[string](t)
+		child.EXPECT().Update(screen).Return(stay(child)).Once()
 
 		parent := overlayMock(t)
-		parent.EXPECT().Update(letter('o')).Return(overlay.Stay(parent).Opening(child))
+		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
 		stack, _, _ := stackOf(parent).Update(screen)
 
 		stack.Update(letter('o'))
@@ -226,7 +236,7 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('r')).Return(overlay.Stay(only).Running(func() tea.Msg { return tickMsg{} }))
+		only.EXPECT().Update(letter('r')).Return(stay(only).Running(func() tea.Msg { return tickMsg{} }))
 		stack := stackOf(only)
 
 		_, _, cmd := stack.Update(letter('r'))
@@ -243,9 +253,9 @@ func TestStack_Pushed(t *testing.T) {
 		t.Parallel()
 
 		screen := tea.WindowSizeMsg{Width: 80, Height: 24}
-		pushed := NewMockOverlay(t)
-		pushed.EXPECT().Update(screen).Return(overlay.Stay(pushed)).Once()
-		stack, _, _ := overlay.NewStack().Update(screen)
+		pushed := NewMockOverlay[string](t)
+		pushed.EXPECT().Update(screen).Return(stay(pushed)).Once()
+		stack, _, _ := emptyStack().Update(screen)
 
 		stack.Pushed(pushed)
 	})
@@ -253,7 +263,7 @@ func TestStack_Pushed(t *testing.T) {
 	t.Run("opens the stack", func(t *testing.T) {
 		t.Parallel()
 
-		assert.False(t, overlay.NewStack().Open())
+		assert.False(t, emptyStack().Open())
 		assert.True(t, stackOf(overlayMock(t)).Open())
 	})
 }
@@ -274,7 +284,7 @@ func TestStack_Hints(t *testing.T) {
 	t.Run("shows none with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Empty(t, overlay.NewStack().Hints())
+		assert.Empty(t, emptyStack().Hints())
 	})
 }
 
@@ -285,23 +295,23 @@ func TestStack_Offered(t *testing.T) {
 		t.Parallel()
 
 		bottom := parentMock(t)
-		bottom.EXPECT().Received("top passed quit").Return(overlay.Stay(bottom).Passing("bottom passed it on"))
+		bottom.EXPECT().Received("top passed quit").Return(stay(bottom).Passing("bottom passed it on"))
 
 		top := parentMock(t)
-		top.EXPECT().Received("quit").Return(overlay.Stay(top).Passing("top passed quit"))
+		top.EXPECT().Received("quit").Return(stay(top).Passing("top passed quit"))
 		stack := stackOf(bottom, top)
 
 		_, outcomes, _ := stack.Offered("quit")
 
-		assert.Equal(t, []overlay.Outcome{"bottom passed it on"}, outcomes)
+		assert.Equal(t, []string{"bottom passed it on"}, outcomes)
 	})
 
 	t.Run("returns the outcome with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		_, outcomes, _ := overlay.NewStack().Offered("quit")
+		_, outcomes, _ := emptyStack().Offered("quit")
 
-		assert.Equal(t, []overlay.Outcome{"quit"}, outcomes)
+		assert.Equal(t, []string{"quit"}, outcomes)
 	})
 }
 
@@ -334,6 +344,6 @@ func TestStack_Render(t *testing.T) {
 	t.Run("keeps the background with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "background", overlay.NewStack().Render("background"))
+		assert.Equal(t, "background", emptyStack().Render("background"))
 	})
 }

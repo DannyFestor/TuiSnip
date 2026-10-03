@@ -10,7 +10,7 @@ set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
 readonly GENERATED_HEADER_PATTERN='^// Code generated .* DO NOT EDIT\.$'
-readonly EXEMPT_COMMENT_PATTERN='^//(go:|nolint)|^// (Unordered output|Output):|^// ENUM\('
+readonly EXEMPT_COMMENT_PATTERN='^//([a-z0-9]+:[a-z0-9]|nolint)|^// (Unordered output|Output):|^// ENUM\('
 readonly APPROVALS_FILE_NAME="comment-approvals"
 
 # Prints each comment in the text, trimmed: full-line // and /* comments, and trailing //

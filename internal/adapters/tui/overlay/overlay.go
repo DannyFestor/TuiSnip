@@ -5,8 +5,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-type Overlay interface {
-	Update(msg tea.Msg) Step
+//nolint:iface // iface misses calls through an instantiated generic interface; round calls every method.
+type Overlay[O any] interface {
+	Update(msg tea.Msg) Step[O]
 	View() string
 	Hints() []key.Binding
 }

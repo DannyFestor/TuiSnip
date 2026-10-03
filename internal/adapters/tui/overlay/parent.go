@@ -1,6 +1,7 @@
 package overlay
 
-type Parent interface {
-	Overlay
-	Received(outcome Outcome) Step
+//nolint:iface // iface misses calls through an instantiated generic interface; round.bubble calls Received.
+type Parent[O any] interface {
+	Overlay[O]
+	Received(outcome O) Step[O]
 }

@@ -4,7 +4,7 @@ How code is written in this repo. Read the matching standard before writing or r
 
 | Standard | Covers | Read before |
 |---|---|---|
-| [architecture](architecture.md) | Hexagonal layers, package layout, Actions, capabilities, error wrapping, where context and logging go, the test tiers | adding a package or an Action, or importing across layers |
+| [architecture](architecture.md) | Hexagonal layers, package layout, Actions, capabilities, error wrapping, where context and logging go, the test tiers, TUI components | adding a package, an Action, or a TUI component, or importing across layers |
 | [code](code.md) | Conventions no linter checks: validation into value objects, context, concurrency, logging, comments, generated code | writing any Go |
 | [testing](testing.md) | Choosing a tier, naming, table tests, test doubles, feature, e2e, fuzz, and property tests | writing a test |
 | [linting](linting.md) | Why the non-obvious golangci-lint rules exist, and the `nolint` format | adding a `//nolint` or changing `.golangci.yml` |

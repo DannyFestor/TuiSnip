@@ -1,4 +1,4 @@
-package tui
+package input
 
 import (
 	"charm.land/bubbles/v2/key"
@@ -6,7 +6,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 )
 
-func newLineInput(prompt string) textinput.Model {
+func NewLine(prompt string) textinput.Model {
 	input := textinput.New()
 	input.Prompt = prompt
 	input.KeyMap.Paste = withoutClipboardAccess(input.KeyMap.Paste)
@@ -18,7 +18,7 @@ func newLineInput(prompt string) textinput.Model {
 	return input
 }
 
-func newContentArea() textarea.Model {
+func NewContentArea() textarea.Model {
 	area := textarea.New()
 	area.Prompt = ""
 	area.MaxHeight = 0

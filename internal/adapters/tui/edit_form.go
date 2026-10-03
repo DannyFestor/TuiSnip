@@ -9,6 +9,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -39,9 +41,9 @@ type editForm struct {
 func newEditForm(keys editorBindings) (editForm, tea.Cmd) {
 	form := editForm{
 		keys:        keys,
-		title:       newLineInput(""),
-		description: newLineInput(""),
-		content:     newContentArea(),
+		title:       input.NewLine(""),
+		description: input.NewLine(""),
+		content:     input.NewContentArea(),
 		field:       domain.FieldTitle,
 		inContent:   false,
 		invalid:     nil,
@@ -65,14 +67,14 @@ func (e editForm) update(msg tea.Msg) (editForm, editRequest, tea.Cmd) {
 	return e, editStays, nil
 }
 
-func (e editForm) resized(outer size) editForm {
-	inner := innerSize(outer)
-	inputWidth := max(1, inner.width-len(fieldIndent)-fieldLabelWidth-cursorCell)
+func (e editForm) resized(outer look.Size) editForm {
+	inner := outer.Inner()
+	inputWidth := max(1, inner.Width-len(fieldIndent)-fieldLabelWidth-cursorCell)
 
 	e.title.SetWidth(inputWidth)
 	e.description.SetWidth(inputWidth)
-	e.content.SetWidth(inner.width)
-	e.content.SetHeight(max(1, inner.height-fieldRows))
+	e.content.SetWidth(inner.Width)
+	e.content.SetHeight(max(1, inner.Height-fieldRows))
 
 	return e
 }
@@ -106,7 +108,7 @@ func (e editForm) hints() []key.Binding {
 	return e.keys.fieldHints()
 }
 
-func (e editForm) view(styles styleSet, outer size) string {
+func (e editForm) view(styles look.Styles, outer look.Size) string {
 	lines := []string{
 		e.fieldLine(styles, domain.FieldTitle, e.title.View()),
 		e.fieldLine(styles, domain.FieldDescription, e.description.View()),
@@ -114,7 +116,7 @@ func (e editForm) view(styles styleSet, outer size) string {
 		e.content.View(),
 	}
 
-	return frame(styles.focused, e.frameTitle(), strings.Join(lines, "\n"), outer)
+	return look.Frame(styles.Focused, e.frameTitle(), strings.Join(lines, "\n"), outer)
 }
 
 func (e editForm) fieldPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.Cmd) {
@@ -225,23 +227,23 @@ func (e editForm) fieldAt(offset int) domain.Field {
 	return fields[max(0, min(index, len(fields)-1))]
 }
 
-func (e editForm) fieldLine(styles styleSet, field domain.Field, entry string) string {
+func (e editForm) fieldLine(styles look.Styles, field domain.Field, entered string) string {
 	cursor := fieldIndent
-	label := styles.plain
+	label := styles.Plain
 
 	if e.field == field {
 		cursor = fieldCursor
-		label = styles.bold
+		label = styles.Bold
 	}
 
 	if slices.Contains(e.invalid, field) {
-		label = styles.invalid
+		label = styles.Invalid
 	}
 
-	return cursor + label.Render(fitWidth(fieldLabel(field), fieldLabelWidth)) + entry
+	return cursor + label.Render(look.FitWidth(fieldLabel(field), fieldLabelWidth)) + entered
 }
 
-func (e editForm) contentEntryHint(styles styleSet) string {
+func (e editForm) contentEntryHint(styles look.Styles) string {
 	if e.inContent {
 		return ""
 	}
@@ -257,7 +259,7 @@ func (e editForm) contentEntryHint(styles styleSet) string {
 		return ""
 	}
 
-	return styles.dim.Render(strings.Join(entryKeys, entryKeysJoiner) + entrySuffix)
+	return styles.Dim.Render(strings.Join(entryKeys, entryKeysJoiner) + entrySuffix)
 }
 
 func (e editForm) frameTitle() string {

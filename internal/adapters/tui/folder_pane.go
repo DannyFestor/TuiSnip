@@ -1,6 +1,10 @@
 package tui
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+)
 
 const (
 	folderPaneTitle = "1 Folders"
@@ -18,6 +22,6 @@ func (f folderPane) withRootSnippetCount(count int) folderPane {
 	return f
 }
 
-func (f folderPane) body(look paneLook, width int) string {
-	return look.cursor.Render(row(rootLabel, strconv.Itoa(f.rootSnippetCount), width))
+func (f folderPane) body(paneStyle look.FrameStyle, width int) string {
+	return paneStyle.Cursor.Render(look.Row(rootLabel, strconv.Itoa(f.rootSnippetCount), width))
 }

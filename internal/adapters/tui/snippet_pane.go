@@ -8,6 +8,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -26,10 +28,10 @@ type snippetPane struct {
 	viewport  viewport.Model
 	location  *time.Location
 	codeStyle string
-	inner     size
+	inner     look.Size
 }
 
-func newSnippetPane(styles styleSet, location *time.Location) snippetPane {
+func newSnippetPane(styles look.Styles, location *time.Location) snippetPane {
 	code := viewport.New()
 	code.LeftGutterFunc = lineNumbers(styles)
 
@@ -38,8 +40,8 @@ func newSnippetPane(styles styleSet, location *time.Location) snippetPane {
 		shown:     false,
 		viewport:  code,
 		location:  location,
-		codeStyle: darkCodeStyle,
-		inner:     size{width: 0, height: 0},
+		codeStyle: look.DarkCodeStyle,
+		inner:     look.Size{Width: 0, Height: 0},
 	}
 }
 
@@ -74,34 +76,34 @@ func (p snippetPane) withCodeStyle(codeStyle string) snippetPane {
 	return next.rendered()
 }
 
-func (p snippetPane) resized(inner size) snippetPane {
+func (p snippetPane) resized(inner look.Size) snippetPane {
 	next := p
 	next.inner = inner
 
 	return next.sized()
 }
 
-func (p snippetPane) moved(move movement) snippetPane {
-	switch move {
-	case moveDown:
+func (p snippetPane) moved(direction move.Direction) snippetPane {
+	switch direction {
+	case move.Down:
 		p.viewport.ScrollDown(1)
-	case moveUp:
+	case move.Up:
 		p.viewport.ScrollUp(1)
-	case moveTop:
+	case move.Top:
 		p.viewport.GotoTop()
-	case moveBottom:
+	case move.Bottom:
 		p.viewport.GotoBottom()
-	case movePageDown:
+	case move.PageDown:
 		p.viewport.PageDown()
-	case movePageUp:
+	case move.PageUp:
 		p.viewport.PageUp()
-	case moveNone:
+	case move.None:
 	}
 
 	return p
 }
 
-func (p snippetPane) body(styles styleSet, hints []key.Binding) string {
+func (p snippetPane) body(styles look.Styles, hints []key.Binding) string {
 	if !p.shown {
 		return emptyHint(styles, hints)
 	}
@@ -111,28 +113,28 @@ func (p snippetPane) body(styles styleSet, hints []key.Binding) string {
 
 func (p snippetPane) rendered() snippetPane {
 	fragment := p.snippet.FirstFragment()
-	p.viewport.SetContent(highlight(fragment.Content().String(), fragment.Language().String(), p.codeStyle))
+	p.viewport.SetContent(look.Highlight(fragment.Content().String(), fragment.Language().String(), p.codeStyle))
 	p.viewport.GotoTop()
 
 	return p.sized()
 }
 
 func (p snippetPane) sized() snippetPane {
-	p.viewport.SetWidth(p.inner.width)
-	p.viewport.SetHeight(max(1, p.inner.height-p.headerHeight()))
+	p.viewport.SetWidth(p.inner.Width)
+	p.viewport.SetHeight(max(1, p.inner.Height-p.headerHeight()))
 
 	return p
 }
 
-func (p snippetPane) header(styles styleSet) []string {
+func (p snippetPane) header(styles look.Styles) []string {
 	lines := []string{
-		styles.bold.Render(p.snippet.Title().String()),
-		styles.dim.Render(rootPath + metaSeparator + p.snippet.FirstFragment().Language().String()),
-		styles.dim.Render(p.timestamps()),
+		styles.Bold.Render(p.snippet.Title().String()),
+		styles.Dim.Render(rootPath + metaSeparator + p.snippet.FirstFragment().Language().String()),
+		styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)
 
-	return append(lines, styles.dim.Render(strings.Repeat("─", p.inner.width)))
+	return append(lines, styles.Dim.Render(strings.Repeat("─", p.inner.Width)))
 }
 
 func (p snippetPane) headerHeight() int {
@@ -153,12 +155,12 @@ func (p snippetPane) timestamps() string {
 		metaSeparator + "updated " + p.snippet.UpdatedAt().In(p.location).Format(dateLayout)
 }
 
-func lineNumbers(styles styleSet) viewport.GutterFunc {
+func lineNumbers(styles look.Styles) viewport.GutterFunc {
 	return func(line viewport.GutterContext) string {
 		if line.Soft || line.Index >= line.TotalLines {
-			return styles.dim.Render(blankGutter)
+			return styles.Dim.Render(blankGutter)
 		}
 
-		return styles.dim.Render(fmt.Sprintf(lineNumberFormat, line.Index+1))
+		return styles.Dim.Render(fmt.Sprintf(lineNumberFormat, line.Index+1))
 	}
 }

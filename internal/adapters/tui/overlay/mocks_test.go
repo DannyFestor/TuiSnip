@@ -47,12 +47,58 @@ func (_m *MockOverlay[O]) EXPECT() *MockOverlay_Expecter[O] {
 	return &MockOverlay_Expecter[O]{mock: &_m.Mock}
 }
 
-// Hints provides a mock function for the type MockOverlay
-func (_mock *MockOverlay[O]) Hints() []key.Binding {
+// FullHelp provides a mock function for the type MockOverlay
+func (_mock *MockOverlay[O]) FullHelp() [][]key.Binding {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for Hints")
+		panic("no return value specified for FullHelp")
+	}
+
+	var r0 [][]key.Binding
+	if returnFunc, ok := ret.Get(0).(func() [][]key.Binding); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([][]key.Binding)
+		}
+	}
+	return r0
+}
+
+// MockOverlay_FullHelp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FullHelp'
+type MockOverlay_FullHelp_Call[O any] struct {
+	*mock.Call
+}
+
+// FullHelp is a helper method to define mock.On call
+func (_e *MockOverlay_Expecter[O]) FullHelp() *MockOverlay_FullHelp_Call[O] {
+	return &MockOverlay_FullHelp_Call[O]{Call: _e.mock.On("FullHelp")}
+}
+
+func (_c *MockOverlay_FullHelp_Call[O]) Run(run func()) *MockOverlay_FullHelp_Call[O] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockOverlay_FullHelp_Call[O]) Return(bindingss [][]key.Binding) *MockOverlay_FullHelp_Call[O] {
+	_c.Call.Return(bindingss)
+	return _c
+}
+
+func (_c *MockOverlay_FullHelp_Call[O]) RunAndReturn(run func() [][]key.Binding) *MockOverlay_FullHelp_Call[O] {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ShortHelp provides a mock function for the type MockOverlay
+func (_mock *MockOverlay[O]) ShortHelp() []key.Binding {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ShortHelp")
 	}
 
 	var r0 []key.Binding
@@ -66,29 +112,29 @@ func (_mock *MockOverlay[O]) Hints() []key.Binding {
 	return r0
 }
 
-// MockOverlay_Hints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Hints'
-type MockOverlay_Hints_Call[O any] struct {
+// MockOverlay_ShortHelp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ShortHelp'
+type MockOverlay_ShortHelp_Call[O any] struct {
 	*mock.Call
 }
 
-// Hints is a helper method to define mock.On call
-func (_e *MockOverlay_Expecter[O]) Hints() *MockOverlay_Hints_Call[O] {
-	return &MockOverlay_Hints_Call[O]{Call: _e.mock.On("Hints")}
+// ShortHelp is a helper method to define mock.On call
+func (_e *MockOverlay_Expecter[O]) ShortHelp() *MockOverlay_ShortHelp_Call[O] {
+	return &MockOverlay_ShortHelp_Call[O]{Call: _e.mock.On("ShortHelp")}
 }
 
-func (_c *MockOverlay_Hints_Call[O]) Run(run func()) *MockOverlay_Hints_Call[O] {
+func (_c *MockOverlay_ShortHelp_Call[O]) Run(run func()) *MockOverlay_ShortHelp_Call[O] {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockOverlay_Hints_Call[O]) Return(bindings []key.Binding) *MockOverlay_Hints_Call[O] {
+func (_c *MockOverlay_ShortHelp_Call[O]) Return(bindings []key.Binding) *MockOverlay_ShortHelp_Call[O] {
 	_c.Call.Return(bindings)
 	return _c
 }
 
-func (_c *MockOverlay_Hints_Call[O]) RunAndReturn(run func() []key.Binding) *MockOverlay_Hints_Call[O] {
+func (_c *MockOverlay_ShortHelp_Call[O]) RunAndReturn(run func() []key.Binding) *MockOverlay_ShortHelp_Call[O] {
 	_c.Call.Return(run)
 	return _c
 }
@@ -224,48 +270,48 @@ func (_m *MockParent[O]) EXPECT() *MockParent_Expecter[O] {
 	return &MockParent_Expecter[O]{mock: &_m.Mock}
 }
 
-// Hints provides a mock function for the type MockParent
-func (_mock *MockParent[O]) Hints() []key.Binding {
+// FullHelp provides a mock function for the type MockParent
+func (_mock *MockParent[O]) FullHelp() [][]key.Binding {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for Hints")
+		panic("no return value specified for FullHelp")
 	}
 
-	var r0 []key.Binding
-	if returnFunc, ok := ret.Get(0).(func() []key.Binding); ok {
+	var r0 [][]key.Binding
+	if returnFunc, ok := ret.Get(0).(func() [][]key.Binding); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]key.Binding)
+			r0 = ret.Get(0).([][]key.Binding)
 		}
 	}
 	return r0
 }
 
-// MockParent_Hints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Hints'
-type MockParent_Hints_Call[O any] struct {
+// MockParent_FullHelp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FullHelp'
+type MockParent_FullHelp_Call[O any] struct {
 	*mock.Call
 }
 
-// Hints is a helper method to define mock.On call
-func (_e *MockParent_Expecter[O]) Hints() *MockParent_Hints_Call[O] {
-	return &MockParent_Hints_Call[O]{Call: _e.mock.On("Hints")}
+// FullHelp is a helper method to define mock.On call
+func (_e *MockParent_Expecter[O]) FullHelp() *MockParent_FullHelp_Call[O] {
+	return &MockParent_FullHelp_Call[O]{Call: _e.mock.On("FullHelp")}
 }
 
-func (_c *MockParent_Hints_Call[O]) Run(run func()) *MockParent_Hints_Call[O] {
+func (_c *MockParent_FullHelp_Call[O]) Run(run func()) *MockParent_FullHelp_Call[O] {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockParent_Hints_Call[O]) Return(bindings []key.Binding) *MockParent_Hints_Call[O] {
-	_c.Call.Return(bindings)
+func (_c *MockParent_FullHelp_Call[O]) Return(bindingss [][]key.Binding) *MockParent_FullHelp_Call[O] {
+	_c.Call.Return(bindingss)
 	return _c
 }
 
-func (_c *MockParent_Hints_Call[O]) RunAndReturn(run func() []key.Binding) *MockParent_Hints_Call[O] {
+func (_c *MockParent_FullHelp_Call[O]) RunAndReturn(run func() [][]key.Binding) *MockParent_FullHelp_Call[O] {
 	_c.Call.Return(run)
 	return _c
 }
@@ -317,6 +363,52 @@ func (_c *MockParent_Received_Call[O]) Return(step overlay.Step[O]) *MockParent_
 }
 
 func (_c *MockParent_Received_Call[O]) RunAndReturn(run func(outcome O) overlay.Step[O]) *MockParent_Received_Call[O] {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ShortHelp provides a mock function for the type MockParent
+func (_mock *MockParent[O]) ShortHelp() []key.Binding {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ShortHelp")
+	}
+
+	var r0 []key.Binding
+	if returnFunc, ok := ret.Get(0).(func() []key.Binding); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]key.Binding)
+		}
+	}
+	return r0
+}
+
+// MockParent_ShortHelp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ShortHelp'
+type MockParent_ShortHelp_Call[O any] struct {
+	*mock.Call
+}
+
+// ShortHelp is a helper method to define mock.On call
+func (_e *MockParent_Expecter[O]) ShortHelp() *MockParent_ShortHelp_Call[O] {
+	return &MockParent_ShortHelp_Call[O]{Call: _e.mock.On("ShortHelp")}
+}
+
+func (_c *MockParent_ShortHelp_Call[O]) Run(run func()) *MockParent_ShortHelp_Call[O] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockParent_ShortHelp_Call[O]) Return(bindings []key.Binding) *MockParent_ShortHelp_Call[O] {
+	_c.Call.Return(bindings)
+	return _c
+}
+
+func (_c *MockParent_ShortHelp_Call[O]) RunAndReturn(run func() []key.Binding) *MockParent_ShortHelp_Call[O] {
 	_c.Call.Return(run)
 	return _c
 }

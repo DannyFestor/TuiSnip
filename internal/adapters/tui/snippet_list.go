@@ -6,6 +6,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -48,8 +50,8 @@ func (l snippetList) resized(height int) snippetList {
 	return next.withCursor(l.cursor)
 }
 
-func (l snippetList) moved(move movement) snippetList {
-	return l.withCursor(l.cursorAfter(move))
+func (l snippetList) moved(direction move.Direction) snippetList {
+	return l.withCursor(l.cursorAfter(direction))
 }
 
 func (l snippetList) selected() (domain.Snippet, bool) {
@@ -60,51 +62,51 @@ func (l snippetList) selected() (domain.Snippet, bool) {
 	return l.snippets[l.cursor], true
 }
 
-func (l snippetList) body(styles styleSet, look paneLook, width int, hints []key.Binding) string {
+func (l snippetList) body(styles look.Styles, paneStyle look.FrameStyle, width int, hints []key.Binding) string {
 	if len(l.snippets) == 0 {
 		return emptyHint(styles, hints)
 	}
 
-	return l.rows(look, width)
+	return l.rows(paneStyle, width)
 }
 
-func (l snippetList) rows(look paneLook, width int) string {
+func (l snippetList) rows(paneStyle look.FrameStyle, width int) string {
 	end := min(len(l.snippets), l.offset+l.height)
 	rows := make([]string, 0, max(0, end-l.offset))
 
 	for index := l.offset; index < end; index++ {
-		rows = append(rows, l.rowAt(look, index, width))
+		rows = append(rows, l.rowAt(paneStyle, index, width))
 	}
 
 	return strings.Join(rows, "\n")
 }
 
-func (l snippetList) rowAt(look paneLook, index, width int) string {
+func (l snippetList) rowAt(paneStyle look.FrameStyle, index, width int) string {
 	snippet := l.snippets[index]
-	line := row(snippet.Title().String(), l.meta(snippet), width)
+	line := look.Row(snippet.Title().String(), l.meta(snippet), width)
 
 	if index == l.cursor {
-		return look.cursor.Render(line)
+		return paneStyle.Cursor.Render(line)
 	}
 
 	return line
 }
 
-func (l snippetList) cursorAfter(move movement) int {
-	switch move {
-	case moveDown:
+func (l snippetList) cursorAfter(direction move.Direction) int {
+	switch direction {
+	case move.Down:
 		return l.cursor + 1
-	case moveUp:
+	case move.Up:
 		return l.cursor - 1
-	case moveTop:
+	case move.Top:
 		return 0
-	case moveBottom:
+	case move.Bottom:
 		return len(l.snippets) - 1
-	case movePageDown:
+	case move.PageDown:
 		return l.cursor + l.height
-	case movePageUp:
+	case move.PageUp:
 		return l.cursor - l.height
-	case moveNone:
+	case move.None:
 		return l.cursor
 	}
 

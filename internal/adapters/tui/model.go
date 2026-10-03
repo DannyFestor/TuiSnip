@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -43,8 +45,8 @@ type Model struct {
 	selectionHolder pane
 	folders         folderPane
 	tags            tagPane
-	list            snippetList
-	preview         snippetPane
+	list            snippetlist.List
+	preview         snippetpane.Pane
 	overlays        overlayStack
 	status          string
 }
@@ -79,8 +81,8 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		selectionHolder: paneFolders,
 		folders:         folderPane{rootSnippetCount: 0},
 		tags:            tagPane{},
-		list:            newSnippetList(languageOf),
-		preview:         newSnippetPane(styles, deps.Settings.Location),
+		list:            snippetlist.New(deps.Settings.Keys, styles, snippetlist.Language),
+		preview:         snippetpane.New(deps.Settings.Keys, styles, deps.Settings.Location),
 		overlays:        newOverlayStack(),
 		status:          "",
 	}, nil
@@ -97,7 +99,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m.arranged().overlaysUpdated(msg)
 	case tea.BackgroundColorMsg:
-		m.preview = m.preview.withCodeStyle(look.CodeStyleFor(msg))
+		m.preview, _, _ = m.preview.Update(msg)
 
 		return m.overlaysUpdated(msg)
 	case tea.KeyPressMsg:
@@ -151,9 +153,7 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case global.Matches(msg, binding.NewSnippet):
 		return m.opened(newEditSession(m.keys.editor, m.keys.confirm, m.styles))
 	case global.Matches(msg, binding.Search):
-		return m.opened(newSearchPopup(m.keys.search, m.styles, m.preview.cleared(), m.list.snippets))
-	case m.keys.forPane(m.focus).Matches(msg, binding.Copy):
-		return m, m.copySelected()
+		return m.opened(newSearchPopup(m.keys.table, m.styles, m.preview.Cleared(), m.list.Snippets()))
 	}
 
 	if navigate, ok := m.keys.navigationFor(msg); ok {
@@ -162,11 +162,35 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.arranged(), nil
 	}
 
-	if direction, ok := m.keys.movementFor(msg); ok {
-		return m.moved(direction), nil
+	return m.focusedPressed(msg)
+}
+
+func (m Model) focusedPressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch m.focus {
+	case paneList:
+		return m.listUpdated(msg)
+	case paneSnippet:
+		return m.previewUpdated(msg)
+	case paneFolders, paneTags:
 	}
 
 	return m, nil
+}
+
+func (m Model) listUpdated(msg tea.Msg) (Model, tea.Cmd) {
+	next := m
+	list, outcomes, cmd := m.list.Update(msg)
+	next.list = list
+
+	return next.previewSelected().concludedAll(outcomes, cmd)
+}
+
+func (m Model) previewUpdated(msg tea.Msg) (Model, tea.Cmd) {
+	next := m
+	preview, outcomes, cmd := m.preview.Update(msg)
+	next.preview = preview
+
+	return next.concludedAll(outcomes, cmd)
 }
 
 func (m Model) opened(opening outcomeOverlay, openCmd tea.Cmd) (Model, tea.Cmd) {
@@ -180,7 +204,13 @@ func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) settled(overlays overlayStack, outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
-	m.overlays = overlays
+	next := m
+	next.overlays = overlays
+
+	return next.concludedAll(outcomes, cmd)
+}
+
+func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0, 1+len(outcomes))
 	cmds = append(cmds, cmd)
 
@@ -252,29 +282,6 @@ func (m Model) revealed(id domain.SnippetID) (Model, tea.Cmd) {
 	return next.arranged(), next.loadSnippets(id)
 }
 
-func (m Model) moved(direction move.Direction) Model {
-	switch m.focus {
-	case paneList:
-		m.list = m.list.moved(direction)
-
-		return m.previewSelected()
-	case paneSnippet:
-		m.preview = m.preview.moved(direction)
-	case paneFolders, paneTags:
-	}
-
-	return m
-}
-
-func (m Model) copySelected() tea.Cmd {
-	selected, ok := m.list.selected()
-	if !ok {
-		return nil
-	}
-
-	return m.copySnippet(selected.ID())
-}
-
 func (m Model) copySnippet(id domain.SnippetID) tea.Cmd {
 	in := snippet.CopyInput{SnippetID: id}
 
@@ -291,7 +298,7 @@ func (m Model) snippetsLoaded(msg snippetsLoadedMsg) Model {
 	}
 
 	next := m
-	next.list = m.list.withSnippets(msg.snippets).withCursorOn(msg.selecting)
+	next.list = m.list.WithSnippets(msg.snippets).WithCursorOn(msg.selecting)
 	next.folders = m.folders.withRootSnippetCount(len(msg.snippets))
 
 	return next.previewSelected()
@@ -329,11 +336,11 @@ func (m Model) failed(operation string, err error) Model {
 }
 
 func (m Model) previewSelected() Model {
-	selected, ok := m.list.selected()
+	selected, ok := m.list.Selected()
 	if ok {
-		m.preview = m.preview.showing(selected)
+		m.preview = m.preview.Showing(selected)
 	} else {
-		m.preview = m.preview.cleared()
+		m.preview = m.preview.Cleared()
 	}
 
 	return m
@@ -341,8 +348,8 @@ func (m Model) previewSelected() Model {
 
 func (m Model) arranged() Model {
 	m.layout = arrange(m.screen, m.focus, m.tallLeft())
-	m.list = m.list.resized(m.layout.list.Inner().Height)
-	m.preview = m.preview.resized(m.layout.snippet.Inner())
+	m.list, _, _ = m.list.Update(look.Resized{Box: m.layout.list.Inner()})
+	m.preview, _, _ = m.preview.Update(look.Resized{Box: m.layout.snippet.Inner()})
 
 	return m
 }
@@ -389,12 +396,27 @@ func (m Model) paneBody(p pane, paneStyle look.FrameStyle, width int) string {
 	case paneTags:
 		return m.tags.body(m.styles)
 	case paneList:
-		return m.list.body(m.styles, paneStyle, width, m.keys.emptyHints)
+		return m.list.View(paneStyle)
 	case paneSnippet:
-		return m.preview.body(m.styles, m.keys.emptyHints)
+		return m.preview.View()
 	}
 
 	return ""
+}
+
+func (m Model) focusedHints() []key.Binding {
+	switch m.focus {
+	case paneFolders:
+		return m.keys.folders.ShortHelp()
+	case paneTags:
+		return m.keys.tags.ShortHelp()
+	case paneList:
+		return m.list.ShortHelp()
+	case paneSnippet:
+		return m.preview.ShortHelp()
+	}
+
+	return nil
 }
 
 func (m Model) hint() string {
@@ -407,7 +429,7 @@ func (m Model) hint() string {
 		return tooSmallHint
 	}
 
-	return hintFor(m.keys.forPane(m.focus).ShortHelp(), width)
+	return hintFor(m.focusedHints(), width)
 }
 
 func paneTitle(p pane) string {

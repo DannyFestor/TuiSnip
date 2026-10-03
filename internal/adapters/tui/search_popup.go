@@ -9,10 +9,13 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -41,23 +44,23 @@ type searchPopup struct {
 	styles  look.Styles
 	query   textinput.Model
 	browse  []domain.Snippet
-	results snippetList
-	preview snippetPane
+	results snippetlist.List
+	preview snippetpane.Pane
 	outer   look.Size
 }
 
 func newSearchPopup(
-	keys binding.Set,
+	keys binding.Keys,
 	styles look.Styles,
-	preview snippetPane,
+	preview snippetpane.Pane,
 	browse []domain.Snippet,
 ) (searchPopup, tea.Cmd) {
 	popup := searchPopup{
-		keys:    keys,
+		keys:    keys.For(binding.ScopeSearch),
 		styles:  styles,
 		query:   input.NewLine(searchPrompt),
 		browse:  browse,
-		results: newSnippetList(folderPathOf).withSnippets(browse),
+		results: snippetlist.New(keys, styles, folderpath.Of).WithSnippets(browse),
 		preview: preview,
 		outer:   look.Size{Width: 0, Height: 0},
 	}
@@ -75,7 +78,7 @@ func (p searchPopup) Update(msg tea.Msg) step {
 	case look.Resized:
 		return stay(p.resized(msg.Box))
 	case tea.BackgroundColorMsg:
-		return stay(p.withCodeStyle(look.CodeStyleFor(msg)))
+		return stay(p.withBackground(msg))
 	case searchFinishedMsg:
 		return stay(p.withHits(msg.text, msg.hits))
 	}
@@ -85,9 +88,9 @@ func (p searchPopup) Update(msg tea.Msg) step {
 
 func (p searchPopup) View() string {
 	halves := p.halves()
-	rows := p.resultRows(halves.results.Inner().Width)
+	rows := p.resultRows()
 	resultsFrame := look.Frame(p.styles.Focused, p.frameTitle(), p.query.View()+"\n\n"+rows, halves.results)
-	previewFrame := look.Frame(p.styles.Unfocused, previewTitle, p.preview.body(p.styles, nil), halves.preview)
+	previewFrame := look.Frame(p.styles.Unfocused, previewTitle, p.previewBody(), halves.preview)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, resultsFrame, previewFrame)
 }
@@ -118,7 +121,7 @@ func (p searchPopup) pressed(msg tea.KeyPressMsg) step {
 }
 
 func (p searchPopup) onSelected(stepFor func(domain.SnippetID) step) step {
-	selected, ok := p.results.selected()
+	selected, ok := p.results.Selected()
 	if !ok {
 		return stay(p)
 	}
@@ -143,8 +146,8 @@ func (p searchPopup) withHits(text string, hits []domain.SearchHit) searchPopup 
 	return p.listing(snippets)
 }
 
-func (p searchPopup) withCodeStyle(codeStyle string) searchPopup {
-	p.preview = p.preview.withCodeStyle(codeStyle)
+func (p searchPopup) withBackground(msg tea.BackgroundColorMsg) searchPopup {
+	p.preview, _, _ = p.preview.Update(msg)
 
 	return p
 }
@@ -153,8 +156,10 @@ func (p searchPopup) resized(screen look.Size) searchPopup {
 	p.outer = screen.Share(searchPopupPercent)
 	halves := p.halves()
 	p.query.SetWidth(max(1, halves.results.Inner().Width-len(searchPrompt)-cursorCell))
-	p.results = p.results.resized(max(0, halves.results.Inner().Height-queryRows))
-	p.preview = p.preview.resized(halves.preview.Inner())
+	resultsInner := halves.results.Inner()
+	resultRows := look.Size{Width: resultsInner.Width, Height: max(0, resultsInner.Height-queryRows)}
+	p.results, _, _ = p.results.Update(look.Resized{Box: resultRows})
+	p.preview, _, _ = p.preview.Update(look.Resized{Box: halves.preview.Inner()})
 
 	return p
 }
@@ -178,24 +183,24 @@ func (p searchPopup) typed(msg tea.Msg) step {
 
 func (p searchPopup) listing(snippets []domain.Snippet) searchPopup {
 	next := p
-	next.results = p.results.withSnippets(snippets).moved(move.Top)
+	next.results = p.results.WithSnippets(snippets).Moved(move.Top)
 
 	return next.previewed()
 }
 
 func (p searchPopup) moved(direction move.Direction) searchPopup {
 	next := p
-	next.results = p.results.moved(direction)
+	next.results = p.results.Moved(direction)
 
 	return next.previewed()
 }
 
 func (p searchPopup) previewed() searchPopup {
-	selected, ok := p.results.selected()
+	selected, ok := p.results.Selected()
 	if ok {
-		p.preview = p.preview.showing(selected)
+		p.preview = p.preview.Showing(selected)
 	} else {
-		p.preview = p.preview.cleared()
+		p.preview = p.preview.Cleared()
 	}
 
 	return p
@@ -210,16 +215,28 @@ func (p searchPopup) halves() popupHalves {
 	}
 }
 
-func (p searchPopup) resultRows(width int) string {
-	if len(p.results.snippets) == 0 {
+func (p searchPopup) resultRows() string {
+	if p.noResults() {
 		return p.styles.Dim.Render(noMatchesText)
 	}
 
-	return p.results.rows(p.styles.Focused, width)
+	return p.results.View(p.styles.Focused)
+}
+
+func (p searchPopup) previewBody() string {
+	if p.noResults() {
+		return look.EmptyHint(p.styles, nil)
+	}
+
+	return p.preview.View()
+}
+
+func (p searchPopup) noResults() bool {
+	return len(p.results.Snippets()) == 0
 }
 
 func (p searchPopup) frameTitle() string {
-	count := len(p.results.snippets)
+	count := len(p.results.Snippets())
 	noun := resultsWord
 
 	if count == singleResult {

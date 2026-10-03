@@ -3,7 +3,6 @@ package tui_test
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,7 +15,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -162,19 +160,6 @@ func TestModel_cursor(t *testing.T) {
 		assert.NotContains(t, screen.screen(), "Stop accepting, drain, exit")
 	})
 
-	t.Run("keeps the Snippet pane scrolled while the selection stays", func(t *testing.T) {
-		t.Parallel()
-
-		long := testkit.Snippet(t, testkit.SnippetSpec{
-			Fragment: testkit.FragmentSpec{Content: "first line\n" + strings.Repeat("more\n", wideHeight)},
-		})
-		screen := start(t, newModel(t, listerOf(t, long), NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-		screen.press(letter('4'), letter('j'), letter('3'), letter('k'))
-
-		assert.NotContains(t, screen.screen(), "first line")
-	})
-
 	t.Run("moving down in Folders keeps the Snippet", func(t *testing.T) {
 		t.Parallel()
 
@@ -188,72 +173,6 @@ func TestModel_cursor(t *testing.T) {
 		screen.press(letter('j'))
 
 		assert.Contains(t, screen.screen(), "Stop accepting, drain, exit")
-	})
-}
-
-func TestModel_listCursor(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		keys []tea.KeyPressMsg
-		want string
-	}{
-		{name: "G goes to the last Snippet", keys: keys('G'), want: "Description 3"},
-		{name: "g returns to the first Snippet", keys: keys('G', 'g'), want: "Description 1"},
-		{
-			name: "page down stops at the last Snippet",
-			keys: []tea.KeyPressMsg{special(tea.KeyPgDown)},
-			want: "Description 3",
-		},
-		{
-			name: "page up stops at the first Snippet",
-			keys: []tea.KeyPressMsg{letter('G'), special(tea.KeyPgUp)},
-			want: "Description 1",
-		},
-		{name: "up stops at the first Snippet", keys: keys('k'), want: "Description 1"},
-		{name: "down stops at the last Snippet", keys: keys('j', 'j', 'j'), want: "Description 3"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			lister := listerOf(t, numberedSnippets(t, 3)...)
-			screen := start(t, newModel(t, lister, NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-			screen.press(append([]tea.KeyPressMsg{letter('3')}, tt.keys...)...)
-
-			assert.Contains(t, screen.screen(), tt.want)
-		})
-	}
-}
-
-func TestModel_listScroll(t *testing.T) {
-	t.Parallel()
-
-	t.Run("scrolls down to keep the cursor in view", func(t *testing.T) {
-		t.Parallel()
-
-		lister := listerOf(t, numberedSnippets(t, listLongerThanPane)...)
-		screen := start(t, newModel(t, lister, NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-		screen.press(letter('3'), letter('G'))
-
-		assert.Contains(t, screen.screen(), "Snippet 45 ")
-		assert.NotContains(t, screen.screen(), "Snippet 1 ")
-	})
-
-	t.Run("scrolls back up to the first Snippet", func(t *testing.T) {
-		t.Parallel()
-
-		lister := listerOf(t, numberedSnippets(t, listLongerThanPane)...)
-		screen := start(t, newModel(t, lister, NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-		screen.press(letter('3'), letter('G'), letter('g'))
-
-		assert.Contains(t, screen.screen(), "Snippet 1 ")
-		assert.NotContains(t, screen.screen(), "Snippet 45 ")
 	})
 }
 
@@ -345,16 +264,6 @@ func TestModel_copy(t *testing.T) {
 		)
 
 		screen.press(letter('y'), letter('2'), letter('y'))
-
-		assert.NotContains(t, screen.screen(), "Copied")
-	})
-
-	t.Run("does nothing with no Snippets", func(t *testing.T) {
-		t.Parallel()
-
-		screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-		screen.press(letter('3'), letter('y'))
 
 		assert.NotContains(t, screen.screen(), "Copied")
 	})

@@ -1,5 +1,12 @@
 package tui
 
+import "github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
+
+const (
+	snippetListTitle = "3 " + folderpath.Root + " · by title"
+	snippetPaneTitle = "4 Snippet"
+)
+
 type pane int
 
 const (

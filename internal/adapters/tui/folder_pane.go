@@ -9,7 +9,6 @@ import (
 const (
 	folderPaneTitle = "1 Folders"
 	rootLabel       = "◆ Root"
-	rootPath        = "Root"
 )
 
 type folderPane struct {

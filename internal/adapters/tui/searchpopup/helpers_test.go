@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
@@ -101,16 +99,4 @@ func hitsOf(snippets ...domain.Snippet) []domain.SearchHit {
 	}
 
 	return hits
-}
-
-func down() tea.KeyPressMsg {
-	return overlaytest.Special(tea.KeyDown)
-}
-
-func up() tea.KeyPressMsg {
-	return overlaytest.Special(tea.KeyUp)
-}
-
-func enter() tea.KeyPressMsg {
-	return overlaytest.Special(tea.KeyEnter)
 }

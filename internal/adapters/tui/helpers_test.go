@@ -196,24 +196,3 @@ func (d *driver) run(cmd tea.Cmd) {
 func (d *driver) screen() string {
 	return ansi.Strip(d.model.View().Content)
 }
-
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
-func special(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code}
-}
-
-func ctrl(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
-}
-
-func typed(text string) []tea.KeyPressMsg {
-	pressed := make([]tea.KeyPressMsg, 0, len(text))
-	for _, r := range text {
-		pressed = append(pressed, letter(r))
-	}
-
-	return pressed
-}

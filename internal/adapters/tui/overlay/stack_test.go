@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 func TestStack_Update(t *testing.T) {
@@ -17,10 +19,10 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		top := overlayMock(t)
-		top.EXPECT().Update(letter('a')).Return(stay(top).Passing("top pressed"))
+		top.EXPECT().Update(keypress.Letter('a')).Return(stay(top).Passing("top pressed"))
 		stack := stackOf(overlayMock(t), top)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"top pressed"}, outcomes)
 	})
@@ -74,7 +76,7 @@ func TestStack_Update(t *testing.T) {
 	t.Run("ignores a key with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		_, outcomes, cmd := emptyStack().Update(letter('a'))
+		_, outcomes, cmd := emptyStack().Update(keypress.Letter('a'))
 
 		assert.Empty(t, outcomes)
 		assert.Nil(t, cmd)
@@ -87,10 +89,10 @@ func TestStack_Update(t *testing.T) {
 		bottom.EXPECT().ShortHelp().Return(hinting("bottom"))
 
 		top := overlayMock(t)
-		top.EXPECT().Update(letter('c')).Return(closing())
+		top.EXPECT().Update(keypress.Letter('c')).Return(closing())
 		stack := stackOf(bottom, top)
 
-		stack, _, _ = stack.Update(letter('c'))
+		stack, _, _ = stack.Update(keypress.Letter('c'))
 
 		assert.Equal(t, []string{"bottom"}, hintKeys(stack))
 	})
@@ -99,10 +101,10 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('c')).Return(closing())
+		only.EXPECT().Update(keypress.Letter('c')).Return(closing())
 		stack := stackOf(only)
 
-		stack, _, _ = stack.Update(letter('c'))
+		stack, _, _ = stack.Update(keypress.Letter('c'))
 
 		assert.False(t, stack.Open())
 	})
@@ -114,10 +116,10 @@ func TestStack_Update(t *testing.T) {
 		parent.EXPECT().Received("picked").Return(stay(parent).Passing("saved"))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
+		child.EXPECT().Update(keypress.Letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, child)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"saved"}, outcomes)
 	})
@@ -126,10 +128,10 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('a')).Return(stay(only).Passing(""))
+		only.EXPECT().Update(keypress.Letter('a')).Return(stay(only).Passing(""))
 		stack := stackOf(only)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{""}, outcomes)
 	})
@@ -138,10 +140,10 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('a')).Return(stay(only).Passing("first").Passing("second"))
+		only.EXPECT().Update(keypress.Letter('a')).Return(stay(only).Passing("first").Passing("second"))
 		stack := stackOf(only)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"first", "second"}, outcomes)
 	})
@@ -153,10 +155,10 @@ func TestStack_Update(t *testing.T) {
 		parent.EXPECT().Received("first").Return(closing())
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("first").Passing("second"))
+		child.EXPECT().Update(keypress.Letter('a')).Return(stay(child).Passing("first").Passing("second"))
 		stack := stackOf(parent, child)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"second"}, outcomes)
 	})
@@ -168,10 +170,10 @@ func TestStack_Update(t *testing.T) {
 		parent.EXPECT().Received("picked").Return(stay(parent).Passing("saved"))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
+		child.EXPECT().Update(keypress.Letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, overlayMock(t), child)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"saved"}, outcomes)
 	})
@@ -183,10 +185,10 @@ func TestStack_Update(t *testing.T) {
 		parent.EXPECT().Received("picked").Return(stay(parent))
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("picked"))
+		child.EXPECT().Update(keypress.Letter('a')).Return(stay(child).Passing("picked"))
 		stack := stackOf(parent, child)
 
-		_, outcomes, _ := stack.Update(letter('a'))
+		_, outcomes, _ := stack.Update(keypress.Letter('a'))
 
 		assert.Empty(t, outcomes)
 	})
@@ -201,10 +203,10 @@ func TestStack_Update(t *testing.T) {
 		parent.EXPECT().Received("done").Return(closing())
 
 		child := overlayMock(t)
-		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("done"))
+		child.EXPECT().Update(keypress.Letter('a')).Return(stay(child).Passing("done"))
 		stack := stackOf(bottom, parent, child)
 
-		stack, _, _ = stack.Update(letter('a'))
+		stack, _, _ = stack.Update(keypress.Letter('a'))
 
 		assert.Equal(t, []string{"bottom"}, hintKeys(stack))
 	})
@@ -216,10 +218,10 @@ func TestStack_Update(t *testing.T) {
 		child.EXPECT().ShortHelp().Return(hinting("child"))
 
 		parent := overlayMock(t)
-		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
+		parent.EXPECT().Update(keypress.Letter('o')).Return(stay(parent).Opening(child))
 		stack := stackOf(parent)
 
-		stack, _, _ = stack.Update(letter('o'))
+		stack, _, _ = stack.Update(keypress.Letter('o'))
 
 		assert.Equal(t, []string{"child"}, hintKeys(stack))
 	})
@@ -229,19 +231,19 @@ func TestStack_Update(t *testing.T) {
 
 		newChild := overlayMock(t)
 		newChild.EXPECT().ShortHelp().Return(hinting("new child"))
-		newChild.EXPECT().Update(letter('c')).Return(closing())
+		newChild.EXPECT().Update(keypress.Letter('c')).Return(closing())
 
 		parent := parentMock(t)
 		parent.EXPECT().Received("asked").Return(stay(parent).Opening(newChild))
 		parent.EXPECT().ShortHelp().Return(hinting("parent"))
 
 		oldChild := overlayMock(t)
-		oldChild.EXPECT().Update(letter('a')).Return(stay(oldChild).Passing("asked"))
+		oldChild.EXPECT().Update(keypress.Letter('a')).Return(stay(oldChild).Passing("asked"))
 		stack := stackOf(parent, oldChild)
 
-		stack, _, _ = stack.Update(letter('a'))
+		stack, _, _ = stack.Update(keypress.Letter('a'))
 		replaced := hintKeys(stack)
-		stack, _, _ = stack.Update(letter('c'))
+		stack, _, _ = stack.Update(keypress.Letter('c'))
 
 		assert.Equal(t, []string{"new child"}, replaced)
 		assert.Equal(t, []string{"parent"}, hintKeys(stack))
@@ -260,20 +262,20 @@ func TestStack_Update(t *testing.T) {
 		child.EXPECT().Update(wholeTerminal()).Return(stay(child)).Once()
 
 		parent := overlayMock(t)
-		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
+		parent.EXPECT().Update(keypress.Letter('o')).Return(stay(parent).Opening(child))
 		stack, _, _ := stackOf(parent).Update(terminal())
 
-		stack.Update(letter('o'))
+		stack.Update(keypress.Letter('o'))
 	})
 
 	t.Run("runs the commands overlays return", func(t *testing.T) {
 		t.Parallel()
 
 		only := overlayMock(t)
-		only.EXPECT().Update(letter('r')).Return(stay(only).Running(func() tea.Msg { return tickMsg{} }))
+		only.EXPECT().Update(keypress.Letter('r')).Return(stay(only).Running(func() tea.Msg { return tickMsg{} }))
 		stack := stackOf(only)
 
-		_, _, cmd := stack.Update(letter('r'))
+		_, _, cmd := stack.Update(keypress.Letter('r'))
 
 		require.NotNil(t, cmd)
 		assert.Equal(t, tickMsg{}, cmd())

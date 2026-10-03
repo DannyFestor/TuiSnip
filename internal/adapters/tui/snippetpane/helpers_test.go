@@ -91,11 +91,3 @@ func trimmed(lines []string) []string {
 
 	return trimmedLines
 }
-
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
-func special(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code}
-}

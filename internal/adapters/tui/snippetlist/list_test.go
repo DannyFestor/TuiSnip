@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -24,36 +25,44 @@ func TestList_Update(t *testing.T) {
 		keys []tea.KeyPressMsg
 		want string
 	}{
-		{name: "down moves to the next Snippet", keys: []tea.KeyPressMsg{letter('j')}, want: "Snippet 2"},
-		{name: "up stops at the first Snippet", keys: []tea.KeyPressMsg{letter('k')}, want: "Snippet 1"},
-		{name: "G goes to the last Snippet", keys: []tea.KeyPressMsg{letter('G')}, want: "Snippet 5"},
-		{name: "g returns to the first Snippet", keys: []tea.KeyPressMsg{letter('G'), letter('g')}, want: "Snippet 1"},
+		{name: "down moves to the next Snippet", keys: []tea.KeyPressMsg{keypress.Letter('j')}, want: "Snippet 2"},
+		{name: "up stops at the first Snippet", keys: []tea.KeyPressMsg{keypress.Letter('k')}, want: "Snippet 1"},
+		{name: "G goes to the last Snippet", keys: []tea.KeyPressMsg{keypress.Letter('G')}, want: "Snippet 5"},
+		{
+			name: "g returns to the first Snippet",
+			keys: []tea.KeyPressMsg{keypress.Letter('G'), keypress.Letter('g')},
+			want: "Snippet 1",
+		},
 		{
 			name: "down stops at the last Snippet",
-			keys: []tea.KeyPressMsg{letter('G'), letter('j')},
+			keys: []tea.KeyPressMsg{keypress.Letter('G'), keypress.Letter('j')},
 			want: "Snippet 5",
 		},
 		{
 			name: "page down moves by the box height",
-			keys: []tea.KeyPressMsg{special(tea.KeyPgDown)},
+			keys: []tea.KeyPressMsg{keypress.Special(tea.KeyPgDown)},
 			want: "Snippet 4",
 		},
 		{
 			name: "page down stops at the last Snippet",
-			keys: []tea.KeyPressMsg{special(tea.KeyPgDown), special(tea.KeyPgDown)},
+			keys: []tea.KeyPressMsg{keypress.Special(tea.KeyPgDown), keypress.Special(tea.KeyPgDown)},
 			want: "Snippet 5",
 		},
 		{
 			name: "page up moves by the box height",
-			keys: []tea.KeyPressMsg{letter('G'), special(tea.KeyPgUp)},
+			keys: []tea.KeyPressMsg{keypress.Letter('G'), keypress.Special(tea.KeyPgUp)},
 			want: "Snippet 2",
 		},
 		{
 			name: "page up stops at the first Snippet",
-			keys: []tea.KeyPressMsg{letter('j'), special(tea.KeyPgUp)},
+			keys: []tea.KeyPressMsg{keypress.Letter('j'), keypress.Special(tea.KeyPgUp)},
 			want: "Snippet 1",
 		},
-		{name: "ignores keys without a Binding", keys: []tea.KeyPressMsg{letter('j'), letter('x')}, want: "Snippet 2"},
+		{
+			name: "ignores keys without a Binding",
+			keys: []tea.KeyPressMsg{keypress.Letter('j'), keypress.Letter('x')},
+			want: "Snippet 2",
+		},
 	}
 
 	for _, tt := range tests {
@@ -70,9 +79,9 @@ func TestList_Update(t *testing.T) {
 		t.Parallel()
 
 		snippets := numberedSnippets(t, 2)
-		list := pressed(t, listOf(t, snippets), letter('j'))
+		list := pressed(t, listOf(t, snippets), keypress.Letter('j'))
 
-		_, outcomes, _ := list.Update(letter('y'))
+		_, outcomes, _ := list.Update(keypress.Letter('y'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[1].ID()}}, outcomes)
 	})
@@ -80,7 +89,7 @@ func TestList_Update(t *testing.T) {
 	t.Run("asks for no Copy with no Snippets", func(t *testing.T) {
 		t.Parallel()
 
-		_, outcomes, _ := listOf(t, nil).Update(letter('y'))
+		_, outcomes, _ := listOf(t, nil).Update(keypress.Letter('y'))
 
 		assert.Empty(t, outcomes)
 	})
@@ -88,7 +97,7 @@ func TestList_Update(t *testing.T) {
 	t.Run("asks for no Copy on other keys", func(t *testing.T) {
 		t.Parallel()
 
-		_, outcomes, _ := listOf(t, numberedSnippets(t, 2)).Update(letter('j'))
+		_, outcomes, _ := listOf(t, numberedSnippets(t, 2)).Update(keypress.Letter('j'))
 
 		assert.Empty(t, outcomes)
 	})
@@ -132,7 +141,7 @@ func TestList_View(t *testing.T) {
 	t.Run("scrolls down to keep the cursor in view", func(t *testing.T) {
 		t.Parallel()
 
-		list := pressed(t, listOf(t, numberedSnippets(t, 5)), letter('G'))
+		list := pressed(t, listOf(t, numberedSnippets(t, 5)), keypress.Letter('G'))
 
 		assert.Equal(t, []string{
 			"Snippet 3                   Go",
@@ -144,7 +153,14 @@ func TestList_View(t *testing.T) {
 	t.Run("scrolls back up to keep the cursor in view", func(t *testing.T) {
 		t.Parallel()
 
-		list := pressed(t, listOf(t, numberedSnippets(t, 5)), letter('G'), letter('k'), letter('k'), letter('k'))
+		list := pressed(
+			t,
+			listOf(t, numberedSnippets(t, 5)),
+			keypress.Letter('G'),
+			keypress.Letter('k'),
+			keypress.Letter('k'),
+			keypress.Letter('k'),
+		)
 
 		assert.Equal(t, []string{
 			"SNIPPET 2                   GO",
@@ -156,7 +172,7 @@ func TestList_View(t *testing.T) {
 	t.Run("keeps the cursor in view when the box shrinks", func(t *testing.T) {
 		t.Parallel()
 
-		list := pressed(t, listOf(t, numberedSnippets(t, 5)), letter('j'), letter('j'))
+		list := pressed(t, listOf(t, numberedSnippets(t, 5)), keypress.Letter('j'), keypress.Letter('j'))
 
 		list, _, _ = list.Update(look.Resized{Box: look.Size{Width: boxWidth, Height: 1}})
 
@@ -185,7 +201,7 @@ func TestList_WithSnippets(t *testing.T) {
 		t.Parallel()
 
 		snippets := numberedSnippets(t, 5)
-		list := pressed(t, listOf(t, snippets), letter('G'))
+		list := pressed(t, listOf(t, snippets), keypress.Letter('G'))
 
 		list = list.WithSnippets(snippets[:2])
 
@@ -226,7 +242,7 @@ func TestList_WithCursorOn(t *testing.T) {
 		t.Parallel()
 
 		snippets := numberedSnippets(t, 5)
-		list := pressed(t, listOf(t, snippets), letter('G'))
+		list := pressed(t, listOf(t, snippets), keypress.Letter('G'))
 
 		list = list.WithCursorOn(snippets[0].ID())
 
@@ -236,7 +252,7 @@ func TestList_WithCursorOn(t *testing.T) {
 	t.Run("keeps the cursor for a Snippet not in the list", func(t *testing.T) {
 		t.Parallel()
 
-		list := pressed(t, listOf(t, numberedSnippets(t, 5)), letter('j'))
+		list := pressed(t, listOf(t, numberedSnippets(t, 5)), keypress.Letter('j'))
 		list = list.WithCursorOn(domain.SnippetID{})
 
 		assert.Equal(t, "Snippet 2", selectedTitle(t, list))

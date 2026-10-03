@@ -1,4 +1,4 @@
-package overlaytest
+package keypress
 
 import tea "charm.land/bubbletea/v2"
 

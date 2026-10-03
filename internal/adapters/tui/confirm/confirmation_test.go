@@ -8,7 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
-	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -20,7 +20,7 @@ func TestConfirmation_Update(t *testing.T) {
 
 		screen := asking(t)
 
-		screen.Press(overlaytest.Letter('y'))
+		screen.Press(keypress.Letter('y'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.DiscardConfirmed{}}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
@@ -31,7 +31,7 @@ func TestConfirmation_Update(t *testing.T) {
 
 		screen := asking(t)
 
-		screen.Press(overlaytest.Letter('n'))
+		screen.Press(keypress.Letter('n'))
 
 		assert.Empty(t, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
@@ -42,7 +42,7 @@ func TestConfirmation_Update(t *testing.T) {
 
 		screen := asking(t)
 
-		screen.Press(overlaytest.Letter('z'))
+		screen.Press(keypress.Letter('z'))
 		screen.Send(tea.PasteMsg{Content: "y"})
 
 		assert.Empty(t, screen.Outcomes())

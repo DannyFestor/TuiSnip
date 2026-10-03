@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -30,9 +31,9 @@ func TestModel_editOverlay(t *testing.T) {
 		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{Title: "Prune"}).Return(snippets[2], nil)
 		screen := start(t, creatingModel(t, creator, listerReturning(t, snippets[:2], snippets)), wideWidth, wideHeight)
 
-		screen.press(letter('n'))
-		screen.press(typed("Prune")...)
-		screen.press(ctrl('s'))
+		screen.press(keypress.Letter('n'))
+		screen.press(keypress.Typed("Prune")...)
+		screen.press(keypress.Ctrl('s'))
 
 		assert.NotContains(t, screen.screen(), editOverlayTitle)
 		assert.Contains(t, screen.screen(), "Description 3")
@@ -47,7 +48,7 @@ func TestModel_editOverlay(t *testing.T) {
 			Return(domain.Snippet{}, domain.OnField(domain.FieldTitle, value.ErrBlankTitle))
 		screen := start(t, editingModel(t, creator), wideWidth, wideHeight)
 
-		screen.press(letter('n'), ctrl('s'))
+		screen.press(keypress.Letter('n'), keypress.Ctrl('s'))
 
 		assert.Contains(t, screen.screen(), "Title is blank")
 		assert.Contains(t, screen.screen(), editOverlayTitle)
@@ -60,7 +61,7 @@ func TestModel_editOverlay(t *testing.T) {
 		creator.EXPECT().Run(mock.Anything, mock.Anything).Return(domain.Snippet{}, errDatabaseLocked)
 		screen := start(t, editingModel(t, creator), wideWidth, wideHeight)
 
-		screen.press(letter('n'), ctrl('s'))
+		screen.press(keypress.Letter('n'), keypress.Ctrl('s'))
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 		assert.Contains(t, screen.screen(), editOverlayTitle)
@@ -85,9 +86,9 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 
 		screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), wideWidth, wideHeight)
 
-		screen.press(letter('n'), letter('x'), ctrl('c'))
+		screen.press(keypress.Letter('n'), keypress.Letter('x'), keypress.Ctrl('c'))
 		asked := screen.screen()
-		screen.press(letter('y'))
+		screen.press(keypress.Letter('y'))
 
 		assert.Contains(t, asked, quitQuestion)
 		assert.Contains(t, screen.emitted, tea.QuitMsg{})
@@ -98,7 +99,7 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 
 		screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), wideWidth, wideHeight)
 
-		screen.press(letter('n'), ctrl('c'))
+		screen.press(keypress.Letter('n'), keypress.Ctrl('c'))
 
 		assert.Contains(t, screen.emitted, tea.QuitMsg{})
 	})
@@ -115,7 +116,7 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 			searcher: NewMockSnippetSearcher(t),
 		}, settings), wideWidth, wideHeight)
 
-		screen.press(letter('n'), letter('z'), ctrl('q'))
+		screen.press(keypress.Letter('n'), keypress.Letter('z'), keypress.Ctrl('q'))
 
 		assert.Contains(t, screen.screen(), quitQuestion)
 	})

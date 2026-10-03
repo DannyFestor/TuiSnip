@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -30,10 +31,10 @@ func TestCreateSearchThenCopy(t *testing.T) {
 	createPruneSnippet(screen)
 	screen.waitForFrame(savedPreview)
 
-	screen.press(letter('/'))
-	screen.typeText("prune")
+	screen.press(keypress.Letter('/'))
+	screen.press(keypress.Typed("prune")...)
 	screen.waitForFrame("Search · 1 result")
-	screen.press(ctrl('y'))
+	screen.press(keypress.Ctrl('y'))
 	screen.waitForFrame("Copied")
 
 	assert.Equal(t, "docker\nprune", home.Copied(t))
@@ -46,7 +47,7 @@ func TestSaveWithBlankTitleShowsError(t *testing.T) {
 	screen := open(t, app)
 	screen.waitForFrame(emptyList)
 
-	screen.press(letter('n'), ctrl('s'))
+	screen.press(keypress.Letter('n'), keypress.Ctrl('s'))
 
 	screen.waitForFrame("Title is blank")
 }
@@ -61,7 +62,7 @@ func TestCopyWithoutToolShowsMessage(t *testing.T) {
 	createPruneSnippet(screen)
 	screen.waitForFrame(savedPreview)
 
-	screen.press(letter('3'), letter('y'))
+	screen.press(keypress.Letter('3'), keypress.Letter('y'))
 
 	screen.waitForFrame(noClipboardTool)
 }
@@ -74,19 +75,19 @@ func TestRemappedBindingOpensSearch(t *testing.T) {
 	screen := open(t, home.Start(t, testapp.RecordingTool))
 	screen.waitForFrame(emptyList)
 
-	screen.press(ctrl('f'))
+	screen.press(keypress.Ctrl('f'))
 
 	screen.waitForFrame(searchOpened)
 }
 
 func createPruneSnippet(screen *session) {
-	screen.press(letter('n'))
-	screen.typeText("Prune")
-	screen.press(key(tea.KeyTab))
-	screen.typeText("Reclaim")
-	screen.press(key(tea.KeyEnter), key(tea.KeyEnter))
-	screen.typeText("docker")
-	screen.press(key(tea.KeyEnter))
-	screen.typeText("prune")
-	screen.press(ctrl('s'))
+	screen.press(keypress.Letter('n'))
+	screen.press(keypress.Typed("Prune")...)
+	screen.press(keypress.Special(tea.KeyTab))
+	screen.press(keypress.Typed("Reclaim")...)
+	screen.press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEnter))
+	screen.press(keypress.Typed("docker")...)
+	screen.press(keypress.Special(tea.KeyEnter))
+	screen.press(keypress.Typed("prune")...)
+	screen.press(keypress.Ctrl('s'))
 }

@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/key"
-	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 type bound struct {
@@ -63,7 +63,7 @@ func TestKeys_For(t *testing.T) {
 
 		keys := keysWith(bound{scope: binding.ScopeSearch, name: binding.Down, keys: []string{"down", "ctrl+n"}})
 
-		assert.True(t, keys.For(binding.ScopeSearch).Matches(ctrl('n'), binding.Down))
+		assert.True(t, keys.For(binding.ScopeSearch).Matches(keypress.Ctrl('n'), binding.Down))
 	})
 
 	t.Run("matches only the Scope's own rows", func(t *testing.T) {
@@ -74,8 +74,8 @@ func TestKeys_For(t *testing.T) {
 			bound{scope: binding.ScopeSnippetList, name: binding.Copy, keys: []string{"y"}},
 		)
 
-		assert.False(t, keys.For(binding.ScopeSnippetList).Matches(letter('/'), binding.Search))
-		assert.False(t, keys.For(binding.ScopeFolders).Matches(letter('y'), binding.Copy))
+		assert.False(t, keys.For(binding.ScopeSnippetList).Matches(keypress.Letter('/'), binding.Search))
+		assert.False(t, keys.For(binding.ScopeFolders).Matches(keypress.Letter('y'), binding.Copy))
 	})
 
 	t.Run("names a Binding's first key", func(t *testing.T) {
@@ -137,12 +137,4 @@ func hintTexts(hints []key.Binding) []string {
 	}
 
 	return texts
-}
-
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
-func ctrl(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
 }

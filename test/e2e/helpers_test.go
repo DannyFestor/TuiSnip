@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/exp/teatest/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 const (
@@ -38,7 +39,7 @@ func open(t *testing.T, app *bootstrap.App) *session {
 		teatest.WithInitialTermSize(screenWidth, screenHeight),
 	)
 	t.Cleanup(func() {
-		program.Send(ctrl('c'))
+		program.Send(keypress.Ctrl('c'))
 		program.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
 	})
 
@@ -65,12 +66,6 @@ func (s *session) waitForFrame(text string) {
 func (s *session) press(keys ...tea.KeyPressMsg) {
 	for _, pressed := range keys {
 		s.program.Send(pressed)
-	}
-}
-
-func (s *session) typeText(text string) {
-	for _, r := range text {
-		s.program.Send(letter(r))
 	}
 }
 
@@ -114,16 +109,4 @@ func (f *lastFrame) get() string {
 	defer f.mu.Unlock()
 
 	return f.text
-}
-
-func key(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code}
-}
-
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
-func ctrl(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
 }

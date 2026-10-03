@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 const programTimeout = 5 * time.Second
@@ -25,7 +26,7 @@ func TestModelRunsInProgram(t *testing.T) {
 	teatest.WaitFor(t, program.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Prune everything"))
 	}, teatest.WithDuration(programTimeout))
-	program.Send(ctrl('c'))
+	program.Send(keypress.Ctrl('c'))
 
 	assert.IsType(t, tui.Model{}, program.FinalModel(t, teatest.WithFinalTimeout(programTimeout)))
 }

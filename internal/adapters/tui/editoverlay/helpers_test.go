@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -48,18 +49,14 @@ func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 
 func enterContent() []tea.KeyPressMsg {
 	return []tea.KeyPressMsg{
-		overlaytest.Special(tea.KeyDown),
-		overlaytest.Special(tea.KeyDown),
-		overlaytest.Special(tea.KeyEnter),
+		keypress.Special(tea.KeyDown),
+		keypress.Special(tea.KeyDown),
+		keypress.Special(tea.KeyEnter),
 	}
 }
 
 func save() tea.KeyPressMsg {
-	return overlaytest.Ctrl('s')
-}
-
-func esc() tea.KeyPressMsg {
-	return overlaytest.Special(tea.KeyEscape)
+	return keypress.Ctrl('s')
 }
 
 func savedSnippet(t *testing.T) domain.Snippet {

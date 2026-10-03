@@ -15,6 +15,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -115,7 +116,7 @@ func TestModel_copy(t *testing.T) {
 			copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(tt.result, tt.err)
 			screen := start(t, newModel(t, listerOf(t, snippets...), copier), wideWidth, wideHeight)
 
-			screen.press(letter('3'), letter('y'))
+			screen.press(keypress.Letter('3'), keypress.Letter('y'))
 
 			assert.Contains(t, screen.screen(), tt.status)
 		})
@@ -129,7 +130,7 @@ func TestModel_copy(t *testing.T) {
 		copier.EXPECT().Run(mock.Anything, mock.Anything).Return(copied(t, domain.CopyDeliverySentToTerminal), nil)
 		screen := start(t, newModel(t, listerOf(t, snippets...), copier), wideWidth, wideHeight)
 
-		screen.press(letter('4'), letter('y'))
+		screen.press(keypress.Letter('4'), keypress.Letter('y'))
 
 		assert.Contains(t, screen.emitted, tea.SetClipboard("echo copied")())
 	})
@@ -141,7 +142,7 @@ func TestModel_copy(t *testing.T) {
 		copier.EXPECT().Run(mock.Anything, mock.Anything).Return(snippet.CopyResult{}, context.Canceled)
 		screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), copier), wideWidth, wideHeight)
 
-		screen.press(letter('3'), letter('y'))
+		screen.press(keypress.Letter('3'), keypress.Letter('y'))
 
 		assert.NotContains(t, screen.screen(), "Something went wrong")
 	})
@@ -150,7 +151,7 @@ func TestModel_copy(t *testing.T) {
 func TestModel_quit(t *testing.T) {
 	t.Parallel()
 
-	for name, pressed := range map[string]tea.KeyPressMsg{"q": letter('q'), "ctrl+c": ctrl('c')} {
+	for name, pressed := range map[string]tea.KeyPressMsg{"q": keypress.Letter('q'), "ctrl+c": keypress.Ctrl('c')} {
 		t.Run(name+" quits", func(t *testing.T) {
 			t.Parallel()
 

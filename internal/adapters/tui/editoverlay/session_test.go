@@ -14,7 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
-	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -37,7 +37,7 @@ func TestSession_View(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'))
+		screen.Press(keypress.Letter('x'))
 
 		assert.Contains(t, screen.Screen(), unsavedTitle)
 	})
@@ -47,7 +47,7 @@ func TestSession_View(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Typed("q4/")...)
+		screen.Press(keypress.Typed("q4/")...)
 
 		assert.Empty(t, screen.Outcomes())
 		assert.Contains(t, screen.Screen(), "q4/")
@@ -69,7 +69,7 @@ func TestSession_View(t *testing.T) {
 		title := strings.Repeat("0123456789", 10)
 		screen := editing(t)
 
-		screen.Press(overlaytest.Typed(title)...)
+		screen.Press(keypress.Typed(title)...)
 
 		assert.Contains(t, screen.Screen(), "│› Title       "+title[len(title)-titleInputWidth:]+" │")
 	})
@@ -82,8 +82,8 @@ func TestSession_View(t *testing.T) {
 		screen.Press(enterContent()...)
 
 		for number := 1; number <= contentRows+1; number++ {
-			screen.Press(overlaytest.Typed(fmt.Sprintf("line %02d", number))...)
-			screen.Press(overlaytest.Special(tea.KeyEnter))
+			screen.Press(keypress.Typed(fmt.Sprintf("line %02d", number))...)
+			screen.Press(keypress.Special(tea.KeyEnter))
 		}
 
 		assert.Contains(t, screen.Screen(), fmt.Sprintf("line %02d", contentRows+1))
@@ -142,13 +142,13 @@ func TestSession_save(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Typed("Prune")...)
-		screen.Press(overlaytest.Special(tea.KeyTab))
-		screen.Press(overlaytest.Typed("Reclaim")...)
-		screen.Press(overlaytest.Special(tea.KeyEnter), overlaytest.Special(tea.KeyEnter))
-		screen.Press(overlaytest.Typed("docker")...)
-		screen.Press(overlaytest.Special(tea.KeyEnter))
-		screen.Press(overlaytest.Typed("prune")...)
+		screen.Press(keypress.Typed("Prune")...)
+		screen.Press(keypress.Special(tea.KeyTab))
+		screen.Press(keypress.Typed("Reclaim")...)
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Typed("docker")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Typed("prune")...)
 		screen.Press(save())
 
 		want := outcome.SaveRequested{Input: input("Prune", "Reclaim", "docker\nprune")}
@@ -162,7 +162,7 @@ func TestSession_save(t *testing.T) {
 		saved := savedSnippet(t)
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'), save())
+		screen.Press(keypress.Letter('x'), save())
 		screen.Send(editoverlay.SaveFinished{Snippet: saved, Err: nil})
 
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(outcome.SnippetSaved{ID: saved.ID()}))
@@ -175,13 +175,13 @@ func TestSession_save(t *testing.T) {
 		screen := editing(t)
 
 		screen.Press(
-			overlaytest.Special(tea.KeyDown),
-			overlaytest.Special(tea.KeyDown),
-			overlaytest.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
 		)
-		screen.Press(overlaytest.Typed("body")...)
-		screen.Press(overlaytest.Special(tea.KeyUp))
-		screen.Press(overlaytest.Typed("more")...)
+		screen.Press(keypress.Typed("body")...)
+		screen.Press(keypress.Special(tea.KeyUp))
+		screen.Press(keypress.Typed("more")...)
 		screen.Press(save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "more", "body")}}, screen.Outcomes())
@@ -194,11 +194,11 @@ func TestSession_save(t *testing.T) {
 		screen := editing(t)
 
 		screen.Press(enterContent()...)
-		screen.Press(overlaytest.Typed("one")...)
-		screen.Press(overlaytest.Special(tea.KeyEnter))
-		screen.Press(overlaytest.Typed("two")...)
-		screen.Press(overlaytest.Special(tea.KeyUp))
-		screen.Press(overlaytest.Typed(" more")...)
+		screen.Press(keypress.Typed("one")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Typed("two")...)
+		screen.Press(keypress.Special(tea.KeyUp))
+		screen.Press(keypress.Typed(" more")...)
 		screen.Press(save())
 
 		want := outcome.SaveRequested{Input: input("", "", "one more\ntwo")}
@@ -210,8 +210,8 @@ func TestSession_save(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Special(tea.KeyUp))
-		screen.Press(overlaytest.Typed("kept")...)
+		screen.Press(keypress.Special(tea.KeyUp))
+		screen.Press(keypress.Typed("kept")...)
 		screen.Press(save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("kept", "", "")}}, screen.Outcomes())
@@ -223,11 +223,11 @@ func TestSession_save(t *testing.T) {
 		screen := editing(t)
 
 		screen.Press(
-			overlaytest.Special(tea.KeyDown),
-			overlaytest.Special(tea.KeyDown),
-			overlaytest.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
+			keypress.Special(tea.KeyDown),
 		)
-		screen.Press(overlaytest.Typed("body")...)
+		screen.Press(keypress.Typed("body")...)
 		screen.Press(save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "body")}}, screen.Outcomes())
@@ -238,8 +238,8 @@ func TestSession_save(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Special(tea.KeyDown), overlaytest.Special(tea.KeyDown))
-		screen.Press(overlaytest.Typed("lost")...)
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Typed("lost")...)
 		screen.Press(save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "")}}, screen.Outcomes())
@@ -254,7 +254,7 @@ func TestSession_pendingSave(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'), save(), save())
+		screen.Press(keypress.Letter('x'), save(), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("x", "", "")}}, screen.Outcomes())
 	})
@@ -264,7 +264,7 @@ func TestSession_pendingSave(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'), save(), esc())
+		screen.Press(keypress.Letter('x'), save(), keypress.Special(tea.KeyEscape))
 
 		assert.NotContains(t, screen.Screen(), discardQuestion)
 		assert.Contains(t, screen.Screen(), overlayTitle)
@@ -275,7 +275,7 @@ func TestSession_pendingSave(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'), save())
+		screen.Press(keypress.Letter('x'), save())
 		screen.Offer(outcome.QuitAsked{})
 		asked := screen.Screen()
 		screen.Send(editoverlay.SaveFinished{Snippet: savedSnippet(t), Err: nil})
@@ -308,7 +308,7 @@ func TestSession_pendingSave(t *testing.T) {
 
 		screen.Press(save())
 		screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errDatabaseLocked})
-		screen.Press(esc())
+		screen.Press(keypress.Special(tea.KeyEscape))
 
 		assert.False(t, screen.IsOpen())
 	})
@@ -386,27 +386,33 @@ func TestSession_cancel(t *testing.T) {
 		wantOverlay bool
 		wantText    string
 	}{
-		{name: "closes at once without changes", keys: []tea.KeyPressMsg{esc()}},
+		{name: "closes at once without changes", keys: []tea.KeyPressMsg{keypress.Special(tea.KeyEscape)}},
 		{
 			name:        "asks before discarding changes",
-			keys:        []tea.KeyPressMsg{overlaytest.Letter('x'), esc()},
+			keys:        []tea.KeyPressMsg{keypress.Letter('x'), keypress.Special(tea.KeyEscape)},
 			wantOverlay: true,
 			wantText:    discardQuestion,
 		},
-		{name: "discards on y", keys: []tea.KeyPressMsg{overlaytest.Letter('x'), esc(), overlaytest.Letter('y')}},
+		{
+			name: "discards on y",
+			keys: []tea.KeyPressMsg{keypress.Letter('x'), keypress.Special(tea.KeyEscape), keypress.Letter('y')},
+		},
 		{
 			name:        "keeps the changes on n",
-			keys:        []tea.KeyPressMsg{overlaytest.Letter('x'), esc(), overlaytest.Letter('n')},
+			keys:        []tea.KeyPressMsg{keypress.Letter('x'), keypress.Special(tea.KeyEscape), keypress.Letter('n')},
 			wantOverlay: true,
 			wantText:    unsavedTitle,
 		},
 		{
 			name:        "esc inside Content leaves it and keeps the overlay",
-			keys:        append(enterContent(), esc()),
+			keys:        append(enterContent(), keypress.Special(tea.KeyEscape)),
 			wantOverlay: true,
 			wantText:    contentEntryHint,
 		},
-		{name: "a second esc cancels", keys: append(enterContent(), esc(), esc())},
+		{
+			name: "a second esc cancels",
+			keys: append(enterContent(), keypress.Special(tea.KeyEscape), keypress.Special(tea.KeyEscape)),
+		},
 	}
 
 	for _, tt := range tests {
@@ -432,7 +438,7 @@ func TestSession_Received(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'))
+		screen.Press(keypress.Letter('x'))
 		screen.Offer(outcome.QuitAsked{})
 
 		assert.Contains(t, screen.Screen(), quitQuestion)
@@ -445,9 +451,9 @@ func TestSession_Received(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'))
+		screen.Press(keypress.Letter('x'))
 		screen.Offer(outcome.QuitAsked{})
-		screen.Press(overlaytest.Letter('y'))
+		screen.Press(keypress.Letter('y'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.QuitConfirmed{}}, screen.Outcomes())
 	})
@@ -457,9 +463,9 @@ func TestSession_Received(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'), esc())
+		screen.Press(keypress.Letter('x'), keypress.Special(tea.KeyEscape))
 		screen.Offer(outcome.QuitAsked{})
-		screen.Press(overlaytest.Letter('y'))
+		screen.Press(keypress.Letter('y'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.QuitConfirmed{}}, screen.Outcomes())
 	})
@@ -479,9 +485,9 @@ func TestSession_Received(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(overlaytest.Letter('x'))
+		screen.Press(keypress.Letter('x'))
 		screen.Offer(outcome.QuitAsked{})
-		screen.Press(overlaytest.Letter('z'))
+		screen.Press(keypress.Letter('z'))
 		screen.Send(tea.PasteMsg{Content: "pasted"})
 
 		assert.Contains(t, screen.Screen(), quitQuestion)

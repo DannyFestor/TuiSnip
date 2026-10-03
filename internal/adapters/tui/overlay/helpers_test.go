@@ -87,10 +87,6 @@ func wholeTerminal() look.Resized {
 	return look.Resized{Box: look.Size{Width: 80, Height: 24}}
 }
 
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
 func stackOf(overlays ...overlay.Overlay[string]) stack {
 	built := emptyStack()
 	for _, pushed := range overlays {

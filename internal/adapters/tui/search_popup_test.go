@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 const searchTitle = "Search · "
@@ -26,7 +27,7 @@ func TestModel_searchPopup(t *testing.T) {
 		searcher.EXPECT().Run(mock.Anything, search.QueryInput{Text: "p"}).Return(hitsOf(snippets[1]), nil)
 		screen := start(t, searchingModel(t, searcher), wideWidth, wideHeight)
 
-		screen.press(letter('/'), letter('p'))
+		screen.press(keypress.Letter('/'), keypress.Letter('p'))
 
 		assert.Contains(t, screen.screen(), "Search · 1 result")
 		assert.Contains(t, screen.screen(), "docker system prune")
@@ -39,7 +40,7 @@ func TestModel_searchPopup(t *testing.T) {
 		searcher.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errDatabaseLocked)
 		screen := start(t, searchingModel(t, searcher), wideWidth, wideHeight)
 
-		screen.press(letter('/'), letter('x'))
+		screen.press(keypress.Letter('/'), keypress.Letter('x'))
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 	})
@@ -55,7 +56,7 @@ func TestModel_searchPopup(t *testing.T) {
 			searcher: NewMockSnippetSearcher(t),
 		}), narrowWidth, narrowHeight)
 
-		screen.press(letter('/'), special(tea.KeyDown), special(tea.KeyEnter))
+		screen.press(keypress.Letter('/'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 
 		assert.NotContains(t, screen.screen(), searchTitle)
 		assert.Contains(t, screen.screen(), snippetPaneTitle)
@@ -77,7 +78,7 @@ func TestModel_searchPopup(t *testing.T) {
 			searcher: NewMockSnippetSearcher(t),
 		}), wideWidth, wideHeight)
 
-		screen.press(letter('/'), special(tea.KeyDown), ctrl('y'))
+		screen.press(keypress.Letter('/'), keypress.Special(tea.KeyDown), keypress.Ctrl('y'))
 
 		assert.NotContains(t, screen.screen(), searchTitle)
 		assert.Contains(t, screen.screen(), "Copied")

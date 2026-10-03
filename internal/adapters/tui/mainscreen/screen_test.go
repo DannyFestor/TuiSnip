@@ -13,7 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
-	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -26,10 +26,10 @@ func TestScreen_navigation(t *testing.T) {
 		title string
 	}{
 		{name: "starts on Folders", keys: nil, title: folderPaneTitle},
-		{name: "tab moves to Tags", keys: []tea.KeyPressMsg{overlaytest.Special(tea.KeyTab)}, title: tagPaneTitle},
+		{name: "tab moves to Tags", keys: []tea.KeyPressMsg{keypress.Special(tea.KeyTab)}, title: tagPaneTitle},
 		{
 			name:  "tab wraps from the Snippet pane to Folders",
-			keys:  []tea.KeyPressMsg{overlaytest.Letter('4'), overlaytest.Special(tea.KeyTab)},
+			keys:  []tea.KeyPressMsg{keypress.Letter('4'), keypress.Special(tea.KeyTab)},
 			title: folderPaneTitle,
 		},
 		{
@@ -37,30 +37,30 @@ func TestScreen_navigation(t *testing.T) {
 			keys:  []tea.KeyPressMsg{{Code: tea.KeyTab, Mod: tea.ModShift}},
 			title: snippetPaneTitle,
 		},
-		{name: "l from Tags goes to the Snippet list", keys: overlaytest.Typed("2l"), title: snippetListTitle},
-		{name: "h from the Snippet list returns to Folders", keys: overlaytest.Typed("2lh"), title: folderPaneTitle},
-		{name: "l stops at the Snippet pane", keys: overlaytest.Typed("4l"), title: snippetPaneTitle},
-		{name: "h stops at the left column", keys: overlaytest.Typed("2h"), title: tagPaneTitle},
+		{name: "l from Tags goes to the Snippet list", keys: keypress.Typed("2l"), title: snippetListTitle},
+		{name: "h from the Snippet list returns to Folders", keys: keypress.Typed("2lh"), title: folderPaneTitle},
+		{name: "l stops at the Snippet pane", keys: keypress.Typed("4l"), title: snippetPaneTitle},
+		{name: "h stops at the left column", keys: keypress.Typed("2h"), title: tagPaneTitle},
 		{
 			name:  "enter drills from Folders to the Snippet pane",
-			keys:  []tea.KeyPressMsg{overlaytest.Special(tea.KeyEnter), overlaytest.Special(tea.KeyEnter)},
+			keys:  []tea.KeyPressMsg{keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEnter)},
 			title: snippetPaneTitle,
 		},
 		{
 			name:  "enter does nothing in Tags",
-			keys:  []tea.KeyPressMsg{overlaytest.Letter('2'), overlaytest.Special(tea.KeyEnter)},
+			keys:  []tea.KeyPressMsg{keypress.Letter('2'), keypress.Special(tea.KeyEnter)},
 			title: tagPaneTitle,
 		},
 		{
 			name: "esc backs out from the Snippet pane to Folders",
 			keys: []tea.KeyPressMsg{
-				overlaytest.Letter('4'),
-				overlaytest.Special(tea.KeyEscape),
-				overlaytest.Special(tea.KeyEscape),
+				keypress.Letter('4'),
+				keypress.Special(tea.KeyEscape),
+				keypress.Special(tea.KeyEscape),
 			},
 			title: folderPaneTitle,
 		},
-		{name: "3 focuses the Snippet list", keys: overlaytest.Typed("3"), title: snippetListTitle},
+		{name: "3 focuses the Snippet list", keys: keypress.Typed("3"), title: snippetListTitle},
 	}
 
 	for _, tt := range tests {
@@ -84,7 +84,7 @@ func TestScreen_cursor(t *testing.T) {
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Typed("3j")...)
+		screen.Press(keypress.Typed("3j")...)
 
 		assert.Contains(t, screen.Screen(), "Reclaim disk space")
 		assert.NotContains(t, screen.Screen(), firstDescription)
@@ -95,7 +95,7 @@ func TestScreen_cursor(t *testing.T) {
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Letter('j'))
+		screen.Press(keypress.Letter('j'))
 
 		assert.Contains(t, screen.Screen(), firstDescription)
 	})
@@ -153,7 +153,7 @@ func TestScreen_layout(t *testing.T) {
 
 			screen := showing(t, wide())
 
-			screen.Press(overlaytest.Letter(tt.focus))
+			screen.Press(keypress.Letter(tt.focus))
 
 			assert.Equal(t, tt.columns, columnWidths(screen))
 		})
@@ -175,7 +175,7 @@ func TestScreen_layout(t *testing.T) {
 
 			screen := showing(t, wide())
 
-			screen.Press(overlaytest.Letter('2'), overlaytest.Letter(tt.focus))
+			screen.Press(keypress.Letter('2'), keypress.Letter(tt.focus))
 
 			assert.Equal(t, tt.tagRow, lineIndexOf(screen, tagPaneTitle))
 		})
@@ -186,7 +186,7 @@ func TestScreen_layout(t *testing.T) {
 
 		screen := showingStyled(t, wide(), upperFocusedTitle())
 
-		screen.Press(overlaytest.Letter('3'))
+		screen.Press(keypress.Letter('3'))
 
 		assert.Contains(t, screen.Screen(), strings.ToUpper(snippetListTitle))
 		assert.Contains(t, screen.Screen(), folderPaneTitle)
@@ -201,7 +201,7 @@ func TestScreen_statusLine(t *testing.T) {
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Letter('3'))
+		screen.Press(keypress.Letter('3'))
 
 		assert.True(t, strings.HasSuffix(statusLine(screen), " "+listHint))
 	})
@@ -220,7 +220,7 @@ func TestScreen_statusLine(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
-		screen.Press(overlaytest.Letter('3'))
+		screen.Press(keypress.Letter('3'))
 
 		room := wide().Width - ansi.StringWidth(listHint) - 1
 		screen.Send(mainscreen.StatusShown{Text: strings.Repeat("x", room)})
@@ -233,7 +233,7 @@ func TestScreen_statusLine(t *testing.T) {
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Letter('/'))
+		screen.Press(keypress.Letter('/'))
 
 		assert.True(t, strings.HasSuffix(statusLine(screen), " down move · enter reveal · ctrl+y Copy"))
 	})
@@ -245,7 +245,7 @@ func TestScreen_statusLine(t *testing.T) {
 		screen := showing(t, minimum(), sampleSnippets(t)...)
 		screen.Send(tea.WindowSizeMsg{Width: 2 * ansi.StringWidth(hints), Height: minimum().Height})
 
-		screen.Press(overlaytest.Letter('/'))
+		screen.Press(keypress.Letter('/'))
 
 		assert.True(t, strings.HasSuffix(statusLine(screen), " "+hints))
 	})
@@ -267,7 +267,7 @@ func TestScreen_statusLine(t *testing.T) {
 
 		screen := showing(t, narrow(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Letter('/'))
+		screen.Press(keypress.Letter('/'))
 
 		assert.NotContains(t, statusLine(screen), tooSmallHint)
 		assert.Contains(t, statusLine(screen), "down move")
@@ -282,7 +282,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen := showing(t, wide())
 
-		screen.Press(overlaytest.Letter('q'))
+		screen.Press(keypress.Letter('q'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.QuitAsked{}}, screen.Outcomes())
 	})
@@ -292,7 +292,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen := showing(t, wide())
 
-		screen.Press(overlaytest.Letter('n'))
+		screen.Press(keypress.Letter('n'))
 
 		assert.Contains(t, screen.Screen(), "Editing")
 		assert.Equal(t, "ctrl+s save · esc cancel · down field", screen.Hints())
@@ -303,7 +303,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Letter('/'))
+		screen.Press(keypress.Letter('/'))
 
 		assert.Contains(t, screen.Screen(), "Search · 2 results")
 	})
@@ -314,7 +314,7 @@ func TestScreen_Update(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := showing(t, wide(), snippets...)
 
-		screen.Press(overlaytest.Typed("3y")...)
+		screen.Press(keypress.Typed("3y")...)
 
 		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[0].ID()}}, screen.Outcomes())
 	})
@@ -325,7 +325,7 @@ func TestScreen_Update(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := showing(t, wide(), snippets...)
 
-		screen.Press(overlaytest.Typed("4y")...)
+		screen.Press(keypress.Typed("4y")...)
 
 		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[0].ID()}}, screen.Outcomes())
 	})
@@ -335,7 +335,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
-		screen.Press(overlaytest.Typed("y2y")...)
+		screen.Press(keypress.Typed("y2y")...)
 
 		assert.Empty(t, screen.Outcomes())
 	})

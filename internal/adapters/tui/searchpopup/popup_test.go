@@ -8,7 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
-	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 func TestPopup_View(t *testing.T) {
@@ -48,7 +48,7 @@ func TestPopup_View(t *testing.T) {
 		query := "abcdefghijklmnopqrstuvwxyz0123456789"
 		screen := searching(t)
 
-		screen.Press(overlaytest.Typed(query)...)
+		screen.Press(keypress.Typed(query)...)
 
 		assert.Contains(t, screen.Screen(), "│/ "+query[len(query)-queryInputWidth:]+" │")
 	})
@@ -59,7 +59,7 @@ func TestPopup_View(t *testing.T) {
 		screen := searchingIn(t, numberedSnippets(t, resultRows+1))
 
 		for range resultRows {
-			screen.Press(down())
+			screen.Press(keypress.Special(tea.KeyDown))
 		}
 
 		assert.Contains(t, screen.Screen(), numberedTitle(resultRows+1))
@@ -83,7 +83,7 @@ func TestPopup_search(t *testing.T) {
 
 		screen := searching(t)
 
-		screen.Press(overlaytest.Letter('p'))
+		screen.Press(keypress.Letter('p'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.SearchTyped{Text: "p"}}, screen.Outcomes())
 	})
@@ -94,7 +94,7 @@ func TestPopup_search(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(overlaytest.Letter('p'))
+		screen.Press(keypress.Letter('p'))
 		screen.Send(searchpopup.HitsFound{Text: "p", Hits: hitsOf(snippets[1])})
 
 		assert.Contains(t, screen.Screen(), "Search · 1 result")
@@ -107,7 +107,7 @@ func TestPopup_search(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(overlaytest.Letter('p'), overlaytest.Letter('r'))
+		screen.Press(keypress.Letter('p'), keypress.Letter('r'))
 		screen.Send(searchpopup.HitsFound{Text: "p", Hits: hitsOf(snippets[1])})
 
 		assert.Contains(t, screen.Screen(), "Search · 2 results")
@@ -128,7 +128,7 @@ func TestPopup_search(t *testing.T) {
 
 		screen := searching(t)
 
-		screen.Press(overlaytest.Letter('q'))
+		screen.Press(keypress.Letter('q'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.SearchTyped{Text: "q"}}, screen.Outcomes())
 		assert.True(t, screen.IsOpen())
@@ -140,9 +140,9 @@ func TestPopup_search(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(overlaytest.Letter('p'))
+		screen.Press(keypress.Letter('p'))
 		screen.Send(searchpopup.HitsFound{Text: "p", Hits: hitsOf(snippets[1])})
-		screen.Press(overlaytest.Special(tea.KeyBackspace), overlaytest.Letter(' '))
+		screen.Press(keypress.Special(tea.KeyBackspace), keypress.Letter(' '))
 
 		assert.Equal(t, []outcome.Outcome{outcome.SearchTyped{Text: "p"}}, screen.Outcomes())
 		assert.Contains(t, screen.Screen(), "Search · 2 results")
@@ -154,7 +154,7 @@ func TestPopup_search(t *testing.T) {
 
 		screen := searching(t)
 
-		screen.Press(overlaytest.Special(tea.KeyLeft))
+		screen.Press(keypress.Special(tea.KeyLeft))
 
 		assert.Empty(t, screen.Outcomes())
 	})
@@ -168,9 +168,21 @@ func TestPopup_move(t *testing.T) {
 		keys []tea.KeyPressMsg
 		want string
 	}{
-		{name: "down previews the next result", keys: []tea.KeyPressMsg{down()}, want: secondContent},
-		{name: "ctrl+n previews the next result", keys: []tea.KeyPressMsg{overlaytest.Ctrl('n')}, want: secondContent},
-		{name: "up stops at the first result", keys: []tea.KeyPressMsg{down(), up(), up()}, want: firstContent},
+		{
+			name: "down previews the next result",
+			keys: []tea.KeyPressMsg{keypress.Special(tea.KeyDown)},
+			want: secondContent,
+		},
+		{name: "ctrl+n previews the next result", keys: []tea.KeyPressMsg{keypress.Ctrl('n')}, want: secondContent},
+		{
+			name: "up stops at the first result",
+			keys: []tea.KeyPressMsg{
+				keypress.Special(tea.KeyDown),
+				keypress.Special(tea.KeyUp),
+				keypress.Special(tea.KeyUp),
+			},
+			want: firstContent,
+		},
 	}
 
 	for _, tt := range tests {
@@ -191,7 +203,7 @@ func TestPopup_move(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(down(), overlaytest.Letter('e'))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Letter('e'))
 		screen.Send(searchpopup.HitsFound{Text: "e", Hits: hitsOf(snippets...)})
 
 		assert.Contains(t, screen.Screen(), firstContent)
@@ -207,7 +219,7 @@ func TestPopup_end(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(down(), enter())
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.SnippetRevealed{ID: snippets[1].ID()}}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
@@ -219,7 +231,7 @@ func TestPopup_end(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := searching(t)
 
-		screen.Press(down(), overlaytest.Ctrl('y'))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Ctrl('y'))
 
 		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[1].ID()}}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
@@ -230,13 +242,13 @@ func TestPopup_end(t *testing.T) {
 
 		screen := searching(t)
 
-		screen.Press(down(), overlaytest.Special(tea.KeyEscape))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEscape))
 
 		assert.Empty(t, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
 	})
 
-	for name, pressed := range map[string]tea.KeyPressMsg{"enter": enter(), "ctrl+y": overlaytest.Ctrl('y')} {
+	for name, pressed := range map[string]tea.KeyPressMsg{"enter": keypress.Special(tea.KeyEnter), "ctrl+y": keypress.Ctrl('y')} {
 		t.Run(name+" does nothing without results", func(t *testing.T) {
 			t.Parallel()
 

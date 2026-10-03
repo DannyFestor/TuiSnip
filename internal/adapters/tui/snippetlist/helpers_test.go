@@ -79,11 +79,3 @@ func selectedTitle(t *testing.T, list snippetlist.List) string {
 func rows(list snippetlist.List) []string {
 	return strings.Split(ansi.Strip(list.View(upperCursor())), "\n")
 }
-
-func letter(r rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: r, Text: string(r)}
-}
-
-func special(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code}
-}

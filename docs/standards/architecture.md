@@ -63,6 +63,7 @@ test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
   testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool
+  keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
   overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
   testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml

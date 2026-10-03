@@ -137,6 +137,7 @@ Set only the fields the test is about. A test that states every field hides whic
 ## TUI unit tests
 
 - Build settings with `testsettings.Default(t)`, the keys the app starts with. A test about a remapped key changes that one entry in `Keys`. Never import `config` or write the default keys out by hand.
+- Build key presses with `test/keypress`. Never write a local helper or a `tea.KeyPressMsg` literal for a key it covers.
 - Test the `tui` model with mocked Actions. Send it messages through `Update` and run the returned commands in the test, so every step is synchronous and the order never depends on timing.
 - Test a stack member (an Overlay) through `test/overlaytest`, which pushes it onto a real Overlay stack. Its tests see the confirmations it opens, the outcomes it reports, and whether it closes, all without Model.
 - Check what the user sees: the rendered `View()` with ANSI stripped, or the messages the model emitted (`tea.SetClipboard`, `tea.QuitMsg`). Not the model's fields.

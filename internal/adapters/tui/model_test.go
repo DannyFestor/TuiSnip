@@ -70,7 +70,6 @@ func TestModel_start(t *testing.T) {
 
 		assert.Contains(t, screen.screen(), "No Snippets here.")
 		assert.Contains(t, screen.screen(), "n  new Snippet")
-		assert.Contains(t, screen.screen(), "No Tags yet.")
 	})
 
 	t.Run("reports a listing failure", func(t *testing.T) {

@@ -4,11 +4,13 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
 type round[O any] struct {
 	overlays []Overlay[O]
-	screen   tea.WindowSizeMsg
+	screen   look.Size
 	outcomes []O
 	cmds     []tea.Cmd
 }
@@ -56,7 +58,7 @@ func (r *round[O]) replace(index int, step Step[O]) {
 
 func (r *round[O]) open(parent int, child Overlay[O]) {
 	r.overlays = append(r.overlays[:parent+1], child)
-	r.apply(parent+1, child.Update(r.screen))
+	r.apply(parent+1, child.Update(look.Resized{Box: r.screen}))
 }
 
 func (r *round[O]) bubble(index int, outcome O) {

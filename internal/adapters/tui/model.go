@@ -10,6 +10,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
@@ -35,8 +37,8 @@ type Model struct {
 	searcher        SnippetSearcher
 	logger          *slog.Logger
 	keys            bindings
-	styles          styleSet
-	screen          size
+	styles          look.Styles
+	screen          look.Size
 	layout          layout
 	focus           pane
 	selectionHolder pane
@@ -61,7 +63,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		return Model{}, fmt.Errorf("tui.New: %w", err)
 	}
 
-	styles := newStyleSet()
+	styles := look.NewStyles()
 
 	return Model{
 		ctx:             ctx,
@@ -72,8 +74,8 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		logger:          deps.Logger,
 		keys:            newBindings(deps.Settings),
 		styles:          styles,
-		screen:          size{width: 0, height: 0},
-		layout:          arrange(size{width: 0, height: 0}, paneFolders, paneFolders),
+		screen:          look.Size{Width: 0, Height: 0},
+		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
 		folders:         folderPane{rootSnippetCount: 0},
@@ -92,11 +94,11 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.screen = sizeOf(msg)
+		m.screen = look.SizeOf(msg)
 
 		return m.arranged().overlaysUpdated(msg)
 	case tea.BackgroundColorMsg:
-		m.preview = m.preview.withCodeStyle(codeStyleFor(msg))
+		m.preview = m.preview.withCodeStyle(look.CodeStyleFor(msg))
 
 		return m.overlaysUpdated(msg)
 	case tea.KeyPressMsg:
@@ -159,8 +161,8 @@ func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.arranged(), nil
 	}
 
-	if move, ok := m.keys.movementFor(msg); ok {
-		return m.moved(move), nil
+	if direction, ok := m.keys.movementFor(msg); ok {
+		return m.moved(direction), nil
 	}
 
 	return m, nil
@@ -249,14 +251,14 @@ func (m Model) revealed(id domain.SnippetID) (Model, tea.Cmd) {
 	return next.arranged(), next.loadSnippets(id)
 }
 
-func (m Model) moved(move movement) Model {
+func (m Model) moved(direction move.Direction) Model {
 	switch m.focus {
 	case paneList:
-		m.list = m.list.moved(move)
+		m.list = m.list.moved(direction)
 
 		return m.previewSelected()
 	case paneSnippet:
-		m.preview = m.preview.moved(move)
+		m.preview = m.preview.moved(direction)
 	case paneFolders, paneTags:
 	}
 
@@ -343,8 +345,8 @@ func (m Model) previewSelected() Model {
 
 func (m Model) arranged() Model {
 	m.layout = arrange(m.screen, m.focus, m.tallLeft())
-	m.list = m.list.resized(innerSize(m.layout.list).height)
-	m.preview = m.preview.resized(innerSize(m.layout.snippet))
+	m.list = m.list.resized(m.layout.list.Inner().Height)
+	m.preview = m.preview.resized(m.layout.snippet.Inner())
 
 	return m
 }
@@ -358,7 +360,7 @@ func (m Model) tallLeft() pane {
 }
 
 func (m Model) mainScreen() string {
-	status := statusLine(m.styles, m.status, m.hint(), m.screen.width)
+	status := statusLine(m.styles, m.status, m.hint(), m.screen.Width)
 	if m.layout.single {
 		return m.paneFrame(m.focus) + "\n" + status
 	}
@@ -371,19 +373,27 @@ func (m Model) mainScreen() string {
 
 func (m Model) paneFrame(p pane) string {
 	outer := m.layout.of(p)
-	look := m.styles.lookFor(p, m.focus)
+	paneStyle := m.paneStyle(p)
 
-	return frame(look, paneTitle(p), m.paneBody(p, look, innerSize(outer).width), outer)
+	return look.Frame(paneStyle, paneTitle(p), m.paneBody(p, paneStyle, outer.Inner().Width), outer)
 }
 
-func (m Model) paneBody(p pane, look paneLook, width int) string {
+func (m Model) paneStyle(p pane) look.FrameStyle {
+	if p == m.focus {
+		return m.styles.Focused
+	}
+
+	return m.styles.Unfocused
+}
+
+func (m Model) paneBody(p pane, paneStyle look.FrameStyle, width int) string {
 	switch p {
 	case paneFolders:
-		return m.folders.body(look, width)
+		return m.folders.body(paneStyle, width)
 	case paneTags:
 		return m.tags.body(m.styles)
 	case paneList:
-		return m.list.body(m.styles, look, width, m.keys.emptyHints)
+		return m.list.body(m.styles, paneStyle, width, m.keys.emptyHints)
 	case paneSnippet:
 		return m.preview.body(m.styles, m.keys.emptyHints)
 	}
@@ -392,11 +402,11 @@ func (m Model) paneBody(p pane, look paneLook, width int) string {
 }
 
 func (m Model) hint() string {
-	width := m.screen.width / hintWidthDivisor
+	width := m.screen.Width / hintWidthDivisor
 
 	switch {
 	case m.overlays.Open():
-		return hintFor(m.overlays.Hints(), width)
+		return hintFor(m.overlays.ShortHelp(), width)
 	case m.layout.single:
 		return tooSmallHint
 	}

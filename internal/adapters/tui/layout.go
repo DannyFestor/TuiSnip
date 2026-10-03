@@ -1,11 +1,12 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+)
 
 const (
 	leftColumnPercent    = 22
 	snippetListPercent   = 30
-	percent              = 100
 	focusGrowth          = 8
 	focusGrowthPerColumn = focusGrowth / 2
 	tallShareNumerator   = 2
@@ -15,15 +16,6 @@ const (
 	statusLineHeight     = 1
 )
 
-type size struct {
-	width  int
-	height int
-}
-
-func sizeOf(screen tea.WindowSizeMsg) size {
-	return size{width: screen.Width, height: screen.Height}
-}
-
 type columns struct {
 	left    int
 	list    int
@@ -32,42 +24,42 @@ type columns struct {
 
 type layout struct {
 	single  bool
-	folders size
-	tags    size
-	list    size
-	snippet size
+	folders look.Size
+	tags    look.Size
+	list    look.Size
+	snippet look.Size
 }
 
-func arrange(screen size, focus, tallLeft pane) layout {
-	panes := size{width: screen.width, height: max(0, screen.height-statusLineHeight)}
-	if screen.width < minimumWidth || screen.height < minimumHeight {
+func arrange(screen look.Size, focus, tallLeft pane) layout {
+	panes := look.Size{Width: screen.Width, Height: max(0, screen.Height-statusLineHeight)}
+	if screen.Width < minimumWidth || screen.Height < minimumHeight {
 		return singlePane(panes)
 	}
 
-	widths := columnWidths(panes.width, focus)
-	tall := panes.height * tallShareNumerator / tallShareDenominator
-	folderHeight, tagHeight := panes.height-tall, tall
+	widths := columnWidths(panes.Width, focus)
+	tall := panes.Height * tallShareNumerator / tallShareDenominator
+	folderHeight, tagHeight := panes.Height-tall, tall
 
 	if tallLeft == paneFolders {
-		folderHeight, tagHeight = tall, panes.height-tall
+		folderHeight, tagHeight = tall, panes.Height-tall
 	}
 
 	return layout{
 		single:  false,
-		folders: size{width: widths.left, height: folderHeight},
-		tags:    size{width: widths.left, height: tagHeight},
-		list:    size{width: widths.list, height: panes.height},
-		snippet: size{width: widths.snippet, height: panes.height},
+		folders: look.Size{Width: widths.left, Height: folderHeight},
+		tags:    look.Size{Width: widths.left, Height: tagHeight},
+		list:    look.Size{Width: widths.list, Height: panes.Height},
+		snippet: look.Size{Width: widths.snippet, Height: panes.Height},
 	}
 }
 
-func singlePane(panes size) layout {
+func singlePane(panes look.Size) layout {
 	return layout{single: true, folders: panes, tags: panes, list: panes, snippet: panes}
 }
 
 func columnWidths(width int, focus pane) columns {
-	left := width * leftColumnPercent / percent
-	list := width * snippetListPercent / percent
+	left := width * leftColumnPercent / look.Percent
+	list := width * snippetListPercent / look.Percent
 
 	switch focus {
 	case paneFolders, paneTags:
@@ -82,7 +74,7 @@ func columnWidths(width int, focus pane) columns {
 	return columns{left: left, list: list, snippet: width - left - list}
 }
 
-func (l layout) of(p pane) size {
+func (l layout) of(p pane) look.Size {
 	switch p {
 	case paneFolders:
 		return l.folders
@@ -94,5 +86,5 @@ func (l layout) of(p pane) size {
 		return l.snippet
 	}
 
-	return size{width: 0, height: 0}
+	return look.Size{Width: 0, Height: 0}
 }

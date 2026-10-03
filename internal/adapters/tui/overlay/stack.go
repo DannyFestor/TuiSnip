@@ -3,27 +3,37 @@ package overlay
 import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
 type Stack[O any] struct {
 	overlays []Overlay[O]
-	screen   tea.WindowSizeMsg
+	screen   look.Size
 }
 
 func NewStack[O any]() Stack[O] {
-	return Stack[O]{overlays: nil, screen: tea.WindowSizeMsg{Width: 0, Height: 0}}
+	return Stack[O]{overlays: nil, screen: look.Size{Width: 0, Height: 0}}
 }
 
 func (s Stack[O]) Open() bool {
 	return len(s.overlays) > 0
 }
 
-func (s Stack[O]) Hints() []key.Binding {
+func (s Stack[O]) ShortHelp() []key.Binding {
 	if !s.Open() {
 		return nil
 	}
 
-	return s.overlays[len(s.overlays)-1].Hints()
+	return s.top().ShortHelp()
+}
+
+func (s Stack[O]) FullHelp() [][]key.Binding {
+	if !s.Open() {
+		return nil
+	}
+
+	return s.top().FullHelp()
 }
 
 func (s Stack[O]) Pushed(pushed Overlay[O]) (Stack[O], []O, tea.Cmd) {
@@ -40,8 +50,8 @@ func (s Stack[O]) Update(msg tea.Msg) (Stack[O], []O, tea.Cmd) {
 	case tea.KeyPressMsg, tea.PasteMsg:
 		current.routeToTop(msg)
 	case tea.WindowSizeMsg:
-		current.screen = msg
-		current.deliver(msg)
+		current.screen = look.SizeOf(msg)
+		current.deliver(look.Resized{Box: current.screen})
 	default:
 		current.deliver(msg)
 	}
@@ -63,4 +73,8 @@ func (s Stack[O]) Render(background string) string {
 	}
 
 	return view
+}
+
+func (s Stack[O]) top() Overlay[O] {
+	return s.overlays[len(s.overlays)-1]
 }

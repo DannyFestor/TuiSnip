@@ -4,26 +4,29 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
+const editOverlayPercent = 90
+
 type editSession struct {
 	form        editForm
 	confirmKeys confirmBindings
-	styles      styleSet
-	outer       size
+	styles      look.Styles
+	outer       look.Size
 	saving      bool
 }
 
-func newEditSession(keys editorBindings, confirmKeys confirmBindings, styles styleSet) (editSession, tea.Cmd) {
+func newEditSession(keys editorBindings, confirmKeys confirmBindings, styles look.Styles) (editSession, tea.Cmd) {
 	form, cmd := newEditForm(keys)
 
 	return editSession{
 		form:        form,
 		confirmKeys: confirmKeys,
 		styles:      styles,
-		outer:       size{width: 0, height: 0},
+		outer:       look.Size{Width: 0, Height: 0},
 		saving:      false,
 	}, cmd
 }
@@ -32,8 +35,8 @@ func (s editSession) Update(msg tea.Msg) step {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg, tea.PasteMsg:
 		return s.formUpdated(msg)
-	case tea.WindowSizeMsg:
-		return stay(s.resized(sizeOf(msg)))
+	case look.Resized:
+		return stay(s.resized(msg.Box))
 	case snippetCreatedMsg:
 		return s.saved(msg)
 	}
@@ -59,8 +62,12 @@ func (s editSession) View() string {
 	return s.form.view(s.styles, s.outer)
 }
 
-func (s editSession) Hints() []key.Binding {
+func (s editSession) ShortHelp() []key.Binding {
 	return s.form.hints()
+}
+
+func (s editSession) FullHelp() [][]key.Binding {
+	return [][]key.Binding{s.ShortHelp()}
 }
 
 func (s editSession) formUpdated(msg tea.Msg) step {
@@ -134,8 +141,8 @@ func (s editSession) confirming(question string, onYes outcome.Outcome) step {
 	return stay(s).Opening(newConfirmation(s.confirmKeys, s.styles, question, onYes))
 }
 
-func (s editSession) resized(screen size) editSession {
-	s.outer = shareOf(screen, editOverlayPercent)
+func (s editSession) resized(screen look.Size) editSession {
+	s.outer = screen.Share(editOverlayPercent)
 	s.form = s.form.resized(s.outer)
 
 	return s

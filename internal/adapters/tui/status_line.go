@@ -5,6 +5,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
 const (
@@ -12,12 +14,12 @@ const (
 	tooSmallHint  = "Terminal too small for all four Panes (80×24)"
 )
 
-func statusLine(styles styleSet, message, hint string, width int) string {
+func statusLine(styles look.Styles, message, hint string, width int) string {
 	hintWidth := ansi.StringWidth(hint)
-	left := ansi.Truncate(" "+message, max(0, width-hintWidth-1), ellipsis)
+	left := ansi.Truncate(" "+message, max(0, width-hintWidth-1), look.Ellipsis)
 	gap := strings.Repeat(" ", max(1, width-ansi.StringWidth(left)-hintWidth))
 
-	return fitWidth(left+gap+styles.dim.Render(hint), width)
+	return look.FitWidth(left+gap+styles.Dim.Render(hint), width)
 }
 
 func hintFor(hints []key.Binding, width int) string {

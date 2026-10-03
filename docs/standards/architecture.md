@@ -41,7 +41,10 @@ internal/
     memsearch/               in-memory Search index
     system/                  Clock and IDGenerator
     logging/                 opens the log file, builds the *slog.Logger
-    tui/                     Bubble Tea program
+    tui/                     Bubble Tea program: Model and the wiring between components
+      input/                 the text inputs components embed, with clipboard access turned off
+      look/                  sizes and the resized message, frames, rows, styles, syntax highlighting
+      move/                  the ways a cursor or a scrolled view moves
       outcome/               the sealed union of outcomes TUI components report to the model
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
   bootstrap/                 composition root
@@ -130,6 +133,34 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 3. **An Action that needs a single capability** takes it directly, with no wrapper interface.
 4. **`Clock` and `IDGenerator`** are declared once per package that needs them, each in its own file, and unprefixed.
 5. **In `tui`, the dependency is an Action**, so the interfaces carry `-er` names for the Action: `SnippetCreator`, `FolderMover`. The TUI's own driven interfaces (remembered state, editor command) follow the same rule.
+
+## TUI components
+
+The TUI is built from small components, each in its own package under `tui/`. `tui` keeps Model and the wiring: it composes components and turns their outcomes into Actions.
+
+### Two kinds of component
+
+- **Stack members** are the Overlays and, later, the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. `FullHelp()` is what the help overlay will show.
+- **Embedded children** are the Snippet list inside the Search popup or the main screen, and the text entries in the edit overlay. They are concrete types. A child's `Update` returns its new value, a typed result, and a `tea.Cmd`. The parent holds the concrete type and reads the result directly.
+
+### Size comes from the parent
+
+A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized` carrying the box it gets. The overlay stack converts each `tea.WindowSizeMsg` into a `look.Resized` with the whole screen and sends it to every Overlay, and to each Overlay it opens later. The Overlay picks its own share with `Size.Share`. On the main screen, the layout decides each Pane's box, and each Pane gets it as a `look.Resized` once it becomes a component.
+
+### Outcomes are typed and synchronous
+
+A component reports what happened by returning an `outcome.Outcome` in the step that carries its next state, never as a Bubble Tea message. `outcome.Outcome` is a sealed union, and gochecksumtype fails a type switch that misses a member. The reasoning is in [ADR 0003](../adr/0003-tui-components-return-typed-outcomes.md).
+
+### Packages
+
+Packages under `tui/` are flat, with no grouping folders. A component's package is named after its [`CONTEXT.md`](../../CONTEXT.md) term (`snippetlist`, `searchpopup`), never a bare word that collides with another package at the call site, such as `search` with `internal/app/search`. Helpers that several components share live in packages named for what they hold (`look`, `input`, `move`), so no component imports `tui` or another component for them. Their names must not be a word `CONTEXT.md` tells you to avoid.
+
+### Moving a component out of `tui`
+
+1. Move the code into its package with every Model-level test still green.
+2. In the same PR, move the tests for the behaviour it owns into the component's package. They are black-box tests, with mockery mocks for any child interface.
+
+Model keeps the golden snapshots and one integration test per outcome kind.
 
 ## Errors
 

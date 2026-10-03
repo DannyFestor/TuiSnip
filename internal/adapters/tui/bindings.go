@@ -3,6 +3,8 @@ package tui
 import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 )
 
 const (
@@ -23,7 +25,7 @@ type navigationBinding struct {
 
 type movementBinding struct {
 	binding key.Binding
-	move    movement
+	move    move.Direction
 }
 
 type bindings struct {
@@ -84,14 +86,14 @@ func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {
 	return nil, false
 }
 
-func (b bindings) movementFor(msg tea.KeyPressMsg) (movement, bool) {
+func (b bindings) movementFor(msg tea.KeyPressMsg) (move.Direction, bool) {
 	for _, candidate := range b.movements {
 		if key.Matches(msg, candidate.binding) {
 			return candidate.move, true
 		}
 	}
 
-	return moveNone, false
+	return move.None, false
 }
 
 func navigationBindings(global GlobalKeyMap) []navigationBinding {
@@ -111,12 +113,12 @@ func navigationBindings(global GlobalKeyMap) []navigationBinding {
 
 func movementBindings(global GlobalKeyMap) []movementBinding {
 	return []movementBinding{
-		{binding: unlabelled(global.Down), move: moveDown},
-		{binding: unlabelled(global.Up), move: moveUp},
-		{binding: unlabelled(global.Top), move: moveTop},
-		{binding: unlabelled(global.Bottom), move: moveBottom},
-		{binding: unlabelled(global.PageDown), move: movePageDown},
-		{binding: unlabelled(global.PageUp), move: movePageUp},
+		{binding: unlabelled(global.Down), move: move.Down},
+		{binding: unlabelled(global.Up), move: move.Up},
+		{binding: unlabelled(global.Top), move: move.Top},
+		{binding: unlabelled(global.Bottom), move: move.Bottom},
+		{binding: unlabelled(global.PageDown), move: move.PageDown},
+		{binding: unlabelled(global.PageUp), move: move.PageUp},
 	}
 }
 

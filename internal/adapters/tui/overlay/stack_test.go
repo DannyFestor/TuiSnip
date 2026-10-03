@@ -3,6 +3,7 @@ package overlay_test
 import (
 	"testing"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,7 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		bottom := overlayMock(t)
-		bottom.EXPECT().Hints().Return(hinting("bottom"))
+		bottom.EXPECT().ShortHelp().Return(hinting("bottom"))
 
 		top := overlayMock(t)
 		top.EXPECT().Update(letter('c')).Return(closing())
@@ -166,7 +167,7 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		bottom := overlayMock(t)
-		bottom.EXPECT().Hints().Return(hinting("bottom"))
+		bottom.EXPECT().ShortHelp().Return(hinting("bottom"))
 
 		parent := parentMock(t)
 		parent.EXPECT().Received("done").Return(closing())
@@ -184,7 +185,7 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		child := overlayMock(t)
-		child.EXPECT().Hints().Return(hinting("child"))
+		child.EXPECT().ShortHelp().Return(hinting("child"))
 
 		parent := overlayMock(t)
 		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
@@ -199,12 +200,12 @@ func TestStack_Update(t *testing.T) {
 		t.Parallel()
 
 		newChild := overlayMock(t)
-		newChild.EXPECT().Hints().Return(hinting("new child"))
+		newChild.EXPECT().ShortHelp().Return(hinting("new child"))
 		newChild.EXPECT().Update(letter('c')).Return(closing())
 
 		parent := parentMock(t)
 		parent.EXPECT().Received("asked").Return(stay(parent).Opening(newChild))
-		parent.EXPECT().Hints().Return(hinting("parent"))
+		parent.EXPECT().ShortHelp().Return(hinting("parent"))
 
 		oldChild := overlayMock(t)
 		oldChild.EXPECT().Update(letter('a')).Return(stay(oldChild).Passing("asked"))
@@ -218,16 +219,21 @@ func TestStack_Update(t *testing.T) {
 		assert.Equal(t, []string{"parent"}, hintKeys(stack))
 	})
 
-	t.Run("sizes an opened child to the screen", func(t *testing.T) {
+	t.Run("resizes every overlay to the whole screen", func(t *testing.T) {
 		t.Parallel()
 
-		screen := tea.WindowSizeMsg{Width: 80, Height: 24}
+		stackOf(terminalSizedMock(t), terminalSizedMock(t)).Update(terminal())
+	})
+
+	t.Run("resizes an opened child to the whole screen", func(t *testing.T) {
+		t.Parallel()
+
 		child := NewMockOverlay[string](t)
-		child.EXPECT().Update(screen).Return(stay(child)).Once()
+		child.EXPECT().Update(wholeTerminal()).Return(stay(child)).Once()
 
 		parent := overlayMock(t)
 		parent.EXPECT().Update(letter('o')).Return(stay(parent).Opening(child))
-		stack, _, _ := stackOf(parent).Update(screen)
+		stack, _, _ := stackOf(parent).Update(terminal())
 
 		stack.Update(letter('o'))
 	})
@@ -249,13 +255,12 @@ func TestStack_Update(t *testing.T) {
 func TestStack_Pushed(t *testing.T) {
 	t.Parallel()
 
-	t.Run("sizes the pushed overlay to the last screen size", func(t *testing.T) {
+	t.Run("resizes the pushed overlay to the last screen size", func(t *testing.T) {
 		t.Parallel()
 
-		screen := tea.WindowSizeMsg{Width: 80, Height: 24}
 		pushed := NewMockOverlay[string](t)
-		pushed.EXPECT().Update(screen).Return(stay(pushed)).Once()
-		stack, _, _ := emptyStack().Update(screen)
+		pushed.EXPECT().Update(wholeTerminal()).Return(stay(pushed)).Once()
+		stack, _, _ := emptyStack().Update(terminal())
 
 		stack.Pushed(pushed)
 	})
@@ -268,14 +273,14 @@ func TestStack_Pushed(t *testing.T) {
 	})
 }
 
-func TestStack_Hints(t *testing.T) {
+func TestStack_ShortHelp(t *testing.T) {
 	t.Parallel()
 
-	t.Run("shows the top overlay's hints", func(t *testing.T) {
+	t.Run("shows the top overlay's short help", func(t *testing.T) {
 		t.Parallel()
 
 		top := overlayMock(t)
-		top.EXPECT().Hints().Return(hinting("top"))
+		top.EXPECT().ShortHelp().Return(hinting("top"))
 		stack := stackOf(overlayMock(t), top)
 
 		assert.Equal(t, []string{"top"}, hintKeys(stack))
@@ -284,7 +289,28 @@ func TestStack_Hints(t *testing.T) {
 	t.Run("shows none with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Empty(t, emptyStack().Hints())
+		assert.Empty(t, emptyStack().ShortHelp())
+	})
+}
+
+func TestStack_FullHelp(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shows the top overlay's full help", func(t *testing.T) {
+		t.Parallel()
+
+		full := [][]key.Binding{hinting("top"), hinting("more")}
+		top := overlayMock(t)
+		top.EXPECT().FullHelp().Return(full)
+		stack := stackOf(overlayMock(t), top)
+
+		assert.Equal(t, full, stack.FullHelp())
+	})
+
+	t.Run("shows none with nothing open", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Empty(t, emptyStack().FullHelp())
 	})
 }
 

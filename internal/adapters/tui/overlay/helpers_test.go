@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
 )
 
@@ -20,7 +21,17 @@ func overlayMock(t *testing.T) *MockOverlay[string] {
 	t.Helper()
 
 	mocked := NewMockOverlay[string](t)
-	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(stay(mocked)).Maybe()
+	mocked.EXPECT().Update(mock.AnythingOfType("look.Resized")).Return(stay(mocked)).Maybe()
+
+	return mocked
+}
+
+func terminalSizedMock(t *testing.T) *MockOverlay[string] {
+	t.Helper()
+
+	mocked := NewMockOverlay[string](t)
+	mocked.EXPECT().Update(wholeTerminal()).Return(stay(mocked)).Once()
+	mocked.EXPECT().Update(look.Resized{Box: look.Size{Width: 0, Height: 0}}).Return(stay(mocked)).Maybe()
 
 	return mocked
 }
@@ -29,7 +40,7 @@ func parentMock(t *testing.T) *MockParent[string] {
 	t.Helper()
 
 	mocked := NewMockParent[string](t)
-	mocked.EXPECT().Update(mock.AnythingOfType("tea.WindowSizeMsg")).Return(stay(mocked)).Maybe()
+	mocked.EXPECT().Update(mock.AnythingOfType("look.Resized")).Return(stay(mocked)).Maybe()
 
 	return mocked
 }
@@ -51,12 +62,20 @@ func hinting(name string) []key.Binding {
 }
 
 func hintKeys(of stack) []string {
-	keys := make([]string, 0, len(of.Hints()))
-	for _, binding := range of.Hints() {
+	keys := make([]string, 0, len(of.ShortHelp()))
+	for _, binding := range of.ShortHelp() {
 		keys = append(keys, binding.Keys()...)
 	}
 
 	return keys
+}
+
+func terminal() tea.WindowSizeMsg {
+	return tea.WindowSizeMsg{Width: 80, Height: 24}
+}
+
+func wholeTerminal() look.Resized {
+	return look.Resized{Box: look.Size{Width: 80, Height: 24}}
 }
 
 func letter(r rune) tea.KeyPressMsg {

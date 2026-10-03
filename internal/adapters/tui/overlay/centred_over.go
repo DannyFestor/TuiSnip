@@ -1,13 +1,14 @@
 package overlay
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
 const centring = 2
 
-func centredOver(background string, screen tea.WindowSizeMsg, foreground string) string {
+func centredOver(background string, screen look.Size, foreground string) string {
 	x := max(0, (screen.Width-lipgloss.Width(foreground))/centring)
 	y := max(0, (screen.Height-lipgloss.Height(foreground))/centring)
 

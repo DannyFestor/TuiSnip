@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 )
 
@@ -18,12 +19,12 @@ const (
 
 type confirmation struct {
 	keys     confirmBindings
-	styles   styleSet
+	styles   look.Styles
 	question string
 	onYes    outcome.Outcome
 }
 
-func newConfirmation(keys confirmBindings, styles styleSet, question string, onYes outcome.Outcome) confirmation {
+func newConfirmation(keys confirmBindings, styles look.Styles, question string, onYes outcome.Outcome) confirmation {
 	return confirmation{keys: keys, styles: styles, question: question, onYes: onYes}
 }
 
@@ -45,11 +46,15 @@ func (c confirmation) Update(msg tea.Msg) step {
 
 func (c confirmation) View() string {
 	width := max(ansi.StringWidth(c.question), ansi.StringWidth(confirmationTitle)+confirmationPadding)
-	outer := size{width: width + borderWidth, height: confirmationRows + borderWidth}
+	outer := look.Size{Width: width + look.BorderWidth, Height: confirmationRows + look.BorderWidth}
 
-	return frame(c.styles.focused, confirmationTitle, c.question, outer)
+	return look.Frame(c.styles.Focused, confirmationTitle, c.question, outer)
 }
 
-func (c confirmation) Hints() []key.Binding {
+func (c confirmation) ShortHelp() []key.Binding {
 	return c.keys.hints()
+}
+
+func (c confirmation) FullHelp() [][]key.Binding {
+	return [][]key.Binding{c.ShortHelp()}
 }

@@ -1,4 +1,4 @@
-package tui
+package look
 
 import (
 	"fmt"
@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	darkCodeStyle  = "github-dark"
+	DarkCodeStyle  = "github-dark"
 	lightCodeStyle = "github"
 	tabAsSpaces    = "    "
 )
 
-func highlight(content, language, codeStyle string) string {
+func Highlight(content, language, codeStyle string) string {
 	plain := strings.ReplaceAll(strings.TrimSuffix(content, "\n"), "\t", tabAsSpaces)
 
 	iterator, err := tokenise(plain, language)
@@ -49,9 +49,9 @@ func tokenise(plain, language string) (chroma.Iterator, error) {
 	return iterator, nil
 }
 
-func codeStyleFor(background tea.BackgroundColorMsg) string {
+func CodeStyleFor(background tea.BackgroundColorMsg) string {
 	if background.IsDark() {
-		return darkCodeStyle
+		return DarkCodeStyle
 	}
 
 	return lightCodeStyle

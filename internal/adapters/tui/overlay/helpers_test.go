@@ -45,6 +45,15 @@ func parentMock(t *testing.T) *MockParent[string] {
 	return mocked
 }
 
+func baseMock(t *testing.T) *MockBase[string] {
+	t.Helper()
+
+	mocked := NewMockBase[string](t)
+	mocked.EXPECT().Update(mock.AnythingOfType("look.Resized")).Return(stay(mocked)).Maybe()
+
+	return mocked
+}
+
 func stay(next overlay.Overlay[string]) step {
 	return overlay.Stay(next)
 }

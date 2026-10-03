@@ -61,7 +61,7 @@ func (d *Driver) IsOpen() bool {
 }
 
 func (d *Driver) Screen() string {
-	return ansi.Strip(d.stack.Render(""))
+	return ansi.Strip(d.stack.Render())
 }
 
 func (d *Driver) TopBorderWidth() int {

@@ -1,4 +1,4 @@
-package tui
+package mainscreen
 
 import "github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 
@@ -76,4 +76,19 @@ func (p pane) backOut(selectionHolder pane) pane {
 
 func (p pane) inLeftColumn() bool {
 	return p == paneFolders || p == paneTags
+}
+
+func (p pane) title() string {
+	switch p {
+	case paneFolders:
+		return folderPaneTitle
+	case paneTags:
+		return tagPaneTitle
+	case paneList:
+		return snippetListTitle
+	case paneSnippet:
+		return snippetPaneTitle
+	}
+
+	return ""
 }

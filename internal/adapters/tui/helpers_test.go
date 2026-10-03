@@ -23,8 +23,6 @@ const (
 	wideHeight         = 40
 	narrowWidth        = 60
 	narrowHeight       = 20
-	minimumWidth       = 80
-	minimumHeight      = 24
 	listLongerThanPane = 45
 )
 

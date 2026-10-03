@@ -25,6 +25,7 @@ packages:
     interfaces:
       Overlay: {}
       Parent: {}
+      Base: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/memsearch:
     interfaces:
       SnippetLister: {}

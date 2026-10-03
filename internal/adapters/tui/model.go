@@ -6,19 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -26,33 +20,22 @@ import (
 )
 
 const (
-	operationList    = "list snippets"
-	operationCopy    = "copy"
-	operationSave    = "save snippet"
-	operationSearch  = "search"
-	hintWidthDivisor = 2
+	operationList   = "list snippets"
+	operationCopy   = "copy"
+	operationSave   = "save snippet"
+	operationSearch = "search"
 )
 
 type Model struct {
 	//nolint:containedctx // Bubble Tea's Update has no context parameter, so the program context travels with the model.
-	ctx             context.Context
-	lister          FolderSnippetsLister
-	copier          SnippetCopier
-	creator         SnippetCreator
-	searcher        SnippetSearcher
-	logger          *slog.Logger
-	keys            bindings
-	styles          look.Styles
-	screen          look.Size
-	layout          layout
-	focus           pane
-	selectionHolder pane
-	folders         folderpane.Pane
-	tags            tagpane.Pane
-	list            snippetlist.List
-	preview         snippetpane.Pane
-	overlays        outcome.Stack
-	status          string
+	ctx           context.Context
+	lister        FolderSnippetsLister
+	copier        SnippetCopier
+	creator       SnippetCreator
+	searcher      SnippetSearcher
+	logger        *slog.Logger
+	forcedQuitKey string
+	overlays      outcome.Stack
 }
 
 func New(ctx context.Context, deps Deps) (Model, error) {
@@ -68,27 +51,18 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		return Model{}, fmt.Errorf("tui.New: %w", err)
 	}
 
-	styles := look.NewStyles()
+	mainScreen := mainscreen.New(deps.Settings.Keys, look.NewStyles(), deps.Settings.Location)
+	overlays, _, _ := outcome.NewStack().Pushed(mainScreen)
 
 	return Model{
-		ctx:             ctx,
-		lister:          deps.Lister,
-		copier:          deps.Copier,
-		creator:         deps.Creator,
-		searcher:        deps.Searcher,
-		logger:          deps.Logger,
-		keys:            newBindings(deps.Settings),
-		styles:          styles,
-		screen:          look.Size{Width: 0, Height: 0},
-		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
-		focus:           paneFolders,
-		selectionHolder: paneFolders,
-		folders:         folderpane.New(deps.Settings.Keys),
-		tags:            tagpane.New(deps.Settings.Keys, styles),
-		list:            snippetlist.New(deps.Settings.Keys, styles, snippetlist.Language),
-		preview:         snippetpane.New(deps.Settings.Keys, styles, deps.Settings.Location),
-		overlays:        outcome.NewStack(),
-		status:          "",
+		ctx:           ctx,
+		lister:        deps.Lister,
+		copier:        deps.Copier,
+		creator:       deps.Creator,
+		searcher:      deps.Searcher,
+		logger:        deps.Logger,
+		forcedQuitKey: deps.Settings.ForcedQuitKey,
+		overlays:      overlays,
 	}, nil
 }
 
@@ -98,31 +72,24 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.screen = look.SizeOf(msg)
-
-		return m.arranged().overlaysUpdated(msg)
-	case tea.BackgroundColorMsg:
-		m.preview, _, _ = m.preview.Update(msg)
-
-		return m.overlaysUpdated(msg)
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
-	case tea.PasteMsg, editoverlay.SaveFinished, searchpopup.HitsFound:
+	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
+		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded:
 		return m.overlaysUpdated(msg)
-	case snippetsLoadedMsg:
-		return m.snippetsLoaded(msg), nil
+	case listFailedMsg:
+		return m.failed(operationList, msg.err)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
 	case searchFailedMsg:
-		return m.failed(operationSearch, msg.err), nil
+		return m.failed(operationSearch, msg.err)
 	}
 
 	return m, nil
 }
 
 func (m Model) View() tea.View {
-	view := tea.NewView(m.overlays.Render(m.mainScreen()))
+	view := tea.NewView(m.overlays.Render())
 	view.AltScreen = true
 
 	return view
@@ -131,76 +98,20 @@ func (m Model) View() tea.View {
 func (m Model) loadSnippets(selecting domain.SnippetID) tea.Cmd {
 	return func() tea.Msg {
 		snippets, err := m.lister.Run(m.ctx, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}})
+		if err != nil {
+			return listFailedMsg{err: err}
+		}
 
-		return snippetsLoadedMsg{snippets: snippets, selecting: selecting, err: err}
+		return mainscreen.SnippetsLoaded{Snippets: snippets, Selecting: selecting}
 	}
 }
 
-func (m Model) pressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == m.keys.forcedQuit {
+func (m Model) pressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	if msg.String() == m.forcedQuitKey {
 		return m.settled(m.overlays.Offered(outcome.QuitAsked{}))
 	}
 
-	if m.overlays.Open() {
-		return m.overlaysUpdated(msg)
-	}
-
-	return m.panePressed(msg)
-}
-
-func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	global := m.keys.global
-
-	switch {
-	case global.Matches(msg, binding.Quit):
-		return m, tea.Quit
-	case global.Matches(msg, binding.NewSnippet):
-		return m.opened(editoverlay.New(m.keys.table, m.styles))
-	case global.Matches(msg, binding.Search):
-		return m.opened(searchpopup.New(m.keys.table, m.styles, m.preview.Cleared(), m.list.Snippets()))
-	}
-
-	if navigate, ok := m.keys.navigationFor(msg); ok {
-		m.focus = navigate(m.focus, m.selectionHolder)
-
-		return m.arranged(), nil
-	}
-
-	return m.focusedPressed(msg)
-}
-
-func (m Model) focusedPressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
-	switch m.focus {
-	case paneList:
-		return m.listUpdated(msg)
-	case paneSnippet:
-		return m.previewUpdated(msg)
-	case paneFolders, paneTags:
-	}
-
-	return m, nil
-}
-
-func (m Model) listUpdated(msg tea.Msg) (Model, tea.Cmd) {
-	next := m
-	list, outcomes, cmd := m.list.Update(msg)
-	next.list = list
-
-	return next.previewSelected().concludedAll(outcomes, cmd)
-}
-
-func (m Model) previewUpdated(msg tea.Msg) (Model, tea.Cmd) {
-	next := m
-	preview, outcomes, cmd := m.preview.Update(msg)
-	next.preview = preview
-
-	return next.concludedAll(outcomes, cmd)
-}
-
-func (m Model) opened(opening outcome.Overlay, openCmd tea.Cmd) (Model, tea.Cmd) {
-	next, cmd := m.settled(m.overlays.Pushed(opening))
-
-	return next, tea.Batch(openCmd, cmd)
+	return m.overlaysUpdated(msg)
 }
 
 func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {
@@ -235,13 +146,13 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.SnippetSaved:
 		return m, m.loadSnippets(reported.ID)
 	case outcome.SaveFailed:
-		return m.failed(operationSave, reported.Err), nil
+		return m.failed(operationSave, reported.Err)
 	case outcome.NoticeShown:
-		m.status = reported.Text
+		return m.shown(reported.Text)
 	case outcome.SearchTyped:
 		return m, m.querySnippets(reported.Text)
 	case outcome.SnippetRevealed:
-		return m.revealed(reported.ID)
+		return m, m.loadSnippets(reported.ID)
 	case outcome.CopyRequested:
 		return m, m.copySnippet(reported.ID)
 	case outcome.DiscardConfirmed:
@@ -273,14 +184,6 @@ func (m Model) querySnippets(text string) tea.Cmd {
 	}
 }
 
-func (m Model) revealed(id domain.SnippetID) (Model, tea.Cmd) {
-	next := m
-	next.focus = paneSnippet
-	next.selectionHolder = paneFolders
-
-	return next.arranged(), next.loadSnippets(id)
-}
-
 func (m Model) copySnippet(id domain.SnippetID) tea.Cmd {
 	in := snippet.CopyInput{SnippetID: id}
 
@@ -291,161 +194,38 @@ func (m Model) copySnippet(id domain.SnippetID) tea.Cmd {
 	}
 }
 
-func (m Model) snippetsLoaded(msg snippetsLoadedMsg) Model {
+func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
-		return m.failed(operationList, msg.err)
-	}
-
-	next := m
-	next.list = m.list.WithSnippets(msg.snippets).WithCursorOn(msg.selecting)
-	next.folders = m.folders.WithRootSnippetCount(len(msg.snippets))
-
-	return next.previewSelected()
-}
-
-func (m Model) copyFinished(msg copyFinishedMsg) (tea.Model, tea.Cmd) {
-	if msg.err != nil {
-		return m.failed(operationCopy, msg.err), nil
+		return m.failed(operationCopy, msg.err)
 	}
 
 	text, err := deliveryText(msg.result.Delivery)
 	if err != nil {
-		return m.failed(operationCopy, err), nil
+		return m.failed(operationCopy, err)
 	}
 
-	m.status = text
+	next, cmd := m.shown(text)
 	if msg.result.Delivery == domain.CopyDeliverySentToTerminal {
-		return m, tea.SetClipboard(msg.result.Content.String())
+		return next, tea.Batch(cmd, tea.SetClipboard(msg.result.Content.String()))
 	}
 
-	return m, nil
+	return next, cmd
 }
 
-func (m Model) failed(operation string, err error) Model {
+func (m Model) failed(operation string, err error) (Model, tea.Cmd) {
 	if errors.Is(err, context.Canceled) {
 		m.logger.DebugContext(m.ctx, "operation cancelled", slog.String(keyOperation, operation))
 
-		return m
+		return m, nil
 	}
 
 	m.logger.ErrorContext(m.ctx, "operation failed", slog.String(keyOperation, operation), slog.Any(keyError, err))
-	m.status = failureText(err)
 
-	return m
+	return m.shown(failureText(err))
 }
 
-func (m Model) previewSelected() Model {
-	selected, ok := m.list.Selected()
-	if ok {
-		m.preview = m.preview.Showing(selected)
-	} else {
-		m.preview = m.preview.Cleared()
-	}
-
-	return m
-}
-
-func (m Model) arranged() Model {
-	m.layout = arrange(m.screen, m.focus, m.tallLeft())
-	m.folders, _, _ = m.folders.Update(look.Resized{Box: m.layout.folders.Inner()})
-	m.tags, _, _ = m.tags.Update(look.Resized{Box: m.layout.tags.Inner()})
-	m.list, _, _ = m.list.Update(look.Resized{Box: m.layout.list.Inner()})
-	m.preview, _, _ = m.preview.Update(look.Resized{Box: m.layout.snippet.Inner()})
-
-	return m
-}
-
-func (m Model) tallLeft() pane {
-	if m.focus.inLeftColumn() {
-		return m.focus
-	}
-
-	return m.selectionHolder
-}
-
-func (m Model) mainScreen() string {
-	status := statusLine(m.styles, m.status, m.hint(), m.screen.Width)
-	if m.layout.single {
-		return m.paneFrame(m.focus) + "\n" + status
-	}
-
-	left := lipgloss.JoinVertical(lipgloss.Left, m.paneFrame(paneFolders), m.paneFrame(paneTags))
-	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, m.paneFrame(paneList), m.paneFrame(paneSnippet))
-
-	return panes + "\n" + status
-}
-
-func (m Model) paneFrame(p pane) string {
-	outer := m.layout.of(p)
-	paneStyle := m.paneStyle(p)
-
-	return look.Frame(paneStyle, paneTitle(p), m.paneBody(p, paneStyle), outer)
-}
-
-func (m Model) paneStyle(p pane) look.FrameStyle {
-	if p == m.focus {
-		return m.styles.Focused
-	}
-
-	return m.styles.Unfocused
-}
-
-func (m Model) paneBody(p pane, paneStyle look.FrameStyle) string {
-	switch p {
-	case paneFolders:
-		return m.folders.View(paneStyle)
-	case paneTags:
-		return m.tags.View()
-	case paneList:
-		return m.list.View(paneStyle)
-	case paneSnippet:
-		return m.preview.View()
-	}
-
-	return ""
-}
-
-func (m Model) focusedHints() []key.Binding {
-	switch m.focus {
-	case paneFolders:
-		return m.folders.ShortHelp()
-	case paneTags:
-		return m.tags.ShortHelp()
-	case paneList:
-		return m.list.ShortHelp()
-	case paneSnippet:
-		return m.preview.ShortHelp()
-	}
-
-	return nil
-}
-
-func (m Model) hint() string {
-	width := m.screen.Width / hintWidthDivisor
-
-	switch {
-	case m.overlays.Open():
-		return hintFor(m.overlays.ShortHelp(), width)
-	case m.layout.single:
-		return tooSmallHint
-	}
-
-	return hintFor(m.focusedHints(), width)
-}
-
-func paneTitle(p pane) string {
-	switch p {
-	case paneFolders:
-		return folderPaneTitle
-	case paneTags:
-		return tagPaneTitle
-	case paneList:
-		return snippetListTitle
-	case paneSnippet:
-		return snippetPaneTitle
-	}
-
-	return ""
+func (m Model) shown(text string) (Model, tea.Cmd) {
+	return m.overlaysUpdated(mainscreen.StatusShown{Text: text})
 }
 
 func requirePointer[T any](name string, pointer *T) error {

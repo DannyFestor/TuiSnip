@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -131,6 +132,33 @@ func TestStack_Update(t *testing.T) {
 		_, outcomes, _ := stack.Update(letter('a'))
 
 		assert.Equal(t, []string{""}, outcomes)
+	})
+
+	t.Run("hands on every outcome a step passes, in order", func(t *testing.T) {
+		t.Parallel()
+
+		only := overlayMock(t)
+		only.EXPECT().Update(letter('a')).Return(stay(only).Passing("first").Passing("second"))
+		stack := stackOf(only)
+
+		_, outcomes, _ := stack.Update(letter('a'))
+
+		assert.Equal(t, []string{"first", "second"}, outcomes)
+	})
+
+	t.Run("hands the later outcomes past a parent that closed on an earlier one", func(t *testing.T) {
+		t.Parallel()
+
+		parent := parentMock(t)
+		parent.EXPECT().Received("first").Return(closing())
+
+		child := overlayMock(t)
+		child.EXPECT().Update(letter('a')).Return(stay(child).Passing("first").Passing("second"))
+		stack := stackOf(parent, child)
+
+		_, outcomes, _ := stack.Update(letter('a'))
+
+		assert.Equal(t, []string{"second"}, outcomes)
 	})
 
 	t.Run("passes an outcome by an overlay that takes none", func(t *testing.T) {
@@ -344,32 +372,54 @@ func TestStack_Offered(t *testing.T) {
 func TestStack_Render(t *testing.T) {
 	t.Parallel()
 
-	t.Run("draws the overlays centred over the background, bottom first", func(t *testing.T) {
+	t.Run("draws a base under the overlays, showing the top one's hints", func(t *testing.T) {
 		t.Parallel()
-
-		bottom := overlayMock(t)
-		bottom.EXPECT().View().Return("BBBBBB")
 
 		top := overlayMock(t)
 		top.EXPECT().View().Return("TT")
-		stack, _, _ := stackOf(bottom, top).Update(tea.WindowSizeMsg{Width: 10, Height: 1})
+		top.EXPECT().ShortHelp().Return(hinting("top"))
 
-		assert.Equal(t, "..BBTTBB..", stack.Render(".........."))
+		base := baseMock(t)
+		base.EXPECT().ViewUnder(hinting("top")).Return("..........")
+		stack, _, _ := stackOf(base, top).Update(tea.WindowSizeMsg{Width: 10, Height: 1})
+
+		assert.Equal(t, "....TT....", stack.Render())
+	})
+
+	t.Run("draws the overlays centred over each other, bottom first", func(t *testing.T) {
+		t.Parallel()
+
+		middle := overlayMock(t)
+		middle.EXPECT().View().Return("MMMMMM")
+
+		top := overlayMock(t)
+		top.EXPECT().View().Return("TT")
+		top.EXPECT().ShortHelp().Return(nil)
+
+		base := baseMock(t)
+		base.EXPECT().ViewUnder(mock.Anything).Return("..........")
+		stack, _, _ := stackOf(base, middle, top).Update(tea.WindowSizeMsg{Width: 10, Height: 1})
+
+		assert.Equal(t, "..MMTTMM..", stack.Render())
 	})
 
 	t.Run("centres an overlay vertically", func(t *testing.T) {
 		t.Parallel()
 
-		only := overlayMock(t)
-		only.EXPECT().View().Return("T")
-		stack, _, _ := stackOf(only).Update(tea.WindowSizeMsg{Width: 3, Height: 3})
+		top := overlayMock(t)
+		top.EXPECT().View().Return("T")
+		top.EXPECT().ShortHelp().Return(nil)
 
-		assert.Equal(t, "...\n.T.\n...", stack.Render("...\n...\n..."))
+		base := baseMock(t)
+		base.EXPECT().ViewUnder(mock.Anything).Return("...\n...\n...")
+		stack, _, _ := stackOf(base, top).Update(tea.WindowSizeMsg{Width: 3, Height: 3})
+
+		assert.Equal(t, "...\n.T.\n...", stack.Render())
 	})
 
-	t.Run("keeps the background with nothing open", func(t *testing.T) {
+	t.Run("draws nothing with nothing open", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "background", emptyStack().Render("background"))
+		assert.Empty(t, emptyStack().Render())
 	})
 }

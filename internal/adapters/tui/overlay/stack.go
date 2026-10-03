@@ -66,13 +66,21 @@ func (s Stack[O]) Offered(outcome O) (Stack[O], []O, tea.Cmd) {
 	return current.finish()
 }
 
-func (s Stack[O]) Render(background string) string {
-	view := background
+func (s Stack[O]) Render() string {
+	view := ""
 	for _, drawn := range s.overlays {
-		view = centredOver(view, s.screen, drawn.View())
+		view = s.drawnOver(view, drawn)
 	}
 
 	return view
+}
+
+func (s Stack[O]) drawnOver(view string, drawn Overlay[O]) string {
+	if base, ok := drawn.(Base[O]); ok {
+		return base.ViewUnder(s.ShortHelp())
+	}
+
+	return centredOver(view, s.screen, drawn.View())
 }
 
 func (s Stack[O]) top() Overlay[O] {

@@ -49,6 +49,7 @@ internal/
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
+      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay stack over it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
@@ -151,12 +152,13 @@ The TUI is built from small components, each in its own package under `tui/`. `t
 
 ### Two kinds of component
 
-- **Stack members** are the Overlays and, later, the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. `FullHelp()` is what the help overlay will show.
+- **Stack members** are the Overlays and the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. `FullHelp()` is what the help overlay will show.
+- **The main screen sits at the bottom of the stack.** Model pushes it once at start, so keys always go to the top of the stack and hints always come from it. Model never asks whether an Overlay is open. The main screen is an `overlay.Base`: the stack draws it with `ViewUnder(hints)`, passing the top member's hints for its status line, and centres the Overlays over it. It opens the Overlays its Bindings ask for as its children and passes every other outcome on to Model.
 - **Embedded children** are the Snippet list inside the Search popup or the main screen, and the text entries in the edit overlay. They are concrete types. A child's `Update` returns its new value, a typed result, and a `tea.Cmd`. The parent holds the concrete type and reads the result directly.
 
 ### Size comes from the parent
 
-A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized` carrying the box it gets. The overlay stack converts each `tea.WindowSizeMsg` into a `look.Resized` with the whole screen and sends it to every Overlay, and to each Overlay it opens later. The Overlay picks its own share with `Size.Share`. On the main screen, the layout decides each Pane's box, and each Pane gets it as a `look.Resized` once it becomes a component.
+A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized` carrying the box it gets. The overlay stack converts each `tea.WindowSizeMsg` into a `look.Resized` with the whole screen and sends it to every Overlay, and to each Overlay it opens later. The Overlay picks its own share with `Size.Share`. On the main screen, the layout decides each Pane's box, and each Pane gets it as a `look.Resized`.
 
 ### Outcomes are typed and synchronous
 

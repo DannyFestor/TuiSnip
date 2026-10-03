@@ -43,6 +43,7 @@ internal/
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program: Model and the wiring between components
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
+      folderpane/            the Folder pane: the Root and its Snippet count
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint
@@ -51,6 +52,7 @@ internal/
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
+      tagpane/               the Tag pane: "No Tags yet." until Tags exist
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

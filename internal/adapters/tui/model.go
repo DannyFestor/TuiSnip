@@ -11,10 +11,12 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -43,8 +45,8 @@ type Model struct {
 	layout          layout
 	focus           pane
 	selectionHolder pane
-	folders         folderPane
-	tags            tagPane
+	folders         folderpane.Pane
+	tags            tagpane.Pane
 	list            snippetlist.List
 	preview         snippetpane.Pane
 	overlays        overlayStack
@@ -79,8 +81,8 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
-		folders:         folderPane{rootSnippetCount: 0},
-		tags:            tagPane{},
+		folders:         folderpane.New(deps.Settings.Keys),
+		tags:            tagpane.New(deps.Settings.Keys, styles),
 		list:            snippetlist.New(deps.Settings.Keys, styles, snippetlist.Language),
 		preview:         snippetpane.New(deps.Settings.Keys, styles, deps.Settings.Location),
 		overlays:        newOverlayStack(),
@@ -299,7 +301,7 @@ func (m Model) snippetsLoaded(msg snippetsLoadedMsg) Model {
 
 	next := m
 	next.list = m.list.WithSnippets(msg.snippets).WithCursorOn(msg.selecting)
-	next.folders = m.folders.withRootSnippetCount(len(msg.snippets))
+	next.folders = m.folders.WithRootSnippetCount(len(msg.snippets))
 
 	return next.previewSelected()
 }
@@ -348,6 +350,8 @@ func (m Model) previewSelected() Model {
 
 func (m Model) arranged() Model {
 	m.layout = arrange(m.screen, m.focus, m.tallLeft())
+	m.folders, _, _ = m.folders.Update(look.Resized{Box: m.layout.folders.Inner()})
+	m.tags, _, _ = m.tags.Update(look.Resized{Box: m.layout.tags.Inner()})
 	m.list, _, _ = m.list.Update(look.Resized{Box: m.layout.list.Inner()})
 	m.preview, _, _ = m.preview.Update(look.Resized{Box: m.layout.snippet.Inner()})
 
@@ -378,7 +382,7 @@ func (m Model) paneFrame(p pane) string {
 	outer := m.layout.of(p)
 	paneStyle := m.paneStyle(p)
 
-	return look.Frame(paneStyle, paneTitle(p), m.paneBody(p, paneStyle, outer.Inner().Width), outer)
+	return look.Frame(paneStyle, paneTitle(p), m.paneBody(p, paneStyle), outer)
 }
 
 func (m Model) paneStyle(p pane) look.FrameStyle {
@@ -389,12 +393,12 @@ func (m Model) paneStyle(p pane) look.FrameStyle {
 	return m.styles.Unfocused
 }
 
-func (m Model) paneBody(p pane, paneStyle look.FrameStyle, width int) string {
+func (m Model) paneBody(p pane, paneStyle look.FrameStyle) string {
 	switch p {
 	case paneFolders:
-		return m.folders.body(paneStyle, width)
+		return m.folders.View(paneStyle)
 	case paneTags:
-		return m.tags.body(m.styles)
+		return m.tags.View()
 	case paneList:
 		return m.list.View(paneStyle)
 	case paneSnippet:
@@ -407,9 +411,9 @@ func (m Model) paneBody(p pane, paneStyle look.FrameStyle, width int) string {
 func (m Model) focusedHints() []key.Binding {
 	switch m.focus {
 	case paneFolders:
-		return m.keys.folders.ShortHelp()
+		return m.folders.ShortHelp()
 	case paneTags:
-		return m.keys.tags.ShortHelp()
+		return m.tags.ShortHelp()
 	case paneList:
 		return m.list.ShortHelp()
 	case paneSnippet:

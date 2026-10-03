@@ -17,8 +17,6 @@ type bindings struct {
 	table      binding.Keys
 	forcedQuit string
 	global     binding.Set
-	folders    binding.Set
-	tags       binding.Set
 	editor     editorBindings
 	confirm    binding.Set
 }
@@ -30,8 +28,6 @@ func newBindings(settings Settings) bindings {
 		table:      keys,
 		forcedQuit: settings.ForcedQuitKey,
 		global:     keys.For(binding.ScopeGlobal),
-		folders:    keys.For(binding.ScopeFolders),
-		tags:       keys.For(binding.ScopeTags),
 		editor:     editorBindings{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)},
 		confirm:    keys.For(binding.ScopeConfirm),
 	}

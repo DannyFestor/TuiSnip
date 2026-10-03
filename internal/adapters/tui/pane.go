@@ -3,6 +3,8 @@ package tui
 import "github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 
 const (
+	folderPaneTitle  = "1 Folders"
+	tagPaneTitle     = "2 Tags"
 	snippetListTitle = "3 " + folderpath.Root + " · by title"
 	snippetPaneTitle = "4 Snippet"
 )

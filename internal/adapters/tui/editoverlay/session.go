@@ -1,0 +1,155 @@
+package editoverlay
+
+import (
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+)
+
+const (
+	overlayPercent  = 90
+	discardQuestion = "Discard the unsaved changes?"
+	quitQuestion    = "Quit and discard the unsaved changes?"
+)
+
+type Session struct {
+	keys   binding.Keys
+	form   form
+	styles look.Styles
+	outer  look.Size
+	saving bool
+}
+
+func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
+	form, cmd := newForm(formKeys{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)})
+
+	return Session{
+		keys:   keys,
+		form:   form,
+		styles: styles,
+		outer:  look.Size{Width: 0, Height: 0},
+		saving: false,
+	}, cmd
+}
+
+func (s Session) Update(msg tea.Msg) outcome.Step {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg, tea.PasteMsg:
+		return s.formUpdated(msg)
+	case look.Resized:
+		return outcome.Stay(s.resized(msg.Box))
+	case SaveFinished:
+		return s.saved(msg)
+	}
+
+	return outcome.Stay(s)
+}
+
+func (s Session) Received(received outcome.Outcome) outcome.Step {
+	switch received.(type) {
+	case outcome.DiscardConfirmed:
+		return outcome.Close()
+	case outcome.QuitAsked:
+		if s.form.changed() {
+			return s.confirming(quitQuestion, outcome.QuitConfirmed{})
+		}
+	default:
+	}
+
+	return outcome.Stay(s).Passing(received)
+}
+
+func (s Session) View() string {
+	return s.form.view(s.styles, s.outer)
+}
+
+func (s Session) ShortHelp() []key.Binding {
+	return s.form.hints()
+}
+
+func (s Session) FullHelp() [][]key.Binding {
+	return [][]key.Binding{s.ShortHelp()}
+}
+
+func (s Session) formUpdated(msg tea.Msg) outcome.Step {
+	next := s
+
+	var (
+		asked request
+		cmd   tea.Cmd
+	)
+
+	next.form, asked, cmd = s.form.update(msg)
+
+	return next.requested(asked).Running(cmd)
+}
+
+func (s Session) requested(asked request) outcome.Step {
+	switch asked {
+	case requestSave:
+		return s.saveStarted()
+	case requestCancel:
+		return s.cancelled()
+	case requestRefusePaste:
+		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: pasteHasTabsText(s.form.externalEditorKey())})
+	case requestNothing:
+	}
+
+	return outcome.Stay(s)
+}
+
+func (s Session) saveStarted() outcome.Step {
+	if s.saving {
+		return outcome.Stay(s)
+	}
+
+	next := s
+	next.saving = true
+
+	return outcome.Stay(next).Passing(outcome.SaveRequested{Input: s.form.input()})
+}
+
+func (s Session) cancelled() outcome.Step {
+	switch {
+	case s.saving:
+		return outcome.Stay(s)
+	case s.form.changed():
+		return s.confirming(discardQuestion, outcome.DiscardConfirmed{})
+	}
+
+	return outcome.Close()
+}
+
+func (s Session) saved(msg SaveFinished) outcome.Step {
+	if msg.Err == nil {
+		return outcome.Close().Passing(outcome.SnippetSaved{ID: msg.Snippet.ID()})
+	}
+
+	next := s
+	next.saving = false
+
+	fieldErrors := domain.FieldErrors(msg.Err)
+	if len(fieldErrors) == 0 {
+		return outcome.Stay(next).Passing(outcome.SaveFailed{Err: msg.Err})
+	}
+
+	next.form = s.form.withInvalid(fieldErrors)
+
+	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
+}
+
+func (s Session) confirming(question string, onYes outcome.Outcome) outcome.Step {
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, question, onYes))
+}
+
+func (s Session) resized(screen look.Size) Session {
+	s.outer = screen.Share(overlayPercent)
+	s.form = s.form.resized(s.outer)
+
+	return s
+}

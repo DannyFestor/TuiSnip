@@ -43,13 +43,16 @@ internal/
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program: Model and the wiring between components
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
+      confirm/               the y/N confirmation an Overlay opens before it throws work away
+      editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and its Snippet count
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
-      look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint
+      look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
-      outcome/               the sealed union of outcomes TUI components report to the model
+      outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay stack over it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
+      searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
       tagpane/               the Tag pane: "No Tags yet." until Tags exist
@@ -59,6 +62,7 @@ test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
   testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool
+  overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
   testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml
 ```

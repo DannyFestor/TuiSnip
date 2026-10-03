@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"slices"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -17,19 +15,13 @@ type bindings struct {
 	table      binding.Keys
 	forcedQuit string
 	global     binding.Set
-	editor     editorBindings
-	confirm    binding.Set
 }
 
 func newBindings(settings Settings) bindings {
-	keys := settings.Keys
-
 	return bindings{
-		table:      keys,
+		table:      settings.Keys,
 		forcedQuit: settings.ForcedQuitKey,
-		global:     keys.For(binding.ScopeGlobal),
-		editor:     editorBindings{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)},
-		confirm:    keys.For(binding.ScopeConfirm),
+		global:     settings.Keys.For(binding.ScopeGlobal),
 	}
 }
 
@@ -41,10 +33,6 @@ func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {
 	}
 
 	return nil, false
-}
-
-func boundOnly(firstKeys ...string) []string {
-	return slices.DeleteFunc(firstKeys, func(firstKey string) bool { return firstKey == "" })
 }
 
 func navigationBindings() []navigationBinding {

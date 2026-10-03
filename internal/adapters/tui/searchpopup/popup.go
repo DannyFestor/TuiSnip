@@ -1,4 +1,4 @@
-package tui
+package searchpopup
 
 import (
 	"strconv"
@@ -21,25 +21,25 @@ import (
 )
 
 const (
-	searchTitle          = "Search"
-	previewTitle         = "Preview"
-	searchPrompt         = "/ "
-	noMatchesText        = "No Snippets match."
-	searchPopupPercent   = 80
-	resultsListPercent   = 40
-	queryRows            = 2
-	resultWord           = " result"
-	resultsWord          = " results"
-	singleResult         = 1
-	searchTitleSeparator = " · "
+	searchTitle        = "Search"
+	previewTitle       = "Preview"
+	searchPrompt       = "/ "
+	noMatchesText      = "No Snippets match."
+	popupPercent       = 80
+	resultsListPercent = 40
+	queryRows          = 2
+	resultWord         = " result"
+	resultsWord        = " results"
+	singleResult       = 1
+	titleSeparator     = " · "
 )
 
-type popupHalves struct {
+type halves struct {
 	results look.Size
 	preview look.Size
 }
 
-type searchPopup struct {
+type Popup struct {
 	keys    binding.Set
 	styles  look.Styles
 	query   textinput.Model
@@ -49,13 +49,8 @@ type searchPopup struct {
 	outer   look.Size
 }
 
-func newSearchPopup(
-	keys binding.Keys,
-	styles look.Styles,
-	preview snippetpane.Pane,
-	browse []domain.Snippet,
-) (searchPopup, tea.Cmd) {
-	popup := searchPopup{
+func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, browse []domain.Snippet) (Popup, tea.Cmd) {
+	popup := Popup{
 		keys:    keys.For(binding.ScopeSearch),
 		styles:  styles,
 		query:   input.NewLine(searchPrompt),
@@ -69,71 +64,71 @@ func newSearchPopup(
 	return popup.previewed(), cmd
 }
 
-func (p searchPopup) Update(msg tea.Msg) step {
+func (p Popup) Update(msg tea.Msg) outcome.Step {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return p.pressed(msg)
 	case tea.PasteMsg:
 		return p.typed(msg)
 	case look.Resized:
-		return stay(p.resized(msg.Box))
+		return outcome.Stay(p.resized(msg.Box))
 	case tea.BackgroundColorMsg:
-		return stay(p.withBackground(msg))
-	case searchFinishedMsg:
-		return stay(p.withHits(msg.text, msg.hits))
+		return outcome.Stay(p.withBackground(msg))
+	case HitsFound:
+		return outcome.Stay(p.withHits(msg.Text, msg.Hits))
 	}
 
-	return stay(p)
+	return outcome.Stay(p)
 }
 
-func (p searchPopup) View() string {
-	halves := p.halves()
+func (p Popup) View() string {
+	split := p.halves()
 	rows := p.resultRows()
-	resultsFrame := look.Frame(p.styles.Focused, p.frameTitle(), p.query.View()+"\n\n"+rows, halves.results)
-	previewFrame := look.Frame(p.styles.Unfocused, previewTitle, p.previewBody(), halves.preview)
+	resultsFrame := look.Frame(p.styles.Focused, p.frameTitle(), p.query.View()+"\n\n"+rows, split.results)
+	previewFrame := look.Frame(p.styles.Unfocused, previewTitle, p.previewBody(), split.preview)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, resultsFrame, previewFrame)
 }
 
-func (p searchPopup) ShortHelp() []key.Binding {
+func (p Popup) ShortHelp() []key.Binding {
 	return p.keys.ShortHelp()
 }
 
-func (p searchPopup) FullHelp() [][]key.Binding {
+func (p Popup) FullHelp() [][]key.Binding {
 	return p.keys.FullHelp()
 }
 
-func (p searchPopup) pressed(msg tea.KeyPressMsg) step {
+func (p Popup) pressed(msg tea.KeyPressMsg) outcome.Step {
 	switch {
 	case p.keys.Matches(msg, binding.Down):
-		return stay(p.moved(move.Down))
+		return outcome.Stay(p.moved(move.Down))
 	case p.keys.Matches(msg, binding.Up):
-		return stay(p.moved(move.Up))
+		return outcome.Stay(p.moved(move.Up))
 	case p.keys.Matches(msg, binding.Accept):
 		return p.onSelected(revealing)
 	case p.keys.Matches(msg, binding.Copy):
 		return p.onSelected(copying)
 	case p.keys.Matches(msg, binding.Cancel):
-		return closing()
+		return outcome.Close()
 	}
 
 	return p.typed(msg)
 }
 
-func (p searchPopup) onSelected(stepFor func(domain.SnippetID) step) step {
+func (p Popup) onSelected(stepFor func(domain.SnippetID) outcome.Step) outcome.Step {
 	selected, ok := p.results.Selected()
 	if !ok {
-		return stay(p)
+		return outcome.Stay(p)
 	}
 
 	return stepFor(selected.ID())
 }
 
-func (p searchPopup) text() string {
+func (p Popup) text() string {
 	return p.query.Value()
 }
 
-func (p searchPopup) withHits(text string, hits []domain.SearchHit) searchPopup {
+func (p Popup) withHits(text string, hits []domain.SearchHit) Popup {
 	if text != p.text() {
 		return p
 	}
@@ -146,56 +141,56 @@ func (p searchPopup) withHits(text string, hits []domain.SearchHit) searchPopup 
 	return p.listing(snippets)
 }
 
-func (p searchPopup) withBackground(msg tea.BackgroundColorMsg) searchPopup {
+func (p Popup) withBackground(msg tea.BackgroundColorMsg) Popup {
 	p.preview, _, _ = p.preview.Update(msg)
 
 	return p
 }
 
-func (p searchPopup) resized(screen look.Size) searchPopup {
-	p.outer = screen.Share(searchPopupPercent)
-	halves := p.halves()
-	p.query.SetWidth(max(1, halves.results.Inner().Width-len(searchPrompt)-cursorCell))
-	resultsInner := halves.results.Inner()
+func (p Popup) resized(screen look.Size) Popup {
+	p.outer = screen.Share(popupPercent)
+	split := p.halves()
+	p.query.SetWidth(max(1, split.results.Inner().Width-len(searchPrompt)-input.CursorWidth))
+	resultsInner := split.results.Inner()
 	resultRows := look.Size{Width: resultsInner.Width, Height: max(0, resultsInner.Height-queryRows)}
 	p.results, _, _ = p.results.Update(look.Resized{Box: resultRows})
-	p.preview, _, _ = p.preview.Update(look.Resized{Box: halves.preview.Inner()})
+	p.preview, _, _ = p.preview.Update(look.Resized{Box: split.preview.Inner()})
 
 	return p
 }
 
-func (p searchPopup) typed(msg tea.Msg) step {
+func (p Popup) typed(msg tea.Msg) outcome.Step {
 	next := p
 
 	var cmd tea.Cmd
 
 	next.query, cmd = p.query.Update(msg)
 	if next.text() == p.text() {
-		return stay(next).Running(cmd)
+		return outcome.Stay(next).Running(cmd)
 	}
 
 	if value.NewSearchQuery(next.text()).IsBlank() {
-		return stay(next.listing(next.browse)).Running(cmd)
+		return outcome.Stay(next.listing(next.browse)).Running(cmd)
 	}
 
-	return stay(next).Passing(outcome.SearchTyped{Text: next.text()}).Running(cmd)
+	return outcome.Stay(next).Passing(outcome.SearchTyped{Text: next.text()}).Running(cmd)
 }
 
-func (p searchPopup) listing(snippets []domain.Snippet) searchPopup {
+func (p Popup) listing(snippets []domain.Snippet) Popup {
 	next := p
 	next.results = p.results.WithSnippets(snippets).Moved(move.Top)
 
 	return next.previewed()
 }
 
-func (p searchPopup) moved(direction move.Direction) searchPopup {
+func (p Popup) moved(direction move.Direction) Popup {
 	next := p
 	next.results = p.results.Moved(direction)
 
 	return next.previewed()
 }
 
-func (p searchPopup) previewed() searchPopup {
+func (p Popup) previewed() Popup {
 	selected, ok := p.results.Selected()
 	if ok {
 		p.preview = p.preview.Showing(selected)
@@ -206,16 +201,16 @@ func (p searchPopup) previewed() searchPopup {
 	return p
 }
 
-func (p searchPopup) halves() popupHalves {
+func (p Popup) halves() halves {
 	resultsWidth := p.outer.Width * resultsListPercent / look.Percent
 
-	return popupHalves{
+	return halves{
 		results: look.Size{Width: resultsWidth, Height: p.outer.Height},
 		preview: look.Size{Width: p.outer.Width - resultsWidth, Height: p.outer.Height},
 	}
 }
 
-func (p searchPopup) resultRows() string {
+func (p Popup) resultRows() string {
 	if p.noResults() {
 		return p.styles.Dim.Render(noMatchesText)
 	}
@@ -223,7 +218,7 @@ func (p searchPopup) resultRows() string {
 	return p.results.View(p.styles.Focused)
 }
 
-func (p searchPopup) previewBody() string {
+func (p Popup) previewBody() string {
 	if p.noResults() {
 		return look.EmptyHint(p.styles, nil)
 	}
@@ -231,11 +226,11 @@ func (p searchPopup) previewBody() string {
 	return p.preview.View()
 }
 
-func (p searchPopup) noResults() bool {
+func (p Popup) noResults() bool {
 	return len(p.results.Snippets()) == 0
 }
 
-func (p searchPopup) frameTitle() string {
+func (p Popup) frameTitle() string {
 	count := len(p.results.Snippets())
 	noun := resultsWord
 
@@ -243,13 +238,13 @@ func (p searchPopup) frameTitle() string {
 		noun = resultWord
 	}
 
-	return searchTitle + searchTitleSeparator + strconv.Itoa(count) + noun
+	return searchTitle + titleSeparator + strconv.Itoa(count) + noun
 }
 
-func revealing(id domain.SnippetID) step {
-	return closing().Passing(outcome.SnippetRevealed{ID: id})
+func revealing(id domain.SnippetID) outcome.Step {
+	return outcome.Close().Passing(outcome.SnippetRevealed{ID: id})
 }
 
-func copying(id domain.SnippetID) step {
-	return closing().Passing(outcome.CopyRequested{ID: id})
+func copying(id domain.SnippetID) outcome.Step {
+	return outcome.Close().Passing(outcome.CopyRequested{ID: id})
 }

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	forcedQuitKey    = "ctrl+c"
 	operationList    = "list snippets"
 	operationCopy    = "copy"
 	operationSave    = "save snippet"
@@ -132,7 +131,7 @@ func (m Model) loadSnippets(selecting domain.SnippetID) tea.Cmd {
 }
 
 func (m Model) pressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == forcedQuitKey {
+	if msg.String() == m.keys.forcedQuit {
 		return m.settled(m.overlays.Offered(outcome.QuitAsked{}))
 	}
 
@@ -144,14 +143,16 @@ func (m Model) pressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) panePressed(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	global := m.keys.global
+
 	switch {
-	case key.Matches(msg, m.keys.quit):
+	case global.Matches(msg, binding.Quit):
 		return m, tea.Quit
-	case key.Matches(msg, m.keys.newSnippet):
+	case global.Matches(msg, binding.NewSnippet):
 		return m.opened(newEditSession(m.keys.editor, m.keys.confirm, m.styles))
-	case key.Matches(msg, m.keys.openSearch):
+	case global.Matches(msg, binding.Search):
 		return m.opened(newSearchPopup(m.keys.search, m.styles, m.preview.cleared(), m.list.snippets))
-	case m.copyRequested(msg):
+	case m.keys.forPane(m.focus).Matches(msg, binding.Copy):
 		return m, m.copySelected()
 	}
 
@@ -263,11 +264,6 @@ func (m Model) moved(direction move.Direction) Model {
 	}
 
 	return m
-}
-
-func (m Model) copyRequested(msg tea.KeyPressMsg) bool {
-	return (m.focus == paneList && key.Matches(msg, m.keys.listCopy)) ||
-		(m.focus == paneSnippet && key.Matches(msg, m.keys.paneCopy))
 }
 
 func (m Model) copySelected() tea.Cmd {
@@ -411,7 +407,7 @@ func (m Model) hint() string {
 		return tooSmallHint
 	}
 
-	return hintFor(m.keys.paneHints(m.focus), width)
+	return hintFor(m.keys.forPane(m.focus).ShortHelp(), width)
 }
 
 func paneTitle(p pane) string {

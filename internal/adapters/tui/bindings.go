@@ -1,84 +1,73 @@
 package tui
 
 import (
+	"slices"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 )
 
-const (
-	labelCopy       = "Copy"
-	labelNewSnippet = "new Snippet"
-	labelCapture    = "Capture"
-	labelSearch     = "Search"
-	labelNewFolder  = "new Folder"
-	labelHelp       = "help"
-	labelNew        = "new"
-	labelSearchHint = "search"
-)
-
 type navigationBinding struct {
-	binding  key.Binding
+	name     string
 	navigate navigation
 }
 
 type movementBinding struct {
-	binding key.Binding
-	move    move.Direction
+	name string
+	move move.Direction
 }
 
 type bindings struct {
-	quit        key.Binding
-	newSnippet  key.Binding
-	openSearch  key.Binding
-	navigations []navigationBinding
-	movements   []movementBinding
-	listCopy    key.Binding
-	paneCopy    key.Binding
-	emptyHints  []key.Binding
+	forcedQuit  string
+	global      binding.Set
+	folders     binding.Set
+	tags        binding.Set
+	snippetList binding.Set
+	snippetPane binding.Set
 	editor      editorBindings
-	search      searchBindings
-	confirm     confirmBindings
+	search      binding.Set
+	confirm     binding.Set
+	emptyHints  []key.Binding
 }
 
 func newBindings(settings Settings) bindings {
+	keys := settings.Keys
+
 	return bindings{
-		quit:        unlabelled(settings.Global.Quit),
-		newSnippet:  labelled(settings.Global.NewSnippet, labelNew),
-		openSearch:  labelled(settings.Global.Search, labelSearchHint),
-		navigations: navigationBindings(settings.Global),
-		movements:   movementBindings(settings.Global),
-		listCopy:    labelled(settings.SnippetList.Copy, labelCopy),
-		paneCopy:    labelled(settings.SnippetPane.Copy, labelCopy),
-		emptyHints: []key.Binding{
-			labelled(settings.Global.NewSnippet, labelNewSnippet),
-			labelled(settings.Global.Capture, labelCapture),
-			labelled(settings.Global.Search, labelSearch),
-			labelled(settings.Folders.NewFolder, labelNewFolder),
-			labelled(settings.Global.Help, labelHelp),
-		},
-		editor:  newEditorBindings(settings.Editor, settings.Content),
-		search:  newSearchBindings(settings.Search),
-		confirm: newConfirmBindings(settings.Confirm),
+		forcedQuit:  settings.ForcedQuitKey,
+		global:      keys.For(binding.ScopeGlobal),
+		folders:     keys.For(binding.ScopeFolders),
+		tags:        keys.For(binding.ScopeTags),
+		snippetList: keys.For(binding.ScopeSnippetList),
+		snippetPane: keys.For(binding.ScopeSnippetPane),
+		editor:      editorBindings{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)},
+		search:      keys.For(binding.ScopeSearch),
+		confirm:     keys.For(binding.ScopeConfirm),
+		emptyHints:  keys.EmptyListHints(),
 	}
 }
 
-func (b bindings) paneHints(focus pane) []key.Binding {
+func (b bindings) forPane(focus pane) binding.Set {
 	switch focus {
+	case paneFolders:
+		return b.folders
+	case paneTags:
+		return b.tags
 	case paneList:
-		return []key.Binding{b.listCopy, b.newSnippet, b.openSearch}
+		return b.snippetList
 	case paneSnippet:
-		return []key.Binding{b.paneCopy, b.openSearch}
-	case paneFolders, paneTags:
+		return b.snippetPane
 	}
 
-	return []key.Binding{b.openSearch}
+	return b.folders
 }
 
 func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {
-	for _, candidate := range b.navigations {
-		if key.Matches(msg, candidate.binding) {
+	for _, candidate := range navigationBindings() {
+		if b.global.Matches(msg, candidate.name) {
 			return candidate.navigate, true
 		}
 	}
@@ -87,8 +76,8 @@ func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {
 }
 
 func (b bindings) movementFor(msg tea.KeyPressMsg) (move.Direction, bool) {
-	for _, candidate := range b.movements {
-		if key.Matches(msg, candidate.binding) {
+	for _, candidate := range movementBindings() {
+		if b.global.Matches(msg, candidate.name) {
 			return candidate.move, true
 		}
 	}
@@ -96,45 +85,32 @@ func (b bindings) movementFor(msg tea.KeyPressMsg) (move.Direction, bool) {
 	return move.None, false
 }
 
-func navigationBindings(global GlobalKeyMap) []navigationBinding {
+func boundOnly(firstKeys ...string) []string {
+	return slices.DeleteFunc(firstKeys, func(firstKey string) bool { return firstKey == "" })
+}
+
+func navigationBindings() []navigationBinding {
 	return []navigationBinding{
-		{binding: unlabelled(global.FocusNext), navigate: pane.next},
-		{binding: unlabelled(global.FocusPrev), navigate: pane.prev},
-		{binding: unlabelled(global.FocusRight), navigate: pane.right},
-		{binding: unlabelled(global.FocusLeft), navigate: pane.left},
-		{binding: unlabelled(global.FocusFolders), navigate: focusOn(paneFolders)},
-		{binding: unlabelled(global.FocusTags), navigate: focusOn(paneTags)},
-		{binding: unlabelled(global.FocusList), navigate: focusOn(paneList)},
-		{binding: unlabelled(global.FocusSnippet), navigate: focusOn(paneSnippet)},
-		{binding: unlabelled(global.Open), navigate: pane.drillIn},
-		{binding: unlabelled(global.Back), navigate: pane.backOut},
+		{name: binding.FocusNext, navigate: pane.next},
+		{name: binding.FocusPrev, navigate: pane.prev},
+		{name: binding.FocusRight, navigate: pane.right},
+		{name: binding.FocusLeft, navigate: pane.left},
+		{name: binding.FocusFolders, navigate: focusOn(paneFolders)},
+		{name: binding.FocusTags, navigate: focusOn(paneTags)},
+		{name: binding.FocusList, navigate: focusOn(paneList)},
+		{name: binding.FocusSnippet, navigate: focusOn(paneSnippet)},
+		{name: binding.Open, navigate: pane.drillIn},
+		{name: binding.Back, navigate: pane.backOut},
 	}
 }
 
-func movementBindings(global GlobalKeyMap) []movementBinding {
+func movementBindings() []movementBinding {
 	return []movementBinding{
-		{binding: unlabelled(global.Down), move: move.Down},
-		{binding: unlabelled(global.Up), move: move.Up},
-		{binding: unlabelled(global.Top), move: move.Top},
-		{binding: unlabelled(global.Bottom), move: move.Bottom},
-		{binding: unlabelled(global.PageDown), move: move.PageDown},
-		{binding: unlabelled(global.PageUp), move: move.PageUp},
+		{name: binding.Down, move: move.Down},
+		{name: binding.Up, move: move.Up},
+		{name: binding.Top, move: move.Top},
+		{name: binding.Bottom, move: move.Bottom},
+		{name: binding.PageDown, move: move.PageDown},
+		{name: binding.PageUp, move: move.PageUp},
 	}
-}
-
-func unlabelled(keys []string) key.Binding {
-	return key.NewBinding(key.WithKeys(keys...))
-}
-
-func labelled(keys []string, label string) key.Binding {
-	binding := unlabelled(keys)
-	if len(keys) == 0 {
-		binding.SetEnabled(false)
-
-		return binding
-	}
-
-	binding.SetHelp(keys[0], label)
-
-	return binding
 }

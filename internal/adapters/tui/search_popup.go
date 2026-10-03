@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
@@ -36,7 +37,7 @@ type popupHalves struct {
 }
 
 type searchPopup struct {
-	keys    searchBindings
+	keys    binding.Set
 	styles  look.Styles
 	query   textinput.Model
 	browse  []domain.Snippet
@@ -46,7 +47,7 @@ type searchPopup struct {
 }
 
 func newSearchPopup(
-	keys searchBindings,
+	keys binding.Set,
 	styles look.Styles,
 	preview snippetPane,
 	browse []domain.Snippet,
@@ -92,24 +93,24 @@ func (p searchPopup) View() string {
 }
 
 func (p searchPopup) ShortHelp() []key.Binding {
-	return p.keys.hints()
+	return p.keys.ShortHelp()
 }
 
 func (p searchPopup) FullHelp() [][]key.Binding {
-	return [][]key.Binding{p.ShortHelp()}
+	return p.keys.FullHelp()
 }
 
 func (p searchPopup) pressed(msg tea.KeyPressMsg) step {
 	switch {
-	case key.Matches(msg, p.keys.down):
+	case p.keys.Matches(msg, binding.Down):
 		return stay(p.moved(move.Down))
-	case key.Matches(msg, p.keys.up):
+	case p.keys.Matches(msg, binding.Up):
 		return stay(p.moved(move.Up))
-	case key.Matches(msg, p.keys.accept):
+	case p.keys.Matches(msg, binding.Accept):
 		return p.onSelected(revealing)
-	case key.Matches(msg, p.keys.copy):
+	case p.keys.Matches(msg, binding.Copy):
 		return p.onSelected(copying)
-	case key.Matches(msg, p.keys.cancel):
+	case p.keys.Matches(msg, binding.Cancel):
 		return closing()
 	}
 

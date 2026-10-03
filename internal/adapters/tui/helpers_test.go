@@ -15,6 +15,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 const (
@@ -26,54 +27,6 @@ const (
 	minimumHeight      = 24
 	listLongerThanPane = 45
 )
-
-func defaultSettings() tui.Settings {
-	return tui.Settings{
-		Global: tui.GlobalKeyMap{
-			Quit:         []string{"q"},
-			Help:         []string{"?"},
-			Search:       []string{"/"},
-			NewSnippet:   []string{"n"},
-			Capture:      []string{"p"},
-			FocusNext:    []string{"tab"},
-			FocusPrev:    []string{"shift+tab"},
-			FocusRight:   []string{"l", "right"},
-			FocusLeft:    []string{"h", "left"},
-			FocusFolders: []string{"1"},
-			FocusTags:    []string{"2"},
-			FocusList:    []string{"3"},
-			FocusSnippet: []string{"4"},
-			Open:         []string{"enter"},
-			Back:         []string{"esc"},
-			Down:         []string{"j", "down"},
-			Up:           []string{"k", "up"},
-			Top:          []string{"g", "home"},
-			Bottom:       []string{"G", "end"},
-			PageDown:     []string{"pgdown", "ctrl+d"},
-			PageUp:       []string{"pgup", "ctrl+u"},
-		},
-		Folders:     tui.FoldersKeyMap{NewFolder: []string{"N"}},
-		SnippetList: tui.SnippetListKeyMap{Copy: []string{"y"}},
-		SnippetPane: tui.SnippetPaneKeyMap{Copy: []string{"y"}},
-		Editor: tui.EditorKeyMap{
-			Save:      []string{"ctrl+s"},
-			Cancel:    []string{"esc"},
-			NextField: []string{"down", "tab"},
-			PrevField: []string{"up", "shift+tab"},
-			OpenField: []string{"enter"},
-		},
-		Content: tui.ContentKeyMap{Save: []string{"ctrl+s"}, Leave: []string{"esc"}},
-		Search: tui.SearchKeyMap{
-			Down:   []string{"down", "ctrl+n", "ctrl+j"},
-			Up:     []string{"up", "ctrl+p", "ctrl+k"},
-			Accept: []string{"enter"},
-			Copy:   []string{"ctrl+y"},
-			Cancel: []string{"esc"},
-		},
-		Confirm:  tui.ConfirmKeyMap{Yes: []string{"y"}, No: []string{"n", "esc", "enter"}},
-		Location: time.UTC,
-	}
-}
 
 func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetCopier) tui.Model {
 	t.Helper()
@@ -96,12 +49,18 @@ type actions struct {
 func modelWith(t *testing.T, with actions) tui.Model {
 	t.Helper()
 
+	return modelWithSettings(t, with, testsettings.Default(t))
+}
+
+func modelWithSettings(t *testing.T, with actions, settings tui.Settings) tui.Model {
+	t.Helper()
+
 	model, err := tui.New(t.Context(), tui.Deps{
 		Lister:   with.lister,
 		Copier:   with.copier,
 		Creator:  with.creator,
 		Searcher: with.searcher,
-		Settings: defaultSettings(),
+		Settings: settings,
 		Logger:   slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)

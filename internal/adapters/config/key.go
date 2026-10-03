@@ -34,7 +34,7 @@ func ParseKey(written string) (Key, error) {
 	return key, nil
 }
 
-func fixedQuitKey() Key {
+func ForcedQuitKey() Key {
 	return Key{modifiers: modifierCtrl, name: "c"}
 }
 

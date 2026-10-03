@@ -83,6 +83,10 @@ func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 }
 ```
 
+### export_test.go
+
+A package's tests are black-box (testpackage), so they see only its exported API. An `export_test.go` in the package itself (`package config`) may expose an unexported fact to the package's own black-box tests, such as the list of key names `config` accepts. It never exposes a way around the API, such as a constructor that skips validation. It is compiled only into the package's tests, so nothing else can reach it.
+
 ## Test doubles
 
 ### What to cover
@@ -132,6 +136,7 @@ Set only the fields the test is about. A test that states every field hides whic
 
 ## TUI unit tests
 
+- Build settings with `testsettings.Default(t)`, the keys the app starts with. A test about a remapped key changes that one entry in `Keys`. Never import `config` or write the default keys out by hand.
 - Test the `tui` model with mocked Actions. Send it messages through `Update` and run the returned commands in the test, so every step is synchronous and the order never depends on timing.
 - Check what the user sees: the rendered `View()` with ANSI stripped, or the messages the model emitted (`tea.SetClipboard`, `tea.QuitMsg`). Not the model's fields.
 - A small number of golden-file snapshots guard the layout of the main screens. Each is the final `View()`, ANSI stripped, at 120×40, saved in `testdata/<Test>.golden` and compared with `golden.RequireEqual` from `github.com/charmbracelet/x/exp/golden`. The data comes from mocks, so dates and IDs never change. A golden of teatest's output stream would hold every intermediate frame, which depends on when asynchronous messages arrive. After an intended layout change, regenerate with `go test ./internal/adapters/tui/... -update` and review the snapshot diff in the PR.

@@ -28,7 +28,7 @@ func checkBindings(bindings typedBindingMap) error {
 	bound := boundKeys(bindings)
 
 	return errors.Join(
-		checkFixedQuit(bound),
+		checkForcedQuit(bound),
 		checkTypesText(bound),
 		checkSameScope(bound),
 		checkGlobalAgainstPanes(bound),
@@ -49,12 +49,12 @@ func boundKeys(bindings typedBindingMap) []boundKey {
 	return bound
 }
 
-func checkFixedQuit(bound []boundKey) error {
+func checkForcedQuit(bound []boundKey) error {
 	problems := make([]error, 0)
 
 	for _, candidate := range bound {
-		if candidate.key == fixedQuitKey() {
-			problems = append(problems, candidate.problem(errFixedQuit))
+		if candidate.key == ForcedQuitKey() {
+			problems = append(problems, candidate.problem(errForcedQuit))
 		}
 	}
 

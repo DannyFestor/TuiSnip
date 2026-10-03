@@ -42,6 +42,7 @@ internal/
     system/                  Clock and IDGenerator
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program: Model and the wiring between components
+      binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting
       move/                  the ways a cursor or a scrolled view moves
@@ -53,6 +54,7 @@ test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
   testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool
+  testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml
 ```
 
@@ -150,6 +152,14 @@ A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized
 ### Outcomes are typed and synchronous
 
 A component reports what happened by returning an `outcome.Outcome` in the step that carries its next state, never as a Bubble Tea message. `outcome.Outcome` is a sealed union, and gochecksumtype fails a type switch that misses a member. The reasoning is in [ADR 0003](../adr/0003-tui-components-return-typed-outcomes.md).
+
+### Bindings
+
+Every Binding the TUI knows is one row of the `tui/binding` table: its Scope, its name as config spells it, and its status-hint label. A component takes its Scope's keys with `binding.Keys.For(scope)`, which dispatches with `Matches`, names keys in text with `FirstKey`, and implements `help.KeyMap` from the Scope's hint list. `tui/binding` imports nothing from `tui` or its other subpackages, so every component can use it.
+
+Text that names a key shows the key the user configured, never a hard-coded default.
+
+TUI tests take their keys from `test/testsettings`, which loads the embedded default config through `config` and `bootstrap`. They never import `config` and never keep their own copy of the defaults.
 
 ### Packages
 

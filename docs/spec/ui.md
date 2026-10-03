@@ -128,9 +128,9 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 
 The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
 
-- **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)". The other fields stay editable, and saving keeps the content byte for byte.
+- **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
 - **The tab key in editable content** inserts four spaces. That is the textarea's own behaviour and is visible, so nothing is silently changed.
-- **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR".
+- **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
 - **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.
 
 A TuiSnip-owned editor component that keeps tabs and highlights while editing is on the [roadmap](../../ROADMAP.md).
@@ -162,7 +162,7 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 
 - The **Language picker** shows the curated `languages` list when config sets one, and `ctrl+a` switches to every Language and back.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
-- **Confirmations** (y/N, default No) and **help** (`?`) open over whatever is showing. Help lists the Bindings active where it was opened.
+- **Confirmations** (y/N, default No) and **help** (`?`) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key, `y/N` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. Help lists the Bindings active where it was opened.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
 
 ## Status hint

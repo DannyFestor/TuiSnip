@@ -1,15 +1,13 @@
 package tui
 
-import "time"
+import (
+	"time"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+)
 
 type Settings struct {
-	Global      GlobalKeyMap
-	Folders     FoldersKeyMap
-	SnippetList SnippetListKeyMap
-	SnippetPane SnippetPaneKeyMap
-	Editor      EditorKeyMap
-	Content     ContentKeyMap
-	Search      SearchKeyMap
-	Confirm     ConfirmKeyMap
-	Location    *time.Location
+	Keys          binding.Keys
+	ForcedQuitKey string
+	Location      *time.Location
 }

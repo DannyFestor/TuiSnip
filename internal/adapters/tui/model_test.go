@@ -27,22 +27,36 @@ var errDatabaseLocked = errors.New("database is locked")
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	settings := testsettings.Default(t)
-	settings.Location = nil
+	constructors := []struct {
+		name  string
+		build modelConstructor
+	}{
+		{name: "New", build: tui.New},
+		{name: "NewQuittingAfterCopy", build: tui.NewQuittingAfterCopy},
+	}
 
-	_, err := tui.New(t.Context(), tui.Deps{
-		Lister:   nil,
-		Copier:   nil,
-		Creator:  nil,
-		Searcher: nil,
-		Settings: settings,
-		Logger:   nil,
-	})
+	for _, tt := range constructors {
+		t.Run(tt.name+" requires every dependency", func(t *testing.T) {
+			t.Parallel()
 
-	require.ErrorIs(t, err, domain.ErrMissingDependency)
+			settings := testsettings.Default(t)
+			settings.Location = nil
 
-	for _, name := range []string{"lister", "copier", "creator", "searcher", "logger", "location"} {
-		assert.ErrorContains(t, err, name)
+			_, err := tt.build(t.Context(), tui.Deps{
+				Lister:   nil,
+				Copier:   nil,
+				Creator:  nil,
+				Searcher: nil,
+				Settings: settings,
+				Logger:   nil,
+			})
+
+			require.ErrorIs(t, err, domain.ErrMissingDependency)
+
+			for _, name := range []string{"lister", "copier", "creator", "searcher", "logger", "location"} {
+				assert.ErrorContains(t, err, name)
+			}
+		})
 	}
 }
 
@@ -112,7 +126,7 @@ func TestModel_copy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			screen := copyFirstSnippet(t, testsettings.Default(t), tt.result, tt.err)
+			screen := copyFirstSnippet(t, tui.New, tt.result, tt.err)
 
 			assert.Contains(t, screen.screen(), tt.status)
 		})
@@ -134,7 +148,7 @@ func TestModel_copy(t *testing.T) {
 	t.Run("stays quiet when cancelled", func(t *testing.T) {
 		t.Parallel()
 
-		screen := copyFirstSnippet(t, testsettings.Default(t), snippet.CopyResult{}, context.Canceled)
+		screen := copyFirstSnippet(t, tui.New, snippet.CopyResult{}, context.Canceled)
 
 		assert.NotContains(t, screen.screen(), "Something went wrong")
 	})
@@ -146,7 +160,7 @@ func TestModel_quitAfterCopy(t *testing.T) {
 	t.Run("quits after a Copy placed on the clipboard", func(t *testing.T) {
 		t.Parallel()
 
-		screen := copyFirstSnippet(t, quittingAfterCopy(t), copied(t, domain.CopyDeliveryPlaced), nil)
+		screen := copyFirstSnippet(t, tui.NewQuittingAfterCopy, copied(t, domain.CopyDeliveryPlaced), nil)
 
 		assert.Contains(t, screen.emitted, tea.QuitMsg{})
 	})
@@ -154,7 +168,7 @@ func TestModel_quitAfterCopy(t *testing.T) {
 	t.Run("sends the content to the terminal before quitting", func(t *testing.T) {
 		t.Parallel()
 
-		screen := copyFirstSnippet(t, quittingAfterCopy(t), copied(t, domain.CopyDeliverySentToTerminal), nil)
+		screen := copyFirstSnippet(t, tui.NewQuittingAfterCopy, copied(t, domain.CopyDeliverySentToTerminal), nil)
 
 		clipboard := slices.Index(screen.emitted, tea.SetClipboard("echo copied")())
 		quit := slices.Index(screen.emitted, tea.Msg(tea.QuitMsg{}))
@@ -177,7 +191,7 @@ func TestModel_quitAfterCopy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			screen := copyFirstSnippet(t, quittingAfterCopy(t), snippet.CopyResult{}, tt.err)
+			screen := copyFirstSnippet(t, tui.NewQuittingAfterCopy, snippet.CopyResult{}, tt.err)
 
 			assert.NotContains(t, screen.emitted, tea.QuitMsg{})
 		})
@@ -186,7 +200,7 @@ func TestModel_quitAfterCopy(t *testing.T) {
 	t.Run("stays open after a successful Copy when the setting is off", func(t *testing.T) {
 		t.Parallel()
 
-		screen := copyFirstSnippet(t, testsettings.Default(t), copied(t, domain.CopyDeliveryPlaced), nil)
+		screen := copyFirstSnippet(t, tui.New, copied(t, domain.CopyDeliveryPlaced), nil)
 
 		assert.NotContains(t, screen.emitted, tea.QuitMsg{})
 		assert.Contains(t, screen.screen(), "Copied")
@@ -209,28 +223,19 @@ func TestModel_quit(t *testing.T) {
 	}
 }
 
-func quittingAfterCopy(t *testing.T) tui.Settings {
-	t.Helper()
-
-	settings := testsettings.Default(t)
-	settings.QuitAfterCopy = true
-
-	return settings
-}
-
-func copyFirstSnippet(t *testing.T, settings tui.Settings, result snippet.CopyResult, err error) *driver {
+func copyFirstSnippet(t *testing.T, build modelConstructor, result snippet.CopyResult, err error) *driver {
 	t.Helper()
 
 	snippets := sampleSnippets(t)
 	copier := NewMockSnippetCopier(t)
 	copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(result, err)
 
-	model := modelWithSettings(t, actions{
+	model := modelBuiltBy(t, build, actions{
 		lister:   listerOf(t, snippets...),
 		copier:   copier,
 		creator:  NewMockSnippetCreator(t),
 		searcher: NewMockSnippetSearcher(t),
-	}, settings)
+	}, testsettings.Default(t))
 	screen := start(t, model, wideWidth, wideHeight)
 
 	screen.press(keypress.Letter('3'), keypress.Letter('y'))

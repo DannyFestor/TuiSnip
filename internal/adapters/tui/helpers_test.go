@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"context"
 	"log/slog"
 	"reflect"
 	"slices"
@@ -55,7 +56,15 @@ func modelWith(t *testing.T, with actions) tui.Model {
 func modelWithSettings(t *testing.T, with actions, settings tui.Settings) tui.Model {
 	t.Helper()
 
-	model, err := tui.New(t.Context(), tui.Deps{
+	return modelBuiltBy(t, tui.New, with, settings)
+}
+
+type modelConstructor func(context.Context, tui.Deps) (tui.Model, error)
+
+func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings tui.Settings) tui.Model {
+	t.Helper()
+
+	model, err := build(t.Context(), tui.Deps{
 		Lister:   with.lister,
 		Copier:   with.copier,
 		Creator:  with.creator,

@@ -35,11 +35,29 @@ type Model struct {
 	searcher      SnippetSearcher
 	logger        *slog.Logger
 	forcedQuitKey string
-	quitAfterCopy bool
+	afterCopy     tea.Cmd
 	overlays      outcome.Stack
 }
 
 func New(ctx context.Context, deps Deps) (Model, error) {
+	model, err := modelEndingCopyWith(ctx, deps, nil)
+	if err != nil {
+		return Model{}, fmt.Errorf("tui.New: %w", err)
+	}
+
+	return model, nil
+}
+
+func NewQuittingAfterCopy(ctx context.Context, deps Deps) (Model, error) {
+	model, err := modelEndingCopyWith(ctx, deps, tea.Quit)
+	if err != nil {
+		return Model{}, fmt.Errorf("tui.NewQuittingAfterCopy: %w", err)
+	}
+
+	return model, nil
+}
+
+func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Model, error) {
 	err := errors.Join(
 		domain.RequireDependency("lister", deps.Lister),
 		domain.RequireDependency("copier", deps.Copier),
@@ -49,7 +67,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		requirePointer("location", deps.Settings.Location),
 	)
 	if err != nil {
-		return Model{}, fmt.Errorf("tui.New: %w", err)
+		return Model{}, err
 	}
 
 	mainScreen := mainscreen.New(deps.Settings.Keys, look.NewStyles(), deps.Settings.Location)
@@ -63,7 +81,7 @@ func New(ctx context.Context, deps Deps) (Model, error) {
 		searcher:      deps.Searcher,
 		logger:        deps.Logger,
 		forcedQuitKey: deps.Settings.ForcedQuitKey,
-		quitAfterCopy: deps.Settings.QuitAfterCopy,
+		afterCopy:     afterCopy,
 		overlays:      overlays,
 	}, nil
 }
@@ -208,7 +226,7 @@ func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {
 
 	next, cmd := m.shown(text)
 
-	return next, tea.Sequence(tea.Batch(cmd, terminalClipboard(msg.result)), m.afterCopy())
+	return next, tea.Sequence(tea.Batch(cmd, terminalClipboard(msg.result)), m.afterCopy)
 }
 
 func terminalClipboard(result snippet.CopyResult) tea.Cmd {
@@ -217,14 +235,6 @@ func terminalClipboard(result snippet.CopyResult) tea.Cmd {
 	}
 
 	return tea.SetClipboard(result.Content.String())
-}
-
-func (m Model) afterCopy() tea.Cmd {
-	if !m.quitAfterCopy {
-		return nil
-	}
-
-	return tea.Quit
 }
 
 func (m Model) failed(operation string, err error) (Model, tea.Cmd) {

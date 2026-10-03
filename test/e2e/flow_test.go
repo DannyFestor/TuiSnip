@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -19,6 +20,7 @@ const (
 	remappedSearch  = "[bindings.global]\nsearch = [\"ctrl+f\"]\n"
 	noClipboardTool = "No clipboard tool found (pbcopy, wl-copy, xclip, xsel)"
 	nativeOnly      = "[copy]\nclipboard = \"native\"\n"
+	quitAfterCopy   = "[copy]\nquit_after = true\n"
 )
 
 func TestCreateSearchThenCopy(t *testing.T) {
@@ -65,6 +67,22 @@ func TestCopyWithoutToolShowsMessage(t *testing.T) {
 	screen.press(keypress.Letter('3'), keypress.Letter('y'))
 
 	screen.waitForFrame(noClipboardTool)
+}
+
+func TestCopyQuitsWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	home := testapp.NewHome(t)
+	home.WriteConfig(t, quitAfterCopy)
+	screen := open(t, home.Start(t, testapp.RecordingTool))
+	screen.waitForFrame(emptyList)
+	createPruneSnippet(screen)
+	screen.waitForFrame(savedPreview)
+
+	screen.press(keypress.Letter('3'), keypress.Letter('y'))
+
+	screen.program.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
+	assert.Equal(t, "docker\nprune", home.Copied(t))
 }
 
 func TestRemappedBindingOpensSearch(t *testing.T) {

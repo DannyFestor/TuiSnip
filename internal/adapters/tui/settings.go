@@ -10,5 +10,4 @@ type Settings struct {
 	Keys          binding.Keys
 	ForcedQuitKey string
 	Location      *time.Location
-	QuitAfterCopy bool
 }

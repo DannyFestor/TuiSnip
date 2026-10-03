@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -65,16 +64,6 @@ func TestSettingsFrom(t *testing.T) {
 
 		assert.Same(t, tokyo, bootstrap.SettingsFrom(loadConfig(t, ""), tokyo).Location)
 	})
-
-	for _, quitAfter := range []bool{true, false} {
-		t.Run("passes copy.quit_after = "+strconv.FormatBool(quitAfter)+" through", func(t *testing.T) {
-			t.Parallel()
-
-			cfg := loadConfig(t, "[copy]\nquit_after = "+strconv.FormatBool(quitAfter)+"\n")
-
-			assert.Equal(t, quitAfter, bootstrap.SettingsFrom(cfg, time.UTC).QuitAfterCopy)
-		})
-	}
 }
 
 func loadConfig(t *testing.T, contents string) config.Config {

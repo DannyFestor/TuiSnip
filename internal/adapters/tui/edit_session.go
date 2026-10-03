@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -13,13 +14,13 @@ const editOverlayPercent = 90
 
 type editSession struct {
 	form        editForm
-	confirmKeys confirmBindings
+	confirmKeys binding.Set
 	styles      look.Styles
 	outer       look.Size
 	saving      bool
 }
 
-func newEditSession(keys editorBindings, confirmKeys confirmBindings, styles look.Styles) (editSession, tea.Cmd) {
+func newEditSession(keys editorBindings, confirmKeys binding.Set, styles look.Styles) (editSession, tea.Cmd) {
 	form, cmd := newEditForm(keys)
 
 	return editSession{
@@ -90,7 +91,7 @@ func (s editSession) requested(request editRequest) step {
 	case editCancels:
 		return s.cancelled()
 	case editRefusesPaste:
-		return stay(s).Passing(outcome.NoticeShown{Text: pasteHasTabsText})
+		return stay(s).Passing(outcome.NoticeShown{Text: pasteHasTabsText(s.form.externalEditorKey())})
 	case editStays:
 	}
 

@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -102,10 +103,14 @@ func (e editForm) input() snippet.CreateInput {
 
 func (e editForm) hints() []key.Binding {
 	if e.inContent {
-		return e.keys.contentHints()
+		return e.keys.content.ShortHelp()
 	}
 
-	return e.keys.fieldHints()
+	return e.keys.fields.ShortHelp()
+}
+
+func (e editForm) externalEditorKey() string {
+	return e.keys.content.FirstKey(binding.OpenInEditor)
 }
 
 func (e editForm) view(styles look.Styles, outer look.Size) string {
@@ -120,14 +125,16 @@ func (e editForm) view(styles look.Styles, outer look.Size) string {
 }
 
 func (e editForm) fieldPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.Cmd) {
+	fields := e.keys.fields
+
 	switch {
-	case key.Matches(msg, e.keys.save):
+	case fields.Matches(msg, binding.Save):
 		return e, editSaves, nil
-	case key.Matches(msg, e.keys.cancel):
+	case fields.Matches(msg, binding.Cancel):
 		return e, editCancels, nil
-	case key.Matches(msg, e.keys.nextField), key.Matches(msg, e.keys.openField):
+	case fields.Matches(msg, binding.NextField), fields.Matches(msg, binding.OpenField):
 		return e.advanced()
-	case key.Matches(msg, e.keys.prevField):
+	case fields.Matches(msg, binding.PrevField):
 		return e.steppedBack()
 	}
 
@@ -136,9 +143,9 @@ func (e editForm) fieldPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.
 
 func (e editForm) contentPressed(msg tea.KeyPressMsg) (editForm, editRequest, tea.Cmd) {
 	switch {
-	case key.Matches(msg, e.keys.contentSave):
+	case e.keys.content.Matches(msg, binding.Save):
 		return e, editSaves, nil
-	case key.Matches(msg, e.keys.contentLeave):
+	case e.keys.content.Matches(msg, binding.Leave):
 		return e.leftContent(), editStays, nil
 	case e.content.Line() == 0 && key.Matches(msg, e.content.KeyMap.LinePrevious):
 		return e.steppedBack()
@@ -248,12 +255,7 @@ func (e editForm) contentEntryHint(styles look.Styles) string {
 		return ""
 	}
 
-	entryKeys := make([]string, 0, len(e.keys.openField.Keys())+len(e.keys.nextField.Keys()))
-	for _, binding := range []key.Binding{e.keys.openField, e.keys.nextField} {
-		if binding.Enabled() && len(binding.Keys()) > 0 {
-			entryKeys = append(entryKeys, binding.Keys()[0])
-		}
-	}
+	entryKeys := boundOnly(e.keys.fields.FirstKey(binding.OpenField), e.keys.fields.FirstKey(binding.NextField))
 
 	if len(entryKeys) == 0 {
 		return ""

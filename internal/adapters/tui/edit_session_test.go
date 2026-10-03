@@ -10,9 +10,11 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 const (
@@ -474,6 +476,99 @@ func TestModel_editOverlayPaste(t *testing.T) {
 
 		assert.NotContains(t, screen.screen(), "Pasted title")
 	})
+}
+
+func TestModel_editOverlayNamesConfiguredKeys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("names the configured external editor key for a paste with tabs", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.Keys[binding.ScopeContent][binding.OpenInEditor] = []string{"ctrl+o"}
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(enterContent()...)
+		screen.send(tea.PasteMsg{Content: "if x {\n\treturn\n}"})
+
+		assert.Contains(t, screen.screen(), "Pasted text contains tabs; use ctrl+o to edit in $EDITOR")
+	})
+
+	t.Run("names no key for a paste with tabs when the external editor is unbound", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.Keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(enterContent()...)
+		screen.send(tea.PasteMsg{Content: "if x {\n\treturn\n}"})
+
+		assert.Contains(t, screen.screen(), "Pasted text contains tabs")
+		assert.NotContains(t, screen.screen(), "$EDITOR")
+	})
+
+	t.Run("asks without answers when yes and no are unbound", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.Keys[binding.ScopeConfirm][binding.Yes] = []string{}
+		settings.Keys[binding.ScopeConfirm][binding.No] = []string{}
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('z'), special(tea.KeyEscape))
+
+		assert.Contains(t, screen.screen(), "Discard the unsaved changes?")
+		assert.NotContains(t, screen.screen(), "changes? ")
+	})
+
+	t.Run("upper-cases a single-character No key", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.Keys[binding.ScopeConfirm][binding.No] = []string{"x", "esc"}
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('z'), special(tea.KeyEscape))
+
+		assert.Contains(t, screen.screen(), "Discard the unsaved changes? y/X")
+	})
+
+	t.Run("writes a longer No key as configured", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.Keys[binding.ScopeConfirm][binding.Yes] = []string{"ctrl+y"}
+		settings.Keys[binding.ScopeConfirm][binding.No] = []string{"shift+tab", "n"}
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('z'), special(tea.KeyEscape))
+
+		assert.Contains(t, screen.screen(), "Discard the unsaved changes? ctrl+y/shift+tab")
+	})
+
+	t.Run("asks before quitting on the configured forced quit key", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.ForcedQuitKey = "ctrl+q"
+		screen := start(t, remappedModel(t, settings), wideWidth, wideHeight)
+
+		screen.press(letter('n'), letter('z'), ctrl('q'))
+
+		assert.Contains(t, screen.screen(), quitQuestion)
+	})
+}
+
+func remappedModel(t *testing.T, settings tui.Settings) tui.Model {
+	t.Helper()
+
+	return modelWithSettings(t, actions{
+		lister:   listerOf(t),
+		copier:   NewMockSnippetCopier(t),
+		creator:  NewMockSnippetCreator(t),
+		searcher: NewMockSnippetSearcher(t),
+	}, settings)
 }
 
 func editingModel(t *testing.T, creator *MockSnippetCreator) tui.Model {

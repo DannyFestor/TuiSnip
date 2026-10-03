@@ -13,7 +13,7 @@ const (
 	sentToTerminalText = "Sent to terminal"
 	noClipboardText    = "No clipboard tool found (pbcopy, wl-copy, xclip, xsel)"
 	genericFailureText = "Something went wrong; see the log"
-	pasteHasTabsText   = "Pasted text contains tabs; use ctrl+e to edit in $EDITOR"
+	pasteHasTabs       = "Pasted text contains tabs"
 )
 
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
@@ -27,6 +27,14 @@ func deliveryText(delivery domain.CopyDelivery) (string, error) {
 	}
 
 	return "", fmt.Errorf("%w %q", errUnknownDelivery, delivery)
+}
+
+func pasteHasTabsText(externalEditorKey string) string {
+	if externalEditorKey == "" {
+		return pasteHasTabs
+	}
+
+	return pasteHasTabs + "; use " + externalEditorKey + " to edit in $EDITOR"
 }
 
 func failureText(err error) string {

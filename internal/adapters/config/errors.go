@@ -12,7 +12,7 @@ var (
 	errNotAKey        = errors.New("is not a key")
 	errNeverMatches   = errors.New("never matches")
 	errShiftedSymbol  = errors.New("never matches; write the character it types")
-	errFixedQuit      = errors.New("always quits and cannot be bound")
+	errForcedQuit     = errors.New("always quits and cannot be bound")
 	errTypesText      = errors.New("types text in")
 	errAlsoBound      = errors.New("is also bound to")
 )

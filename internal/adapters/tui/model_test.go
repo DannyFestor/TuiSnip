@@ -17,6 +17,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 const (
@@ -31,7 +32,7 @@ var errDatabaseLocked = errors.New("database is locked")
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	settings := defaultSettings()
+	settings := testsettings.Default(t)
 	settings.Location = nil
 
 	_, err := tui.New(t.Context(), tui.Deps{

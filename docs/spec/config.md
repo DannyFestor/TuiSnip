@@ -206,5 +206,5 @@ collapsed = ["0192f1d4-7b3e-7c1a-9f00-3c5e8a2b4d61"]   # ids of collapsed Folder
 
 - `github.com/BurntSushi/toml` decodes both files. `MetaData.Undecoded()` lists unknown keys without failing the decode, which is what the Warn rule needs. It is granted to `config` and `state` in `.go-arch-lint.yml`.
 - `embeds/config` embeds `default.toml`. Only `internal/adapters/config` imports it, under an alias, because both packages are named `config`.
-- `internal/adapters/config` produces a plain `config.Config`. `bootstrap` converts it into `tui.Settings`, one `KeyMap` per Scope plus the theme and the other settings. `tui` never imports `config`.
+- `internal/adapters/config` produces a plain `config.Config`. `bootstrap` converts it into `tui.Settings`: every Scope's keys as `binding.Keys`, the forced quit key `config` exports, and the other settings. `tui` declares each Binding it knows once, in `tui/binding`, and never imports `config`.
 - Scope and Binding names, the theme, the clipboard backend, and the sort order are go-enum types with `--marshal`.

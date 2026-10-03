@@ -84,6 +84,12 @@ snippet.CreateInput{Title: "curl json", Content: body, FolderID: nil, Language: 
 
 When a field is added, every literal that doesn't set it fails lint, so no caller silently leaves it at zero. Types from other modules aren't checked. Test files are exempt.
 
+## Type switches over a sealed union are exhaustive
+
+A sealed union is an interface with an unexported marker method, marked `//sumtype:decl`, such as `outcome.Outcome`. Only its own package can add a member. gochecksumtype fails every type switch over it that misses a member, so a new member shows up at each switch that has to handle it.
+
+A `default:` case counts as handling every member. Leave it out where a missing case should fail, as in `Model.concluded`. Keep it where the switch handles a few members and passes the rest on, as in `editSession.Received`.
+
 ## No globals, no hidden state
 
 - gochecknoglobals and gochecknoinits: no package-level variables, no `init()`. Lip Gloss styles and default keymaps come from constructors (`DefaultKeyMap()`, `NewStyles(theme)`) and are injected, because keybindings and themes are configurable.

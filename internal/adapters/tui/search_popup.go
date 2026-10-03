@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -61,21 +61,21 @@ func newSearchPopup(
 	return popup.previewed(), cmd
 }
 
-func (p searchPopup) Update(msg tea.Msg) overlay.Step {
+func (p searchPopup) Update(msg tea.Msg) step {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return p.pressed(msg)
 	case tea.PasteMsg:
 		return p.typed(msg)
 	case tea.WindowSizeMsg:
-		return overlay.Stay(p.resized(sizeOf(msg)))
+		return stay(p.resized(sizeOf(msg)))
 	case tea.BackgroundColorMsg:
-		return overlay.Stay(p.withCodeStyle(codeStyleFor(msg)))
+		return stay(p.withCodeStyle(codeStyleFor(msg)))
 	case searchFinishedMsg:
-		return overlay.Stay(p.withHits(msg.text, msg.hits))
+		return stay(p.withHits(msg.text, msg.hits))
 	}
 
-	return overlay.Stay(p)
+	return stay(p)
 }
 
 func (p searchPopup) View() string {
@@ -91,27 +91,27 @@ func (p searchPopup) Hints() []key.Binding {
 	return p.keys.hints()
 }
 
-func (p searchPopup) pressed(msg tea.KeyPressMsg) overlay.Step {
+func (p searchPopup) pressed(msg tea.KeyPressMsg) step {
 	switch {
 	case key.Matches(msg, p.keys.down):
-		return overlay.Stay(p.moved(moveDown))
+		return stay(p.moved(moveDown))
 	case key.Matches(msg, p.keys.up):
-		return overlay.Stay(p.moved(moveUp))
+		return stay(p.moved(moveUp))
 	case key.Matches(msg, p.keys.accept):
 		return p.onSelected(revealing)
 	case key.Matches(msg, p.keys.copy):
 		return p.onSelected(copying)
 	case key.Matches(msg, p.keys.cancel):
-		return overlay.Close()
+		return closing()
 	}
 
 	return p.typed(msg)
 }
 
-func (p searchPopup) onSelected(stepFor func(domain.SnippetID) overlay.Step) overlay.Step {
+func (p searchPopup) onSelected(stepFor func(domain.SnippetID) step) step {
 	selected, ok := p.results.selected()
 	if !ok {
-		return overlay.Stay(p)
+		return stay(p)
 	}
 
 	return stepFor(selected.ID())
@@ -150,21 +150,21 @@ func (p searchPopup) resized(screen size) searchPopup {
 	return p
 }
 
-func (p searchPopup) typed(msg tea.Msg) overlay.Step {
+func (p searchPopup) typed(msg tea.Msg) step {
 	next := p
 
 	var cmd tea.Cmd
 
 	next.query, cmd = p.query.Update(msg)
 	if next.text() == p.text() {
-		return overlay.Stay(next).Running(cmd)
+		return stay(next).Running(cmd)
 	}
 
 	if value.NewSearchQuery(next.text()).IsBlank() {
-		return overlay.Stay(next.listing(next.browse)).Running(cmd)
+		return stay(next.listing(next.browse)).Running(cmd)
 	}
 
-	return overlay.Stay(next).Passing(searchTyped{text: next.text()}).Running(cmd)
+	return stay(next).Passing(outcome.SearchTyped{Text: next.text()}).Running(cmd)
 }
 
 func (p searchPopup) listing(snippets []domain.Snippet) searchPopup {
@@ -220,10 +220,10 @@ func (p searchPopup) frameTitle() string {
 	return searchTitle + searchTitleSeparator + strconv.Itoa(count) + noun
 }
 
-func revealing(id domain.SnippetID) overlay.Step {
-	return overlay.Close().Passing(snippetRevealed{id: id})
+func revealing(id domain.SnippetID) step {
+	return closing().Passing(outcome.SnippetRevealed{ID: id})
 }
 
-func copying(id domain.SnippetID) overlay.Step {
-	return overlay.Close().Passing(copyRequested{id: id})
+func copying(id domain.SnippetID) step {
+	return closing().Passing(outcome.CopyRequested{ID: id})
 }

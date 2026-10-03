@@ -18,12 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
-const (
-	folderPaneTitle  = "1 Folders"
-	tagPaneTitle     = "2 Tags"
-	snippetListTitle = "3 Root · by title"
-	snippetPaneTitle = "4 Snippet"
-)
+const snippetPaneTitle = "4 Snippet"
 
 var errDatabaseLocked = errors.New("database is locked")
 
@@ -82,107 +77,6 @@ func TestModel_start(t *testing.T) {
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 	})
-}
-
-func TestModel_navigation(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		keys  []tea.KeyPressMsg
-		title string
-	}{
-		{name: "starts on Folders", keys: nil, title: folderPaneTitle},
-		{name: "tab moves to Tags", keys: []tea.KeyPressMsg{special(tea.KeyTab)}, title: tagPaneTitle},
-		{
-			name:  "tab wraps from the Snippet pane to Folders",
-			keys:  []tea.KeyPressMsg{letter('4'), special(tea.KeyTab)},
-			title: folderPaneTitle,
-		},
-		{
-			name:  "shift+tab wraps from Folders to the Snippet pane",
-			keys:  []tea.KeyPressMsg{{Code: tea.KeyTab, Mod: tea.ModShift}},
-			title: snippetPaneTitle,
-		},
-		{name: "l from Tags goes to the Snippet list", keys: keys('2', 'l'), title: snippetListTitle},
-		{name: "h from the Snippet list returns to Folders", keys: keys('2', 'l', 'h'), title: folderPaneTitle},
-		{name: "l stops at the Snippet pane", keys: keys('4', 'l'), title: snippetPaneTitle},
-		{name: "h stops at the left column", keys: keys('2', 'h'), title: tagPaneTitle},
-		{
-			name:  "enter drills from Folders to the Snippet pane",
-			keys:  []tea.KeyPressMsg{special(tea.KeyEnter), special(tea.KeyEnter)},
-			title: snippetPaneTitle,
-		},
-		{
-			name:  "enter does nothing in Tags",
-			keys:  []tea.KeyPressMsg{letter('2'), special(tea.KeyEnter)},
-			title: tagPaneTitle,
-		},
-		{
-			name:  "esc backs out from the Snippet pane to Folders",
-			keys:  []tea.KeyPressMsg{letter('4'), special(tea.KeyEscape), special(tea.KeyEscape)},
-			title: folderPaneTitle,
-		},
-		{name: "3 focuses the Snippet list", keys: keys('3'), title: snippetListTitle},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), narrowWidth, narrowHeight)
-
-			screen.press(tt.keys...)
-
-			assert.Contains(t, screen.screen(), tt.title)
-			assert.Contains(t, screen.screen(), "Terminal too small for all four Panes (80×24)")
-		})
-	}
-}
-
-func TestModel_cursor(t *testing.T) {
-	t.Parallel()
-
-	t.Run("moving down in the Snippet list shows the next Snippet", func(t *testing.T) {
-		t.Parallel()
-
-		screen := start(
-			t,
-			newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)),
-			wideWidth,
-			wideHeight,
-		)
-
-		screen.press(letter('3'), letter('j'))
-
-		assert.Contains(t, screen.screen(), "Reclaim disk space")
-		assert.NotContains(t, screen.screen(), "Stop accepting, drain, exit")
-	})
-
-	t.Run("moving down in Folders keeps the Snippet", func(t *testing.T) {
-		t.Parallel()
-
-		screen := start(
-			t,
-			newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)),
-			wideWidth,
-			wideHeight,
-		)
-
-		screen.press(letter('j'))
-
-		assert.Contains(t, screen.screen(), "Stop accepting, drain, exit")
-	})
-}
-
-func TestModel_minimumSize(t *testing.T) {
-	t.Parallel()
-
-	screen := start(t, newModel(t, listerOf(t), NewMockSnippetCopier(t)), minimumWidth, minimumHeight)
-
-	for _, title := range []string{folderPaneTitle, tagPaneTitle, snippetListTitle, snippetPaneTitle} {
-		assert.Contains(t, screen.screen(), title)
-	}
 }
 
 func TestModel_copy(t *testing.T) {
@@ -251,21 +145,6 @@ func TestModel_copy(t *testing.T) {
 
 		assert.NotContains(t, screen.screen(), "Something went wrong")
 	})
-
-	t.Run("does nothing outside the Snippet list and the Snippet pane", func(t *testing.T) {
-		t.Parallel()
-
-		screen := start(
-			t,
-			newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)),
-			wideWidth,
-			wideHeight,
-		)
-
-		screen.press(letter('y'), letter('2'), letter('y'))
-
-		assert.NotContains(t, screen.screen(), "Copied")
-	})
 }
 
 func TestModel_quit(t *testing.T) {
@@ -291,13 +170,4 @@ func copied(t *testing.T, delivery domain.CopyDelivery) snippet.CopyResult {
 	require.NoError(t, err)
 
 	return snippet.CopyResult{Delivery: delivery, Content: content}
-}
-
-func keys(runes ...rune) []tea.KeyPressMsg {
-	pressed := make([]tea.KeyPressMsg, 0, len(runes))
-	for _, r := range runes {
-		pressed = append(pressed, letter(r))
-	}
-
-	return pressed
 }

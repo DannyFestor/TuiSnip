@@ -1,4 +1,4 @@
-package tui
+package mainscreen
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -11,23 +11,9 @@ type navigationBinding struct {
 	navigate navigation
 }
 
-type bindings struct {
-	table      binding.Keys
-	forcedQuit string
-	global     binding.Set
-}
-
-func newBindings(settings Settings) bindings {
-	return bindings{
-		table:      settings.Keys,
-		forcedQuit: settings.ForcedQuitKey,
-		global:     settings.Keys.For(binding.ScopeGlobal),
-	}
-}
-
-func (b bindings) navigationFor(msg tea.KeyPressMsg) (navigation, bool) {
+func navigationFor(global binding.Set, msg tea.KeyPressMsg) (navigation, bool) {
 	for _, candidate := range navigationBindings() {
-		if b.global.Matches(msg, candidate.name) {
+		if global.Matches(msg, candidate.name) {
 			return candidate.navigate, true
 		}
 	}

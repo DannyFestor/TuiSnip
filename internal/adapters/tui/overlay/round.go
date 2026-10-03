@@ -38,9 +38,13 @@ func (r *round[O]) apply(index int, step Step[O]) {
 	r.cmds = append(r.cmds, step.cmd)
 	r.replace(index, step)
 
-	if step.passes {
-		r.bubble(index-1, step.outcome)
+	for _, passed := range step.outcomes {
+		r.bubble(r.nearestOpenBelow(index), passed)
 	}
+}
+
+func (r *round[O]) nearestOpenBelow(index int) int {
+	return min(index, len(r.overlays)) - 1
 }
 
 func (r *round[O]) replace(index int, step Step[O]) {

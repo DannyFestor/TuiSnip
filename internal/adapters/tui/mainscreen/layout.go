@@ -1,4 +1,4 @@
-package tui
+package mainscreen
 
 import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"

@@ -33,17 +33,32 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"c Copy", "a new", "ctrl+f search"}, hintTexts(got))
 	})
 
-	t.Run("Folders hints open before search", func(t *testing.T) {
+	t.Run("Folders hints open, new Folder and rename before search", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
 			bound{scope: binding.ScopeGlobal, name: binding.Open, keys: []string{"enter"}},
 			bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+			bound{scope: binding.ScopeFolders, name: binding.NewFolder, keys: []string{"N"}},
+			bound{scope: binding.ScopeFolders, name: binding.Rename, keys: []string{"r"}},
 		)
 
 		got := keys.For(binding.ScopeFolders).ShortHelp()
 
-		assert.Equal(t, []string{"enter open", "/ search"}, hintTexts(got))
+		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "/ search"}, hintTexts(got))
+	})
+
+	t.Run("name input hints save and cancel", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeNameInput, name: binding.Accept, keys: []string{"enter"}},
+			bound{scope: binding.ScopeNameInput, name: binding.Cancel, keys: []string{"esc"}},
+		)
+
+		got := keys.For(binding.ScopeNameInput).ShortHelp()
+
+		assert.Equal(t, []string{"enter save", "esc cancel"}, hintTexts(got))
 	})
 
 	t.Run("disables a hint whose Binding has no keys", func(t *testing.T) {

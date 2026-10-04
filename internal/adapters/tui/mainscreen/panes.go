@@ -38,7 +38,11 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location) pa
 	}
 }
 
-func (p panes) pressed(focus pane, msg tea.KeyPressMsg) (panes, []outcome.Outcome, tea.Cmd) {
+func (p panes) naming() bool {
+	return p.folders.Naming()
+}
+
+func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
 	switch focus {
 	case paneList:
 		list, outcomes, cmd := p.list.Update(msg)

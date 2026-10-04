@@ -11,6 +11,26 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const getFolder = `-- name: GetFolder :one
+SELECT id, parent_id, name, default_language, created_at, updated_at
+FROM folders
+WHERE id = ?
+`
+
+func (q *Queries) GetFolder(ctx context.Context, id sqltype.ID) (Folder, error) {
+	row := q.db.QueryRowContext(ctx, getFolder, id)
+	var i Folder
+	err := row.Scan(
+		&i.ID,
+		&i.ParentID,
+		&i.Name,
+		&i.DefaultLanguage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertFolder = `-- name: InsertFolder :exec
 INSERT INTO folders (id, parent_id, name, default_language, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)
@@ -70,4 +90,30 @@ func (q *Queries) ListFolders(ctx context.Context) ([]Folder, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateFolder = `-- name: UpdateFolder :execrows
+UPDATE folders
+SET name = ?, default_language = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateFolderParams struct {
+	Name            string
+	DefaultLanguage string
+	UpdatedAt       sqltype.Timestamp
+	ID              sqltype.ID
+}
+
+func (q *Queries) UpdateFolder(ctx context.Context, arg UpdateFolderParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateFolder,
+		arg.Name,
+		arg.DefaultLanguage,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

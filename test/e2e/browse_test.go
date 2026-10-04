@@ -51,6 +51,26 @@ func TestSearchRevealsSnippetInItsFolder(t *testing.T) {
 	screen.waitForFrame("3 Root / go / testing")
 }
 
+func TestCreateThenRenameFolder(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	seedNestedFolders(t, app)
+	screen := open(t, app)
+	screen.waitForFrame("    testing")
+
+	screen.press(keypress.Letter('j'), keypress.Letter('N'))
+	screen.press(keypress.Typed("errors")...)
+	screen.press(keypress.Special(tea.KeyEnter))
+	screen.waitForFrame("3 Root / go / errors")
+
+	screen.press(keypress.Letter('r'))
+	screen.press(keypress.Typed("-wrapping")...)
+	screen.press(keypress.Special(tea.KeyEnter))
+
+	screen.waitForFrame("3 Root / go / errors-wrapping")
+}
+
 func seedNestedFolders(t *testing.T, app *bootstrap.App) {
 	t.Helper()
 

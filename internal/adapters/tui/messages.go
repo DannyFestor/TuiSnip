@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 type listFailedMsg struct {
@@ -19,4 +20,15 @@ type copyFinishedMsg struct {
 
 type searchFailedMsg struct {
 	err error
+}
+
+type folderCreatedMsg struct {
+	id domain.FolderID
+}
+
+type folderRenamedMsg struct{}
+
+type folderChangeFailedMsg struct {
+	operation string
+	err       error
 }

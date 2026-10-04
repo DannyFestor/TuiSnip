@@ -45,11 +45,12 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       confirm/               the y/N confirmation an Overlay opens before it throws work away
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
-      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection
+      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
+      nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
@@ -156,7 +157,7 @@ The TUI is built from small components, each in its own package under `tui/`. `t
 
 - **Stack members** are the Overlays and the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. `FullHelp()` is what the help overlay will show.
 - **The main screen sits at the bottom of the stack.** Model pushes it once at start, so keys always go to the top of the stack and hints always come from it. Model never asks whether an Overlay is open. The main screen is an `overlay.Base`: the stack draws it with `ViewUnder(hints)`, passing the top member's hints for its status line, and centres the Overlays over it. It opens the Overlays its Bindings ask for as its children and passes every other outcome on to Model.
-- **Embedded children** are the Snippet list inside the Search popup or the main screen, and the text entries in the edit overlay. They are concrete types. A child's `Update` returns its new value, a typed result, and a `tea.Cmd`. The parent holds the concrete type and reads the result directly.
+- **Embedded children** are the Snippet list inside the Search popup or the main screen, the text entries in the edit overlay, and the name input in the Folders Pane. They are concrete types. A child's `Update` returns its new value, a typed result, and a `tea.Cmd`. The parent holds the concrete type and reads the result directly.
 
 ### Size comes from the parent
 

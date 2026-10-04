@@ -47,12 +47,16 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return s.pressed(msg)
+	case tea.PasteMsg:
+		return s.pasted(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
 	case tea.BackgroundColorMsg:
 		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
 	case TreeLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withTree(msg.Tree)))
+	case FolderCreated:
+		return s.folderCreated(msg)
 	case SnippetsLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withSnippetsIfStillSelected(msg)))
 	case StatusShown:
@@ -94,6 +98,10 @@ func (s Screen) FullHelp() [][]key.Binding {
 }
 
 func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
+	if s.panes.naming() {
+		return s.focusedUpdated(msg)
+	}
+
 	switch {
 	case s.global.Matches(msg, binding.Quit):
 		return outcome.Stay(s).Passing(outcome.QuitAsked{})
@@ -107,17 +115,31 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return outcome.Stay(s.focusedOn(navigate(s.focus, s.selectionHolder)))
 	}
 
-	return s.focusedPressed(msg)
+	return s.focusedUpdated(msg)
+}
+
+func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
+	if !s.panes.naming() {
+		return outcome.Stay(s)
+	}
+
+	return s.focusedUpdated(msg)
+}
+
+func (s Screen) folderCreated(msg FolderCreated) outcome.Step {
+	next := s.withPanes(s.panes.withTree(msg.Tree)).selectingFolder(msg.ID)
+
+	return outcome.Stay(next).Passing(outcome.FolderSelected{ID: msg.ID})
 }
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
 }
 
-func (s Screen) focusedPressed(msg tea.KeyPressMsg) outcome.Step {
-	pressed, outcomes, cmd := s.panes.pressed(s.focus, msg)
+func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {
+	updated, outcomes, cmd := s.panes.updated(s.focus, msg)
 
-	return outcome.Stay(s.withPanes(pressed)).Passing(outcomes...).Running(cmd)
+	return outcome.Stay(s.withPanes(updated)).Passing(outcomes...).Running(cmd)
 }
 
 func (s Screen) withPanes(next panes) Screen {

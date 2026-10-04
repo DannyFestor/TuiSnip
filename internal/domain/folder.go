@@ -77,6 +77,18 @@ func (f Folder) UpdatedAt() time.Time {
 	return f.updatedAt
 }
 
+func (f Folder) Rename(name value.FolderName, now time.Time) (Folder, error) {
+	err := requireTimestamps(f.createdAt, now)
+	if err != nil {
+		return Folder{}, fmt.Errorf("domain.Folder.Rename: %w", err)
+	}
+
+	f.name = name
+	f.updatedAt = now
+
+	return f, nil
+}
+
 func (f Folder) MoveUnder(parentID FolderID, descendantIDs []FolderID) (Folder, error) {
 	if parentID == f.id || slices.Contains(descendantIDs, parentID) {
 		return Folder{}, fmt.Errorf("domain.Folder.MoveUnder: %w", ErrFolderCycle)

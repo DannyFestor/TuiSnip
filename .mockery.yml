@@ -9,6 +9,10 @@ packages:
       Inserter: {}
       Finder: {}
       Copier: {}
+  github.com/DannyFestor/TuiSnip/internal/app/folder:
+    interfaces:
+      CreateRepository: {}
+      RenameRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -24,6 +28,8 @@ packages:
       SnippetCopier: {}
       SnippetCreator: {}
       SnippetSearcher: {}
+      FolderCreator: {}
+      FolderRenamer: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:
     interfaces:
       Overlay: {}

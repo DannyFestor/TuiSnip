@@ -12,5 +12,10 @@ const (
 	ScopeContent     Scope = "content"
 	ScopeSearch      Scope = "search"
 	ScopePicker      Scope = "picker"
+	ScopeNameInput   Scope = "name_input"
 	ScopeConfirm     Scope = "confirm"
 )
+
+func (s Scope) isPane() bool {
+	return s == ScopeFolders || s == ScopeTags || s == ScopeSnippetList || s == ScopeSnippetPane
+}

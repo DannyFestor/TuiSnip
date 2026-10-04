@@ -14,17 +14,20 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 const (
-	operationList   = "list snippets"
-	operationTree   = "list folders"
-	operationCopy   = "copy"
-	operationSave   = "save snippet"
-	operationSearch = "search"
+	operationList         = "list snippets"
+	operationTree         = "list folders"
+	operationCopy         = "copy"
+	operationSave         = "save snippet"
+	operationSearch       = "search"
+	operationCreateFolder = "create folder"
+	operationRenameFolder = "rename folder"
 )
 
 type Model struct {
@@ -35,6 +38,8 @@ type Model struct {
 	copier        SnippetCopier
 	creator       SnippetCreator
 	searcher      SnippetSearcher
+	folderCreator FolderCreator
+	folderRenamer FolderRenamer
 	logger        *slog.Logger
 	forcedQuitKey string
 	afterCopy     tea.Cmd
@@ -66,6 +71,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		domain.RequireDependency("copier", deps.Copier),
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("searcher", deps.Searcher),
+		domain.RequireDependency("folderCreator", deps.FolderCreator),
+		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
 		requirePointer("logger", deps.Logger),
 		requirePointer("location", deps.Settings.Location),
 	)
@@ -83,6 +90,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		copier:        deps.Copier,
 		creator:       deps.Creator,
 		searcher:      deps.Searcher,
+		folderCreator: deps.FolderCreator,
+		folderRenamer: deps.FolderRenamer,
 		logger:        deps.Logger,
 		forcedQuitKey: deps.Settings.ForcedQuitKey,
 		afterCopy:     afterCopy,
@@ -99,8 +108,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
-		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded:
+		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
+		mainscreen.FolderCreated:
 		return m.overlaysUpdated(msg)
+	case folderCreatedMsg:
+		return m, m.listTree(func(tree browse.Tree) tea.Msg { return mainscreen.FolderCreated{Tree: tree, ID: msg.id} })
+	case folderRenamedMsg:
+		return m, m.loadTree()
+	case folderChangeFailedMsg:
+		return m.failed(msg.operation, msg.err)
 	case listFailedMsg:
 		return m.failed(operationList, msg.err)
 	case treeFailedMsg:
@@ -122,13 +138,17 @@ func (m Model) View() tea.View {
 }
 
 func (m Model) loadTree() tea.Cmd {
+	return m.listTree(func(tree browse.Tree) tea.Msg { return mainscreen.TreeLoaded{Tree: tree} })
+}
+
+func (m Model) listTree(loaded func(tree browse.Tree) tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		tree, err := m.treeLister.Run(m.ctx, browse.FolderTreeInput{})
 		if err != nil {
 			return treeFailedMsg{err: err}
 		}
 
-		return mainscreen.TreeLoaded{Tree: tree}
+		return loaded(tree)
 	}
 }
 
@@ -190,6 +210,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.querySnippets(reported.Text)
 	case outcome.CopyRequested:
 		return m, m.copySnippet(reported.ID)
+	case outcome.FolderCreateRequested, outcome.FolderRenameRequested:
+		return m, m.changeFolder(reported)
 	case outcome.DiscardConfirmed:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
@@ -216,6 +238,39 @@ func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 		created, err := m.creator.Run(m.ctx, in)
 
 		return editoverlay.SaveFinished{Snippet: created, Err: err}
+	}
+}
+
+func (m Model) changeFolder(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.FolderCreateRequested:
+		return m.createFolder(reported.Input)
+	case outcome.FolderRenameRequested:
+		return m.renameFolder(reported.Input)
+	default:
+		return nil
+	}
+}
+
+func (m Model) createFolder(in folder.CreateInput) tea.Cmd {
+	return func() tea.Msg {
+		created, err := m.folderCreator.Run(m.ctx, in)
+		if err != nil {
+			return folderChangeFailedMsg{operation: operationCreateFolder, err: err}
+		}
+
+		return folderCreatedMsg{id: created.ID()}
+	}
+}
+
+func (m Model) renameFolder(in folder.RenameInput) tea.Cmd {
+	return func() tea.Msg {
+		_, err := m.folderRenamer.Run(m.ctx, in)
+		if err != nil {
+			return folderChangeFailedMsg{operation: operationRenameFolder, err: err}
+		}
+
+		return folderRenamedMsg{}
 	}
 }
 

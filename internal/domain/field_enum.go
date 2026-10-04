@@ -19,6 +19,8 @@ const (
 	FieldContent Field = "content"
 	// FieldLanguage is a Field of type language.
 	FieldLanguage Field = "language"
+	// FieldFolderName is a Field of type folder_name.
+	FieldFolderName Field = "folder_name"
 )
 
 var ErrInvalidField = errors.New("not a valid Field")
@@ -40,6 +42,7 @@ var _FieldValue = map[string]Field{
 	"description": FieldDescription,
 	"content":     FieldContent,
 	"language":    FieldLanguage,
+	"folder_name": FieldFolderName,
 }
 
 // ParseField attempts to convert a string to a Field.

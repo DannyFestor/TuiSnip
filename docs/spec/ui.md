@@ -69,7 +69,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 | Snippet list | `y` Copy · `e` edit · `E` external editor · `m` move · `c` duplicate · `d` delete · `s` cycle sort |
 | Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap |
 
-- In-place entry commits with `enter` and cancels with `esc`. A blank name is refused.
+- In-place entry commits with `enter` and cancels with `esc` (the `name_input` Scope). A blank name is refused. A new Folder becomes the Browse selection once it is created.
 - A new Tag whose name already exists, compared case-insensitively, is refused with "Tag go already exists". A comma is refused too.
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
@@ -179,6 +179,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `content` | save · leave · indent · dedent |
 | `search` | move · reveal · Copy · close |
 | `picker` | move · pick · close |
+| `name_input` | save · cancel |
 | `confirm` | yes · no |
 
 ## Mouse

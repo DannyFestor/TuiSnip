@@ -10,6 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
@@ -88,7 +89,7 @@ func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) panes {
 		return p
 	}
 
-	p.list = p.list.WithSnippets(loaded.Snippets).WithCursorOn(loaded.Selecting)
+	p.list = p.list.WithSnippets(loaded.Snippets).Moved(move.Top).WithCursorOn(loaded.Selecting)
 
 	return p.previewSelected()
 }

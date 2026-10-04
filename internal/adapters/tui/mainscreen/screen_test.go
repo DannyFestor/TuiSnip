@@ -153,6 +153,17 @@ func TestScreen_browse(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), secondTitle)
 	})
 
+	t.Run("starts a newly selected Folder's list on its first Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Typed("3j1j")...)
+
+		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Docker.ID(), Snippets: sampleSnippets(t)})
+
+		assert.Contains(t, screen.Screen(), firstDescription)
+	})
+
 	t.Run("ignores Snippets loaded for a Folder no longer selected", func(t *testing.T) {
 		t.Parallel()
 

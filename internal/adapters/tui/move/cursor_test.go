@@ -1,6 +1,7 @@
 package move_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,21 +18,20 @@ func TestCursor_Moved(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		start      int
-		direction  move.Direction
-		wantIndex  int
-		wantOffset int
+		name      string
+		start     int
+		direction move.Direction
+		wantShown string
 	}{
-		{name: "down moves one row", start: 0, direction: move.Down, wantIndex: 1, wantOffset: 0},
-		{name: "down scrolls to keep the cursor in view", start: 2, direction: move.Down, wantIndex: 3, wantOffset: 1},
-		{name: "down stops at the last row", start: rows - 1, direction: move.Down, wantIndex: rows - 1, wantOffset: 7},
-		{name: "up stops at the first row", start: 0, direction: move.Up, wantIndex: 0, wantOffset: 0},
-		{name: "top goes to the first row", start: 5, direction: move.Top, wantIndex: 0, wantOffset: 0},
-		{name: "bottom goes to the last row", start: 0, direction: move.Bottom, wantIndex: rows - 1, wantOffset: 7},
-		{name: "page down moves a page", start: 0, direction: move.PageDown, wantIndex: height, wantOffset: 1},
-		{name: "page up moves a page", start: 5, direction: move.PageUp, wantIndex: 2, wantOffset: 2},
-		{name: "none stays", start: 4, direction: move.None, wantIndex: 4, wantOffset: 2},
+		{name: "down moves one row", start: 0, direction: move.Down, wantShown: "0\n[1]\n2"},
+		{name: "down scrolls to keep the cursor in view", start: 2, direction: move.Down, wantShown: "1\n2\n[3]"},
+		{name: "down stops at the last row", start: rows - 1, direction: move.Down, wantShown: "7\n8\n[9]"},
+		{name: "up stops at the first row", start: 0, direction: move.Up, wantShown: "[0]\n1\n2"},
+		{name: "top goes to the first row", start: 5, direction: move.Top, wantShown: "[0]\n1\n2"},
+		{name: "bottom goes to the last row", start: 0, direction: move.Bottom, wantShown: "7\n8\n[9]"},
+		{name: "page down moves a page", start: 0, direction: move.PageDown, wantShown: "1\n2\n[3]"},
+		{name: "page up moves a page", start: 5, direction: move.PageUp, wantShown: "[2]\n3\n4"},
+		{name: "none stays", start: 4, direction: move.None, wantShown: "2\n3\n[4]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,26 +39,33 @@ func TestCursor_Moved(t *testing.T) {
 
 			got := move.Cursor{}.At(tt.start, rows, height).Moved(tt.direction, rows, height)
 
-			assert.Equal(t, tt.wantIndex, got.Index())
-			assert.Equal(t, tt.wantOffset, got.Offset())
+			assert.Equal(t, tt.wantShown, got.VisibleRows(rows, height, strconv.Itoa, bracketed))
 		})
 	}
 }
 
-func TestCursor_End(t *testing.T) {
+func TestCursor_VisibleRows(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ends a page after the scrolled row", func(t *testing.T) {
+	t.Run("shows a page ending at the scrolled cursor and marks it", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, 5, move.Cursor{}.At(4, rows, height).End(rows, height))
+		got := move.Cursor{}.At(4, rows, height).VisibleRows(rows, height, strconv.Itoa, bracketed)
+
+		assert.Equal(t, "2\n3\n[4]", got)
 	})
 
 	t.Run("stops at the last row", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, 2, move.Cursor{}.At(1, 2, height).End(2, height))
+		got := move.Cursor{}.At(1, 2, height).VisibleRows(2, height, strconv.Itoa, bracketed)
+
+		assert.Equal(t, "0\n[1]", got)
 	})
+}
+
+func bracketed(line string) string {
+	return "[" + line + "]"
 }
 
 func TestCursor_At(t *testing.T) {

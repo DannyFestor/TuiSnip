@@ -7,3 +7,7 @@ type FrameStyle struct {
 	Title  lipgloss.Style
 	Cursor lipgloss.Style
 }
+
+func (f FrameStyle) CursorOn(line string) string {
+	return f.Cursor.Render(line)
+}

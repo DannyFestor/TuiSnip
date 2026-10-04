@@ -25,20 +25,16 @@ func New(tree browse.Tree) Paths {
 	return Paths{names: names}
 }
 
-func (p Paths) Folder(id domain.FolderID) string {
+func (p Paths) Full(id domain.FolderID) string {
 	return strings.Join(append([]string{Root}, p.namesOf(id)...), separator)
 }
 
-func (p Paths) Of(snippet domain.Snippet) string {
-	return p.Folder(snippet.FolderID())
-}
-
-func (p Paths) Compact(snippet domain.Snippet) string {
-	if snippet.AtRoot() {
+func (p Paths) Short(id domain.FolderID) string {
+	if id.IsNil() {
 		return Root
 	}
 
-	return strings.Join(p.namesOf(snippet.FolderID()), separator)
+	return strings.Join(p.namesOf(id), separator)
 }
 
 func (p Paths) namesOf(id domain.FolderID) []string {

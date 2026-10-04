@@ -54,7 +54,7 @@ func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listin
 		styles:  styles,
 		query:   input.NewLine(searchPrompt),
 		browse:  listing.Snippets,
-		results: snippetlist.New(keys, styles, listing.Paths.Compact).WithSnippets(listing.Snippets),
+		results: snippetlist.New(keys, styles, listing.shortPath).WithSnippets(listing.Snippets),
 		preview: preview.WithPaths(listing.Paths),
 		outer:   look.Size{Width: 0, Height: 0},
 	}

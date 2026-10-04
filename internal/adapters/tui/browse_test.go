@@ -56,11 +56,11 @@ func TestModel_browse(t *testing.T) {
 		tree := NewMockFolderTreeLister(t)
 		tree.EXPECT().Run(mock.Anything, browse.FolderTreeInput{}).Return(browse.Tree{}, errDatabaseLocked)
 		screen := start(t, modelWith(t, actions{
-			lister:   listerOf(t),
-			tree:     tree,
-			copier:   NewMockSnippetCopier(t),
-			creator:  NewMockSnippetCreator(t),
-			searcher: NewMockSnippetSearcher(t),
+			lister:     listerOf(t),
+			treeLister: tree,
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   NewMockSnippetSearcher(t),
 		}), wideWidth, wideHeight)
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
@@ -76,11 +76,11 @@ func TestModel_browse(t *testing.T) {
 		searcher := NewMockSnippetSearcher(t)
 		searcher.EXPECT().Run(mock.Anything, search.QueryInput{Text: "t"}).Return(hitsOf(filed), nil)
 		screen := start(t, modelWith(t, actions{
-			lister:   lister,
-			tree:     treeOf(t, sample.Tree),
-			copier:   NewMockSnippetCopier(t),
-			creator:  NewMockSnippetCreator(t),
-			searcher: searcher,
+			lister:     lister,
+			treeLister: treeOf(t, sample.Tree),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   searcher,
 		}), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('/'), keypress.Letter('t'), keypress.Special(tea.KeyEnter))
@@ -102,11 +102,11 @@ func TestModel_browse(t *testing.T) {
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{Title: "Prune"}).Return(saved, nil)
 		screen := start(t, modelWith(t, actions{
-			lister:   listerReturning(t, nil, []domain.Snippet{saved}),
-			tree:     tree,
-			copier:   NewMockSnippetCopier(t),
-			creator:  creator,
-			searcher: NewMockSnippetSearcher(t),
+			lister:     listerReturning(t, nil, []domain.Snippet{saved}),
+			treeLister: tree,
+			copier:     NewMockSnippetCopier(t),
+			creator:    creator,
+			searcher:   NewMockSnippetSearcher(t),
 		}), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('n'))
@@ -121,11 +121,11 @@ func browsingModel(t *testing.T, sample foldertree.Sample, lister *MockFolderSni
 	t.Helper()
 
 	return modelWith(t, actions{
-		lister:   lister,
-		tree:     treeOf(t, sample.Tree),
-		copier:   NewMockSnippetCopier(t),
-		creator:  NewMockSnippetCreator(t),
-		searcher: NewMockSnippetSearcher(t),
+		lister:     lister,
+		treeLister: treeOf(t, sample.Tree),
+		copier:     NewMockSnippetCopier(t),
+		creator:    NewMockSnippetCreator(t),
+		searcher:   NewMockSnippetSearcher(t),
 	})
 }
 

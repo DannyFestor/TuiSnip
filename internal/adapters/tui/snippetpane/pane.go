@@ -187,7 +187,9 @@ func (p Pane) sized() Pane {
 func (p Pane) header() []string {
 	lines := []string{
 		p.styles.Bold.Render(p.snippet.Title().String()),
-		p.styles.Dim.Render(p.paths.Of(p.snippet) + metaSeparator + p.snippet.FirstFragment().Language().String()),
+		p.styles.Dim.Render(
+			p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String(),
+		),
 		p.styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)

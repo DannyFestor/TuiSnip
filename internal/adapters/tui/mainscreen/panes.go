@@ -101,7 +101,7 @@ func (p panes) selectingFolder(id domain.FolderID) panes {
 }
 
 func (p panes) browseSelection() string {
-	return p.paths.Folder(p.folders.Selected())
+	return p.paths.Full(p.folders.Selected())
 }
 
 func (p panes) listing() searchpopup.Listing {

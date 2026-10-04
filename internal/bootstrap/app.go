@@ -117,13 +117,13 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.log = opened.log
 
 	app.model, err = newModel(ctx, cfg, tui.Deps{
-		Lister:   app.SnippetsInFolder,
-		Tree:     app.FolderTree,
-		Copier:   app.Copy,
-		Creator:  app.Create,
-		Searcher: app.Query,
-		Settings: SettingsFrom(cfg, time.Local),
-		Logger:   logger,
+		Lister:     app.SnippetsInFolder,
+		TreeLister: app.FolderTree,
+		Copier:     app.Copy,
+		Creator:    app.Create,
+		Searcher:   app.Query,
+		Settings:   SettingsFrom(cfg, time.Local),
+		Logger:     logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build TUI: %w", err)

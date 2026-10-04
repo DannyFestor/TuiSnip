@@ -33,20 +33,20 @@ func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetC
 	t.Helper()
 
 	return modelWith(t, actions{
-		lister:   lister,
-		tree:     treeOf(t, emptyTree()),
-		copier:   copier,
-		creator:  NewMockSnippetCreator(t),
-		searcher: NewMockSnippetSearcher(t),
+		lister:     lister,
+		treeLister: treeOf(t, emptyTree()),
+		copier:     copier,
+		creator:    NewMockSnippetCreator(t),
+		searcher:   NewMockSnippetSearcher(t),
 	})
 }
 
 type actions struct {
-	lister   tui.FolderSnippetsLister
-	tree     tui.FolderTreeLister
-	copier   tui.SnippetCopier
-	creator  tui.SnippetCreator
-	searcher tui.SnippetSearcher
+	lister     tui.FolderSnippetsLister
+	treeLister tui.FolderTreeLister
+	copier     tui.SnippetCopier
+	creator    tui.SnippetCreator
+	searcher   tui.SnippetSearcher
 }
 
 func emptyTree() browse.Tree {
@@ -84,13 +84,13 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 	t.Helper()
 
 	model, err := build(t.Context(), tui.Deps{
-		Lister:   with.lister,
-		Tree:     with.tree,
-		Copier:   with.copier,
-		Creator:  with.creator,
-		Searcher: with.searcher,
-		Settings: settings,
-		Logger:   slog.New(slog.DiscardHandler),
+		Lister:     with.lister,
+		TreeLister: with.treeLister,
+		Copier:     with.copier,
+		Creator:    with.creator,
+		Searcher:   with.searcher,
+		Settings:   settings,
+		Logger:     slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 

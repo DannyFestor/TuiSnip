@@ -3,7 +3,6 @@ package folderpane
 import (
 	"slices"
 	"strconv"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -46,14 +45,7 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 }
 
 func (p Pane) View(frame look.FrameStyle) string {
-	end := p.cursor.End(len(p.rows), p.box.Height)
-	lines := make([]string, 0, end-p.cursor.Offset())
-
-	for index := p.cursor.Offset(); index < end; index++ {
-		lines = append(lines, p.rowAt(frame, index))
-	}
-
-	return strings.Join(lines, "\n")
+	return p.cursor.VisibleRows(len(p.rows), p.box.Height, p.rowAt, frame.CursorOn)
 }
 
 func (p Pane) ShortHelp() []key.Binding {
@@ -113,13 +105,8 @@ func (p Pane) withCursor(index int) Pane {
 	return p
 }
 
-func (p Pane) rowAt(frame look.FrameStyle, index int) string {
+func (p Pane) rowAt(index int) string {
 	shown := p.rows[index]
-	line := look.Row(shown.label, strconv.Itoa(shown.snippetCount), p.box.Width)
 
-	if index == p.cursor.Index() {
-		return frame.Cursor.Render(line)
-	}
-
-	return line
+	return look.Row(shown.label, strconv.Itoa(shown.snippetCount), p.box.Width)
 }

@@ -2,7 +2,6 @@ package snippetlist
 
 import (
 	"slices"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -126,25 +125,13 @@ func (l List) resized(box look.Size) List {
 }
 
 func (l List) rows(frame look.FrameStyle) string {
-	end := l.cursor.End(len(l.snippets), l.box.Height)
-	rows := make([]string, 0, end-l.cursor.Offset())
-
-	for index := l.cursor.Offset(); index < end; index++ {
-		rows = append(rows, l.rowAt(frame, index))
-	}
-
-	return strings.Join(rows, "\n")
+	return l.cursor.VisibleRows(len(l.snippets), l.box.Height, l.rowAt, frame.CursorOn)
 }
 
-func (l List) rowAt(frame look.FrameStyle, index int) string {
+func (l List) rowAt(index int) string {
 	snippet := l.snippets[index]
-	line := look.Row(snippet.Title().String(), l.meta(snippet), l.box.Width)
 
-	if index == l.cursor.Index() {
-		return frame.Cursor.Render(line)
-	}
-
-	return line
+	return look.Row(snippet.Title().String(), l.meta(snippet), l.box.Width)
 }
 
 func (l List) withCursor(index int) List {

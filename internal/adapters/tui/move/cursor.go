@@ -1,5 +1,7 @@
 package move
 
+import "strings"
+
 type Cursor struct {
 	index  int
 	offset int
@@ -9,12 +11,20 @@ func (c Cursor) Index() int {
 	return c.index
 }
 
-func (c Cursor) Offset() int {
-	return c.offset
-}
+func (c Cursor) VisibleRows(rows, height int, row func(index int) string, highlight func(string) string) string {
+	end := max(c.offset, min(rows, c.offset+height))
+	lines := make([]string, 0, end-c.offset)
 
-func (c Cursor) End(rows, height int) int {
-	return max(c.offset, min(rows, c.offset+height))
+	for index := c.offset; index < end; index++ {
+		line := row(index)
+		if index == c.index {
+			line = highlight(line)
+		}
+
+		lines = append(lines, line)
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (c Cursor) Moved(direction Direction, rows, height int) Cursor {

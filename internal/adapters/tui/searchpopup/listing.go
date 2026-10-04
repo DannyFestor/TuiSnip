@@ -9,3 +9,7 @@ type Listing struct {
 	Snippets []domain.Snippet
 	Paths    folderpath.Paths
 }
+
+func (l Listing) shortPath(snippet domain.Snippet) string {
+	return l.Paths.Short(snippet.FolderID())
+}

@@ -31,7 +31,7 @@ type Model struct {
 	//nolint:containedctx // Bubble Tea's Update has no context parameter, so the program context travels with the model.
 	ctx           context.Context
 	lister        FolderSnippetsLister
-	tree          FolderTreeLister
+	treeLister    FolderTreeLister
 	copier        SnippetCopier
 	creator       SnippetCreator
 	searcher      SnippetSearcher
@@ -62,7 +62,7 @@ func NewQuittingAfterCopy(ctx context.Context, deps Deps) (Model, error) {
 func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Model, error) {
 	err := errors.Join(
 		domain.RequireDependency("lister", deps.Lister),
-		domain.RequireDependency("tree", deps.Tree),
+		domain.RequireDependency("treeLister", deps.TreeLister),
 		domain.RequireDependency("copier", deps.Copier),
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("searcher", deps.Searcher),
@@ -79,7 +79,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 	return Model{
 		ctx:           ctx,
 		lister:        deps.Lister,
-		tree:          deps.Tree,
+		treeLister:    deps.TreeLister,
 		copier:        deps.Copier,
 		creator:       deps.Creator,
 		searcher:      deps.Searcher,
@@ -123,7 +123,7 @@ func (m Model) View() tea.View {
 
 func (m Model) loadTree() tea.Cmd {
 	return func() tea.Msg {
-		tree, err := m.tree.Run(m.ctx, browse.FolderTreeInput{})
+		tree, err := m.treeLister.Run(m.ctx, browse.FolderTreeInput{})
 		if err != nil {
 			return treeFailedMsg{err: err}
 		}

@@ -21,8 +21,7 @@ type List struct {
 	styles     look.Styles
 	meta       Meta
 	snippets   []domain.Snippet
-	cursor     int
-	offset     int
+	cursor     move.Cursor
 	box        look.Size
 }
 
@@ -34,8 +33,7 @@ func New(keys binding.Keys, styles look.Styles, meta Meta) List {
 		styles:     styles,
 		meta:       meta,
 		snippets:   nil,
-		cursor:     0,
-		offset:     0,
+		cursor:     move.Cursor{},
 		box:        look.Size{Width: 0, Height: 0},
 	}
 }
@@ -72,7 +70,7 @@ func (l List) WithSnippets(snippets []domain.Snippet) List {
 	next := l
 	next.snippets = snippets
 
-	return next.withCursor(l.cursor)
+	return next.withCursor(l.cursor.Index())
 }
 
 func (l List) WithCursorOn(id domain.SnippetID) List {
@@ -85,7 +83,9 @@ func (l List) WithCursorOn(id domain.SnippetID) List {
 }
 
 func (l List) Moved(direction move.Direction) List {
-	return l.withCursor(l.cursorAfter(direction))
+	l.cursor = l.cursor.Moved(direction, len(l.snippets), l.box.Height)
+
+	return l
 }
 
 func (l List) Selected() (domain.Snippet, bool) {
@@ -93,7 +93,7 @@ func (l List) Selected() (domain.Snippet, bool) {
 		return domain.Snippet{}, false
 	}
 
-	return l.snippets[l.cursor], true
+	return l.snippets[l.cursor.Index()], true
 }
 
 func (l List) Snippets() []domain.Snippet {
@@ -122,14 +122,14 @@ func (l List) resized(box look.Size) List {
 	next := l
 	next.box = box
 
-	return next.withCursor(l.cursor)
+	return next.withCursor(l.cursor.Index())
 }
 
 func (l List) rows(frame look.FrameStyle) string {
-	end := min(len(l.snippets), l.offset+l.box.Height)
-	rows := make([]string, 0, max(0, end-l.offset))
+	end := l.cursor.End(len(l.snippets), l.box.Height)
+	rows := make([]string, 0, end-l.cursor.Offset())
 
-	for index := l.offset; index < end; index++ {
+	for index := l.cursor.Offset(); index < end; index++ {
 		rows = append(rows, l.rowAt(frame, index))
 	}
 
@@ -140,37 +140,15 @@ func (l List) rowAt(frame look.FrameStyle, index int) string {
 	snippet := l.snippets[index]
 	line := look.Row(snippet.Title().String(), l.meta(snippet), l.box.Width)
 
-	if index == l.cursor {
+	if index == l.cursor.Index() {
 		return frame.Cursor.Render(line)
 	}
 
 	return line
 }
 
-func (l List) cursorAfter(direction move.Direction) int {
-	switch direction {
-	case move.Down:
-		return l.cursor + 1
-	case move.Up:
-		return l.cursor - 1
-	case move.Top:
-		return 0
-	case move.Bottom:
-		return len(l.snippets) - 1
-	case move.PageDown:
-		return l.cursor + l.box.Height
-	case move.PageUp:
-		return l.cursor - l.box.Height
-	case move.None:
-		return l.cursor
-	}
-
-	return l.cursor
-}
-
-func (l List) withCursor(cursor int) List {
-	l.cursor = max(0, min(cursor, len(l.snippets)-1))
-	l.offset = max(0, min(l.offset, l.cursor), l.cursor-l.box.Height+1)
+func (l List) withCursor(index int) List {
+	l.cursor = l.cursor.At(index, len(l.snippets), l.box.Height)
 
 	return l
 }

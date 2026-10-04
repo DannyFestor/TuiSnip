@@ -1,12 +1,11 @@
 package mainscreen
 
-import "github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
-
 const (
-	folderPaneTitle  = "1 Folders"
-	tagPaneTitle     = "2 Tags"
-	snippetListTitle = "3 " + folderpath.Root + " · by title"
-	snippetPaneTitle = "4 Snippet"
+	folderPaneTitle   = "1 Folders"
+	tagPaneTitle      = "2 Tags"
+	snippetListNumber = "3 "
+	snippetListOrder  = " · by title"
+	snippetPaneTitle  = "4 Snippet"
 )
 
 type pane int
@@ -78,14 +77,14 @@ func (p pane) inLeftColumn() bool {
 	return p == paneFolders || p == paneTags
 }
 
-func (p pane) title() string {
+func (p pane) title(browseSelection string) string {
 	switch p {
 	case paneFolders:
 		return folderPaneTitle
 	case paneTags:
 		return tagPaneTitle
 	case paneList:
-		return snippetListTitle
+		return snippetListNumber + browseSelection + snippetListOrder
 	case paneSnippet:
 		return snippetPaneTitle
 	}

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"slices"
@@ -90,6 +91,10 @@ func (f Folder) MoveToRoot() Folder {
 	f.parentID = FolderID{}
 
 	return f
+}
+
+func CompareFolders(a, b Folder) int {
+	return cmp.Or(a.name.CompareIgnoringCase(b.name), a.id.Compare(b.id))
 }
 
 func requireNotOwnParent(id, parentID FolderID) error {

@@ -5,13 +5,15 @@ import (
 
 	"github.com/charmbracelet/x/exp/golden"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 func TestMainScreenLayout(t *testing.T) {
 	t.Parallel()
 
-	screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
 	screen.press(keypress.Letter('3'))
 
 	golden.RequireEqual(t, []byte(screen.screen()))
@@ -28,7 +30,7 @@ func TestEmptyMainScreenLayout(t *testing.T) {
 func TestEditOverlayLayout(t *testing.T) {
 	t.Parallel()
 
-	screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
 	screen.press(keypress.Letter('n'))
 	screen.press(keypress.Typed("Prune everything")...)
 
@@ -38,7 +40,7 @@ func TestEditOverlayLayout(t *testing.T) {
 func TestSearchPopupLayout(t *testing.T) {
 	t.Parallel()
 
-	screen := start(t, newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
 	screen.press(keypress.Letter('/'))
 
 	golden.RequireEqual(t, []byte(screen.screen()))
@@ -47,13 +49,14 @@ func TestSearchPopupLayout(t *testing.T) {
 func TestSmallTerminalLayout(t *testing.T) {
 	t.Parallel()
 
-	screen := start(
-		t,
-		newModel(t, listerOf(t, sampleSnippets(t)...), NewMockSnippetCopier(t)),
-		narrowWidth,
-		narrowHeight,
-	)
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), narrowWidth, narrowHeight)
 	screen.press(keypress.Letter('4'))
 
 	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
+func layoutModel(t *testing.T, lister *MockFolderSnippetsLister) tui.Model {
+	t.Helper()
+
+	return browsingModel(t, foldertree.New(t), lister)
 }

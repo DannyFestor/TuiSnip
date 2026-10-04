@@ -14,6 +14,7 @@ const (
 	labelLeave          = "leave"
 	labelMove           = "move"
 	labelReveal         = "reveal"
+	labelOpen           = "open"
 	labelClose          = "close"
 	labelYes            = "yes"
 	labelNo             = "no"

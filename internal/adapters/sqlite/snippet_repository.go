@@ -57,6 +57,31 @@ func (r *SnippetRepository) ListInFolder(ctx context.Context, folderID domain.Fo
 	return snippets, nil
 }
 
+func (r *SnippetRepository) CountByFolder(ctx context.Context) (map[domain.FolderID]int, error) {
+	var rows []sqlcgen.CountSnippetsByFolderRow
+
+	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		var countErr error
+
+		rows, countErr = queries.CountSnippetsByFolder(ctx)
+		if countErr != nil {
+			return fmt.Errorf("count snippets: %w", countErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("sqlite.SnippetRepository.CountByFolder: %w", err)
+	}
+
+	counts := make(map[domain.FolderID]int, len(rows))
+	for _, row := range rows {
+		counts[folderFromColumn(row.FolderID)] = int(row.SnippetCount)
+	}
+
+	return counts, nil
+}
+
 func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
 	err := queries.InsertSnippet(ctx, insertSnippetParams(snippet))
 	if err != nil {

@@ -51,6 +51,7 @@ func TestModel_searchPopup(t *testing.T) {
 		snippets := sampleSnippets(t)
 		screen := start(t, modelWith(t, actions{
 			lister:   listerReturning(t, snippets, snippets),
+			tree:     treeOf(t, emptyTree()),
 			copier:   NewMockSnippetCopier(t),
 			creator:  NewMockSnippetCreator(t),
 			searcher: NewMockSnippetSearcher(t),
@@ -73,6 +74,7 @@ func TestModel_searchPopup(t *testing.T) {
 			Return(copied(t, domain.CopyDeliveryPlaced), nil)
 		screen := start(t, modelWith(t, actions{
 			lister:   listerOf(t, snippets...),
+			tree:     treeOf(t, emptyTree()),
 			copier:   copier,
 			creator:  NewMockSnippetCreator(t),
 			searcher: NewMockSnippetSearcher(t),
@@ -90,6 +92,7 @@ func searchingModel(t *testing.T, searcher *MockSnippetSearcher) tui.Model {
 
 	return modelWith(t, actions{
 		lister:   listerOf(t, sampleSnippets(t)...),
+		tree:     treeOf(t, emptyTree()),
 		copier:   NewMockSnippetCopier(t),
 		creator:  NewMockSnippetCreator(t),
 		searcher: searcher,

@@ -21,6 +21,7 @@ import (
 
 const (
 	operationList   = "list snippets"
+	operationTree   = "list folders"
 	operationCopy   = "copy"
 	operationSave   = "save snippet"
 	operationSearch = "search"
@@ -30,6 +31,7 @@ type Model struct {
 	//nolint:containedctx // Bubble Tea's Update has no context parameter, so the program context travels with the model.
 	ctx           context.Context
 	lister        FolderSnippetsLister
+	tree          FolderTreeLister
 	copier        SnippetCopier
 	creator       SnippetCreator
 	searcher      SnippetSearcher
@@ -60,6 +62,7 @@ func NewQuittingAfterCopy(ctx context.Context, deps Deps) (Model, error) {
 func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Model, error) {
 	err := errors.Join(
 		domain.RequireDependency("lister", deps.Lister),
+		domain.RequireDependency("tree", deps.Tree),
 		domain.RequireDependency("copier", deps.Copier),
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("searcher", deps.Searcher),
@@ -76,6 +79,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 	return Model{
 		ctx:           ctx,
 		lister:        deps.Lister,
+		tree:          deps.Tree,
 		copier:        deps.Copier,
 		creator:       deps.Creator,
 		searcher:      deps.Searcher,
@@ -87,7 +91,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tea.RequestBackgroundColor, m.loadSnippets(domain.SnippetID{}))
+	return tea.Batch(tea.RequestBackgroundColor, m.loadTree(), m.loadSnippets(domain.FolderID{}, domain.SnippetID{}))
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -95,10 +99,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
-		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded:
+		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded:
 		return m.overlaysUpdated(msg)
 	case listFailedMsg:
 		return m.failed(operationList, msg.err)
+	case treeFailedMsg:
+		return m.failed(operationTree, msg.err)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
 	case searchFailedMsg:
@@ -115,14 +121,25 @@ func (m Model) View() tea.View {
 	return view
 }
 
-func (m Model) loadSnippets(selecting domain.SnippetID) tea.Cmd {
+func (m Model) loadTree() tea.Cmd {
 	return func() tea.Msg {
-		snippets, err := m.lister.Run(m.ctx, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}})
+		tree, err := m.tree.Run(m.ctx, browse.FolderTreeInput{})
+		if err != nil {
+			return treeFailedMsg{err: err}
+		}
+
+		return mainscreen.TreeLoaded{Tree: tree}
+	}
+}
+
+func (m Model) loadSnippets(folderID domain.FolderID, selecting domain.SnippetID) tea.Cmd {
+	return func() tea.Msg {
+		snippets, err := m.lister.Run(m.ctx, browse.SnippetsInFolderInput{FolderID: folderID})
 		if err != nil {
 			return listFailedMsg{err: err}
 		}
 
-		return mainscreen.SnippetsLoaded{Snippets: snippets, Selecting: selecting}
+		return mainscreen.SnippetsLoaded{FolderID: folderID, Snippets: snippets, Selecting: selecting}
 	}
 }
 
@@ -163,16 +180,14 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested:
 		return m, m.createSnippet(reported.Input)
-	case outcome.SnippetSaved:
-		return m, m.loadSnippets(reported.ID)
+	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected:
+		return m, m.relisted(reported)
 	case outcome.SaveFailed:
 		return m.failed(operationSave, reported.Err)
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
 	case outcome.SearchTyped:
 		return m, m.querySnippets(reported.Text)
-	case outcome.SnippetRevealed:
-		return m, m.loadSnippets(reported.ID)
 	case outcome.CopyRequested:
 		return m, m.copySnippet(reported.ID)
 	case outcome.DiscardConfirmed:
@@ -181,6 +196,19 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m Model) relisted(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.SnippetSaved:
+		return tea.Batch(m.loadTree(), m.loadSnippets(reported.FolderID, reported.ID))
+	case outcome.SnippetRevealed:
+		return m.loadSnippets(reported.FolderID, reported.ID)
+	case outcome.FolderSelected:
+		return m.loadSnippets(reported.ID, domain.SnippetID{})
+	default:
+		return nil
+	}
 }
 
 func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {

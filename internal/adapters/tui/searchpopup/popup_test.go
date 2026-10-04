@@ -34,6 +34,23 @@ func TestPopup_View(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "No Snippets here.")
 	})
 
+	t.Run("shows each result's Folder path without the Root", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := searchingInFolder(t)
+
+		assert.Regexp(t, `Table test skeleton +go / testing`, screen.Screen())
+		assert.Contains(t, screen.Screen(), "Root / go / testing · plaintext")
+	})
+
+	t.Run("shows Root for a result at the Root", func(t *testing.T) {
+		t.Parallel()
+
+		screen := searching(t)
+
+		assert.Regexp(t, `Graceful HTTP shutdown +Root`, screen.Screen())
+	})
+
 	t.Run("splits its share of the screen between results and preview", func(t *testing.T) {
 		t.Parallel()
 
@@ -223,6 +240,17 @@ func TestPopup_end(t *testing.T) {
 
 		assert.Equal(t, []outcome.Outcome{outcome.SnippetRevealed{ID: snippets[1].ID()}}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("enter reveals a Snippet in its Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, filed := searchingInFolder(t)
+
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		revealed := outcome.SnippetRevealed{ID: filed.ID(), FolderID: filed.FolderID()}
+		assert.Equal(t, []outcome.Outcome{revealed}, screen.Outcomes())
 	})
 
 	t.Run("ctrl+y copies the selected Snippet and closes", func(t *testing.T) {

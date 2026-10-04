@@ -15,9 +15,12 @@ packages:
   github.com/DannyFestor/TuiSnip/internal/app/browse:
     interfaces:
       SnippetLister: {}
+      FolderLister: {}
+      SnippetCounter: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui:
     interfaces:
       FolderSnippetsLister: {}
+      FolderTreeLister: {}
       SnippetCopier: {}
       SnippetCreator: {}
       SnippetSearcher: {}

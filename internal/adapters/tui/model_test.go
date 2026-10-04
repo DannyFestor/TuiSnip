@@ -44,6 +44,7 @@ func TestNew(t *testing.T) {
 
 			_, err := tt.build(t.Context(), tui.Deps{
 				Lister:   nil,
+				Tree:     nil,
 				Copier:   nil,
 				Creator:  nil,
 				Searcher: nil,
@@ -53,7 +54,7 @@ func TestNew(t *testing.T) {
 
 			require.ErrorIs(t, err, domain.ErrMissingDependency)
 
-			for _, name := range []string{"lister", "copier", "creator", "searcher", "logger", "location"} {
+			for _, name := range []string{"lister", "tree", "copier", "creator", "searcher", "logger", "location"} {
 				assert.ErrorContains(t, err, name)
 			}
 		})
@@ -232,6 +233,7 @@ func copyFirstSnippet(t *testing.T, build modelConstructor, result snippet.CopyR
 
 	model := modelBuiltBy(t, build, actions{
 		lister:   listerOf(t, snippets...),
+		tree:     treeOf(t, emptyTree()),
 		copier:   copier,
 		creator:  NewMockSnippetCreator(t),
 		searcher: NewMockSnippetSearcher(t),

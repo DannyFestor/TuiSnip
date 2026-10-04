@@ -62,7 +62,9 @@ func save() tea.KeyPressMsg {
 func savedSnippet(t *testing.T) domain.Snippet {
 	t.Helper()
 
-	return testkit.Snippet(t, testkit.SnippetSpec{ID: testkit.NewSequentialIDs().NewSnippetID()})
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: ids.NewFolderID()})
 }
 
 func input(title, description, content string) snippet.CreateInput {

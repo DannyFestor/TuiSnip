@@ -1,8 +1,8 @@
 ╭ 1 Folders ─────────────────────╮╭ 3 Root · by title ───────────────╮╭ 4 Snippet ─────────────────────────────────────╮
 │◆ Root                         2││Graceful HTTP shutdown          Go││Graceful HTTP shutdown                          │
-│                                ││Prune everything              Bash││Root · Go                                       │
-│                                ││                                  ││created 2026-09-06 · updated 2026-09-27         │
-│           ╭ Search · 2 results ────────────────╮╭ Preview ───────────────────────────────────────────────╮           │
+│  docker                       3││Prune everything              Bash││Root · Go                                       │
+│▾ go                           2││                                  ││created 2026-09-06 · updated 2026-09-27         │
+│    testing╭ Search · 2 results ────────────────╮╭ Preview ───────────────────────────────────────────────╮           │
 │           │/                                   ││Graceful HTTP shutdown                                  │───────────│
 │           │                                    ││Root · Go                                               │error {    │
 │           │Graceful HTTP shutdown          Root││created 2026-09-06 · updated 2026-09-27                 │           │

@@ -4,6 +4,7 @@ import "log/slog"
 
 type Deps struct {
 	Lister   FolderSnippetsLister
+	Tree     FolderTreeLister
 	Copier   SnippetCopier
 	Creator  SnippetCreator
 	Searcher SnippetSearcher

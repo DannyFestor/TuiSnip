@@ -16,3 +16,8 @@ SELECT id, folder_id, title, description, created_at, updated_at
 FROM snippets
 WHERE folder_id IS sqlc.narg(folder_id)
 ORDER BY title COLLATE NOCASE, id;
+
+-- name: CountSnippetsByFolder :many
+SELECT folder_id, COUNT(*) AS snippet_count
+FROM snippets
+GROUP BY folder_id;

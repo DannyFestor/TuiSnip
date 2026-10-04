@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -109,6 +110,105 @@ func TestScreen_cursor(t *testing.T) {
 		screen.Send(mainscreen.SnippetsLoaded{Snippets: snippets, Selecting: snippets[1].ID()})
 
 		assert.Contains(t, screen.Screen(), "Reclaim disk space")
+	})
+}
+
+func TestScreen_browse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shows the Folder tree", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		assert.Contains(t, screen.Screen(), "▾ go")
+		assert.Contains(t, screen.Screen(), "    testing")
+	})
+
+	t.Run("moving the cursor onto a Folder selects it", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+
+		screen.Press(keypress.Typed("jj")...)
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.FolderSelected{ID: sample.Docker.ID()},
+			outcome.FolderSelected{ID: sample.Go.ID()},
+		}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 Root / go · by title")
+	})
+
+	t.Run("lists the Snippets loaded for the selected Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		filed := filedIn(t, sample.Go.ID())
+
+		screen.Press(keypress.Typed("jj")...)
+
+		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Snippets: []domain.Snippet{filed}})
+
+		assert.Contains(t, screen.Screen(), filedTitle)
+		assert.NotContains(t, screen.Screen(), secondTitle)
+	})
+
+	t.Run("ignores Snippets loaded for a Folder no longer selected", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Letter('j'))
+
+		screen.Send(
+			mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Snippets: []domain.Snippet{filedIn(t, sample.Go.ID())}},
+		)
+
+		assert.NotContains(t, screen.Screen(), filedTitle)
+	})
+
+	t.Run("moving focus keeps the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Letter('j'))
+
+		screen.Press(keypress.Special(tea.KeyTab), keypress.Letter('j'), keypress.Special(tea.KeyTab))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 Root / docker · by title")
+	})
+
+	t.Run("shows the Snippet's Folder path in the Snippet pane", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Typed("G")...)
+
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				FolderID: sample.Tests.ID(),
+				Snippets: []domain.Snippet{filedIn(t, sample.Tests.ID())},
+			},
+		)
+
+		assert.Contains(t, screen.Screen(), "Root / go / testing · Go")
+	})
+
+	t.Run("shows each Search result's Folder path", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Typed("G")...)
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				FolderID: sample.Tests.ID(),
+				Snippets: []domain.Snippet{filedIn(t, sample.Tests.ID())},
+			},
+		)
+
+		screen.Press(keypress.Letter('/'))
+
+		assert.Regexp(t, filedTitle+` +go / testing`, screen.Screen())
 	})
 }
 
@@ -355,6 +455,42 @@ func TestScreen_Received(t *testing.T) {
 
 		assert.Equal(t, []outcome.Outcome{revealed}, screen.Outcomes())
 		assert.Equal(t, []int{22, 32, 66}, columnWidths(screen))
+	})
+
+	t.Run("makes a revealed Snippet's Folder the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Letter('2'))
+
+		filed := filedIn(t, sample.Go.ID())
+
+		screen.Offer(outcome.SnippetRevealed{ID: filed.ID(), FolderID: sample.Go.ID()})
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				FolderID:  sample.Go.ID(),
+				Snippets:  []domain.Snippet{filed},
+				Selecting: filed.ID(),
+			},
+		)
+
+		assert.Contains(t, screen.Screen(), "3 Root / go · by title")
+		assert.Contains(t, screen.Screen(), filedTitle)
+		assert.Equal(t, 26, lineIndexOf(screen, tagPaneTitle), "Folders, holding the Browse selection, is tall")
+	})
+
+	t.Run("makes a saved Snippet's Folder the Browse selection and passes it on", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Letter('j'))
+
+		saved := outcome.SnippetSaved{ID: filedIn(t, domain.FolderID{}).ID(), FolderID: domain.FolderID{}}
+
+		screen.Offer(saved)
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}, saved}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 Root · by title")
 	})
 
 	t.Run("passes any other outcome on", func(t *testing.T) {

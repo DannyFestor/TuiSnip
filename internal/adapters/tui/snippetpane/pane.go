@@ -34,6 +34,7 @@ type Pane struct {
 	shown      bool
 	viewport   viewport.Model
 	location   *time.Location
+	paths      folderpath.Paths
 	codeStyle  string
 	box        look.Size
 }
@@ -51,6 +52,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 		shown:      false,
 		viewport:   code,
 		location:   location,
+		paths:      folderpath.Paths{},
 		codeStyle:  look.DarkCodeStyle,
 		box:        look.Size{Width: 0, Height: 0},
 	}
@@ -96,6 +98,12 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 	next.shown = true
 
 	return next.rendered()
+}
+
+func (p Pane) WithPaths(paths folderpath.Paths) Pane {
+	p.paths = paths
+
+	return p
 }
 
 func (p Pane) Cleared() Pane {
@@ -179,7 +187,9 @@ func (p Pane) sized() Pane {
 func (p Pane) header() []string {
 	lines := []string{
 		p.styles.Bold.Render(p.snippet.Title().String()),
-		p.styles.Dim.Render(folderpath.Of(p.snippet) + metaSeparator + p.snippet.FirstFragment().Language().String()),
+		p.styles.Dim.Render(
+			p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String(),
+		),
 		p.styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)

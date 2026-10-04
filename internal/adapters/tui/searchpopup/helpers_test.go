@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -35,11 +37,33 @@ func searching(t *testing.T) *overlaytest.Driver {
 func searchingIn(t *testing.T, browse []domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
+	return searchingListing(t, searchpopup.Listing{Snippets: browse, Paths: folderpath.Paths{}})
+}
+
+func searchingListing(t *testing.T, listing searchpopup.Listing) *overlaytest.Driver {
+	t.Helper()
+
 	keys := testsettings.Default(t).Keys
 	styles := look.NewStyles()
-	opened, _ := searchpopup.New(keys, styles, snippetpane.New(keys, styles, time.UTC), browse)
+	opened, _ := searchpopup.New(keys, styles, snippetpane.New(keys, styles, time.UTC), listing)
 
 	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func searchingInFolder(t *testing.T) (*overlaytest.Driver, domain.Snippet) {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+	sample := foldertree.New(t)
+	filed := testkit.Snippet(t, testkit.SnippetSpec{
+		ID:       ids.NewSnippetID(),
+		Title:    "Table test skeleton",
+		FolderID: sample.Tests.ID(),
+		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
+	})
+	listing := searchpopup.Listing{Snippets: []domain.Snippet{filed}, Paths: folderpath.New(sample.Tree)}
+
+	return searchingListing(t, listing), filed
 }
 
 func sampleSnippets(t *testing.T) []domain.Snippet {

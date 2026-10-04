@@ -11,6 +11,40 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countSnippetsByFolder = `-- name: CountSnippetsByFolder :many
+SELECT folder_id, COUNT(*) AS snippet_count
+FROM snippets
+GROUP BY folder_id
+`
+
+type CountSnippetsByFolderRow struct {
+	FolderID     *sqltype.ID
+	SnippetCount int64
+}
+
+func (q *Queries) CountSnippetsByFolder(ctx context.Context) ([]CountSnippetsByFolderRow, error) {
+	rows, err := q.db.QueryContext(ctx, countSnippetsByFolder)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountSnippetsByFolderRow{}
+	for rows.Next() {
+		var i CountSnippetsByFolderRow
+		if err := rows.Scan(&i.FolderID, &i.SnippetCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSnippet = `-- name: GetSnippet :one
 SELECT id, folder_id, title, description, created_at, updated_at
 FROM snippets

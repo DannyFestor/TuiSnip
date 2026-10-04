@@ -127,7 +127,7 @@ func (s Session) cancelled() outcome.Step {
 
 func (s Session) saved(msg SaveFinished) outcome.Step {
 	if msg.Err == nil {
-		return outcome.Close().Passing(outcome.SnippetSaved{ID: msg.Snippet.ID()})
+		return outcome.Close().Passing(outcome.SnippetSaved{ID: msg.Snippet.ID(), FolderID: msg.Snippet.FolderID()})
 	}
 
 	next := s

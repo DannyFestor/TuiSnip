@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -12,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -25,6 +27,8 @@ const (
 	listHint         = "y Copy · n new · / search"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"
+	filedTitle       = "Table test skeleton"
+	filedSnippetID   = "0194c3a0-0000-7000-8000-0000000f11ed"
 	topRightCorner   = "╮"
 )
 
@@ -50,9 +54,32 @@ func showingStyled(t *testing.T, screen look.Size, styles look.Styles, snippets 
 	t.Helper()
 
 	driver := overlaytest.Open(t, screen, mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC))
-	driver.Send(mainscreen.SnippetsLoaded{Snippets: snippets, Selecting: domain.SnippetID{}})
+	driver.Send(
+		mainscreen.SnippetsLoaded{FolderID: domain.FolderID{}, Snippets: snippets, Selecting: domain.SnippetID{}},
+	)
 
 	return driver
+}
+
+func browsing(t *testing.T) (*overlaytest.Driver, foldertree.Sample) {
+	t.Helper()
+
+	sample := foldertree.New(t)
+	driver := showing(t, wide(), sampleSnippets(t)...)
+	driver.Send(mainscreen.TreeLoaded{Tree: sample.Tree})
+
+	return driver, sample
+}
+
+func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
+	t.Helper()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:       domain.SnippetID(uuid.MustParse(filedSnippetID)),
+		Title:    filedTitle,
+		FolderID: folderID,
+		Fragment: testkit.FragmentSpec{Language: "Go"},
+	})
 }
 
 func upperFocusedTitle() look.Styles {

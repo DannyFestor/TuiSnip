@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 const hintWidthDivisor = 2
@@ -50,8 +51,10 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.resized(msg.Box))
 	case tea.BackgroundColorMsg:
 		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
+	case TreeLoaded:
+		return outcome.Stay(s.withPanes(s.panes.withTree(msg.Tree)))
 	case SnippetsLoaded:
-		return outcome.Stay(s.withPanes(s.panes.withSnippets(msg.Snippets, msg.Selecting)))
+		return outcome.Stay(s.withPanes(s.panes.withSnippetsIfStillSelected(msg)))
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
 	}
@@ -60,11 +63,14 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 }
 
 func (s Screen) Received(received outcome.Outcome) outcome.Step {
-	if _, ok := received.(outcome.SnippetRevealed); ok {
-		return outcome.Stay(s.revealing()).Passing(received)
+	switch received := received.(type) {
+	case outcome.SnippetRevealed:
+		return outcome.Stay(s.revealing(received.FolderID)).Passing(received)
+	case outcome.SnippetSaved:
+		return outcome.Stay(s.selectingFolder(received.FolderID)).Passing(received)
+	default:
+		return outcome.Stay(s).Passing(received)
 	}
-
-	return outcome.Stay(s).Passing(received)
 }
 
 func (s Screen) View() string {
@@ -94,7 +100,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 	case s.global.Matches(msg, binding.NewSnippet):
 		return s.opening(editoverlay.New(s.keys, s.styles))
 	case s.global.Matches(msg, binding.Search):
-		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.list.Snippets()))
+		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing()))
 	}
 
 	if navigate, ok := navigationFor(s.global, msg); ok {
@@ -133,9 +139,16 @@ func (s Screen) focusedOn(target pane) Screen {
 	return next.arranged()
 }
 
-func (s Screen) revealing() Screen {
+func (s Screen) revealing(folderID domain.FolderID) Screen {
 	next := s
 	next.focus = paneSnippet
+
+	return next.selectingFolder(folderID)
+}
+
+func (s Screen) selectingFolder(folderID domain.FolderID) Screen {
+	next := s
+	next.panes = s.panes.selectingFolder(folderID)
 	next.selectionHolder = paneFolders
 
 	return next.arranged()
@@ -184,7 +197,7 @@ func (s Screen) panesView() string {
 func (s Screen) paneFrame(p pane) string {
 	frame := s.paneStyle(p)
 
-	return look.Frame(frame, p.title(), s.panes.body(p, frame), s.layout.of(p))
+	return look.Frame(frame, p.title(s.panes.browseSelection()), s.panes.body(p, frame), s.layout.of(p))
 }
 
 func (s Screen) paneStyle(p pane) look.FrameStyle {

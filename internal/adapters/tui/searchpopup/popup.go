@@ -9,7 +9,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
@@ -49,14 +48,14 @@ type Popup struct {
 	outer   look.Size
 }
 
-func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, browse []domain.Snippet) (Popup, tea.Cmd) {
+func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listing Listing) (Popup, tea.Cmd) {
 	popup := Popup{
 		keys:    keys.For(binding.ScopeSearch),
 		styles:  styles,
 		query:   input.NewLine(searchPrompt),
-		browse:  browse,
-		results: snippetlist.New(keys, styles, folderpath.Of).WithSnippets(browse),
-		preview: preview,
+		browse:  listing.Snippets,
+		results: snippetlist.New(keys, styles, listing.shortPath).WithSnippets(listing.Snippets),
+		preview: preview.WithPaths(listing.Paths),
 		outer:   look.Size{Width: 0, Height: 0},
 	}
 	cmd := popup.query.Focus()
@@ -115,13 +114,13 @@ func (p Popup) pressed(msg tea.KeyPressMsg) outcome.Step {
 	return p.typed(msg)
 }
 
-func (p Popup) onSelected(stepFor func(domain.SnippetID) outcome.Step) outcome.Step {
+func (p Popup) onSelected(stepFor func(domain.Snippet) outcome.Step) outcome.Step {
 	selected, ok := p.results.Selected()
 	if !ok {
 		return outcome.Stay(p)
 	}
 
-	return stepFor(selected.ID())
+	return stepFor(selected)
 }
 
 func (p Popup) text() string {
@@ -241,10 +240,10 @@ func (p Popup) frameTitle() string {
 	return searchTitle + titleSeparator + strconv.Itoa(count) + noun
 }
 
-func revealing(id domain.SnippetID) outcome.Step {
-	return outcome.Close().Passing(outcome.SnippetRevealed{ID: id})
+func revealing(selected domain.Snippet) outcome.Step {
+	return outcome.Close().Passing(outcome.SnippetRevealed{ID: selected.ID(), FolderID: selected.FolderID()})
 }
 
-func copying(id domain.SnippetID) outcome.Step {
-	return outcome.Close().Passing(outcome.CopyRequested{ID: id})
+func copying(selected domain.Snippet) outcome.Step {
+	return outcome.Close().Passing(outcome.CopyRequested{ID: selected.ID()})
 }

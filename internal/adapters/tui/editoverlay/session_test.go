@@ -165,7 +165,8 @@ func TestSession_save(t *testing.T) {
 		screen.Press(keypress.Letter('x'), save())
 		screen.Send(editoverlay.SaveFinished{Snippet: saved, Err: nil})
 
-		assert.Contains(t, screen.Outcomes(), outcome.Outcome(outcome.SnippetSaved{ID: saved.ID()}))
+		reported := outcome.SnippetSaved{ID: saved.ID(), FolderID: saved.FolderID()}
+		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reported))
 		assert.False(t, screen.IsOpen())
 	})
 

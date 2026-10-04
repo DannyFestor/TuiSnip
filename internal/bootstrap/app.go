@@ -22,13 +22,16 @@ import (
 )
 
 type App struct {
-	Create           *snippet.Create
-	Copy             *snippet.Copy
-	Query            *search.Query
-	SnippetsInFolder *browse.SnippetsInFolder
-	model            tui.Model
-	database         *sqlite.Database
-	log              *logging.Log
+	Create            *snippet.Create
+	Copy              *snippet.Copy
+	Query             *search.Query
+	SnippetsInFolder  *browse.SnippetsInFolder
+	FolderTree        *browse.FolderTree
+	SnippetRepository *sqlite.SnippetRepository
+	FolderRepository  *sqlite.FolderRepository
+	model             tui.Model
+	database          *sqlite.Database
+	log               *logging.Log
 }
 
 func New(ctx context.Context, options Options) (*App, error) {
@@ -105,7 +108,7 @@ type openResources struct {
 func wire(ctx context.Context, cfg config.Config, options Options, opened openResources) (*App, error) {
 	logger := opened.log.Logger()
 
-	app, err := newActions(cfg, options, sqlite.NewSnippetRepository(opened.database, logger), logger)
+	app, err := newActions(cfg, options, openRepositories(opened.database, logger), logger)
 	if err != nil {
 		return nil, err
 	}
@@ -114,12 +117,13 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.log = opened.log
 
 	app.model, err = newModel(ctx, cfg, tui.Deps{
-		Lister:   app.SnippetsInFolder,
-		Copier:   app.Copy,
-		Creator:  app.Create,
-		Searcher: app.Query,
-		Settings: SettingsFrom(cfg, time.Local),
-		Logger:   logger,
+		Lister:     app.SnippetsInFolder,
+		TreeLister: app.FolderTree,
+		Copier:     app.Copy,
+		Creator:    app.Create,
+		Searcher:   app.Query,
+		Settings:   SettingsFrom(cfg, time.Local),
+		Logger:     logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build TUI: %w", err)
@@ -137,29 +141,45 @@ func newModel(ctx context.Context, cfg config.Config, deps tui.Deps) (tui.Model,
 	return build(ctx, deps)
 }
 
-func newActions(cfg config.Config, options Options, repo *sqlite.SnippetRepository, logger *slog.Logger) (*App, error) {
-	copyAction, err := newCopy(cfg.Copy, options, repo, logger)
+type repositories struct {
+	snippets *sqlite.SnippetRepository
+	folders  *sqlite.FolderRepository
+}
+
+func openRepositories(database *sqlite.Database, logger *slog.Logger) repositories {
+	return repositories{
+		snippets: sqlite.NewSnippetRepository(database, logger),
+		folders:  sqlite.NewFolderRepository(database, logger),
+	}
+}
+
+func newActions(cfg config.Config, options Options, repos repositories, logger *slog.Logger) (*App, error) {
+	copyAction, err := newCopy(cfg.Copy, options, repos.snippets, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	create, createErr := snippet.NewCreate(repo, system.NewIDs(), system.NewClock())
-	query, queryErr := search.NewQuery(memsearch.NewIndex(repo))
-	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repo)
+	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
+	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
+	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
 
-	err = errors.Join(createErr, queryErr, listErr)
+	err = errors.Join(createErr, queryErr, listErr, treeErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
 
 	return &App{
-		Create:           create,
-		Copy:             copyAction,
-		Query:            query,
-		SnippetsInFolder: snippetsInFolder,
-		model:            tui.Model{},
-		database:         nil,
-		log:              nil,
+		Create:            create,
+		Copy:              copyAction,
+		Query:             query,
+		SnippetsInFolder:  snippetsInFolder,
+		FolderTree:        folderTree,
+		SnippetRepository: repos.snippets,
+		FolderRepository:  repos.folders,
+		model:             tui.Model{},
+		database:          nil,
+		log:               nil,
 	}, nil
 }
 

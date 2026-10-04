@@ -8,11 +8,15 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -21,6 +25,7 @@ type panes struct {
 	tags    tagpane.Pane
 	list    snippetlist.List
 	preview snippetpane.Pane
+	paths   folderpath.Paths
 }
 
 func newPanes(keys binding.Keys, styles look.Styles, location *time.Location) panes {
@@ -29,6 +34,7 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location) pa
 		tags:    tagpane.New(keys, styles),
 		list:    snippetlist.New(keys, styles, snippetlist.Language),
 		preview: snippetpane.New(keys, styles, location),
+		paths:   folderpath.Paths{},
 	}
 }
 
@@ -44,7 +50,12 @@ func (p panes) pressed(focus pane, msg tea.KeyPressMsg) (panes, []outcome.Outcom
 		p.preview = preview
 
 		return p, outcomes, cmd
-	case paneFolders, paneTags:
+	case paneFolders:
+		folders, outcomes, cmd := p.folders.Update(msg)
+		p.folders = folders
+
+		return p, outcomes, cmd
+	case paneTags:
 	}
 
 	return p, nil, nil
@@ -65,12 +76,36 @@ func (p panes) withBackground(msg tea.BackgroundColorMsg) panes {
 	return p
 }
 
-func (p panes) withSnippets(snippets []domain.Snippet, selecting domain.SnippetID) panes {
-	next := p
-	next.list = p.list.WithSnippets(snippets).WithCursorOn(selecting)
-	next.folders = p.folders.WithRootSnippetCount(len(snippets))
+func (p panes) withTree(tree browse.Tree) panes {
+	p.folders = p.folders.WithTree(tree)
+	p.paths = folderpath.New(tree)
+	p.preview = p.preview.WithPaths(p.paths)
 
-	return next.previewSelected()
+	return p
+}
+
+func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) panes {
+	if loaded.FolderID != p.folders.Selected() {
+		return p
+	}
+
+	p.list = p.list.WithSnippets(loaded.Snippets).Moved(move.Top).WithCursorOn(loaded.Selecting)
+
+	return p.previewSelected()
+}
+
+func (p panes) selectingFolder(id domain.FolderID) panes {
+	p.folders = p.folders.WithCursorOn(id)
+
+	return p
+}
+
+func (p panes) browseSelection() string {
+	return p.paths.Full(p.folders.Selected())
+}
+
+func (p panes) listing() searchpopup.Listing {
+	return searchpopup.Listing{Snippets: p.list.Snippets(), Paths: p.paths}
 }
 
 func (p panes) previewSelected() panes {

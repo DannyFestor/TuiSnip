@@ -238,6 +238,39 @@ func TestSnippetRepository_ListInFolder(t *testing.T) {
 	})
 }
 
+func TestSnippetRepository_CountByFolder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("counts the Snippets in each Folder and at the Root", func(t *testing.T) {
+		t.Parallel()
+
+		path := newDatabasePath(t)
+		repository := newSnippetRepository(t, openDatabase(t, path))
+		ids := testkit.NewSequentialIDs()
+		folderID := ids.NewFolderID()
+		insertRawFolder(t, path, folderID)
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root"})
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "first filed", FolderID: folderID})
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "second filed", FolderID: folderID})
+
+		got, err := repository.CountByFolder(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, map[domain.FolderID]int{{}: 1, folderID: 2}, got)
+	})
+
+	t.Run("counts nothing in an empty database", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+
+		got, err := repository.CountByFolder(t.Context())
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func insertSnippet(
 	t *testing.T,
 	repository *sqlite.SnippetRepository,

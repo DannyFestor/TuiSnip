@@ -33,18 +33,37 @@ func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetC
 	t.Helper()
 
 	return modelWith(t, actions{
-		lister:   lister,
-		copier:   copier,
-		creator:  NewMockSnippetCreator(t),
-		searcher: NewMockSnippetSearcher(t),
+		lister:     lister,
+		treeLister: treeOf(t, emptyTree()),
+		copier:     copier,
+		creator:    NewMockSnippetCreator(t),
+		searcher:   NewMockSnippetSearcher(t),
 	})
 }
 
 type actions struct {
-	lister   tui.FolderSnippetsLister
-	copier   tui.SnippetCopier
-	creator  tui.SnippetCreator
-	searcher tui.SnippetSearcher
+	lister     tui.FolderSnippetsLister
+	treeLister tui.FolderTreeLister
+	copier     tui.SnippetCopier
+	creator    tui.SnippetCreator
+	searcher   tui.SnippetSearcher
+}
+
+func emptyTree() browse.Tree {
+	return browse.Tree{RootSnippetCount: 0, Folders: nil}
+}
+
+func treeOf(t *testing.T, tree browse.Tree) *MockFolderTreeLister {
+	t.Helper()
+
+	lister := NewMockFolderTreeLister(t)
+	lister.EXPECT().Run(mock.Anything, browse.FolderTreeInput{}).Return(tree, nil)
+
+	return lister
+}
+
+func listingIn(lister *MockFolderSnippetsLister, folderID domain.FolderID, snippets ...domain.Snippet) {
+	lister.EXPECT().Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: folderID}).Return(snippets, nil).Once()
 }
 
 func modelWith(t *testing.T, with actions) tui.Model {
@@ -65,12 +84,13 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 	t.Helper()
 
 	model, err := build(t.Context(), tui.Deps{
-		Lister:   with.lister,
-		Copier:   with.copier,
-		Creator:  with.creator,
-		Searcher: with.searcher,
-		Settings: settings,
-		Logger:   slog.New(slog.DiscardHandler),
+		Lister:     with.lister,
+		TreeLister: with.treeLister,
+		Copier:     with.copier,
+		Creator:    with.creator,
+		Searcher:   with.searcher,
+		Settings:   settings,
+		Logger:     slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 

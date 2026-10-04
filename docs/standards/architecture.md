@@ -45,7 +45,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       confirm/               the y/N confirmation an Overlay opens before it throws work away
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
-      folderpane/            the Folder pane: the Root and its Snippet count
+      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
@@ -62,9 +62,10 @@ internal/
 test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
-  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool
+  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders and Snippets seeded through the repositories
   keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
   overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
+  foldertree/                the sample Folder tree TUI tests browse
   testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml
 ```

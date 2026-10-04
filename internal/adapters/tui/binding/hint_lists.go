@@ -19,7 +19,11 @@ func statusHintList(scope Scope) []labelledRef {
 	search := rowRef{scope: ScopeGlobal, name: Search}
 
 	switch scope {
-	case ScopeFolders, ScopeTags:
+	case ScopeFolders:
+		open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
+
+		return append([]labelledRef{open}, withRowLabels(search)...)
+	case ScopeTags:
 		return withRowLabels(search)
 	case ScopeSnippetList:
 		return withRowLabels(rowRef{scope: scope, name: Copy}, rowRef{scope: ScopeGlobal, name: NewSnippet}, search)

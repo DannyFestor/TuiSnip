@@ -43,17 +43,18 @@ func TestNew(t *testing.T) {
 			settings.Location = nil
 
 			_, err := tt.build(t.Context(), tui.Deps{
-				Lister:   nil,
-				Copier:   nil,
-				Creator:  nil,
-				Searcher: nil,
-				Settings: settings,
-				Logger:   nil,
+				Lister:     nil,
+				TreeLister: nil,
+				Copier:     nil,
+				Creator:    nil,
+				Searcher:   nil,
+				Settings:   settings,
+				Logger:     nil,
 			})
 
 			require.ErrorIs(t, err, domain.ErrMissingDependency)
 
-			for _, name := range []string{"lister", "copier", "creator", "searcher", "logger", "location"} {
+			for _, name := range []string{"lister", "treeLister", "copier", "creator", "searcher", "logger", "location"} {
 				assert.ErrorContains(t, err, name)
 			}
 		})
@@ -231,10 +232,11 @@ func copyFirstSnippet(t *testing.T, build modelConstructor, result snippet.CopyR
 	copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(result, err)
 
 	model := modelBuiltBy(t, build, actions{
-		lister:   listerOf(t, snippets...),
-		copier:   copier,
-		creator:  NewMockSnippetCreator(t),
-		searcher: NewMockSnippetSearcher(t),
+		lister:     listerOf(t, snippets...),
+		treeLister: treeOf(t, emptyTree()),
+		copier:     copier,
+		creator:    NewMockSnippetCreator(t),
+		searcher:   NewMockSnippetSearcher(t),
 	}, testsettings.Default(t))
 	screen := start(t, model, wideWidth, wideHeight)
 

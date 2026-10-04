@@ -1,8 +1,8 @@
 ╭ 1 Folders ─────────────╮╭ 3 Root · by title ───────────────────────╮╭ 4 Snippet ─────────────────────────────────────╮
 │◆ Root                 2││Graceful HTTP shutdown                  Go││Graceful HTTP shutdown                          │
-│                        ││Prune everything                      Bash││Root · Go                                       │
-│                        ││                                          ││created 2026-09-06 · updated 2026-09-27         │
-│                        ││                                          ││Stop accepting, drain, exit                     │
+│  docker               3││Prune everything                      Bash││Root · Go                                       │
+│▾ go                   2││                                          ││created 2026-09-06 · updated 2026-09-27         │
+│    testing            1││                                          ││Stop accepting, drain, exit                     │
 │                        ││                                          ││────────────────────────────────────────────────│
 │                        ││                                          ││   1 │ func run(ctx context.Context) error {    │
 │                        ││                                          ││   2 │     return srv.Shutdown(ctx)             │

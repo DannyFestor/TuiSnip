@@ -1,8 +1,8 @@
 ╭ 1 Folders ─────────────────────╮╭ 3 Root · by title ───────────────╮╭ 4 Snippet ─────────────────────────────────────╮
 │◆ Root                         2││Graceful HTTP shutdown          Go││Graceful HTTP shutdown                          │
-│     ╭ Editing • ───────────────────────────────────────────────────────────────────────────────────────────────╮     │
-│     │› Title       Prune everything                                                                            │     │
-│     │  Description                                                                                             │     │
+│  doc╭ Editing • ───────────────────────────────────────────────────────────────────────────────────────────────╮     │
+│▾ go │› Title       Prune everything                                                                            │     │
+│    t│  Description                                                                                             │     │
 │     │  Content     enter or down to edit                                                                       │─────│
 │     │ 1                                                                                                        │{    │
 │     │                                                                                                          │     │

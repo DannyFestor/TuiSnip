@@ -110,10 +110,11 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 		settings := testsettings.Default(t)
 		settings.ForcedQuitKey = "ctrl+q"
 		screen := start(t, modelWithSettings(t, actions{
-			lister:   listerOf(t),
-			copier:   NewMockSnippetCopier(t),
-			creator:  NewMockSnippetCreator(t),
-			searcher: NewMockSnippetSearcher(t),
+			lister:     listerOf(t),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   NewMockSnippetSearcher(t),
 		}, settings), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('n'), keypress.Letter('z'), keypress.Ctrl('q'))
@@ -132,9 +133,10 @@ func creatingModel(t *testing.T, creator *MockSnippetCreator, lister *MockFolder
 	t.Helper()
 
 	return modelWith(t, actions{
-		lister:   lister,
-		copier:   NewMockSnippetCopier(t),
-		creator:  creator,
-		searcher: NewMockSnippetSearcher(t),
+		lister:     lister,
+		treeLister: treeOf(t, emptyTree()),
+		copier:     NewMockSnippetCopier(t),
+		creator:    creator,
+		searcher:   NewMockSnippetSearcher(t),
 	})
 }

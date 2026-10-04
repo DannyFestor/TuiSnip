@@ -33,6 +33,19 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"c Copy", "a new", "ctrl+f search"}, hintTexts(got))
 	})
 
+	t.Run("Folders hints open before search", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeGlobal, name: binding.Open, keys: []string{"enter"}},
+			bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+		)
+
+		got := keys.For(binding.ScopeFolders).ShortHelp()
+
+		assert.Equal(t, []string{"enter open", "/ search"}, hintTexts(got))
+	})
+
 	t.Run("disables a hint whose Binding has no keys", func(t *testing.T) {
 		t.Parallel()
 

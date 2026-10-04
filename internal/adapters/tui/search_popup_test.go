@@ -50,10 +50,11 @@ func TestModel_searchPopup(t *testing.T) {
 
 		snippets := sampleSnippets(t)
 		screen := start(t, modelWith(t, actions{
-			lister:   listerReturning(t, snippets, snippets),
-			copier:   NewMockSnippetCopier(t),
-			creator:  NewMockSnippetCreator(t),
-			searcher: NewMockSnippetSearcher(t),
+			lister:     listerReturning(t, snippets, snippets),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   NewMockSnippetSearcher(t),
 		}), narrowWidth, narrowHeight)
 
 		screen.press(keypress.Letter('/'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
@@ -72,10 +73,11 @@ func TestModel_searchPopup(t *testing.T) {
 			Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[1].ID()}).
 			Return(copied(t, domain.CopyDeliveryPlaced), nil)
 		screen := start(t, modelWith(t, actions{
-			lister:   listerOf(t, snippets...),
-			copier:   copier,
-			creator:  NewMockSnippetCreator(t),
-			searcher: NewMockSnippetSearcher(t),
+			lister:     listerOf(t, snippets...),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     copier,
+			creator:    NewMockSnippetCreator(t),
+			searcher:   NewMockSnippetSearcher(t),
 		}), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('/'), keypress.Special(tea.KeyDown), keypress.Ctrl('y'))
@@ -89,10 +91,11 @@ func searchingModel(t *testing.T, searcher *MockSnippetSearcher) tui.Model {
 	t.Helper()
 
 	return modelWith(t, actions{
-		lister:   listerOf(t, sampleSnippets(t)...),
-		copier:   NewMockSnippetCopier(t),
-		creator:  NewMockSnippetCreator(t),
-		searcher: searcher,
+		lister:     listerOf(t, sampleSnippets(t)...),
+		treeLister: treeOf(t, emptyTree()),
+		copier:     NewMockSnippetCopier(t),
+		creator:    NewMockSnippetCreator(t),
+		searcher:   searcher,
 	})
 }
 

@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 	"uuid"
@@ -188,6 +189,37 @@ func TestFolder_MoveToRoot(t *testing.T) {
 	assert.True(t, moved.AtRoot())
 	assert.False(t, folder.AtRoot(), "the original is untouched")
 	assert.Equal(t, folder.UpdatedAt(), moved.UpdatedAt())
+}
+
+func TestCompareFolders(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	first, second := ids.NewFolderID(), ids.NewFolderID()
+
+	tests := []struct {
+		name      string
+		names     [2]string
+		wantOrder []domain.FolderID
+	}{
+		{name: "orders by name", names: [2]string{"zsh", "awk"}, wantOrder: []domain.FolderID{second, first}},
+		{name: "ignores case", names: [2]string{"Zsh", "awk"}, wantOrder: []domain.FolderID{second, first}},
+		{name: "breaks a name tie by ID", names: [2]string{"go", "Go"}, wantOrder: []domain.FolderID{first, second}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			folders := []domain.Folder{
+				testkit.Folder(t, testkit.FolderSpec{ID: second, Name: tt.names[1]}),
+				testkit.Folder(t, testkit.FolderSpec{ID: first, Name: tt.names[0]}),
+			}
+
+			slices.SortFunc(folders, domain.CompareFolders)
+
+			assert.Equal(t, tt.wantOrder, []domain.FolderID{folders[0].ID(), folders[1].ID()})
+		})
+	}
 }
 
 func TestFolderTreeMoveProperty(t *testing.T) {

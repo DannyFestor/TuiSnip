@@ -8,6 +8,10 @@ type listFailedMsg struct {
 	err error
 }
 
+type treeFailedMsg struct {
+	err error
+}
+
 type copyFinishedMsg struct {
 	result snippet.CopyResult
 	err    error

@@ -26,6 +26,7 @@ type Screen struct {
 	keys            binding.Keys
 	global          binding.Set
 	listKeys        binding.Set
+	paneKeys        binding.Set
 	styles          look.Styles
 	box             look.Size
 	layout          layout
@@ -45,6 +46,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, remembe
 		keys:            keys,
 		global:          keys.For(binding.ScopeGlobal),
 		listKeys:        keys.For(binding.ScopeSnippetList),
+		paneKeys:        keys.For(binding.ScopeSnippetPane),
 		styles:          styles,
 		box:             look.Size{Width: 0, Height: 0},
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
@@ -129,28 +131,54 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return s.focusedUpdated(msg)
 	}
 
-	switch {
-	case s.global.Matches(msg, binding.Quit):
-		return outcome.Stay(s).Passing(outcome.QuitAsked{})
-	case s.global.Matches(msg, binding.NewSnippet):
-		return s.opening(editoverlay.New(s.keys, s.styles))
-	case s.global.Matches(msg, binding.Search):
-		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing()))
-	}
-
-	if s.focus.inLeftColumn() && s.global.Matches(msg, binding.Open) {
-		return s.opened()
-	}
-
-	if navigate, ok := navigationFor(s.global, msg); ok {
-		return outcome.Stay(s.focusedOn(navigate(s.focus, s.selectionHolder)))
+	if step, ok := s.globalPressed(msg); ok {
+		return step
 	}
 
 	if s.focus == paneList && s.listKeys.Matches(msg, binding.CycleSort) {
 		return outcome.Stay(s).Passing(s.panes.sortCycleAsked(s.selection()))
 	}
 
+	if stored, ok := s.editAsked(msg); ok {
+		return s.opening(editoverlay.Editing(
+			s.keys,
+			s.styles,
+			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
+			s.panes.preview.CodeStyle(),
+		))
+	}
+
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+	switch {
+	case s.global.Matches(msg, binding.Quit):
+		return outcome.Stay(s).Passing(outcome.QuitAsked{}), true
+	case s.global.Matches(msg, binding.NewSnippet):
+		return s.opening(editoverlay.New(s.keys, s.styles)), true
+	case s.global.Matches(msg, binding.Search):
+		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing())), true
+	case s.focus.inLeftColumn() && s.global.Matches(msg, binding.Open):
+		return s.opened(), true
+	}
+
+	if navigate, ok := navigationFor(s.global, msg); ok {
+		return outcome.Stay(s.focusedOn(navigate(s.focus, s.selectionHolder))), true
+	}
+
+	return outcome.Stay(s), false
+}
+
+func (s Screen) editAsked(msg tea.KeyPressMsg) (domain.Snippet, bool) {
+	switch {
+	case s.focus == paneList && s.listKeys.Matches(msg, binding.Edit):
+		return s.panes.list.Selected()
+	case s.focus == paneSnippet && s.paneKeys.Matches(msg, binding.Edit):
+		return s.panes.preview.Shown()
+	}
+
+	return domain.Snippet{}, false
 }
 
 func (s Screen) opened() outcome.Step {

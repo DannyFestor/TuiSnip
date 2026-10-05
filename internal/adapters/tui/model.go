@@ -48,6 +48,7 @@ type Model struct {
 	tagSnippetsLister     TagSnippetsLister
 	copier                SnippetCopier
 	creator               SnippetCreator
+	updater               SnippetUpdater
 	searcher              SnippetSearcher
 	folderCreator         FolderCreator
 	folderRenamer         FolderRenamer
@@ -107,6 +108,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		tagSnippetsLister:     deps.TagSnippetsLister,
 		copier:                deps.Copier,
 		creator:               deps.Creator,
+		updater:               deps.Updater,
 		searcher:              deps.Searcher,
 		folderCreator:         deps.FolderCreator,
 		folderRenamer:         deps.FolderRenamer,
@@ -131,6 +133,7 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("tagSnippetsLister", deps.TagSnippetsLister),
 		domain.RequireDependency("copier", deps.Copier),
 		domain.RequireDependency("creator", deps.Creator),
+		domain.RequireDependency("updater", deps.Updater),
 		domain.RequireDependency("searcher", deps.Searcher),
 		domain.RequireDependency("folderCreator", deps.FolderCreator),
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
@@ -343,10 +346,10 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
-	case outcome.SaveRequested, outcome.SearchTyped, outcome.CopyRequested:
+	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested:
 		return m, m.runSnippetAction(reported)
-	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected, outcome.TagSelected,
-		outcome.SortCycleAsked:
+	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
+		outcome.TagSelected, outcome.SortCycleAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
@@ -379,7 +382,9 @@ func (m Model) reportedFailure(reported outcome.Outcome) (Model, tea.Cmd) {
 func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SnippetSaved:
-		return m, tea.Batch(m.loadTree(), m.loadSnippets(browseselection.InFolder(reported.FolderID), reported.ID))
+		return m, m.reloadSelecting(browseselection.InFolder(reported.FolderID), reported.ID)
+	case outcome.SnippetReloaded:
+		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetRevealed:
 		return m, m.loadSnippets(browseselection.InFolder(reported.FolderID), reported.ID)
 	case outcome.FolderSelected:
@@ -393,6 +398,10 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	}
 }
 
+func (m Model) reloadSelecting(selection browseselection.Selection, id domain.SnippetID) tea.Cmd {
+	return tea.Batch(m.loadTree(), m.loadSnippets(selection, id))
+}
+
 func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 	return func() tea.Msg {
 		created, err := m.creator.Run(m.ctx, in)
@@ -401,10 +410,20 @@ func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 	}
 }
 
+func (m Model) updateSnippet(in snippet.UpdateInput) tea.Cmd {
+	return func() tea.Msg {
+		updated, err := m.updater.Run(m.ctx, in)
+
+		return editoverlay.SaveFinished{Snippet: updated, Err: err}
+	}
+}
+
 func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested:
 		return m.createSnippet(reported.Input)
+	case outcome.UpdateRequested:
+		return m.updateSnippet(reported.Input)
 	case outcome.SearchTyped:
 		return m.querySnippets(reported.Text)
 	case outcome.CopyRequested:

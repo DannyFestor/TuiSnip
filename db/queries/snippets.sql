@@ -54,3 +54,8 @@ ORDER BY snippets.created_at DESC, snippets.title COLLATE NOCASE, snippets.id;
 SELECT folder_id, COUNT(*) AS snippet_count
 FROM snippets
 GROUP BY folder_id;
+
+-- name: UpdateSnippet :execrows
+UPDATE snippets
+SET title = sqlc.arg(title), description = sqlc.arg(description), updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(loaded_updated_at);

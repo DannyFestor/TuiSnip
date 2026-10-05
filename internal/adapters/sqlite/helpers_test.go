@@ -18,6 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/db/migrations"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
@@ -183,6 +184,27 @@ func insertSnippet(
 	require.NoError(t, repository.Insert(t.Context(), snippet))
 
 	return snippet
+}
+
+func editedSnippet(t *testing.T, stored domain.Snippet, content string) domain.Snippet {
+	t.Helper()
+
+	title, err := value.NewTitle("edited")
+	require.NoError(t, err)
+
+	edited, err := stored.Edit(title, stored.Description(), mustContent(t, content), stored.UpdatedAt().Add(time.Hour))
+	require.NoError(t, err)
+
+	return edited
+}
+
+func mustContent(t *testing.T, raw string) value.Content {
+	t.Helper()
+
+	content, err := value.NewContent(raw)
+	require.NoError(t, err)
+
+	return content
 }
 
 func insertCorruptSnippet(

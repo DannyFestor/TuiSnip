@@ -1,6 +1,8 @@
 package editoverlay
 
 import (
+	"errors"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
@@ -16,26 +18,56 @@ const (
 	unsavedTitle    = "Unsaved changes"
 	discardQuestion = "Discard the unsaved changes?"
 	quitQuestion    = "Quit and discard the unsaved changes?"
+	staleTitle      = "Changed elsewhere"
+	reloadQuestion  = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
 )
 
 type Session struct {
 	keys   binding.Keys
 	form   form
+	target saveTarget
 	styles look.Styles
 	outer  look.Size
 	saving bool
 }
 
 func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
-	form, cmd := newForm(formKeys{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)})
+	blank, cmd := newForm(
+		formKeysOf(keys),
+		entered{title: "", description: "", content: ""},
+		readOnlyContent{held: false, highlighted: ""},
+	)
 
+	return newSession(keys, styles, blank, newSnippet{}), cmd
+}
+
+func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet, codeStyle string) (Session, tea.Cmd) {
+	stored := browsed.Snippet
+	fragment := stored.FirstFragment()
+	original := entered{
+		title:       stored.Title().String(),
+		description: stored.Description().String(),
+		content:     fragment.Content().String(),
+	}
+	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, codeStyle))
+	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
+
+	return newSession(keys, styles, filled, target), cmd
+}
+
+func newSession(keys binding.Keys, styles look.Styles, opened form, target saveTarget) Session {
 	return Session{
 		keys:   keys,
-		form:   form,
+		form:   opened,
+		target: target,
 		styles: styles,
 		outer:  look.Size{Width: 0, Height: 0},
 		saving: false,
-	}, cmd
+	}
+}
+
+func formKeysOf(keys binding.Keys) formKeys {
+	return formKeys{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)}
 }
 
 func (s Session) Update(msg tea.Msg) outcome.Step {
@@ -55,9 +87,11 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 	switch received.(type) {
 	case outcome.DiscardConfirmed:
 		return outcome.Close()
+	case outcome.SnippetReloaded:
+		return outcome.Close().Passing(received)
 	case outcome.QuitAsked:
 		if s.form.changed() {
-			return s.confirming(quitQuestion, outcome.QuitConfirmed{})
+			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
 		}
 	default:
 	}
@@ -112,7 +146,7 @@ func (s Session) saveStarted() outcome.Step {
 	next := s
 	next.saving = true
 
-	return outcome.Stay(next).Passing(outcome.SaveRequested{Input: s.form.input()})
+	return s.target.savingAs(next, s.form.entered())
 }
 
 func (s Session) cancelled() outcome.Step {
@@ -120,7 +154,7 @@ func (s Session) cancelled() outcome.Step {
 	case s.saving:
 		return outcome.Stay(s)
 	case s.form.changed():
-		return s.confirming(discardQuestion, outcome.DiscardConfirmed{})
+		return s.confirmingUnsaved(discardQuestion, outcome.DiscardConfirmed{})
 	}
 
 	return outcome.Close()
@@ -128,25 +162,36 @@ func (s Session) cancelled() outcome.Step {
 
 func (s Session) saved(msg SaveFinished) outcome.Step {
 	if msg.Err == nil {
-		return outcome.Close().Passing(outcome.SnippetSaved{ID: msg.Snippet.ID(), FolderID: msg.Snippet.FolderID()})
+		return s.target.closedAfterSave(msg.Snippet)
 	}
 
 	next := s
 	next.saving = false
 
-	fieldErrors := domain.FieldErrors(msg.Err)
-	if len(fieldErrors) == 0 {
-		return outcome.Stay(next).Passing(outcome.SaveFailed{Err: msg.Err})
+	return next.refused(msg.Err)
+}
+
+func (s Session) refused(err error) outcome.Step {
+	if reload, ok := s.target.reloaded(); ok && errors.Is(err, domain.ErrConflict) {
+		return s.confirming(confirm.Question{Title: staleTitle, Text: reloadQuestion}, reload)
 	}
 
+	fieldErrors := domain.FieldErrors(err)
+	if len(fieldErrors) == 0 {
+		return outcome.Stay(s).Passing(outcome.SaveFailed{Err: err})
+	}
+
+	next := s
 	next.form = s.form.withInvalid(fieldErrors)
 
 	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
 }
 
-func (s Session) confirming(question string, onYes outcome.Outcome) outcome.Step {
-	asked := confirm.Question{Title: unsavedTitle, Text: question}
+func (s Session) confirmingUnsaved(question string, onYes outcome.Outcome) outcome.Step {
+	return s.confirming(confirm.Question{Title: unsavedTitle, Text: question}, onYes)
+}
 
+func (s Session) confirming(asked confirm.Question, onYes outcome.Outcome) outcome.Step {
 	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, asked, onYes))
 }
 

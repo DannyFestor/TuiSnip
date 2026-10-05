@@ -350,3 +350,31 @@ func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltyp
 	}
 	return items, nil
 }
+
+const updateSnippet = `-- name: UpdateSnippet :execrows
+UPDATE snippets
+SET title = ?1, description = ?2, updated_at = ?3
+WHERE id = ?4 AND updated_at = ?5
+`
+
+type UpdateSnippetParams struct {
+	Title           string
+	Description     string
+	UpdatedAt       sqltype.Timestamp
+	ID              sqltype.ID
+	LoadedUpdatedAt sqltype.Timestamp
+}
+
+func (q *Queries) UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateSnippet,
+		arg.Title,
+		arg.Description,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.LoadedUpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}

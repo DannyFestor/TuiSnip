@@ -27,7 +27,7 @@ const (
 	snippetListTitle = "3 Root · by title"
 	snippetPaneTitle = "4 Snippet"
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
-	listHint         = "y Copy · n new · s sort · / search"
+	listHint         = "y Copy · e edit · n new · s sort · / search"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"
 	filedTitle       = "Table test skeleton"

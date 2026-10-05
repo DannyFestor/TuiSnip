@@ -118,6 +118,67 @@ func TestSnippetRepository_Insert(t *testing.T) {
 	})
 }
 
+func TestSnippetRepository_Update(t *testing.T) {
+	t.Parallel()
+
+	t.Run("writes the edited Snippet and its Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		stored := insertSnippet(t, repository, testkit.NewSequentialIDs(), testkit.SnippetSpec{Title: "curl"})
+		edited := editedSnippet(t, stored, "if x {\n\treturn\n}\n")
+
+		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, edited, got)
+	})
+
+	t.Run("keeps the Tags the Snippet carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, newTagRepository(t, database), ids, "go")
+		stored := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+
+		require.NoError(t, repository.Update(t.Context(), editedSnippet(t, stored, "go"), stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{golang}, got.Tags())
+	})
+
+	t.Run("refuses a save over a Snippet changed since it was loaded", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		stored := insertSnippet(t, repository, testkit.NewSequentialIDs(), testkit.SnippetSpec{Title: "curl"})
+		elsewhere := editedSnippet(t, stored, "changed elsewhere")
+		require.NoError(t, repository.Update(t.Context(), elsewhere, stored.UpdatedAt()))
+
+		err := repository.Update(t.Context(), editedSnippet(t, stored, "stale"), stored.UpdatedAt())
+
+		require.ErrorIs(t, err, domain.ErrConflict)
+		got, findErr := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, findErr)
+		assert.Equal(t, elsewhere, got)
+	})
+
+	t.Run("reports a Snippet that is gone as not found", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		missing := testkit.Snippet(t, testkit.SnippetSpec{})
+
+		err := repository.Update(t.Context(), editedSnippet(t, missing, "gone"), missing.UpdatedAt())
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
 func TestSnippetRepository_corruptRow(t *testing.T) {
 	t.Parallel()
 

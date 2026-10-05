@@ -122,6 +122,9 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
   - `↑` on the first line moves to Language.
   - `tab` indents and `shift+tab` removes one indent level from the cursor's line.
 - `ctrl+s` saves, closes the overlay, selects the Snippet in the list, and shows it in the Snippet pane. `esc` outside Content cancels, asking [y/N] first if anything changed.
+- **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
+  - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
+  - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
 - `ctrl+e` opens the Fragment in the external editor from any field.
 
 ### Content with tabs

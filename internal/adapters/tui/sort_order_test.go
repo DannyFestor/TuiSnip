@@ -1,12 +1,16 @@
 package tui_test
 
 import (
+	"log/slog"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
@@ -100,6 +104,46 @@ func TestModel_sortOrder(t *testing.T) {
 
 		assert.Contains(t, screen.screen(), searchTitle+"2 results")
 		assert.Contains(t, screen.screen(), "Reclaim disk space", "previews the first Snippet in the current order")
+	})
+}
+
+func TestModel_rejectedSortOrder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("refuses to start with an unknown order", func(t *testing.T) {
+		t.Parallel()
+
+		settings := testsettings.Default(t)
+		settings.SortOrder = domain.SortOrder("language")
+
+		_, err := tui.New(t.Context(), tui.Deps{
+			Lister:                NewMockFolderSnippetsLister(t),
+			TreeLister:            NewMockFolderTreeLister(t),
+			Copier:                NewMockSnippetCopier(t),
+			Creator:               NewMockSnippetCreator(t),
+			Searcher:              NewMockSnippetSearcher(t),
+			FolderCreator:         NewMockFolderCreator(t),
+			FolderRenamer:         NewMockFolderRenamer(t),
+			FolderDeletePreviewer: NewMockFolderDeletePreviewer(t),
+			FolderDeleter:         NewMockFolderDeleter(t),
+			SortOrderSaver:        NewMockSortOrderSaver(t),
+			Settings:              settings,
+			Logger:                slog.New(slog.DiscardHandler),
+		})
+
+		require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
+	})
+
+	t.Run("shows the failure when Snippets arrive in an unknown order", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := sampleSnippets(t)
+		screen := start(t, newModel(t, listerOf(t, snippets...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
+
+		screen.send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: domain.SortOrder("language")})
+
+		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
+		assert.Contains(t, screen.screen(), "3 Root · by title")
 	})
 }
 

@@ -1,19 +1,21 @@
 package domain
 
+import "fmt"
+
 //go:generate go-enum --marshal
 
 // ENUM(title, updated, created).
 type SortOrder string
 
-func (o SortOrder) Next() SortOrder {
+func (o SortOrder) Next() (SortOrder, error) {
 	switch o {
 	case SortOrderTitle:
-		return SortOrderUpdated
+		return SortOrderUpdated, nil
 	case SortOrderUpdated:
-		return SortOrderCreated
+		return SortOrderCreated, nil
 	case SortOrderCreated:
-		return SortOrderTitle
+		return SortOrderTitle, nil
 	}
 
-	return SortOrderTitle
+	return "", fmt.Errorf("domain.SortOrder.Next: %q: %w", o, ErrInvalidSortOrder)
 }

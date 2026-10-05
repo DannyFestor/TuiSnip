@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -24,7 +25,19 @@ func TestSortOrder_Next(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.want, tt.order.Next())
+			got, err := tt.order.Next()
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
+
+	t.Run("rejects an unknown order", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := domain.SortOrder("language").Next()
+
+		require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
+		assert.ErrorContains(t, err, "language")
+	})
 }

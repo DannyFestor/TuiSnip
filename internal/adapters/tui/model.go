@@ -21,16 +21,18 @@ import (
 )
 
 const (
-	operationList          = "list snippets"
-	operationTree          = "list folders"
-	operationCopy          = "copy"
-	operationSave          = "save snippet"
-	operationSearch        = "search"
-	operationCreateFolder  = "create folder"
-	operationRenameFolder  = "rename folder"
-	operationPreviewDelete = "preview folder delete"
-	operationDeleteFolder  = "delete folder"
-	operationSaveSortOrder = "save sort order"
+	operationList           = "list snippets"
+	operationTree           = "list folders"
+	operationCopy           = "copy"
+	operationSave           = "save snippet"
+	operationSearch         = "search"
+	operationCreateFolder   = "create folder"
+	operationRenameFolder   = "rename folder"
+	operationPreviewDelete  = "preview folder delete"
+	operationDeleteFolder   = "delete folder"
+	operationSaveSortOrder  = "save sort order"
+	operationCycleSortOrder = "cycle sort order"
+	operationShowSortOrder  = "show sort order"
 )
 
 type Model struct {
@@ -90,7 +92,16 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		return Model{}, err
 	}
 
-	mainScreen := mainscreen.New(deps.Settings.Keys, look.NewStyles(), deps.Settings.Location, deps.Settings.SortOrder)
+	mainScreen, err := mainscreen.New(
+		deps.Settings.Keys,
+		look.NewStyles(),
+		deps.Settings.Location,
+		deps.Settings.SortOrder,
+	)
+	if err != nil {
+		return Model{}, fmt.Errorf("main screen: %w", err)
+	}
+
 	overlays, _, _ := outcome.NewStack().Pushed(mainScreen)
 
 	return Model{
@@ -184,8 +195,13 @@ func (m Model) loadSnippets(folderID domain.FolderID, selecting domain.SnippetID
 }
 
 func (m Model) sortCycled(asked outcome.SortCycleAsked) (Model, tea.Cmd) {
+	order, err := m.sortOrder.Next()
+	if err != nil {
+		return m.failed(operationCycleSortOrder, err)
+	}
+
 	next := m
-	next.sortOrder = m.sortOrder.Next()
+	next.sortOrder = order
 
 	return next, tea.Batch(next.saveSortOrder(), next.loadSnippets(asked.FolderID, asked.Selecting))
 }
@@ -270,8 +286,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.createSnippet(reported.Input)
 	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected, outcome.SortCycleAsked:
 		return m.relisted(reported)
-	case outcome.SaveFailed:
-		return m.failed(operationSave, reported.Err)
+	case outcome.SaveFailed, outcome.SortOrderRejected:
+		return m.reportedFailure(reported)
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
 	case outcome.SearchTyped:
@@ -287,6 +303,17 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m Model) reportedFailure(reported outcome.Outcome) (Model, tea.Cmd) {
+	switch reported := reported.(type) {
+	case outcome.SaveFailed:
+		return m.failed(operationSave, reported.Err)
+	case outcome.SortOrderRejected:
+		return m.failed(operationShowSortOrder, reported.Err)
+	default:
+		return m, nil
+	}
 }
 
 func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {

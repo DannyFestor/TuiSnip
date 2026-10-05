@@ -1,6 +1,10 @@
 package mainscreen
 
-import "github.com/DannyFestor/TuiSnip/internal/domain"
+import (
+	"fmt"
+
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+)
 
 const (
 	byTitleLabel        = "by title"
@@ -8,15 +12,15 @@ const (
 	byCreationDateLabel = "by creation date"
 )
 
-func orderLabel(order domain.SortOrder) string {
+func orderLabel(order domain.SortOrder) (string, error) {
 	switch order {
 	case domain.SortOrderTitle:
-		return byTitleLabel
+		return byTitleLabel, nil
 	case domain.SortOrderUpdated:
-		return byLastUpdatedLabel
+		return byLastUpdatedLabel, nil
 	case domain.SortOrderCreated:
-		return byCreationDateLabel
+		return byCreationDateLabel, nil
 	}
 
-	return ""
+	return "", fmt.Errorf("label sort order %q: %w", order, domain.ErrInvalidSortOrder)
 }

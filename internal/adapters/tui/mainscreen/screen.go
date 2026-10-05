@@ -1,6 +1,7 @@
 package mainscreen
 
 import (
+	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -32,7 +33,12 @@ type Screen struct {
 	status          string
 }
 
-func New(keys binding.Keys, styles look.Styles, location *time.Location, order domain.SortOrder) Screen {
+func New(keys binding.Keys, styles look.Styles, location *time.Location, order domain.SortOrder) (Screen, error) {
+	label, err := orderLabel(order)
+	if err != nil {
+		return Screen{}, fmt.Errorf("mainscreen.New: %w", err)
+	}
+
 	return Screen{
 		keys:            keys,
 		global:          keys.For(binding.ScopeGlobal),
@@ -42,9 +48,9 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, order d
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
-		panes:           newPanes(keys, styles, location, order),
+		panes:           newPanes(keys, styles, location, label),
 		status:          "",
-	}
+	}, nil
 }
 
 func (s Screen) Update(msg tea.Msg) outcome.Step {
@@ -64,7 +70,7 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 	case FolderDeletePreviewed:
 		return s.confirmingFolderDelete(msg.Preview)
 	case SnippetsLoaded:
-		return outcome.Stay(s.withPanes(s.panes.withSnippetsIfStillSelected(msg)))
+		return s.snippetsLoaded(msg)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
 	}
@@ -140,6 +146,17 @@ func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
 	next := s.withPanes(s.panes.withTree(msg.Tree)).selectingFolder(msg.Selecting)
 
 	return outcome.Stay(next).Passing(outcome.FolderSelected{ID: msg.Selecting})
+}
+
+func (s Screen) snippetsLoaded(loaded SnippetsLoaded) outcome.Step {
+	next, err := s.panes.withSnippetsIfStillSelected(loaded)
+	step := outcome.Stay(s.withPanes(next))
+
+	if err != nil {
+		return step.Passing(outcome.SortOrderRejected{Err: err})
+	}
+
+	return step
 }
 
 func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Step {

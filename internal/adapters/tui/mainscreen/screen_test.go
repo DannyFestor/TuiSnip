@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -591,6 +592,22 @@ func TestScreen_sortOrder(t *testing.T) {
 
 		assert.Contains(t, screen.Screen(), "3 Root · by title")
 	})
+
+	t.Run("rejects an unknown order, keeping the title and listing the Snippets", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := sampleSnippets(t)
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: domain.SortOrder("language")})
+
+		assert.Contains(t, screen.Screen(), "3 Root · by title")
+		assert.Contains(t, screen.Screen(), secondTitle)
+		require.Len(t, screen.Outcomes(), 1)
+		rejected, ok := screen.Outcomes()[0].(outcome.SortOrderRejected)
+		require.True(t, ok)
+		assert.ErrorIs(t, rejected.Err, domain.ErrInvalidSortOrder)
+	})
 }
 
 func TestScreen_UpdateFolderDelete(t *testing.T) {
@@ -769,8 +786,16 @@ func TestScreen_Received(t *testing.T) {
 func TestScreen_FullHelp(t *testing.T) {
 	t.Parallel()
 
-	keys := testsettings.Default(t).Keys
-	screen := mainscreen.New(keys, look.NewStyles(), time.UTC, domain.SortOrderTitle)
+	screen := newScreen(t, look.NewStyles(), domain.SortOrderTitle)
 
-	assert.Equal(t, folderpane.New(keys).FullHelp(), screen.FullHelp())
+	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys).FullHelp(), screen.FullHelp())
+}
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	_, err := mainscreen.New(testsettings.Default(t).Keys, look.NewStyles(), time.UTC, domain.SortOrder("language"))
+
+	require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
+	assert.ErrorContains(t, err, "mainscreen.New: ")
 }

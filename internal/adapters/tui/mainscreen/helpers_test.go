@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
@@ -67,7 +68,16 @@ func showingStyled(t *testing.T, screen look.Size, styles look.Styles, snippets 
 func opened(t *testing.T, screen look.Size, styles look.Styles, order domain.SortOrder) *overlaytest.Driver {
 	t.Helper()
 
-	return overlaytest.Open(t, screen, mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC, order))
+	return overlaytest.Open(t, screen, newScreen(t, styles, order))
+}
+
+func newScreen(t *testing.T, styles look.Styles, order domain.SortOrder) mainscreen.Screen {
+	t.Helper()
+
+	screen, err := mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC, order)
+	require.NoError(t, err)
+
+	return screen
 }
 
 func browsing(t *testing.T) (*overlaytest.Driver, foldertree.Sample) {

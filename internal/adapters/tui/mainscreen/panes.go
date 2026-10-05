@@ -21,22 +21,22 @@ import (
 )
 
 type panes struct {
-	folders folderpane.Pane
-	tags    tagpane.Pane
-	list    snippetlist.List
-	preview snippetpane.Pane
-	paths   folderpath.Paths
-	order   domain.SortOrder
+	folders    folderpane.Pane
+	tags       tagpane.Pane
+	list       snippetlist.List
+	preview    snippetpane.Pane
+	paths      folderpath.Paths
+	orderLabel string
 }
 
-func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, order domain.SortOrder) panes {
+func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, orderLabel string) panes {
 	return panes{
-		folders: folderpane.New(keys),
-		tags:    tagpane.New(keys, styles),
-		list:    snippetlist.New(keys, styles, snippetlist.Language),
-		preview: snippetpane.New(keys, styles, location),
-		paths:   folderpath.Paths{},
-		order:   order,
+		folders:    folderpane.New(keys),
+		tags:       tagpane.New(keys, styles),
+		list:       snippetlist.New(keys, styles, snippetlist.Language),
+		preview:    snippetpane.New(keys, styles, location),
+		paths:      folderpath.Paths{},
+		orderLabel: orderLabel,
 	}
 }
 
@@ -90,15 +90,19 @@ func (p panes) withTree(tree browse.Tree) panes {
 	return p
 }
 
-func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) panes {
+func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) (panes, error) {
 	if loaded.FolderID != p.folders.Selected() {
-		return p
+		return p, nil
 	}
 
 	p.list = p.list.WithSnippets(loaded.Snippets).Moved(move.Top).WithCursorOn(loaded.Selecting)
-	p.order = loaded.Order
 
-	return p.previewSelected()
+	label, err := orderLabel(loaded.Order)
+	if err == nil {
+		p.orderLabel = label
+	}
+
+	return p.previewSelected(), err
 }
 
 func (p panes) sortCycleAsked() outcome.SortCycleAsked {
@@ -114,7 +118,7 @@ func (p panes) selectingFolder(id domain.FolderID) panes {
 }
 
 func (p panes) selectionAndOrder() string {
-	return p.paths.Full(p.folders.Selected()) + listTitleSeparator + orderLabel(p.order)
+	return p.paths.Full(p.folders.Selected()) + listTitleSeparator + p.orderLabel
 }
 
 func (p panes) listing() searchpopup.Listing {

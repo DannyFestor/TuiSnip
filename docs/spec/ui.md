@@ -136,7 +136,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 
 The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
 
-- **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
+- **Content that contains a tab** shows highlighted in the Language on the Language row, which a picked Language changes, and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
 - **The tab key in editable content** indents the cursor's line with four spaces. That is visible, so nothing is silently changed.
 - **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
 - **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.

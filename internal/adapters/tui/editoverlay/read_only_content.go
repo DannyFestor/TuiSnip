@@ -30,6 +30,13 @@ func readOnlyIfTabbed(content string, language value.Language, codeStyle string)
 	return held.highlightedIn(codeStyle)
 }
 
+func (r readOnlyContent) inLanguage(language value.Language, codeStyle string) readOnlyContent {
+	relabelled := r
+	relabelled.language = language
+
+	return relabelled.highlightedIn(codeStyle)
+}
+
 func (r readOnlyContent) highlightedIn(codeStyle string) readOnlyContent {
 	if !r.held {
 		return r

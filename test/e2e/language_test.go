@@ -3,12 +3,15 @@
 package e2e_test
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
@@ -20,6 +23,7 @@ const (
 	curatedLanguages = "languages = [\"YAML\", \"Go\"]\n"
 	languagePicker   = "Pick a Language"
 	noLanguageMatch  = "No Language matches."
+	overlayTitle     = "Editing"
 )
 
 func TestPickLanguageForEditedSnippet(t *testing.T) {
@@ -86,6 +90,58 @@ func TestFolderDefaultLanguageLeavesItsSnippetsAlone(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Bash", kept.FirstFragment().Language().String())
 	assert.Equal(t, filed.UpdatedAt(), kept.UpdatedAt())
+}
+
+func TestNewSnippetStartsInFolderDefaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	golang := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "go"})
+	testapp.SeedFolder(t, app, golang)
+	screen := open(t, app)
+	screen.waitForFrame("go")
+
+	screen.press(keypress.Letter('j'), keypress.Letter('L'))
+	screen.waitForFrame("Default Language of go")
+	screen.press(keypress.Typed("go")...)
+	screen.press(keypress.Special(tea.KeyEnter))
+	screen.waitForFrame(folderHintsShown)
+
+	screen.openNewSnippetShowing("Language    Go")
+	screen.press(keypress.Typed(filedTitle)...)
+	screen.press(keypress.Ctrl('s'))
+	screen.waitForFrame("go · Go")
+
+	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{
+		FolderID: golang.ID(), Order: domain.SortOrderTitle,
+	})
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, filedTitle, listed[0].Title().String())
+	assert.Equal(t, "Go", listed[0].FirstFragment().Language().String())
+}
+
+// The Folder tree reloads after the Default Language is stored, and nothing on screen shows when it has.
+func (s *session) openNewSnippetShowing(text string) {
+	s.t.Helper()
+
+	deadline := time.Now().Add(waitTimeout)
+
+	for {
+		s.press(keypress.Letter('n'))
+		s.waitForFrame(overlayTitle)
+
+		if strings.Contains(s.frame.get(), text) {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			s.t.Fatalf("%q never appeared in a new Snippet; last frame:\n%s", text, s.frame.get())
+		}
+
+		s.press(keypress.Special(tea.KeyEscape))
+		s.waitForFrame(folderHintsShown)
+	}
 }
 
 func seededSnippetIn(t *testing.T, app *bootstrap.App, folderID domain.FolderID, language string) domain.Snippet {

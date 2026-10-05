@@ -2,6 +2,8 @@ package editoverlay_test
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +60,23 @@ func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlay
 	opened, _ := editoverlay.New(keys, styles, nil, destination())
 
 	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func editingIn(t *testing.T, filedIn editoverlay.Destination) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), nil, filedIn)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func destinationIn(t *testing.T, languageName string) editoverlay.Destination {
+	t.Helper()
+
+	filedIn := destination()
+	filedIn.Language = language(t, languageName)
+
+	return filedIn
 }
 
 func editingOffering(t *testing.T, curated []value.Language) *overlaytest.Driver {
@@ -183,6 +202,14 @@ func language(t *testing.T, name string) value.Language {
 	require.NoError(t, err)
 
 	return parsed
+}
+
+func withoutLanguageRow(screen string) string {
+	lines := strings.Split(screen, "\n")
+
+	return strings.Join(slices.DeleteFunc(lines, func(line string) bool {
+		return strings.Contains(line, "Language")
+	}), "\n")
 }
 
 func shiftTab() tea.KeyPressMsg {

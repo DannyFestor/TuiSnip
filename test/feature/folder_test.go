@@ -10,6 +10,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
@@ -116,6 +118,53 @@ func TestFolderDefaultLanguageChangeLeavesItsSnippetsAlone(t *testing.T) {
 	kept, err := app.SnippetRepository.Find(t.Context(), filed.ID())
 	require.NoError(t, err)
 	assert.Equal(t, filed, kept)
+}
+
+func TestNewSnippetTakesTheChangedFolderDefaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	ids := testkit.NewSequentialIDs()
+	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
+	existing := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{
+		FolderID: golang.ID(),
+		Fragment: testkit.FragmentSpec{Language: "Bash"},
+	})
+	_, err := app.SetFolderDefaultLanguage.Run(
+		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "Go"},
+	)
+	require.NoError(t, err)
+
+	created := create(t, app, snippet.CreateInput{
+		Title:       "table test",
+		Description: "",
+		Language:    defaultLanguageOf(t, app, golang.ID()),
+		Content:     "for _, tt := range tests {}\n",
+		FolderID:    golang.ID(),
+		Tags:        nil,
+	})
+
+	assert.Equal(t, "Go", created.FirstFragment().Language().String())
+	kept, err := app.SnippetRepository.Find(t.Context(), existing.ID())
+	require.NoError(t, err)
+	assert.Equal(t, existing, kept)
+}
+
+func defaultLanguageOf(t *testing.T, app *bootstrap.App, folderID domain.FolderID) string {
+	t.Helper()
+
+	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
+	require.NoError(t, err)
+
+	for index := range tree.Folders {
+		if filed := tree.Folders[index].Folder; filed.ID() == folderID {
+			return filed.DefaultLanguage().String()
+		}
+	}
+
+	require.FailNow(t, "Folder not in the tree", folderID)
+
+	return ""
 }
 
 func TestFolderCreatedInsideCopiesTheChangedDefaultLanguage(t *testing.T) {

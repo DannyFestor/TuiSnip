@@ -938,31 +938,88 @@ func TestScreen_newSnippet(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), "Editing")
 	})
 
-	t.Run("captured content with tabs is highlighted in the selected Folder's Default Language", func(t *testing.T) {
+	t.Run("captured content with tabs opens read-only in the selected Folder's Default Language", func(t *testing.T) {
 		t.Parallel()
 
-		inGo := capturedInFolderOf(t, "Go")
-		inPlainText := capturedInFolderOf(t, value.PlainText().String())
+		screen, _ := inFolderOf(t, goFolder(t))
 
-		assert.Contains(t, inGo.Screen(), "Contains tabs")
-		assert.Equal(t, inPlainText.Screen(), inGo.Screen())
-		assert.NotEqual(t, inPlainText.StyledScreen(), inGo.StyledScreen())
+		screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
+
+		assert.Contains(t, screen.Screen(), "Contains tabs")
+		assert.Contains(t, screen.Screen(), "Language    Go")
 	})
 }
 
-func capturedInFolderOf(t *testing.T, defaultLanguage string) *overlaytest.Driver {
+func TestScreen_newSnippetLanguage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("n starts the Snippet in the selected Folder's Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen, want := inFolderOf(t, goFolder(t))
+
+		screen.Press(keypress.Typed("nx")...)
+
+		assert.Contains(t, screen.Screen(), "Language    Go")
+
+		screen.Press(keypress.Ctrl('s'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(nothingTyped)}}, lastOutcome(screen))
+	})
+
+	t.Run("captured content starts in the selected Folder's Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen, want := inFolderOf(t, goFolder(t))
+
+		screen.Press(keypress.Letter('p'))
+		screen.Send(mainscreen.Captured{Content: capturedText})
+		screen.Press(keypress.Letter('x'), keypress.Ctrl('s'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(capturedText)}}, lastOutcome(screen))
+	})
+
+	t.Run("n with a Tag selected starts in plaintext whatever Folder is under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		loadFolder(screen, goFolder(t))
+		screen.Press(keypress.Letter('j'), keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		screen.Press(keypress.Typed("nx")...)
+		screen.Press(keypress.Ctrl('s'))
+
+		want := createdIn(domain.FolderID{}, tags[0].Tag)(nothingTyped)
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want}}, lastOutcome(screen))
+	})
+}
+
+func goFolder(t *testing.T) domain.Folder {
 	t.Helper()
 
-	filing := testkit.Folder(t, testkit.FolderSpec{Name: "go", DefaultLanguage: defaultLanguage})
+	return testkit.Folder(t, testkit.FolderSpec{Name: "go", DefaultLanguage: "Go"})
+}
+
+func inFolderOf(t *testing.T, filing domain.Folder) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
 	screen := showing(t, wide())
+	loadFolder(screen, filing)
+	screen.Press(keypress.Letter('j'))
+
+	return screen, func(content string) snippet.CreateInput {
+		created := createdIn(filing.ID())(content)
+		created.Language = filing.DefaultLanguage().String()
+
+		return created
+	}
+}
+
+func loadFolder(screen *overlaytest.Driver, filing domain.Folder) {
 	screen.Send(mainscreen.TreeLoaded{Tree: browse.Tree{
 		RootSnippetCount: 0,
 		Folders:          []browse.FolderNode{{Folder: filing, SnippetCount: 0, Children: nil}},
 	}})
-	screen.Press(keypress.Letter('j'))
-	screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
-
-	return screen
 }
 
 type createdFor func(content string) snippet.CreateInput

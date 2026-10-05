@@ -117,8 +117,9 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 	return f
 }
 
-func (f form) withLanguage(language value.Language) form {
+func (f form) withLanguage(language value.Language, codeStyle string) form {
 	f.language = language
+	f.readOnly = f.readOnly.inLanguage(language, codeStyle)
 
 	return f
 }

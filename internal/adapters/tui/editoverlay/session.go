@@ -49,7 +49,7 @@ func Capturing(
 	readOnly := readOnlyIfTabbed(captured.Content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(
 		formKeysOf(keys),
-		entered{title: "", description: "", language: value.PlainText(), content: ""},
+		entered{title: "", description: "", language: destination.Language, content: ""},
 		readOnly,
 	)
 	opened := blank.withContent(captured.Content)
@@ -114,7 +114,7 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 		return outcome.Close().Passing(received)
 	case outcome.LanguagePicked:
 		next := s
-		next.form = s.form.withLanguage(received.Language)
+		next.form = s.form.withLanguage(received.Language, s.styles.CodeStyle)
 
 		return outcome.Stay(next)
 	case outcome.QuitAsked:

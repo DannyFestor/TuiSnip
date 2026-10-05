@@ -849,6 +849,31 @@ func TestSession_language(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "  Language    plaintext   (enter or ctrl+l to pick)")
 	})
 
+	t.Run("starts a new Snippet in the Destination's Language with nothing unsaved", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingIn(t, destinationIn(t, "Go"))
+
+		assert.Contains(t, screen.Screen(), "  Language    Go   (enter or ctrl+l to pick)")
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+
+		screen.Press(save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Go", "")}}, screen.Outcomes())
+	})
+
+	t.Run("saves a new Snippet in a picked Language instead of the Destination's", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingIn(t, destinationIn(t, "Go"))
+
+		screen.Press(pickLanguage())
+		screen.Press(keypress.Typed("bash")...)
+		screen.Press(keypress.Special(tea.KeyEnter), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Bash", "")}}, screen.Outcomes())
+	})
+
 	t.Run("names only the bound pick key", func(t *testing.T) {
 		t.Parallel()
 

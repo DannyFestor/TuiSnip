@@ -57,7 +57,7 @@ run_checks() {
 	read -r -a test_packages <<<"$(unit_test_packages "$packages" | tr '\n' ' ')"
 	run_step "go build" go build ./... &&
 		run_step "go-arch-lint" go-arch-lint check &&
-		run_step "golangci-lint" golangci-lint run "${lint_packages[@]}" &&
+		run_step "golangci-lint" golangci-lint run --allow-serial-runners "${lint_packages[@]}" &&
 		if ((${#test_packages[@]} > 0)); then
 			run_step "go test" go test -short -race "${test_packages[@]}"
 		fi

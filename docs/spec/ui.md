@@ -177,8 +177,9 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 ```
 ╭ Help ────────────────────────────────────╮
 │q              quit                 y Copy│
-│?              help                 s sort│
-│/              search                     │
+│?              help                 e edit│
+│/              search               s sort│
+│z              zoom                       │
 │n              new                        │
 │p              Capture                    │
 │tab            next Pane                  │

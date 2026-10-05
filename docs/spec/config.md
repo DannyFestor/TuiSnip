@@ -117,7 +117,7 @@ delete = []
 | `search` | the Search popup is open | yes |
 | `picker` | the Language picker, the Folder picker, or the Tag editor is open | yes |
 | `name_input` | a Folder or Tag name is typed in place in the Folders or Tags Pane | yes |
-| `confirm` | a y/N confirmation is open | no |
+| `confirm` | a [y/N] confirmation is open | no |
 
 Help closes with its own `help` key or with `esc`, so it has no Scope.
 
@@ -199,7 +199,7 @@ sort = "title"   # title | updated | created
 collapsed = ["0192f1d4-7b3e-7c1a-9f00-3c5e8a2b4d61"]   # ids of collapsed Folders
 ```
 
-- An id in `collapsed` whose Folder no longer exists is ignored and dropped on the next write.
+- An id in `collapsed` whose Folder no longer exists is dropped when the Folder tree loads or changes, and the state file is rewritten without it.
 
 - TuiSnip writes it to a temporary file in the same directory and renames it over the old one. With several instances the last writer wins.
 - A missing, unreadable, or invalid state file is logged at Warn and replaced by defaults. It never stops start-up, because the user doesn't edit it.

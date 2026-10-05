@@ -112,6 +112,16 @@ func TestList_Update(t *testing.T) {
 		assert.Empty(t, outcomes)
 		assert.Nil(t, cmd)
 	})
+
+	t.Run("draws in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+
+		restyled, _, _ := listOf(t, nil).Update(look.Restyled{Styles: light})
+
+		assert.Equal(t, styledListOf(t, light, nil).View(upperCursor()), restyled.View(upperCursor()))
+	})
 }
 
 func TestList_View(t *testing.T) {
@@ -183,7 +193,7 @@ func TestList_View(t *testing.T) {
 
 		list := snippetlist.New(
 			testsettings.Default(t).Keys,
-			look.NewStyles(),
+			look.NewStyles(look.SchemeDark),
 			func(domain.Snippet) string { return "Root" },
 		)
 		list, _, _ = list.Update(look.Resized{Box: look.Size{Width: 12, Height: 1}})

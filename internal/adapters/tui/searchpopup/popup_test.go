@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -94,6 +96,18 @@ func TestPopup_View(t *testing.T) {
 
 		assert.Contains(t, screen.Screen(), numberedTitle(resultRows+1))
 		assert.NotContains(t, screen.Screen(), numberedTitle(1))
+	})
+
+	t.Run("draws the results and the preview in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		screen := searching(t)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		listing := searchpopup.Listing{Snippets: sampleSnippets(t), Paths: folderpath.Paths{}}
+		assert.Equal(t, searchingStyled(t, light, listing).StyledScreen(), screen.StyledScreen())
 	})
 }
 

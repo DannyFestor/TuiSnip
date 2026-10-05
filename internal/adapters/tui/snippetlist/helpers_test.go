@@ -32,7 +32,13 @@ func upperCursor() look.FrameStyle {
 func listOf(t *testing.T, snippets []domain.Snippet) snippetlist.List {
 	t.Helper()
 
-	list := snippetlist.New(testsettings.Default(t).Keys, look.NewStyles(), snippetlist.Language)
+	return styledListOf(t, look.NewStyles(look.SchemeDark), snippets)
+}
+
+func styledListOf(t *testing.T, styles look.Styles, snippets []domain.Snippet) snippetlist.List {
+	t.Helper()
+
+	list := snippetlist.New(testsettings.Default(t).Keys, styles, snippetlist.Language)
 	list, _, _ = list.Update(look.Resized{Box: look.Size{Width: boxWidth, Height: boxHeight}})
 
 	return list.WithSnippets(snippets)

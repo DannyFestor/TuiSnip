@@ -91,6 +91,12 @@ func (f form) resized(outer look.Size) form {
 	return f
 }
 
+func (f form) restyled(codeStyle string) form {
+	f.readOnly = f.readOnly.highlightedIn(codeStyle)
+
+	return f
+}
+
 func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 	f.invalid = make([]domain.Field, 0, len(fieldErrors))
 	for _, fieldErr := range fieldErrors {

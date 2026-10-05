@@ -9,6 +9,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -80,6 +81,22 @@ func TestEditing_View(t *testing.T) {
 
 		assert.Contains(t, screen.Screen(), unboundReadOnly)
 		assert.NotContains(t, screen.Screen(), "edit with")
+	})
+
+	t.Run("draws the read-only Content and the unsaved marker in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := editingStoredWith(t, keys, storedSnippet(t, tabbedContent))
+		screen.Press(keypress.Letter('x'))
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := editingStoredStyled(t, keys, light, storedSnippet(t, tabbedContent))
+		styledFromStart.Press(keypress.Letter('x'))
+		assert.Contains(t, screen.Screen(), unsavedTitle)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 	})
 }
 
@@ -259,6 +276,34 @@ func TestEditing_staleSave(t *testing.T) {
 		assert.Len(t, screen.Outcomes(), 2)
 		assert.IsType(t, outcome.UpdateRequested{}, screen.Outcomes()[1])
 	})
+
+	t.Run("asks in the Styles the overlay last got", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := editingStoredWith(t, keys, storedSnippet(t, "echo hi"))
+		screen.Send(look.Restyled{Styles: light})
+
+		refuseAsStale(screen)
+
+		styledFromStart := refuseAsStale(editingStoredStyled(t, keys, light, storedSnippet(t, "echo hi")))
+		assert.Contains(t, screen.Screen(), changedElsewhereTitle)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+	})
+
+	t.Run("redraws the open question in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := refusedAsStale(t, keys, storedSnippet(t, "echo hi"))
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := refuseAsStale(editingStoredStyled(t, keys, light, storedSnippet(t, "echo hi")))
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+	})
 }
 
 func TestEditing_cancel(t *testing.T) {
@@ -286,7 +331,10 @@ func TestEditing_cancel(t *testing.T) {
 func refusedAsStale(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
-	screen := editingStoredWith(t, keys, stored)
+	return refuseAsStale(editingStoredWith(t, keys, stored))
+}
+
+func refuseAsStale(screen *overlaytest.Driver) *overlaytest.Driver {
 	screen.Press(keypress.Letter('x'), save())
 	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errChangedElsewhere})
 

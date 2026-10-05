@@ -66,8 +66,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return s.pasted(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
-	case tea.BackgroundColorMsg:
-		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
+	case look.Restyled:
+		return outcome.Stay(s.restyled(msg))
 	case FolderDeletePreviewed:
 		return s.confirmingFolderDelete(msg.Preview)
 	case StatusShown:
@@ -145,7 +145,6 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 			s.keys,
 			s.styles,
 			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
-			s.panes.preview.CodeStyle(),
 		))
 	}
 
@@ -292,6 +291,13 @@ func (s Screen) holdingAfter(outcomes []outcome.Outcome) Screen {
 
 func (s Screen) withPanes(next panes) Screen {
 	s.panes = next
+
+	return s
+}
+
+func (s Screen) restyled(msg look.Restyled) Screen {
+	s.styles = msg.Styles
+	s.panes = s.panes.restyled(msg)
 
 	return s
 }

@@ -28,7 +28,7 @@ func New(keys binding.Keys, styles look.Styles, listed [][]key.Binding) Overlay 
 		hints:   keys.HelpOverlayHints(),
 		listed:  listed,
 		styles:  styles,
-		columns: columnsStyled(styles),
+		columns: columnsStyled(help.New(), styles),
 		screen:  look.Size{Width: 0, Height: 0},
 	}
 }
@@ -39,6 +39,8 @@ func (o Overlay) Update(msg tea.Msg) outcome.Step {
 		return o.pressed(msg)
 	case look.Resized:
 		return outcome.Stay(o.resized(msg.Box))
+	case look.Restyled:
+		return outcome.Stay(o.restyled(msg.Styles))
 	}
 
 	return outcome.Stay(o)
@@ -77,8 +79,14 @@ func (o Overlay) resized(screen look.Size) Overlay {
 	return o
 }
 
-func columnsStyled(styles look.Styles) help.Model {
-	columns := help.New()
+func (o Overlay) restyled(styles look.Styles) Overlay {
+	o.styles = styles
+	o.columns = columnsStyled(o.columns, styles)
+
+	return o
+}
+
+func columnsStyled(columns help.Model, styles look.Styles) help.Model {
 	columns.Styles.FullKey = styles.Bold
 	columns.Styles.FullDesc = styles.Plain
 	columns.Styles.FullSeparator = styles.Plain

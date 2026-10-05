@@ -94,6 +94,19 @@ func TestOverlay_View(t *testing.T) {
 
 		assert.LessOrEqual(t, screen.TopBorderWidth(), narrow.Width)
 	})
+
+	t.Run("draws in the new Styles at the width it has", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		narrow := look.Size{Width: 30, Height: 12}
+		light := look.NewStyles(look.SchemeLight)
+		screen := helpingWith(t, keys, narrow)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		assert.Equal(t, helpingStyled(t, keys, light, narrow).StyledScreen(), screen.StyledScreen())
+	})
 }
 
 func TestOverlay_ShortHelp(t *testing.T) {

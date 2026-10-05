@@ -35,13 +35,13 @@ func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
 	blank, cmd := newForm(
 		formKeysOf(keys),
 		entered{title: "", description: "", content: ""},
-		readOnlyContent{held: false, highlighted: ""},
+		editableContent(),
 	)
 
 	return newSession(keys, styles, blank, newSnippet{}), cmd
 }
 
-func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet, codeStyle string) (Session, tea.Cmd) {
+func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet) (Session, tea.Cmd) {
 	stored := browsed.Snippet
 	fragment := stored.FirstFragment()
 	original := entered{
@@ -49,7 +49,7 @@ func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet, code
 		description: stored.Description().String(),
 		content:     fragment.Content().String(),
 	}
-	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, codeStyle))
+	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, styles.CodeStyle))
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, filled, target), cmd
@@ -76,6 +76,8 @@ func (s Session) Update(msg tea.Msg) outcome.Step {
 		return s.formUpdated(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
+	case look.Restyled:
+		return outcome.Stay(s.restyled(msg.Styles))
 	case SaveFinished:
 		return s.saved(msg)
 	}
@@ -204,6 +206,13 @@ func (s Session) confirming(asked confirm.Question, onYes outcome.Outcome) outco
 func (s Session) resized(screen look.Size) Session {
 	s.outer = screen.Share(overlayPercent)
 	s.form = s.form.resized(s.outer)
+
+	return s
+}
+
+func (s Session) restyled(styles look.Styles) Session {
+	s.styles = styles
+	s.form = s.form.restyled(styles.CodeStyle)
 
 	return s
 }

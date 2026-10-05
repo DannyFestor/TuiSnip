@@ -51,7 +51,7 @@ internal/
       folderpath/            how a Snippet's Folder path is spelled
       helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
-      look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
+      look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
@@ -168,6 +168,10 @@ The TUI is built from small components, each in its own package under `tui/`. `t
 ### Size comes from the parent
 
 A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized` carrying the box it gets. The overlay stack converts each `tea.WindowSizeMsg` into a `look.Resized` with the whole screen and sends it to every Overlay, and to each Overlay it opens later. The Overlay picks its own share with `Size.Share`. On the main screen, the layout decides each Pane's box, and each Pane gets it as a `look.Resized`.
+
+### Styles come from the parent
+
+A component never reads `tea.BackgroundColorMsg`. Model starts the main screen with the `look.Styles` of the configured `look.Theme`, and turns each `tea.BackgroundColorMsg` into a `look.Restyled` carrying the Styles the theme picks for that background. `auto` follows the background, and `light` and `dark` keep their own scheme. The overlay stack sends the `look.Restyled` to every Overlay, each passes it to its embedded children, and the main screen opens later Overlays with the Styles it last got. The chroma style is part of `look.Styles`, so code follows the same scheme.
 
 ### Outcomes are typed and synchronous
 

@@ -21,7 +21,7 @@ func TestEmptyHint(t *testing.T) {
 		disabled.SetEnabled(false)
 		hints := []key.Binding{key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new Snippet")), disabled}
 
-		got := strings.Split(ansi.Strip(look.EmptyHint(look.NewStyles(), hints)), "\n")
+		got := strings.Split(ansi.Strip(look.EmptyHint(look.NewStyles(look.SchemeDark), hints)), "\n")
 
 		assert.Equal(t, []string{"No Snippets here.", "", "n  new Snippet"}, got)
 	})
@@ -29,7 +29,7 @@ func TestEmptyHint(t *testing.T) {
 	t.Run("shows only the notice without hints", func(t *testing.T) {
 		t.Parallel()
 
-		got := strings.Split(ansi.Strip(look.EmptyHint(look.NewStyles(), nil)), "\n")
+		got := strings.Split(ansi.Strip(look.EmptyHint(look.NewStyles(look.SchemeDark), nil)), "\n")
 
 		assert.Equal(t, []string{"No Snippets here.", ""}, got)
 	})

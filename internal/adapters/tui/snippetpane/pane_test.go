@@ -1,7 +1,6 @@
 package snippetpane_test
 
 import (
-	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -171,7 +170,7 @@ func TestPane_Update(t *testing.T) {
 	t.Run("cuts a long line off without wrapping", func(t *testing.T) {
 		t.Parallel()
 
-		pane := showing(t, snippetOf(t, longLine))
+		pane := showing(t, longLineSnippet(t))
 
 		assert.Equal(t, []string{"   1 │ docker system pru"}, trimmed(code(pane))[:1])
 	})
@@ -179,7 +178,7 @@ func TestPane_Update(t *testing.T) {
 	t.Run("w wraps a long line under a continuation marker", func(t *testing.T) {
 		t.Parallel()
 
-		pane := pressed(t, showing(t, snippetOf(t, longLine)), keypress.Letter('w'))
+		pane := pressed(t, showing(t, longLineSnippet(t)), keypress.Letter('w'))
 
 		assert.Equal(t, []string{
 			"   1 │ docker system pru",
@@ -190,22 +189,44 @@ func TestPane_Update(t *testing.T) {
 	t.Run("w again stops wrapping", func(t *testing.T) {
 		t.Parallel()
 
-		unwrapped := showing(t, snippetOf(t, longLine))
+		unwrapped := showing(t, longLineSnippet(t))
 
 		pane := pressed(t, unwrapped, keypress.Letter('w'), keypress.Letter('w'))
 
 		assert.Equal(t, code(unwrapped), code(pane))
 	})
 
-	t.Run("highlights for the terminal's background", func(t *testing.T) {
+	t.Run("redraws the shown Snippet in the new Styles", func(t *testing.T) {
 		t.Parallel()
 
 		pane := showing(t, longSnippet(t))
 
-		light, _, _ := pane.Update(tea.BackgroundColorMsg{Color: color.White})
+		light, _, _ := pane.Update(look.Restyled{Styles: look.NewStyles(look.SchemeLight)})
 
 		assert.NotEqual(t, pane.View(), light.View())
 		assert.Equal(t, lines(pane), lines(light))
+	})
+
+	t.Run("keeps wrapping under a continuation marker in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		wrapped := pressed(t, showing(t, longLineSnippet(t)), keypress.Letter('w'))
+
+		restyled, _, _ := wrapped.Update(look.Restyled{Styles: light})
+
+		styledFromStart := pressed(t, showingStyled(t, light, longLineSnippet(t)), keypress.Letter('w'))
+		assert.Contains(t, restyled.View(), "↪")
+		assert.Equal(t, styledFromStart.View(), restyled.View())
+	})
+
+	t.Run("keeps the new Styles for the next Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, longSnippet(t))
+		restyled, _, _ := pane.Cleared().Update(look.Restyled{Styles: look.NewStyles(look.SchemeLight)})
+
+		assert.NotEqual(t, pane.View(), restyled.Showing(longSnippet(t)).View())
 	})
 
 	t.Run("ignores messages it does not handle", func(t *testing.T) {

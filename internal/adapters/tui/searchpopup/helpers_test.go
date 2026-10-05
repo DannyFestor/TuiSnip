@@ -43,8 +43,13 @@ func searchingIn(t *testing.T, browse []domain.Snippet) *overlaytest.Driver {
 func searchingListing(t *testing.T, listing searchpopup.Listing) *overlaytest.Driver {
 	t.Helper()
 
+	return searchingStyled(t, look.NewStyles(look.SchemeDark), listing)
+}
+
+func searchingStyled(t *testing.T, styles look.Styles, listing searchpopup.Listing) *overlaytest.Driver {
+	t.Helper()
+
 	keys := testsettings.Default(t).Keys
-	styles := look.NewStyles()
 	opened, _ := searchpopup.New(keys, styles, snippetpane.New(keys, styles, time.UTC), listing)
 
 	return overlaytest.Open(t, screenSize(), opened)

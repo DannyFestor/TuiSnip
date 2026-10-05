@@ -44,7 +44,13 @@ func editing(t *testing.T) *overlaytest.Driver {
 func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, look.NewStyles())
+	return editingStyled(t, keys, look.NewStyles(look.SchemeDark))
+}
+
+func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.New(keys, styles)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -58,12 +64,18 @@ func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
 func editingStoredWith(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.Editing(
-		keys,
-		look.NewStyles(),
-		editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
-		look.DarkCodeStyle,
-	)
+	return editingStoredStyled(t, keys, look.NewStyles(look.SchemeDark), stored)
+}
+
+func editingStoredStyled(
+	t *testing.T,
+	keys binding.Keys,
+	styles look.Styles,
+	stored domain.Snippet,
+) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.Editing(keys, styles, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()})
 
 	return overlaytest.Open(t, screenSize(), opened)
 }

@@ -38,7 +38,6 @@ type Pane struct {
 	viewport   viewport.Model
 	location   *time.Location
 	paths      folderpath.Paths
-	codeStyle  string
 	box        look.Size
 }
 
@@ -56,7 +55,6 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 		viewport:   code,
 		location:   location,
 		paths:      folderpath.Paths{},
-		codeStyle:  look.DarkCodeStyle,
 		box:        look.Size{Width: 0, Height: 0},
 	}
 }
@@ -68,8 +66,8 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 		return p.pressed(msg), p.copyRequested(msg), nil
 	case look.Resized:
 		return p.resized(msg.Box), nil, nil
-	case tea.BackgroundColorMsg:
-		return p.withCodeStyle(look.CodeStyleFor(msg)), nil, nil
+	case look.Restyled:
+		return p.restyled(msg.Styles), nil, nil
 	}
 
 	return p, nil, nil
@@ -105,10 +103,6 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 
 func (p Pane) Shown() (domain.Snippet, bool) {
 	return p.snippet, p.shown
-}
-
-func (p Pane) CodeStyle() string {
-	return p.codeStyle
 }
 
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
@@ -152,9 +146,10 @@ func (p Pane) wrapToggled() Pane {
 	return p
 }
 
-func (p Pane) withCodeStyle(codeStyle string) Pane {
+func (p Pane) restyled(styles look.Styles) Pane {
 	next := p
-	next.codeStyle = codeStyle
+	next.styles = styles
+	next.viewport.LeftGutterFunc = lineNumbers(styles)
 
 	if !next.shown {
 		return next
@@ -192,7 +187,7 @@ func (p Pane) scrolled(direction move.Direction) Pane {
 
 func (p Pane) rendered() Pane {
 	fragment := p.snippet.FirstFragment()
-	p.viewport.SetContent(look.Highlight(fragment.Content().String(), fragment.Language().String(), p.codeStyle))
+	p.viewport.SetContent(look.Highlight(fragment.Content().String(), fragment.Language().String(), p.styles.CodeStyle))
 	p.viewport.GotoTop()
 
 	return p.sized()

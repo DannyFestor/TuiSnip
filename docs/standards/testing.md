@@ -144,6 +144,7 @@ Set only the fields the test is about. A test that states every field hides whic
 - Test a stack member (an Overlay) through `test/overlaytest`, which pushes it onto a real Overlay stack. Its tests see the confirmations it opens, the outcomes it reports, and whether it closes, all without Model.
 - Check what the user sees: the rendered `View()` with ANSI stripped, or the messages the model emitted (`tea.SetClipboard`, `tea.QuitMsg`). Not the model's fields.
 - A small number of golden-file snapshots guard the layout of the main screens. Each is the final `View()`, ANSI stripped, at 120×40, saved in `testdata/<Test>.golden` and compared with `golden.RequireEqual` from `github.com/charmbracelet/x/exp/golden`. The data comes from mocks, so dates and IDs never change. A golden of teatest's output stream would hold every intermediate frame, which depends on when asynchronous messages arrive. After an intended layout change, regenerate with `go test ./internal/adapters/tui/... -update` and review the snapshot diff in the PR.
+- The colour schemes are the one exception to stripping ANSI: `TestDarkSchemeLayout` and `TestLightSchemeLayout` keep the escape codes, because colour is what they guard. `golden.RequireEqual` quotes the codes in its diff.
 - Add a golden only for layout. Behaviour checks use substring assertions, because a golden breaks on every visual change.
 - One teatest test runs the model inside a real Bubble Tea program, to catch what the synchronous driver can't, such as a model that never quits.
 

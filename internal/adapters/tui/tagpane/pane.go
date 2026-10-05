@@ -44,6 +44,8 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch msg := msg.(type) {
 	case look.Resized:
 		return p.resized(msg.Box), nil, nil
+	case look.Restyled:
+		return p.restyled(msg.Styles), nil, nil
 	case tea.KeyPressMsg:
 		return p.moved(msg)
 	}
@@ -125,6 +127,12 @@ func (p Pane) resized(box look.Size) Pane {
 	next.box = box
 
 	return next.withCursor(p.cursor.Index())
+}
+
+func (p Pane) restyled(styles look.Styles) Pane {
+	p.styles = styles
+
+	return p
 }
 
 func (p Pane) withCursor(index int) Pane {

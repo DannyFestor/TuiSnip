@@ -60,6 +60,7 @@ type Model struct {
 	sortOrder             domain.SortOrder
 	logger                *slog.Logger
 	forcedQuitKey         string
+	theme                 look.Theme
 	afterCopy             tea.Cmd
 	overlays              outcome.Stack
 }
@@ -90,7 +91,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 
 	mainScreen, err := mainscreen.New(
 		deps.Settings.Keys,
-		look.NewStyles(),
+		look.NewStyles(deps.Settings.Theme.Scheme()),
 		deps.Settings.Location,
 		deps.Settings.Remembered,
 	)
@@ -120,6 +121,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		sortOrder:             deps.Settings.Remembered.SortOrder,
 		logger:                deps.Logger,
 		forcedQuitKey:         deps.Settings.ForcedQuitKey,
+		theme:                 deps.Settings.Theme,
 		afterCopy:             afterCopy,
 		overlays:              overlays,
 	}, nil
@@ -159,7 +161,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
-	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
+	case tea.BackgroundColorMsg:
+		return m.restyledOn(msg)
+	case tea.WindowSizeMsg, tea.PasteMsg,
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
 		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed, mainscreen.TagsLoaded:
 		return m.overlaysUpdatedSharingTree(msg)
@@ -167,16 +171,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.loadTreeSelecting(msg.selecting), m.loadTags())
 	case folderRenamedMsg:
 		return m, m.loadTree()
-	case operationFailedMsg:
-		return m.failed(msg.operation, msg.err)
-	case listFailedMsg:
-		return m.failed(operationList, msg.err)
-	case treeFailedMsg:
-		return m.failed(operationTree, msg.err)
+	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
+		return m.failedWith(msg)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
-	case searchFailedMsg:
-		return m.failed(operationSearch, msg.err)
 	}
 
 	return m, nil
@@ -187,6 +185,25 @@ func (m Model) View() tea.View {
 	view.AltScreen = true
 
 	return view
+}
+
+func (m Model) restyledOn(background tea.BackgroundColorMsg) (Model, tea.Cmd) {
+	return m.overlaysUpdated(look.Restyled{Styles: look.NewStyles(m.theme.SchemeOn(background))})
+}
+
+func (m Model) failedWith(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case operationFailedMsg:
+		return m.failed(msg.operation, msg.err)
+	case listFailedMsg:
+		return m.failed(operationList, msg.err)
+	case treeFailedMsg:
+		return m.failed(operationTree, msg.err)
+	case searchFailedMsg:
+		return m.failed(operationSearch, msg.err)
+	default:
+		return m, nil
+	}
 }
 
 func (m Model) loadTree() tea.Cmd {

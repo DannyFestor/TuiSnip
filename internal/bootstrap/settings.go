@@ -6,6 +6,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 )
 
@@ -13,9 +14,22 @@ func SettingsFrom(cfg config.Config, location *time.Location, remembered mainscr
 	return tui.Settings{
 		Keys:          keysFrom(cfg.Bindings),
 		ForcedQuitKey: config.ForcedQuitKey().String(),
+		Theme:         themeFrom(cfg.Theme),
 		Location:      location,
 		Remembered:    remembered,
 	}
+}
+
+func themeFrom(theme config.Theme) look.Theme {
+	switch theme {
+	case config.ThemeLight:
+		return look.ThemeLight
+	case config.ThemeDark:
+		return look.ThemeDark
+	case config.ThemeAuto:
+	}
+
+	return look.ThemeAuto
 }
 
 func keysFrom(bindings map[config.Scope]map[config.Binding][]config.Key) binding.Keys {

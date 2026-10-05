@@ -114,7 +114,7 @@ func TestEditing_save(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
-	t.Run("closes and reports the saved Snippet", func(t *testing.T) {
+	t.Run("closes and reloads the saved Snippet in the Browse selection it was opened from", func(t *testing.T) {
 		t.Parallel()
 
 		stored := storedSnippet(t, "echo hi")
@@ -122,7 +122,7 @@ func TestEditing_save(t *testing.T) {
 		screen.Press(keypress.Letter('x'), save())
 		screen.Send(editoverlay.SaveFinished{Snippet: stored, Err: nil})
 
-		reported := outcome.SnippetSaved{ID: stored.ID(), FolderID: stored.FolderID()}
+		reported := outcome.SnippetReloaded{ID: stored.ID(), Selection: browsed()}
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reported))
 		assert.False(t, screen.IsOpen())
 	})
@@ -148,7 +148,7 @@ func TestEditing_staleSave(t *testing.T) {
 		screen := refusedAsStale(t, testsettings.Default(t).Keys, stored)
 		screen.Press(keypress.Letter('y'))
 
-		reloaded := outcome.SnippetReloaded{ID: stored.ID(), FolderID: stored.FolderID()}
+		reloaded := outcome.SnippetReloaded{ID: stored.ID(), Selection: browsed()}
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reloaded))
 		assert.False(t, screen.IsOpen())
 	})

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -57,9 +58,18 @@ func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
 func editingStoredWith(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.Editing(keys, look.NewStyles(), stored, look.DarkCodeStyle)
+	opened, _ := editoverlay.Editing(
+		keys,
+		look.NewStyles(),
+		editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+		look.DarkCodeStyle,
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func browsed() browseselection.Selection {
+	return browseselection.WithTag(testkit.NewSequentialIDs().NewTagID())
 }
 
 func storedSnippet(t *testing.T, content string) domain.Snippet {

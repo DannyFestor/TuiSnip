@@ -41,7 +41,8 @@ func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
 	return newSession(keys, styles, blank, newSnippet{}), cmd
 }
 
-func Editing(keys binding.Keys, styles look.Styles, stored domain.Snippet, codeStyle string) (Session, tea.Cmd) {
+func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet, codeStyle string) (Session, tea.Cmd) {
+	stored := browsed.Snippet
 	fragment := stored.FirstFragment()
 	original := entered{
 		title:       stored.Title().String(),
@@ -49,7 +50,7 @@ func Editing(keys binding.Keys, styles look.Styles, stored domain.Snippet, codeS
 		content:     fragment.Content().String(),
 	}
 	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, codeStyle))
-	target := storedSnippet{id: stored.ID(), folderID: stored.FolderID(), loadedUpdatedAt: stored.UpdatedAt()}
+	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, filled, target), cmd
 }
@@ -161,7 +162,7 @@ func (s Session) cancelled() outcome.Step {
 
 func (s Session) saved(msg SaveFinished) outcome.Step {
 	if msg.Err == nil {
-		return outcome.Close().Passing(outcome.SnippetSaved{ID: msg.Snippet.ID(), FolderID: msg.Snippet.FolderID()})
+		return s.target.closedAfterSave(msg.Snippet)
 	}
 
 	next := s

@@ -384,7 +384,7 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.SnippetSaved:
 		return m, m.reloadSelecting(browseselection.InFolder(reported.FolderID), reported.ID)
 	case outcome.SnippetReloaded:
-		return m, m.reloadSelecting(browseselection.InFolder(reported.FolderID), reported.ID)
+		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetRevealed:
 		return m, m.loadSnippets(browseselection.InFolder(reported.FolderID), reported.ID)
 	case outcome.FolderSelected:

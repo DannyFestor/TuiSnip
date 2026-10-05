@@ -3,6 +3,7 @@ package editoverlay
 import (
 	"time"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -10,6 +11,7 @@ import (
 
 type saveTarget interface {
 	savingAs(saving outcome.Overlay, values entered) outcome.Step
+	closedAfterSave(saved domain.Snippet) outcome.Step
 	reloaded() (outcome.SnippetReloaded, bool)
 }
 
@@ -23,18 +25,18 @@ func (newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step 
 	}})
 }
 
+func (newSnippet) closedAfterSave(saved domain.Snippet) outcome.Step {
+	return outcome.Close().Passing(outcome.SnippetSaved{ID: saved.ID(), FolderID: saved.FolderID()})
+}
+
 func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {
-	return outcome.SnippetReloaded{ID: domain.SnippetID{}, FolderID: domain.FolderID{}}, false
+	return outcome.SnippetReloaded{ID: domain.SnippetID{}, Selection: browseselection.Selection{}}, false
 }
 
 type storedSnippet struct {
 	id              domain.SnippetID
-	folderID        domain.FolderID
+	selection       browseselection.Selection
 	loadedUpdatedAt time.Time
-}
-
-func (s storedSnippet) reloaded() (outcome.SnippetReloaded, bool) {
-	return outcome.SnippetReloaded{ID: s.id, FolderID: s.folderID}, true
 }
 
 func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
@@ -45,4 +47,14 @@ func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.
 		Description:     values.description,
 		Content:         values.content,
 	}})
+}
+
+func (s storedSnippet) closedAfterSave(domain.Snippet) outcome.Step {
+	reload, _ := s.reloaded()
+
+	return outcome.Close().Passing(reload)
+}
+
+func (s storedSnippet) reloaded() (outcome.SnippetReloaded, bool) {
+	return outcome.SnippetReloaded{ID: s.id, Selection: s.selection}, true
 }

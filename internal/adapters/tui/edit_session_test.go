@@ -99,6 +99,29 @@ func TestModel_editOverlay(t *testing.T) {
 		assert.Contains(t, screen.screen(), "Snippet 1 edited")
 	})
 
+	t.Run("keeps a Tag as the Browse selection after the save", func(t *testing.T) {
+		t.Parallel()
+
+		tags := sampleTagCounts(t)
+		stored := filedIn(t, domain.FolderID{})
+		edited := renamed(t, stored, filedTitle+" edited")
+		updater := NewMockSnippetUpdater(t)
+		updater.EXPECT().Run(mock.Anything, mock.Anything).Return(edited, nil)
+
+		tagged := NewMockTagSnippetsLister(t)
+		listingWithTag(tagged, tags[0].Tag.ID(), domain.SortOrderTitle, stored)
+		listingWithTag(tagged, tags[0].Tag.ID(), domain.SortOrderTitle, edited)
+		screen := start(t, taggedUpdatingModel(t, updater, tagsOf(t, tags...), tagged), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+		screen.press(keypress.Typed("e edited")...)
+		screen.press(keypress.Ctrl('s'))
+
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "3 # docker · by title")
+		assert.Contains(t, screen.screen(), filedTitle+" edited")
+	})
+
 	t.Run("ignores a paste on the main screen", func(t *testing.T) {
 		t.Parallel()
 
@@ -131,6 +154,30 @@ func TestModel_editOverlayStaleSave(t *testing.T) {
 		assert.NotContains(t, screen.screen(), editOverlayTitle)
 		assert.Contains(t, screen.screen(), "Snippet 1 elsewhere")
 		assert.NotContains(t, screen.screen(), "Snippet 1 mine")
+	})
+
+	t.Run("keeps a Tag as the Browse selection after the reload", func(t *testing.T) {
+		t.Parallel()
+
+		tags := sampleTagCounts(t)
+		stored := filedIn(t, domain.FolderID{})
+		tagged := NewMockTagSnippetsLister(t)
+		listingWithTag(tagged, tags[0].Tag.ID(), domain.SortOrderTitle, stored)
+		listingWithTag(tagged, tags[0].Tag.ID(), domain.SortOrderTitle, changedElsewhere(t, stored))
+		screen := start(
+			t,
+			taggedUpdatingModel(t, refusingUpdater(t), tagsOf(t, tags...), tagged),
+			wideWidth,
+			wideHeight,
+		)
+
+		screen.press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+		screen.press(keypress.Typed("e mine")...)
+		screen.press(keypress.Ctrl('s'), keypress.Letter('y'))
+
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "3 # docker · by title")
+		assert.Contains(t, screen.screen(), filedTitle+" elsewhere")
 	})
 
 	t.Run("keeps the edits open when the reload is declined", func(t *testing.T) {
@@ -206,6 +253,17 @@ func updatingModel(t *testing.T, updater *MockSnippetUpdater, lister *MockFolder
 	})
 }
 
+func taggedUpdatingModel(
+	t *testing.T, updater *MockSnippetUpdater, tags *MockTagLister, tagged *MockTagSnippetsLister,
+) tui.Model {
+	t.Helper()
+
+	with := taggedActions(t, listerOf(t), tags, tagged)
+	with.updater = updater
+
+	return modelWith(t, with)
+}
+
 func refusingUpdater(t *testing.T) *MockSnippetUpdater {
 	t.Helper()
 
@@ -220,9 +278,15 @@ func refusingUpdater(t *testing.T) *MockSnippetUpdater {
 func changedElsewhere(t *testing.T, loaded domain.Snippet) domain.Snippet {
 	t.Helper()
 
+	return renamed(t, loaded, loaded.Title().String()+" elsewhere")
+}
+
+func renamed(t *testing.T, loaded domain.Snippet, title string) domain.Snippet {
+	t.Helper()
+
 	return testkit.Snippet(t, testkit.SnippetSpec{
 		ID:          loaded.ID(),
-		Title:       loaded.Title().String() + " elsewhere",
+		Title:       title,
 		Description: loaded.Description().String(),
 		Fragment:    testkit.FragmentSpec{ID: loaded.FirstFragment().ID()},
 	})

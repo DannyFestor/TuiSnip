@@ -123,6 +123,7 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			TagSnippetsLister:     NewMockTagSnippetsLister(t),
 			Copier:                NewMockSnippetCopier(t),
 			Creator:               NewMockSnippetCreator(t),
+			Capturer:              NewMockSnippetCapturer(t),
 			Updater:               NewMockSnippetUpdater(t),
 			Searcher:              NewMockSnippetSearcher(t),
 			FolderCreator:         NewMockFolderCreator(t),

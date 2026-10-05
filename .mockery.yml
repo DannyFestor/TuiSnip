@@ -9,6 +9,7 @@ packages:
       Inserter: {}
       Finder: {}
       Copier: {}
+      ClipboardReader: {}
       UpdateRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
@@ -41,6 +42,7 @@ packages:
       TagSnippetsLister: {}
       SnippetCopier: {}
       SnippetCreator: {}
+      SnippetCapturer: {}
       SnippetUpdater: {}
       SnippetSearcher: {}
       FolderCreator: {}

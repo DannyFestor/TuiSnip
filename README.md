@@ -46,6 +46,18 @@ The build does not use CGO. You do not need a C compiler.
 
 The binary is `bin/tuisnip`.
 
+## Copy over SSH and in tmux
+
+Over SSH, TuiSnip cannot run the clipboard tool of your own machine. It sends the content to your terminal with OSC 52 instead, and the terminal puts it on the clipboard.
+
+tmux passes OSC 52 on only when you allow it. Add this line to `~/.tmux.conf`:
+
+```
+set -g set-clipboard on
+```
+
+Capture always reads the clipboard with the clipboard tool of the machine that TuiSnip runs on. OSC 52 cannot read the clipboard.
+
 ## Set up for development
 
 Do the steps in [Build from source](#build-from-source) first. Then install the git hooks:

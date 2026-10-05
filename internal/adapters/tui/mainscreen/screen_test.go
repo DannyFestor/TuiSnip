@@ -21,8 +21,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -868,6 +870,151 @@ func TestScreen_Update(t *testing.T) {
 	})
 }
 
+const (
+	nothingTyped = ""
+	capturedText = "docker ps\n"
+)
+
+func TestScreen_newSnippet(t *testing.T) {
+	t.Parallel()
+
+	for _, place := range browseSelections() {
+		t.Run("n files the Snippet for "+place.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, want := place.browse(t)
+
+			screen.Press(keypress.Typed("nx")...)
+			screen.Press(keypress.Ctrl('s'))
+
+			assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(nothingTyped)}}, lastOutcome(screen))
+		})
+
+		t.Run("captured content is filed for "+place.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, want := place.browse(t)
+
+			screen.Press(keypress.Letter('p'))
+			screen.Send(mainscreen.Captured{Content: capturedText})
+			screen.Press(keypress.Letter('x'), keypress.Ctrl('s'))
+
+			assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(capturedText)}}, lastOutcome(screen))
+		})
+	}
+
+	t.Run("p asks for Capture without opening anything", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('p'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.CaptureAsked{}}, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("captured content opens the edit overlay on Title as an unsaved change", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.Captured{Content: capturedText})
+
+		assert.Contains(t, screen.Screen(), "Editing •")
+		assert.Contains(t, screen.Screen(), "› Title")
+		assert.Contains(t, screen.Screen(), strings.TrimSpace(capturedText))
+	})
+
+	t.Run("captured content over 10,000 lines is refused on the status line and opens nothing", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.Captured{Content: strings.Repeat("line\n", 10_000)})
+
+		assert.Contains(t, statusLine(screen), "Clipboard is longer than 10,000 lines; use ctrl+e to edit in $EDITOR")
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("captured content with tabs is highlighted in the selected Folder's Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		inGo := capturedInFolderOf(t, "Go")
+		inPlainText := capturedInFolderOf(t, value.PlainText().String())
+
+		assert.Contains(t, inGo.Screen(), "Contains tabs")
+		assert.Equal(t, inPlainText.Screen(), inGo.Screen())
+		assert.NotEqual(t, inPlainText.StyledScreen(), inGo.StyledScreen())
+	})
+}
+
+func capturedInFolderOf(t *testing.T, defaultLanguage string) *overlaytest.Driver {
+	t.Helper()
+
+	filing := testkit.Folder(t, testkit.FolderSpec{Name: "go", DefaultLanguage: defaultLanguage})
+	screen := showing(t, wide())
+	screen.Send(mainscreen.TreeLoaded{Tree: browse.Tree{
+		RootSnippetCount: 0,
+		Folders:          []browse.FolderNode{{Folder: filing, SnippetCount: 0, Children: nil}},
+	}})
+	screen.Press(keypress.Letter('j'))
+	screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
+
+	return screen
+}
+
+type createdFor func(content string) snippet.CreateInput
+
+type browseSelection struct {
+	name   string
+	browse func(t *testing.T) (*overlaytest.Driver, createdFor)
+}
+
+func browseSelections() []browseSelection {
+	return []browseSelection{
+		{name: "the Root at the Root", browse: browsingRoot},
+		{name: "a Folder in that Folder", browse: browsingFolder},
+		{name: "a Tag at the Root carrying the Tag", browse: browsingTag},
+	}
+}
+
+func browsingRoot(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	return showing(t, wide()), createdIn(domain.FolderID{})
+}
+
+func browsingFolder(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	screen, sample := browsing(t)
+	screen.Press(keypress.Letter('j'))
+
+	return screen, createdIn(sample.Docker.ID())
+}
+
+func browsingTag(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	screen, tags := browsingTags(t)
+	screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+	return screen, createdIn(domain.FolderID{}, tags[0].Tag)
+}
+
+func createdIn(folderID domain.FolderID, tags ...domain.Tag) createdFor {
+	return func(content string) snippet.CreateInput {
+		return snippet.CreateInput{Title: "x", Description: "", Content: content, FolderID: folderID, Tags: tags}
+	}
+}
+
+func lastOutcome(screen *overlaytest.Driver) []outcome.Outcome {
+	outcomes := screen.Outcomes()
+
+	return outcomes[len(outcomes)-1:]
+}
+
 func TestScreen_sortOrder(t *testing.T) {
 	t.Parallel()
 
@@ -1139,18 +1286,21 @@ func TestScreen_Received(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "3 Root / go / testing")
 	})
 
-	t.Run("makes a saved Snippet's Folder the Browse selection and passes it on", func(t *testing.T) {
+	t.Run("keeps the Browse selection for a saved Snippet and passes it on", func(t *testing.T) {
 		t.Parallel()
 
-		screen, sample := browsing(t)
-		screen.Press(keypress.Letter('j'))
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
 
-		saved := outcome.SnippetSaved{ID: filedIn(t, domain.FolderID{}).ID(), FolderID: domain.FolderID{}}
+		saved := outcome.SnippetSaved{
+			ID:        filedIn(t, domain.FolderID{}).ID(),
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+		}
 
 		screen.Offer(saved)
 
-		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}, saved}, screen.Outcomes())
-		assert.Contains(t, screen.Screen(), "3 Root · by title")
+		assert.Equal(t, []outcome.Outcome{outcome.TagSelected{ID: tags[0].Tag.ID()}, saved}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), strings.ToUpper("3 # docker · by title"))
 	})
 
 	t.Run("keeps the Browse selection for a reloaded Snippet and passes it on", func(t *testing.T) {

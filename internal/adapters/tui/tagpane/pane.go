@@ -136,6 +136,14 @@ func (p Pane) SelectedName() string {
 	return p.tags[p.cursor.Index()].Tag.Name().String()
 }
 
+func (p Pane) SelectedTag() (domain.Tag, bool) {
+	if len(p.tags) == 0 {
+		return domain.Tag{}, false
+	}
+
+	return p.tags[p.cursor.Index()].Tag, true
+}
+
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	selected, onTag := p.Selected()
 

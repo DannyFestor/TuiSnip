@@ -69,6 +69,23 @@ func TestCreate_Run(t *testing.T) {
 		assertCreatedAtRoot(t, created)
 	})
 
+	t.Run("files the Snippet in the given Folder carrying the given Tags", func(t *testing.T) {
+		t.Parallel()
+
+		folder := testkit.Folder(t, testkit.FolderSpec{Name: "docker"})
+		tag := testkit.Tag(t, testkit.TagSpec{Name: "oneliner"})
+		inserter := NewMockInserter(t)
+		inserter.EXPECT().Insert(mock.Anything, mock.AnythingOfType("domain.Snippet")).Return(nil)
+
+		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
+			Title: "prune", FolderID: folder.ID(), Tags: []domain.Tag{tag},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, folder.ID(), created.FolderID())
+		assert.Equal(t, []domain.Tag{tag}, created.Tags())
+	})
+
 	t.Run("reports every invalid field at once", func(t *testing.T) {
 		t.Parallel()
 

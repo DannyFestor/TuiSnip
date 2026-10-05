@@ -31,14 +31,19 @@ type Session struct {
 	saving bool
 }
 
-func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
-	blank, cmd := newForm(
-		formKeysOf(keys),
-		entered{title: "", description: "", content: ""},
-		editableContent(),
-	)
+func New(keys binding.Keys, styles look.Styles, destination Destination) (Session, tea.Cmd) {
+	return newFilledWith(keys, styles, destination, "")
+}
 
-	return newSession(keys, styles, blank, newSnippet{}), cmd
+func Capturing(keys binding.Keys, styles look.Styles, destination Destination, captured string) (Session, tea.Cmd) {
+	return newFilledWith(keys, styles, destination, captured)
+}
+
+func newFilledWith(keys binding.Keys, styles look.Styles, destination Destination, content string) (Session, tea.Cmd) {
+	readOnly := readOnlyIfTabbed(content, destination.Language, styles.CodeStyle)
+	blank, cmd := newForm(formKeysOf(keys), entered{title: "", description: "", content: ""}, readOnly)
+
+	return newSession(keys, styles, blank.withContent(content), newSnippet{destination: destination}), cmd
 }
 
 func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet) (Session, tea.Cmd) {
@@ -49,7 +54,8 @@ func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet) (Ses
 		description: stored.Description().String(),
 		content:     fragment.Content().String(),
 	}
-	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, styles.CodeStyle))
+	readOnly := readOnlyIfTabbed(original.content, fragment.Language(), styles.CodeStyle)
+	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, filled, target), cmd
@@ -143,7 +149,7 @@ func (s Session) requested(asked request) outcome.Step {
 }
 
 func (s Session) pasteRefused(refusal string) outcome.Step {
-	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusedPasteText(refusal, s.form.externalEditorKey())})
+	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusalText(refusal, s.form.externalEditorKey())})
 }
 
 func (s Session) saveStarted() outcome.Step {

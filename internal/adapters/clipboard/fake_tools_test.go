@@ -13,9 +13,13 @@ import (
 )
 
 const (
-	recordingScript = "testdata/recording-tool.sh"
-	failingScript   = "testdata/failing-tool.sh"
-	hangingScript   = "testdata/hanging-tool.sh"
+	recordingScript   = "testdata/recording-tool.sh"
+	failingScript     = "testdata/failing-tool.sh"
+	hangingScript     = "testdata/hanging-tool.sh"
+	printingScript    = "testdata/printing-tool.sh"
+	complainingScript = "testdata/complaining-tool.sh"
+
+	fileMode = 0o600
 
 	searchPath = "PATH=/usr/bin:/bin"
 	linuxGOOS  = "linux"
@@ -44,6 +48,20 @@ func (f *fakeTools) install(t *testing.T, name, script string) {
 	path := filepath.Join(f.dir, name)
 	require.NoError(t, os.Symlink(target, path))
 	f.paths[name] = path
+}
+
+func (f *fakeTools) holding(t *testing.T, name, content string) {
+	t.Helper()
+
+	f.install(t, name, printingScript)
+	require.NoError(t, os.WriteFile(f.paths[name]+".clipboard", []byte(content), fileMode))
+}
+
+func (f *fakeTools) complaining(t *testing.T, name, complaint string) {
+	t.Helper()
+
+	f.install(t, name, complainingScript)
+	require.NoError(t, os.WriteFile(f.paths[name]+".complaint", []byte(complaint), fileMode))
 }
 
 func (f *fakeTools) lookPath(name string) (string, error) {

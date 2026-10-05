@@ -18,6 +18,11 @@ type copyFinishedMsg struct {
 	err    error
 }
 
+type captureFinishedMsg struct {
+	content string
+	err     error
+}
+
 type searchFailedMsg struct {
 	err error
 }

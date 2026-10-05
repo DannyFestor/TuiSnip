@@ -32,7 +32,9 @@ func TestModel_editOverlay(t *testing.T) {
 
 		snippets := numberedSnippets(t, 3)
 		creator := NewMockSnippetCreator(t)
-		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{Title: "Prune"}).Return(snippets[2], nil)
+		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
+			Title: "Prune", Description: "", Language: "plaintext", Content: "",
+		}).Return(snippets[2], nil)
 		screen := start(t, creatingModel(t, creator, listerReturning(t, snippets[:2], snippets)), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('n'))
@@ -87,6 +89,7 @@ func TestModel_editOverlay(t *testing.T) {
 			LoadedUpdatedAt: snippets[0].UpdatedAt(),
 			Title:           "Snippet 1 edited",
 			Description:     "Description 1",
+			Language:        "plaintext",
 			Content:         "",
 		}).Return(edited, nil)
 		lister := listerReturning(t, snippets, []domain.Snippet{edited, snippets[1]})

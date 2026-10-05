@@ -8,9 +8,11 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 const (
@@ -20,49 +22,56 @@ const (
 	quitQuestion    = "Quit and discard the unsaved changes?"
 	staleTitle      = "Changed elsewhere"
 	reloadQuestion  = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
+
+	languagePickerTitle = "Pick a Language"
 )
 
 type Session struct {
-	keys   binding.Keys
-	form   form
-	target saveTarget
-	styles look.Styles
-	outer  look.Size
-	saving bool
+	keys    binding.Keys
+	curated []value.Language
+	form    form
+	target  saveTarget
+	styles  look.Styles
+	outer   look.Size
+	saving  bool
 }
 
-func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
+func New(keys binding.Keys, styles look.Styles, curated []value.Language) (Session, tea.Cmd) {
 	blank, cmd := newForm(
 		formKeysOf(keys),
-		entered{title: "", description: "", content: ""},
+		entered{title: "", description: "", language: value.PlainText(), content: ""},
 		editableContent(),
 	)
 
-	return newSession(keys, styles, blank, newSnippet{}), cmd
+	return newSession(keys, styles, curated, blank).aimedAt(newSnippet{}), cmd
 }
 
-func Editing(keys binding.Keys, styles look.Styles, browsed BrowsedSnippet) (Session, tea.Cmd) {
+func Editing(
+	keys binding.Keys, styles look.Styles, curated []value.Language, browsed BrowsedSnippet,
+) (Session, tea.Cmd) {
 	stored := browsed.Snippet
 	fragment := stored.FirstFragment()
 	original := entered{
 		title:       stored.Title().String(),
 		description: stored.Description().String(),
+		language:    fragment.Language(),
 		content:     fragment.Content().String(),
 	}
 	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, styles.CodeStyle))
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
-	return newSession(keys, styles, filled, target), cmd
+	return newSession(keys, styles, curated, filled).aimedAt(target), cmd
 }
 
-func newSession(keys binding.Keys, styles look.Styles, opened form, target saveTarget) Session {
+func newSession(keys binding.Keys, styles look.Styles, curated []value.Language, opened form) Session {
 	return Session{
-		keys:   keys,
-		form:   opened,
-		target: target,
-		styles: styles,
-		outer:  look.Size{Width: 0, Height: 0},
-		saving: false,
+		keys:    keys,
+		curated: curated,
+		form:    opened,
+		target:  nil,
+		styles:  styles,
+		outer:   look.Size{Width: 0, Height: 0},
+		saving:  false,
 	}
 }
 
@@ -86,11 +95,16 @@ func (s Session) Update(msg tea.Msg) outcome.Step {
 }
 
 func (s Session) Received(received outcome.Outcome) outcome.Step {
-	switch received.(type) {
+	switch received := received.(type) {
 	case outcome.DiscardConfirmed:
 		return outcome.Close()
 	case outcome.SnippetReloaded:
 		return outcome.Close().Passing(received)
+	case outcome.LanguagePicked:
+		next := s
+		next.form = s.form.withLanguage(received.Language)
+
+		return outcome.Stay(next)
 	case outcome.QuitAsked:
 		if s.form.changed() {
 			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
@@ -132,6 +146,8 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.saveStarted()
 	case requestCancel:
 		return s.cancelled()
+	case requestPickLanguage:
+		return s.pickingLanguage()
 	case requestRefusePasteWithTabs:
 		return s.pasteRefused(pasteHasTabs)
 	case requestRefuseOverlongPaste:
@@ -140,6 +156,23 @@ func (s Session) requested(asked request) outcome.Step {
 	}
 
 	return outcome.Stay(s)
+}
+
+func (s Session) aimedAt(target saveTarget) Session {
+	s.target = target
+
+	return s
+}
+
+func (s Session) pickingLanguage() outcome.Step {
+	picker, cmd := languagepicker.New(s.keys, s.styles, languagepicker.Offer{
+		Title:   languagePickerTitle,
+		Curated: s.curated,
+		Current: s.form.language,
+		Picked:  func(picked value.Language) outcome.Outcome { return outcome.LanguagePicked{Language: picked} },
+	})
+
+	return outcome.Stay(s).Opening(picker).Running(cmd)
 }
 
 func (s Session) pasteRefused(refusal string) outcome.Step {

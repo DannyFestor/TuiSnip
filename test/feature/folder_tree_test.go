@@ -25,7 +25,7 @@ func TestSeededFoldersListAsTreeWithSnippetCounts(t *testing.T) {
 	tests := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
 	seededSnippet(t, app, ids, golang.ID())
 	seededSnippet(t, app, ids, tests.ID())
-	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Content: "ls"})
+	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Language: plainText, Content: "ls"})
 
 	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
 
@@ -48,7 +48,7 @@ func TestSnippetsInFolderListOnlyThatFolder(t *testing.T) {
 	ids := testkit.NewSequentialIDs()
 	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
 	filed := seededSnippet(t, app, ids, golang.ID())
-	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Content: "ls"})
+	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Language: plainText, Content: "ls"})
 
 	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{
 		FolderID: golang.ID(),

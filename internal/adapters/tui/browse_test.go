@@ -92,7 +92,9 @@ func TestModel_browse(t *testing.T) {
 			Return(browse.Tree{RootSnippetCount: 1, Folders: nil}, nil).Once()
 
 		creator := NewMockSnippetCreator(t)
-		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{Title: "Prune"}).Return(saved, nil)
+		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
+			Title: "Prune", Description: "", Language: "plaintext", Content: "",
+		}).Return(saved, nil)
 		screen := start(t, modelWith(t, actions{
 			lister:     listerReturning(t, nil, []domain.Snippet{saved}),
 			treeLister: tree,

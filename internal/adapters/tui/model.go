@@ -33,6 +33,7 @@ const (
 	operationRenameFolder         = "rename folder"
 	operationPreviewDelete        = "preview folder delete"
 	operationDeleteFolder         = "delete folder"
+	operationSetDefaultLanguage   = "set folder default language"
 	operationSaveSortOrder        = "save sort order"
 	operationCycleSortOrder       = "cycle sort order"
 	operationShowSortOrder        = "show sort order"
@@ -54,6 +55,7 @@ type Model struct {
 	folderRenamer         FolderRenamer
 	folderDeletePreviewer FolderDeletePreviewer
 	folderDeleter         FolderDeleter
+	defaultLanguageSetter FolderDefaultLanguageSetter
 	sortOrderSaver        SortOrderSaver
 	collapsedFoldersSaver CollapsedFoldersSaver
 	collapsedFoldersGate  *savegate.Gate
@@ -89,12 +91,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		return Model{}, err
 	}
 
-	mainScreen, err := mainscreen.New(
-		deps.Settings.Keys,
-		look.NewStyles(deps.Settings.Theme.Scheme()),
-		deps.Settings.Location,
-		deps.Settings.Remembered,
-	)
+	mainScreen, err := newMainScreen(deps.Settings)
 	if err != nil {
 		return Model{}, fmt.Errorf("main screen: %w", err)
 	}
@@ -115,6 +112,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		folderRenamer:         deps.FolderRenamer,
 		folderDeletePreviewer: deps.FolderDeletePreviewer,
 		folderDeleter:         deps.FolderDeleter,
+		defaultLanguageSetter: deps.FolderDefaultLanguageSetter,
 		sortOrderSaver:        deps.SortOrderSaver,
 		collapsedFoldersSaver: deps.CollapsedFoldersSaver,
 		collapsedFoldersGate:  &savegate.Gate{},
@@ -125,6 +123,19 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		afterCopy:             afterCopy,
 		overlays:              overlays,
 	}, nil
+}
+
+func newMainScreen(settings Settings) (mainscreen.Screen, error) {
+	screen, err := mainscreen.New(settings.Keys, look.NewStyles(settings.Theme.Scheme()), mainscreen.Options{
+		Location:   settings.Location,
+		Remembered: settings.Remembered,
+		Languages:  settings.Languages,
+	})
+	if err != nil {
+		return mainscreen.Screen{}, fmt.Errorf("new main screen: %w", err)
+	}
+
+	return screen, nil
 }
 
 func missingDependencies(deps Deps) error {
@@ -141,6 +152,7 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
 		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
 		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
+		domain.RequireDependency("folderDefaultLanguageSetter", deps.FolderDefaultLanguageSetter),
 		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
 		domain.RequireDependency("collapsedFoldersSaver", deps.CollapsedFoldersSaver),
 		requirePointer("logger", deps.Logger),
@@ -169,7 +181,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.overlaysUpdatedSharingTree(msg)
 	case folderTreeChangedMsg:
 		return m, tea.Batch(m.loadTreeSelecting(msg.selecting), m.loadTags())
-	case folderRenamedMsg:
+	case folderEditedMsg:
 		return m, m.loadTree()
 	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
 		return m.failedWith(msg)
@@ -373,11 +385,11 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
 	case outcome.FolderCreateRequested, outcome.FolderRenameRequested,
-		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested:
+		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested, outcome.DefaultLanguageRequested:
 		return m, m.runFolderAction(reported)
 	case outcome.CollapsedFoldersChanged:
 		return m, m.saveCollapsedFolders(reported.IDs)
-	case outcome.DiscardConfirmed:
+	case outcome.DiscardConfirmed, outcome.LanguagePicked:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
 	}
@@ -460,6 +472,8 @@ func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 		return m.previewFolderDelete(folder.PreviewDeleteInput{FolderID: reported.ID})
 	case outcome.FolderDeleteRequested:
 		return m.deleteFolder(reported.Input, reported.ParentID)
+	case outcome.DefaultLanguageRequested:
+		return m.setFolderDefaultLanguage(reported.Input)
 	default:
 		return nil
 	}
@@ -505,7 +519,18 @@ func (m Model) renameFolder(in folder.RenameInput) tea.Cmd {
 			return operationFailedMsg{operation: operationRenameFolder, err: err}
 		}
 
-		return folderRenamedMsg{}
+		return folderEditedMsg{}
+	}
+}
+
+func (m Model) setFolderDefaultLanguage(in folder.SetDefaultLanguageInput) tea.Cmd {
+	return func() tea.Msg {
+		_, err := m.defaultLanguageSetter.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationSetDefaultLanguage, err: err}
+		}
+
+		return folderEditedMsg{}
 	}
 }
 

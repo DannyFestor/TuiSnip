@@ -20,8 +20,11 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -728,7 +731,7 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Letter('n'))
 
 		assert.Contains(t, screen.Screen(), "Editing")
-		assert.Equal(t, "ctrl+s save · esc cancel · down field", screen.Hints())
+		assert.Equal(t, editorHint, screen.Hints())
 	})
 
 	t.Run("/ opens the Search popup over the listed Snippets", func(t *testing.T) {
@@ -749,7 +752,7 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Typed("3e")...)
 
 		assert.Contains(t, screen.Screen(), "› Title       Graceful HTTP shutdown")
-		assert.Equal(t, "ctrl+s save · esc cancel · down field", screen.Hints())
+		assert.Equal(t, editorHint, screen.Hints())
 	})
 
 	t.Run("e in the Snippet pane edits the shown Snippet", func(t *testing.T) {
@@ -1265,11 +1268,12 @@ func TestScreen_help(t *testing.T) {
 		screen := showing(t, wide())
 
 		screen.Press(keypress.Letter('n'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
-		screen.Press(keypress.Special(tea.KeyEnter), keypress.Letter('?'), keypress.Ctrl('s'))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Letter('?'), keypress.Ctrl('s'))
 
 		assert.NotContains(t, screen.Screen(), "╭ Help ")
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{
-			Input: snippet.CreateInput{Title: "", Description: "", Content: "?"},
+			Input: snippet.CreateInput{Title: "", Description: "", Language: "plaintext", Content: "?"},
 		}}, screen.Outcomes())
 	})
 
@@ -1298,15 +1302,149 @@ func TestScreen_help(t *testing.T) {
 	})
 }
 
+func TestScreen_defaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("L on a Folder opens the Language picker on its Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+
+		screen.Press(keypress.Letter('j'), keypress.Letter('L'))
+
+		assert.Contains(t, screen.Screen(), "Default Language of docker")
+		assert.Equal(t, "down move · enter pick · esc close", screen.Hints())
+
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Contains(t, screen.Outcomes(), outcome.Outcome(outcome.DefaultLanguageRequested{
+			Input: folder.SetDefaultLanguageInput{FolderID: sample.Docker.ID(), Language: "plaintext"},
+		}))
+		assert.Equal(t, folderHints, screen.Hints())
+	})
+
+	t.Run("asks for the picked Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen := browsingOffering(t, "YAML", "Go")
+
+		screen.Press(keypress.Letter('j'), keypress.Letter('L'))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
+
+		requested := lastOutcomeOf[outcome.DefaultLanguageRequested](t, screen.Outcomes())
+		assert.Equal(t, "Go", requested.Input.Language)
+	})
+
+	t.Run("closing the picker asks for nothing", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('j'), keypress.Letter('L'), keypress.Special(tea.KeyEscape))
+
+		assert.NotContains(t, screen.Screen(), "Default Language of")
+
+		for _, reported := range screen.Outcomes() {
+			assert.IsNotType(t, outcome.DefaultLanguageRequested{}, reported)
+		}
+	})
+
+	t.Run("L does nothing on the Root", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('L'))
+
+		assert.NotContains(t, screen.Screen(), "Default Language of")
+		assert.Equal(t, folderHints, screen.Hints())
+	})
+
+	t.Run("L does nothing outside the Folders Pane", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('j'), keypress.Letter('3'), keypress.Letter('L'))
+
+		assert.NotContains(t, screen.Screen(), "Default Language of")
+	})
+
+	t.Run("opens the picker with the configured key", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeFolders][binding.Language] = []string{"ctrl+g"}
+		screen := browsingWith(t, keys, nil)
+
+		screen.Press(keypress.Letter('j'), keypress.Ctrl('g'))
+
+		assert.Contains(t, screen.Screen(), "Default Language of docker")
+	})
+
+	t.Run("the edit overlay offers the configured Languages", func(t *testing.T) {
+		t.Parallel()
+
+		screen := browsingOffering(t, "YAML", "Go")
+
+		screen.Press(keypress.Letter('n'), keypress.Ctrl('l'), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Ctrl('s'))
+
+		requested := lastOutcomeOf[outcome.SaveRequested](t, screen.Outcomes())
+		assert.Equal(t, "Go", requested.Input.Language)
+	})
+}
+
+func browsingOffering(t *testing.T, names ...string) *overlaytest.Driver {
+	t.Helper()
+
+	curated := make([]value.Language, 0, len(names))
+
+	for _, name := range names {
+		language, err := value.NewLanguage(name)
+		require.NoError(t, err)
+
+		curated = append(curated, language)
+	}
+
+	return browsingWith(t, testsettings.Default(t).Keys, curated)
+}
+
+func browsingWith(t *testing.T, keys binding.Keys, curated []value.Language) *overlaytest.Driver {
+	t.Helper()
+
+	screen, err := mainscreen.New(keys, look.NewStyles(look.SchemeDark), mainscreen.Options{
+		Location:   time.UTC,
+		Remembered: mainscreen.Remembered{SortOrder: domain.SortOrderTitle, CollapsedFolders: nil},
+		Languages:  curated,
+	})
+	require.NoError(t, err)
+
+	driver := overlaytest.Open(t, wide(), screen)
+	driver.Send(mainscreen.TreeLoaded{Tree: foldertree.New(t).Tree})
+
+	return driver
+}
+
+func lastOutcomeOf[O outcome.Outcome](t *testing.T, outcomes []outcome.Outcome) O {
+	t.Helper()
+
+	require.NotEmpty(t, outcomes)
+
+	last, ok := outcomes[len(outcomes)-1].(O)
+	require.True(t, ok)
+
+	return last
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	_, err := mainscreen.New(
-		testsettings.Default(t).Keys,
-		look.NewStyles(look.SchemeDark),
-		time.UTC,
-		mainscreen.Remembered{SortOrder: domain.SortOrder("language"), CollapsedFolders: nil},
-	)
+	_, err := mainscreen.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), mainscreen.Options{
+		Location:   time.UTC,
+		Remembered: mainscreen.Remembered{SortOrder: domain.SortOrder("language"), CollapsedFolders: nil},
+		Languages:  nil,
+	})
 
 	require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
 	assert.ErrorContains(t, err, "mainscreen.New: ")

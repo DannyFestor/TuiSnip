@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
@@ -13,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
@@ -26,7 +28,10 @@ const (
 	discardQuestion  = "Discard the unsaved changes? [y/N]"
 	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
 	titleInputWidth  = 91
-	contentRows      = 31
+	contentRows      = 30
+	pickerHints      = "down move · enter pick · esc close"
+
+	languagePickerTitle = "Pick a Language"
 )
 
 var errDatabaseLocked = errors.New("database is locked")
@@ -50,7 +55,28 @@ func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, styles)
+	opened, _ := editoverlay.New(keys, styles, nil)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func editingOffering(t *testing.T, curated []value.Language) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), curated)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func editingStoredOffering(t *testing.T, curated []value.Language, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.Editing(
+		testsettings.Default(t).Keys,
+		look.NewStyles(look.SchemeDark),
+		curated,
+		editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -75,7 +101,9 @@ func editingStoredStyled(
 ) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.Editing(keys, styles, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()})
+	opened, _ := editoverlay.Editing(
+		keys, styles, nil, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -100,11 +128,28 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 }
 
 func enterContent() []tea.KeyPressMsg {
-	return []tea.KeyPressMsg{
-		keypress.Special(tea.KeyDown),
-		keypress.Special(tea.KeyDown),
-		keypress.Special(tea.KeyEnter),
-	}
+	return append(toContent(), keypress.Special(tea.KeyEnter))
+}
+
+func toContent() []tea.KeyPressMsg {
+	return append(toLanguage(), keypress.Special(tea.KeyDown))
+}
+
+func toLanguage() []tea.KeyPressMsg {
+	return []tea.KeyPressMsg{keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown)}
+}
+
+func pickLanguage() tea.KeyPressMsg {
+	return keypress.Ctrl('l')
+}
+
+func language(t *testing.T, name string) value.Language {
+	t.Helper()
+
+	parsed, err := value.NewLanguage(name)
+	require.NoError(t, err)
+
+	return parsed
 }
 
 func shiftTab() tea.KeyPressMsg {
@@ -128,5 +173,9 @@ func savedSnippet(t *testing.T) domain.Snippet {
 }
 
 func input(title, description, content string) snippet.CreateInput {
-	return snippet.CreateInput{Title: title, Description: description, Content: content}
+	return inputIn(title, description, value.PlainText().String(), content)
+}
+
+func inputIn(title, description, language, content string) snippet.CreateInput {
+	return snippet.CreateInput{Title: title, Description: description, Language: language, Content: content}
 }

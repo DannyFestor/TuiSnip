@@ -92,3 +92,60 @@ func TestRenamedFolderShowsInTree(t *testing.T) {
 	require.Len(t, tree.Folders, 1)
 	assert.Equal(t, "golang", tree.Folders[0].Folder.Name().String())
 }
+
+func TestFolderDefaultLanguageChangeLeavesItsSnippetsAlone(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	ids := testkit.NewSequentialIDs()
+	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
+	filed := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{
+		FolderID: golang.ID(),
+		Fragment: testkit.FragmentSpec{Language: "Bash"},
+	})
+
+	_, err := app.SetFolderDefaultLanguage.Run(
+		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "Go"},
+	)
+
+	require.NoError(t, err)
+	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
+	require.NoError(t, err)
+	require.Len(t, tree.Folders, 1)
+	assert.Equal(t, "Go", tree.Folders[0].Folder.DefaultLanguage().String())
+	kept, err := app.SnippetRepository.Find(t.Context(), filed.ID())
+	require.NoError(t, err)
+	assert.Equal(t, filed, kept)
+}
+
+func TestFolderCreatedInsideCopiesTheChangedDefaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	golang := seededFolder(t, app, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "go"})
+	_, err := app.SetFolderDefaultLanguage.Run(
+		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "Go"},
+	)
+	require.NoError(t, err)
+
+	created, err := app.CreateFolder.Run(t.Context(), folder.CreateInput{Name: "testing", ParentID: golang.ID()})
+
+	require.NoError(t, err)
+	assert.Equal(t, "Go", created.DefaultLanguage().String())
+}
+
+func TestFolderDefaultLanguageRefusesAnUnknownLanguage(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	golang := seededFolder(t, app, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "go"})
+
+	_, err := app.SetFolderDefaultLanguage.Run(
+		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "golang"},
+	)
+
+	require.ErrorIs(t, err, value.ErrUnknownLanguage)
+	stored, err := app.FolderRepository.Find(t.Context(), golang.ID())
+	require.NoError(t, err)
+	assert.Equal(t, value.PlainText(), stored.DefaultLanguage())
+}

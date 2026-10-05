@@ -26,7 +26,11 @@ func TestCopyTrimsTrailingNewlineByDefault(t *testing.T) {
 	t.Parallel()
 
 	home, app := testapp.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Content: "ls -la\n"})
+	created := create(
+		t,
+		app,
+		snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls -la\n"},
+	)
 
 	result := copySnippet(t, app, created.ID())
 
@@ -41,7 +45,11 @@ func TestCopyPlacesContentByteExact(t *testing.T) {
 	home := testapp.NewHome(t)
 	home.WriteConfig(t, keepTrailingNewline)
 	app := home.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "unicode", Description: "", Content: content})
+	created := create(
+		t,
+		app,
+		snippet.CreateInput{Title: "unicode", Description: "", Language: plainText, Content: content},
+	)
 
 	copySnippet(t, app, created.ID())
 
@@ -55,7 +63,11 @@ func TestCopyAtContentCap(t *testing.T) {
 	home := testapp.NewHome(t)
 	home.WriteConfig(t, keepTrailingNewline)
 	app := home.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "large", Description: "", Content: content})
+	created := create(
+		t,
+		app,
+		snippet.CreateInput{Title: "large", Description: "", Language: plainText, Content: content},
+	)
 
 	copySnippet(t, app, created.ID())
 
@@ -66,7 +78,7 @@ func TestCopyOfMissingSnippetIsNotFound(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	removed := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Content: "ls"})
+	removed := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 	_, otherApp := testapp.Start(t, testapp.RecordingTool)
 
 	_, err := otherApp.Copy.Run(t.Context(), snippet.CopyInput{SnippetID: removed.ID()})
@@ -80,7 +92,7 @@ func TestNativeCopyWithoutToolFails(t *testing.T) {
 	home := testapp.NewHome(t)
 	home.WriteConfig(t, nativeOnly)
 	app := home.Start(t, testapp.NoTool)
-	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Content: "ls"})
+	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 
 	_, err := app.Copy.Run(t.Context(), snippet.CopyInput{SnippetID: created.ID()})
 
@@ -91,7 +103,7 @@ func TestAutoCopySendsToTerminalWhenToolFails(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.FailingTool)
-	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Content: "ls\n"})
+	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls\n"})
 
 	result := copySnippet(t, app, created.ID())
 
@@ -105,7 +117,7 @@ func TestOSC52CopySendsToTerminal(t *testing.T) {
 	home := testapp.NewHome(t)
 	home.WriteConfig(t, osc52Only)
 	app := home.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Content: "ls"})
+	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 
 	result := copySnippet(t, app, created.ID())
 

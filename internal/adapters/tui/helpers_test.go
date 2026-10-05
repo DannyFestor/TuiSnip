@@ -60,6 +60,7 @@ type actions struct {
 	folderRenamer         tui.FolderRenamer
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
+	defaultLanguageSetter tui.FolderDefaultLanguageSetter
 	sortOrderSaver        tui.SortOrderSaver
 	collapsedFoldersSaver tui.CollapsedFoldersSaver
 }
@@ -146,7 +147,11 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.folderDeletePreviewer,
 			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
 		),
-		FolderDeleter:  orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
+		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
+		FolderDefaultLanguageSetter: orMock(
+			with.defaultLanguageSetter,
+			func() tui.FolderDefaultLanguageSetter { return NewMockFolderDefaultLanguageSetter(t) },
+		),
 		SortOrderSaver: orMock(with.sortOrderSaver, func() tui.SortOrderSaver { return NewMockSortOrderSaver(t) }),
 		CollapsedFoldersSaver: orMock(
 			with.collapsedFoldersSaver,

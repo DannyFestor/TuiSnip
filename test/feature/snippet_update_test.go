@@ -20,7 +20,11 @@ func TestEditedSnippetPersistsWithNewUpdatedTime(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "curl", Description: "", Content: "curl\n"})
+	created := create(
+		t,
+		app,
+		snippet.CreateInput{Title: "curl", Description: "", Language: plainText, Content: "curl\n"},
+	)
 
 	updated, err := app.Update.Run(t.Context(), editOf(created, "curl json", "curl -d @-\n"))
 
@@ -39,7 +43,11 @@ func TestEditOverSnippetChangedElsewhereIsRefused(t *testing.T) {
 	home := testapp.NewHome(t)
 	first := home.Start(t, testapp.RecordingTool)
 	second := home.Start(t, testapp.RecordingTool)
-	created := create(t, first, snippet.CreateInput{Title: "curl", Description: "", Content: "curl\n"})
+	created := create(
+		t,
+		first,
+		snippet.CreateInput{Title: "curl", Description: "", Language: plainText, Content: "curl\n"},
+	)
 
 	_, err := second.Update.Run(t.Context(), editOf(created, "changed elsewhere", "curl\n"))
 	require.NoError(t, err)
@@ -55,12 +63,40 @@ func TestEditKeepsContentWithTabsByteForByte(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 	tabbed := "if x {\n\treturn\n}\n"
-	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Content: tabbed})
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: plainText, Content: tabbed})
 
 	_, err := app.Update.Run(t.Context(), editOf(created, "go return", tabbed))
 
 	require.NoError(t, err)
 	assert.Equal(t, tabbed, findStored(t, app, created.ID()).FirstFragment().Content().String())
+}
+
+func TestEditChangesTheLanguage(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: plainText, Content: "go"})
+	edit := editOf(created, "go", "go")
+	edit.Language = "Go"
+
+	_, err := app.Update.Run(t.Context(), edit)
+
+	require.NoError(t, err)
+	assert.Equal(t, "Go", findStored(t, app, created.ID()).FirstFragment().Language().String())
+}
+
+func TestEditKeepsALanguageTheConfigNoLongerOffers(t *testing.T) {
+	t.Parallel()
+
+	home := testapp.NewHome(t)
+	home.WriteConfig(t, "languages = [\"YAML\"]\n")
+	app := home.Start(t, testapp.RecordingTool)
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: "Go", Content: "go"})
+
+	_, err := app.Update.Run(t.Context(), editOf(created, "go edited", "go"))
+
+	require.NoError(t, err)
+	assert.Equal(t, "Go", findStored(t, app, created.ID()).FirstFragment().Language().String())
 }
 
 func TestEditKeepsTheSnippetsTags(t *testing.T) {
@@ -90,6 +126,7 @@ func editOf(loaded domain.Snippet, title, content string) snippet.UpdateInput {
 		LoadedUpdatedAt: loaded.UpdatedAt(),
 		Title:           title,
 		Description:     loaded.Description().String(),
+		Language:        loaded.FirstFragment().Language().String(),
 		Content:         content,
 	}
 }

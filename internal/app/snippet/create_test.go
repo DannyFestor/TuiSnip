@@ -61,12 +61,29 @@ func TestCreate_Run(t *testing.T) {
 			Return(nil)
 
 		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
-			Title: "  curl json ", Description: "POST with a JSON body", Content: "curl -d @body.json\n",
+			Title:       "  curl json ",
+			Description: "POST with a JSON body",
+			Language:    "plaintext",
+			Content:     "curl -d @body.json\n",
 		})
 
 		require.NoError(t, err)
 		assert.Equal(t, inserted, created)
 		assertCreatedAtRoot(t, created)
+	})
+
+	t.Run("gives the Fragment the Language it was asked for", func(t *testing.T) {
+		t.Parallel()
+
+		inserter := NewMockInserter(t)
+		inserter.EXPECT().Insert(mock.Anything, mock.Anything).Return(nil)
+
+		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
+			Title: "curl json", Description: "", Language: "Bash", Content: "curl\n",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "Bash", created.FirstFragment().Language().String())
 	})
 
 	t.Run("reports every invalid field at once", func(t *testing.T) {
@@ -75,15 +92,17 @@ func TestCreate_Run(t *testing.T) {
 		_, err := newCreate(t, NewMockInserter(t)).Run(t.Context(), snippet.CreateInput{
 			Title:       "   ",
 			Description: strings.Repeat("d", maxDescriptionRunes+1),
+			Language:    "golang",
 			Content:     strings.Repeat("c", maxContentBytes+1),
 		})
 
 		require.ErrorIs(t, err, value.ErrBlankTitle)
 		require.ErrorIs(t, err, value.ErrDescriptionTooLong)
+		require.ErrorIs(t, err, value.ErrUnknownLanguage)
 		require.ErrorIs(t, err, value.ErrContentTooLong)
 		assert.Equal(
 			t,
-			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldContent},
+			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent},
 			fieldsOf(domain.FieldErrors(err)),
 		)
 	})
@@ -94,7 +113,9 @@ func TestCreate_Run(t *testing.T) {
 		inserter := NewMockInserter(t)
 		inserter.EXPECT().Insert(mock.Anything, mock.Anything).Return(errDatabaseLocked)
 
-		_, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{Title: "curl json"})
+		_, err := newCreate(t, inserter).Run(
+			t.Context(), snippet.CreateInput{Title: "curl json", Description: "", Language: "plaintext", Content: ""},
+		)
 
 		require.ErrorIs(t, err, errDatabaseLocked)
 		assert.ErrorContains(t, err, "snippet.Create: ")

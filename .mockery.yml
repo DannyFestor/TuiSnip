@@ -13,7 +13,7 @@ packages:
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
-      RenameRepository: {}
+      EditRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
@@ -41,6 +41,7 @@ packages:
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
+      FolderDefaultLanguageSetter: {}
       SortOrderSaver: {}
       CollapsedFoldersSaver: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:

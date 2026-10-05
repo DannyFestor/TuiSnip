@@ -21,13 +21,19 @@ func TestCreatedSnippetListedAtRoot(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 
-	created := create(t, app, snippet.CreateInput{Title: "curl json", Description: "POST", Content: "curl -d @-\n"})
+	created := create(t, app, snippet.CreateInput{
+		Title:       "curl json",
+		Description: "POST",
+		Language:    "Bash",
+		Content:     "curl -d @-\n",
+	})
 
 	listed := listAtRoot(t, app)
 	require.Len(t, listed, 1)
 	assert.Equal(t, created.ID(), listed[0].ID())
 	assert.Equal(t, "curl json", listed[0].Title().String())
 	assert.Equal(t, "POST", listed[0].Description().String())
+	assert.Equal(t, "Bash", listed[0].FirstFragment().Language().String())
 	assert.Equal(t, "curl -d @-\n", listed[0].FirstFragment().Content().String())
 	assert.True(t, listed[0].AtRoot())
 }
@@ -37,7 +43,10 @@ func TestCreateWithBlankTitleSavesNothing(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 
-	_, err := app.Create.Run(t.Context(), snippet.CreateInput{Title: "   ", Description: "", Content: "ls"})
+	_, err := app.Create.Run(
+		t.Context(),
+		snippet.CreateInput{Title: "   ", Description: "", Language: plainText, Content: "ls"},
+	)
 
 	fieldErrors := domain.FieldErrors(err)
 	require.Len(t, fieldErrors, 1)
@@ -51,7 +60,11 @@ func TestSnippetsSurviveRestart(t *testing.T) {
 	home := testapp.NewHome(t)
 	first, err := home.Open(t, testapp.RecordingTool)
 	require.NoError(t, err)
-	created := create(t, first, snippet.CreateInput{Title: "kept", Description: "", Content: "echo kept"})
+	created := create(
+		t,
+		first,
+		snippet.CreateInput{Title: "kept", Description: "", Language: plainText, Content: "echo kept"},
+	)
 	require.NoError(t, first.Close())
 
 	second := home.Start(t, testapp.RecordingTool)
@@ -81,9 +94,14 @@ func TestSearchFindsCreatedSnippet(t *testing.T) {
 			wanted := create(t, app, snippet.CreateInput{
 				Title:       "Crème brûlée",
 				Description: "Use the torch",
+				Language:    plainText,
 				Content:     "sprinkle sugar on top\n",
 			})
-			create(t, app, snippet.CreateInput{Title: "Unrelated", Description: "", Content: "ls -la"})
+			create(
+				t,
+				app,
+				snippet.CreateInput{Title: "Unrelated", Description: "", Language: plainText, Content: "ls -la"},
+			)
 
 			hits, err := app.Query.Run(t.Context(), search.QueryInput{Text: tt.query})
 
@@ -98,7 +116,7 @@ func TestBlankSearchFindsNothing(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	create(t, app, snippet.CreateInput{Title: "anything", Description: "", Content: "ls"})
+	create(t, app, snippet.CreateInput{Title: "anything", Description: "", Language: plainText, Content: "ls"})
 
 	hits, err := app.Query.Run(t.Context(), search.QueryInput{Text: "  "})
 

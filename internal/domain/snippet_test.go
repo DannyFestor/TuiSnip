@@ -232,12 +232,17 @@ func TestSnippet_Edit(t *testing.T) {
 		t.Parallel()
 
 		edited, err := stored.Edit(
-			mustTitle(t, "curl json"), mustDescription(t, "POST"), mustContent(t, "curl -d @b.json"), later,
+			mustTitle(t, "curl json"),
+			mustDescription(t, "POST"),
+			mustLanguage(t, "Bash"),
+			mustContent(t, "curl -d @b.json"),
+			later,
 		)
 
 		require.NoError(t, err)
 		assert.Equal(t, "curl json", edited.Title().String())
 		assert.Equal(t, "POST", edited.Description().String())
+		assert.Equal(t, "Bash", edited.FirstFragment().Language().String())
 		assert.Equal(t, "curl -d @b.json", edited.FirstFragment().Content().String())
 		assert.Equal(t, later, edited.UpdatedAt())
 		assert.Equal(t, later, edited.FirstFragment().UpdatedAt())
@@ -247,7 +252,9 @@ func TestSnippet_Edit(t *testing.T) {
 	t.Run("keeps the ID, Folder, Fragment, Tags and creation time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, mustContent(t, "curl"), later)
+		edited, err := stored.Edit(
+			mustTitle(t, "curl"), value.Description{}, value.PlainText(), mustContent(t, "curl"), later,
+		)
 
 		require.NoError(t, err)
 		assert.Equal(t, stored.ID(), edited.ID())
@@ -261,7 +268,9 @@ func TestSnippet_Edit(t *testing.T) {
 	t.Run("rejects a time before creation", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := stored.Edit(mustTitle(t, "curl json"), value.Description{}, mustContent(t, "curl"), created.Add(-1))
+		_, err := stored.Edit(
+			mustTitle(t, "curl json"), value.Description{}, value.PlainText(), mustContent(t, "curl"), created.Add(-1),
+		)
 
 		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
 	})

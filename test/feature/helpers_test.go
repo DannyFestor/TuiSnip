@@ -14,6 +14,8 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
+const plainText = "plaintext"
+
 func create(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domain.Snippet {
 	t.Helper()
 

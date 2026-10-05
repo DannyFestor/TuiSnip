@@ -3,9 +3,9 @@
 │  doc╭ Editing • ───────────────────────────────────────────────────────────────────────────────────────────────╮     │
 │▾ go │› Title       Prune everything                                                                            │     │
 │    t│  Description                                                                                             │     │
-│     │  Content     enter or down to edit                                                                       │─────│
-│     │ 1                                                                                                        │{    │
-│     │                                                                                                          │     │
+│     │  Language    plaintext   (enter or ctrl+l to pick)                                                       │─────│
+│     │  Content     enter or down to edit                                                                       │{    │
+│     │ 1                                                                                                        │     │
 │     │                                                                                                          │     │
 │     │                                                                                                          │     │
 │     │                                                                                                          │     │
@@ -37,4 +37,4 @@
 │     │                                                                                                          │     │
 │     ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯     │
 ╰────────────────────────────────╯╰──────────────────────────────────╯╰────────────────────────────────────────────────╯
-                                                                                   ctrl+s save · esc cancel · down field
+                                                                 ctrl+s save · esc cancel · down field · ctrl+l Language

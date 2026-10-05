@@ -89,6 +89,7 @@ func changeElsewhere(t *testing.T, app *bootstrap.App, loaded domain.Snippet, ti
 		LoadedUpdatedAt: loaded.UpdatedAt(),
 		Title:           title,
 		Description:     loaded.Description().String(),
+		Language:        loaded.FirstFragment().Language().String(),
 		Content:         loaded.FirstFragment().Content().String(),
 	})
 	require.NoError(t, err)

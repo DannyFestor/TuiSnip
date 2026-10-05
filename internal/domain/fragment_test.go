@@ -77,17 +77,20 @@ func TestFragment_Accessors(t *testing.T) {
 	assert.Equal(t, updated, fragment.UpdatedAt())
 }
 
-func TestFragment_WithContent(t *testing.T) {
+func TestFragment_Edit(t *testing.T) {
 	t.Parallel()
 
 	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 	later := created.Add(time.Hour)
-	fragment := testkit.Fragment(t, testkit.FragmentSpec{ID: fragmentID(), Content: "ls", CreatedAt: created})
+	fragment := testkit.Fragment(
+		t,
+		testkit.FragmentSpec{ID: fragmentID(), Language: "Bash", Content: "ls", CreatedAt: created},
+	)
 
 	t.Run("takes new content and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := fragment.WithContent(mustContent(t, "ls -la"), later)
+		edited, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls -la"), later)
 
 		require.NoError(t, err)
 		assert.Equal(t, "ls -la", edited.Content().String())
@@ -95,10 +98,21 @@ func TestFragment_WithContent(t *testing.T) {
 		assert.Equal(t, "ls", fragment.Content().String(), "the original is untouched")
 	})
 
-	t.Run("keeps its time when the content is the same", func(t *testing.T) {
+	t.Run("takes a new Language and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := fragment.WithContent(mustContent(t, "ls"), later)
+		edited, err := fragment.Edit(mustLanguage(t, "Python"), mustContent(t, "ls"), later)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Python", edited.Language().String())
+		assert.Equal(t, later, edited.UpdatedAt())
+		assert.Equal(t, "Bash", fragment.Language().String(), "the original is untouched")
+	})
+
+	t.Run("keeps its time when the Language and content are the same", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls"), later)
 
 		require.NoError(t, err)
 		assert.Equal(t, created, edited.UpdatedAt())
@@ -107,7 +121,7 @@ func TestFragment_WithContent(t *testing.T) {
 	t.Run("rejects a time before creation", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := fragment.WithContent(mustContent(t, "ls -la"), created.Add(-time.Hour))
+		_, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls -la"), created.Add(-time.Hour))
 
 		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
 	})

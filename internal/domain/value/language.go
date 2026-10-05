@@ -20,6 +20,17 @@ func NewLanguage(raw string) (Language, error) {
 	return Language{name: raw}, nil
 }
 
+func Languages() []Language {
+	names := chromaLanguageNames()
+	languages := make([]Language, 0, len(names))
+
+	for _, name := range names {
+		languages = append(languages, Language{name: name})
+	}
+
+	return languages
+}
+
 func PlainText() Language {
 	return Language{name: plainTextName}
 }

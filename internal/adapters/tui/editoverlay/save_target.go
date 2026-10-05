@@ -21,6 +21,7 @@ func (newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step 
 	return outcome.Stay(saving).Passing(outcome.SaveRequested{Input: snippet.CreateInput{
 		Title:       values.title,
 		Description: values.description,
+		Language:    values.language.String(),
 		Content:     values.content,
 	}})
 }
@@ -45,6 +46,7 @@ func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.
 		LoadedUpdatedAt: s.loadedUpdatedAt,
 		Title:           values.title,
 		Description:     values.description,
+		Language:        values.language.String(),
 		Content:         values.content,
 	}})
 }

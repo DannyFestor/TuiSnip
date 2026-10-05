@@ -30,7 +30,7 @@ func TestNewRename(t *testing.T) {
 	t.Run("accepts every dependency", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := folder.NewRename(NewMockRenameRepository(t), fixedClock())
+		_, err := folder.NewRename(NewMockEditRepository(t), fixedClock())
 
 		assert.NoError(t, err)
 	})
@@ -43,7 +43,7 @@ func TestRename_Run(t *testing.T) {
 		t.Parallel()
 
 		stored := storedFolder(t)
-		repo := NewMockRenameRepository(t)
+		repo := NewMockEditRepository(t)
 		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
 
 		var updated domain.Folder
@@ -64,7 +64,7 @@ func TestRename_Run(t *testing.T) {
 	t.Run("refuses a name over 200 characters on the folder_name field", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := newRename(t, NewMockRenameRepository(t)).Run(t.Context(), folder.RenameInput{
+		_, err := newRename(t, NewMockEditRepository(t)).Run(t.Context(), folder.RenameInput{
 			FolderID: storedFolder(t).ID(), Name: longName(),
 		})
 
@@ -77,7 +77,7 @@ func TestRename_Run(t *testing.T) {
 	t.Run("passes up a Folder that is gone", func(t *testing.T) {
 		t.Parallel()
 
-		repo := NewMockRenameRepository(t)
+		repo := NewMockEditRepository(t)
 		repo.EXPECT().Find(mock.Anything, mock.Anything).Return(domain.Folder{}, domain.ErrNotFound)
 
 		_, err := newRename(
@@ -93,7 +93,7 @@ func TestRename_Run(t *testing.T) {
 		t.Parallel()
 
 		stored := storedFolder(t)
-		repo := NewMockRenameRepository(t)
+		repo := NewMockEditRepository(t)
 		repo.EXPECT().Find(mock.Anything, mock.Anything).Return(stored, nil)
 		repo.EXPECT().Update(mock.Anything, mock.Anything).Return(errDatabaseLocked)
 
@@ -104,7 +104,7 @@ func TestRename_Run(t *testing.T) {
 	})
 }
 
-func newRename(t *testing.T, repo folder.RenameRepository) *folder.Rename {
+func newRename(t *testing.T, repo folder.EditRepository) *folder.Rename {
 	t.Helper()
 
 	rename, err := folder.NewRename(repo, fixedClock())

@@ -7,6 +7,7 @@ type Deps struct {
 	TreeLister            FolderTreeLister
 	Copier                SnippetCopier
 	Creator               SnippetCreator
+	Updater               SnippetUpdater
 	Searcher              SnippetSearcher
 	FolderCreator         FolderCreator
 	FolderRenamer         FolderRenamer

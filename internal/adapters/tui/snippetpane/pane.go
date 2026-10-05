@@ -100,6 +100,14 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 	return next.rendered()
 }
 
+func (p Pane) Shown() (domain.Snippet, bool) {
+	return p.snippet, p.shown
+}
+
+func (p Pane) CodeStyle() string {
+	return p.codeStyle
+}
+
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
 	p.paths = paths
 

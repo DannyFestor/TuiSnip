@@ -26,6 +26,7 @@ import (
 
 type App struct {
 	Create              *snippet.Create
+	Update              *snippet.Update
 	Copy                *snippet.Copy
 	Query               *search.Query
 	SnippetsInFolder    *browse.SnippetsInFolder
@@ -131,6 +132,7 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		TreeLister:            app.FolderTree,
 		Copier:                app.Copy,
 		Creator:               app.Create,
+		Updater:               app.Update,
 		Searcher:              app.Query,
 		FolderCreator:         app.CreateFolder,
 		FolderRenamer:         app.RenameFolder,
@@ -180,6 +182,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	}
 
 	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
 	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
@@ -189,7 +192,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	deleteFolder, deleteFolderErr := folder.NewDelete(repos.folders)
 
 	err = errors.Join(
-		createErr, queryErr, listErr, treeErr,
+		createErr, updateErr, queryErr, listErr, treeErr,
 		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr,
 	)
 	if err != nil {
@@ -198,6 +201,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 
 	return &App{
 		Create:              create,
+		Update:              update,
 		Copy:                copyAction,
 		Query:               query,
 		SnippetsInFolder:    snippetsInFolder,

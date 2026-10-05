@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -65,6 +66,40 @@ func TestModel_editOverlay(t *testing.T) {
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 		assert.Contains(t, screen.screen(), editOverlayTitle)
+	})
+
+	t.Run("updates the selected Snippet and shows the change", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 2)
+		edited := testkit.Snippet(t, testkit.SnippetSpec{
+			ID:          snippets[0].ID(),
+			Title:       "Snippet 1 edited",
+			Description: "Description 1",
+			Fragment:    testkit.FragmentSpec{ID: snippets[0].FirstFragment().ID()},
+		})
+		updater := NewMockSnippetUpdater(t)
+		updater.EXPECT().Run(mock.Anything, snippet.UpdateInput{
+			SnippetID:       snippets[0].ID(),
+			LoadedUpdatedAt: snippets[0].UpdatedAt(),
+			Title:           "Snippet 1 edited",
+			Description:     "Description 1",
+			Content:         "",
+		}).Return(edited, nil)
+		screen := start(t, modelWith(t, actions{
+			lister:     listerReturning(t, snippets, []domain.Snippet{edited, snippets[1]}),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			updater:    updater,
+			searcher:   NewMockSnippetSearcher(t),
+		}), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e edited")...)
+		screen.press(keypress.Ctrl('s'))
+
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "Snippet 1 edited")
 	})
 
 	t.Run("ignores a paste on the main screen", func(t *testing.T) {

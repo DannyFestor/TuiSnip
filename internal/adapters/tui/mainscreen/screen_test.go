@@ -423,6 +423,47 @@ func TestScreen_Update(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "Search · 2 results")
 	})
 
+	t.Run("e in the Snippet list edits the selected Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Typed("3e")...)
+
+		assert.Contains(t, screen.Screen(), "› Title       Graceful HTTP shutdown")
+		assert.Equal(t, "ctrl+s save · esc cancel · down field", screen.Hints())
+	})
+
+	t.Run("e in the Snippet pane edits the shown Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Typed("3j4e")...)
+
+		assert.Contains(t, screen.Screen(), "› Title       "+secondTitle)
+	})
+
+	t.Run("e edits nothing outside the Snippet list and the Snippet pane", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Letter('e'))
+
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("e edits nothing in an empty Snippet list", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Typed("3e4e")...)
+
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
 	t.Run("y in the Snippet list asks to copy the selected Snippet", func(t *testing.T) {
 		t.Parallel()
 

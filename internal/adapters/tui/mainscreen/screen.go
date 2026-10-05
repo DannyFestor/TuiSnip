@@ -25,6 +25,7 @@ type Screen struct {
 	keys            binding.Keys
 	global          binding.Set
 	listKeys        binding.Set
+	paneKeys        binding.Set
 	styles          look.Styles
 	box             look.Size
 	layout          layout
@@ -44,6 +45,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, remembe
 		keys:            keys,
 		global:          keys.For(binding.ScopeGlobal),
 		listKeys:        keys.For(binding.ScopeSnippetList),
+		paneKeys:        keys.For(binding.ScopeSnippetPane),
 		styles:          styles,
 		box:             look.Size{Width: 0, Height: 0},
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
@@ -136,7 +138,22 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return outcome.Stay(s).Passing(s.panes.sortCycleAsked())
 	}
 
+	if stored, ok := s.editAsked(msg); ok {
+		return s.opening(editoverlay.Editing(s.keys, s.styles, stored, s.panes.preview.CodeStyle()))
+	}
+
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) editAsked(msg tea.KeyPressMsg) (domain.Snippet, bool) {
+	switch {
+	case s.focus == paneList && s.listKeys.Matches(msg, binding.Edit):
+		return s.panes.list.Selected()
+	case s.focus == paneSnippet && s.paneKeys.Matches(msg, binding.Edit):
+		return s.panes.preview.Shown()
+	}
+
+	return domain.Snippet{}, false
 }
 
 func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {

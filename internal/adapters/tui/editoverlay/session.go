@@ -21,21 +21,48 @@ const (
 type Session struct {
 	keys   binding.Keys
 	form   form
+	target saveTarget
 	styles look.Styles
 	outer  look.Size
 	saving bool
 }
 
 func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
-	form, cmd := newForm(formKeys{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)})
+	blank, cmd := newForm(
+		formKeysOf(keys),
+		entered{title: "", description: "", content: ""},
+		readOnlyContent{held: false, highlighted: ""},
+	)
 
+	return newSession(keys, styles, blank, newSnippet{}), cmd
+}
+
+func Editing(keys binding.Keys, styles look.Styles, stored domain.Snippet, codeStyle string) (Session, tea.Cmd) {
+	fragment := stored.FirstFragment()
+	original := entered{
+		title:       stored.Title().String(),
+		description: stored.Description().String(),
+		content:     fragment.Content().String(),
+	}
+	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, codeStyle))
+	target := storedSnippet{id: stored.ID(), loadedUpdatedAt: stored.UpdatedAt()}
+
+	return newSession(keys, styles, filled, target), cmd
+}
+
+func newSession(keys binding.Keys, styles look.Styles, opened form, target saveTarget) Session {
 	return Session{
 		keys:   keys,
-		form:   form,
+		form:   opened,
+		target: target,
 		styles: styles,
 		outer:  look.Size{Width: 0, Height: 0},
 		saving: false,
-	}, cmd
+	}
+}
+
+func formKeysOf(keys binding.Keys) formKeys {
+	return formKeys{fields: keys.For(binding.ScopeEditor), content: keys.For(binding.ScopeContent)}
 }
 
 func (s Session) Update(msg tea.Msg) outcome.Step {
@@ -112,7 +139,7 @@ func (s Session) saveStarted() outcome.Step {
 	next := s
 	next.saving = true
 
-	return outcome.Stay(next).Passing(outcome.SaveRequested{Input: s.form.input()})
+	return s.target.savingAs(next, s.form.entered())
 }
 
 func (s Session) cancelled() outcome.Step {

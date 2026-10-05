@@ -52,6 +52,7 @@ type actions struct {
 	treeLister            tui.FolderTreeLister
 	copier                tui.SnippetCopier
 	creator               tui.SnippetCreator
+	updater               tui.SnippetUpdater
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
 	folderRenamer         tui.FolderRenamer
@@ -112,6 +113,7 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		TreeLister:    with.treeLister,
 		Copier:        with.copier,
 		Creator:       with.creator,
+		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),

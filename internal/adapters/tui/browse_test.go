@@ -120,13 +120,19 @@ func TestModel_browse(t *testing.T) {
 func browsingModel(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) tui.Model {
 	t.Helper()
 
-	return modelWith(t, actions{
+	return modelWith(t, browsingActions(t, sample, lister))
+}
+
+func browsingActions(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) actions {
+	t.Helper()
+
+	return actions{
 		lister:     lister,
 		treeLister: treeOf(t, sample.Tree),
 		copier:     NewMockSnippetCopier(t),
 		creator:    NewMockSnippetCreator(t),
 		searcher:   NewMockSnippetSearcher(t),
-	})
+	}
 }
 
 func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {

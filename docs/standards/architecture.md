@@ -36,7 +36,7 @@ internal/
     clipboard/               platform clipboard tools; picks the Copy backend
     config/                  loads and validates config.toml over the embedded defaults
     xdg/                     config, data, state, and log paths
-    state/                   the remembered-state file (sort order)
+    state/                   the remembered-state file (sort order, collapsed Folders)
     atomicfile/              writes a file through a temporary file, so config and state never leave one half written
     editor/                  resolves the external editor command, runs it on a temp file, reads it back
     memsearch/               in-memory Search index
@@ -46,7 +46,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       confirm/               the y/N confirmation an Overlay opens before it throws work away
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
-      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one
+      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
@@ -55,6 +55,7 @@ internal/
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
+      savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet

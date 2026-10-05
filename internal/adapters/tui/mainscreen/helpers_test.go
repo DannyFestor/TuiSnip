@@ -74,7 +74,12 @@ func opened(t *testing.T, screen look.Size, styles look.Styles, order domain.Sor
 func newScreen(t *testing.T, styles look.Styles, order domain.SortOrder) mainscreen.Screen {
 	t.Helper()
 
-	screen, err := mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC, order)
+	screen, err := mainscreen.New(
+		testsettings.Default(t).Keys,
+		styles,
+		time.UTC,
+		mainscreen.Remembered{SortOrder: order, CollapsedFolders: nil},
+	)
 	require.NoError(t, err)
 
 	return screen

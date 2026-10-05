@@ -29,15 +29,21 @@ type panes struct {
 	orderLabel string
 }
 
-func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, orderLabel string) panes {
+func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, collapsed []domain.FolderID) panes {
 	return panes{
-		folders:    folderpane.New(keys),
+		folders:    folderpane.New(keys, collapsed),
 		tags:       tagpane.New(keys, styles),
 		list:       snippetlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
 		paths:      folderpath.Paths{},
-		orderLabel: orderLabel,
+		orderLabel: "",
 	}
+}
+
+func (p panes) withOrderLabel(label string) panes {
+	p.orderLabel = label
+
+	return p
 }
 
 func (p panes) naming() bool {
@@ -82,12 +88,14 @@ func (p panes) withBackground(msg tea.BackgroundColorMsg) panes {
 	return p
 }
 
-func (p panes) withTree(tree browse.Tree) panes {
-	p.folders = p.folders.WithTree(tree)
+func (p panes) withTree(tree browse.Tree) (panes, []outcome.Outcome) {
+	var outcomes []outcome.Outcome
+
+	p.folders, outcomes = p.folders.WithTree(tree)
 	p.paths = folderpath.New(tree)
 	p.preview = p.preview.WithPaths(p.paths)
 
-	return p
+	return p, outcomes
 }
 
 func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) (panes, error) {
@@ -99,7 +107,7 @@ func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) (panes, error)
 
 	label, err := orderLabel(loaded.Order)
 	if err == nil {
-		p.orderLabel = label
+		p = p.withOrderLabel(label)
 	}
 
 	return p.previewSelected(), err
@@ -111,10 +119,12 @@ func (p panes) sortCycleAsked() outcome.SortCycleAsked {
 	return outcome.SortCycleAsked{FolderID: p.folders.Selected(), Selecting: selected.ID()}
 }
 
-func (p panes) selectingFolder(id domain.FolderID) panes {
-	p.folders = p.folders.WithCursorOn(id)
+func (p panes) selectingFolder(id domain.FolderID) (panes, []outcome.Outcome) {
+	var outcomes []outcome.Outcome
 
-	return p
+	p.folders, outcomes = p.folders.WithCursorOn(id)
+
+	return p, outcomes
 }
 
 func (p panes) selectionAndOrder() string {

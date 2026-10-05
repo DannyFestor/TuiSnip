@@ -16,6 +16,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/state"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/system"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/xdg"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
@@ -136,7 +137,8 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		FolderDeletePreviewer: app.PreviewDeleteFolder,
 		FolderDeleter:         app.DeleteFolder,
 		SortOrderSaver:        opened.remembered,
-		Settings:              SettingsFrom(cfg, time.Local, opened.remembered.SortOrder()),
+		CollapsedFoldersSaver: opened.remembered,
+		Settings:              SettingsFrom(cfg, time.Local, rememberedIn(opened.remembered)),
 		Logger:                logger,
 	})
 	if err != nil {
@@ -144,6 +146,10 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	}
 
 	return app, nil
+}
+
+func rememberedIn(file *state.File) mainscreen.Remembered {
+	return mainscreen.Remembered{SortOrder: file.SortOrder(), CollapsedFolders: file.CollapsedFolders()}
 }
 
 func newModel(ctx context.Context, cfg config.Config, deps tui.Deps) (tui.Model, error) {

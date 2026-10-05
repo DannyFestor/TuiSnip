@@ -34,16 +34,41 @@ func (f *File) SortOrder() domain.SortOrder {
 	return f.remembered.SnippetList.Sort
 }
 
+func (f *File) CollapsedFolders() []domain.FolderID {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
+	return f.remembered.Folders.collapsedIDs()
+}
+
 func (f *File) SaveSortOrder(ctx context.Context, order domain.SortOrder) error {
+	err := f.save(ctx, func(next *remembered) { next.SnippetList.Sort = order })
+	if err != nil {
+		return fmt.Errorf("state.File.SaveSortOrder: %w", err)
+	}
+
+	return nil
+}
+
+func (f *File) SaveCollapsedFolders(ctx context.Context, ids []domain.FolderID) error {
+	err := f.save(ctx, func(next *remembered) { next.Folders = foldersCollapsing(ids) })
+	if err != nil {
+		return fmt.Errorf("state.File.SaveCollapsedFolders: %w", err)
+	}
+
+	return nil
+}
+
+func (f *File) save(ctx context.Context, change func(next *remembered)) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
 	next := f.remembered
-	next.SnippetList.Sort = order
+	change(&next)
 
 	err := f.write(ctx, next)
 	if err != nil {
-		return fmt.Errorf("state.File.SaveSortOrder: %w", err)
+		return err
 	}
 
 	f.remembered = next

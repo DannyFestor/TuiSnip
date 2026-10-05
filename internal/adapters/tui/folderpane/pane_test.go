@@ -32,8 +32,7 @@ func TestPane_View(t *testing.T) {
 	t.Run("shows the Root above the indented tree with each Snippet count", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).
-			WithTree(foldertree.New(t).Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), foldertree.New(t).Tree)
 
 		assert.Equal(t, []string{
 			"◆ ROOT                2",
@@ -46,8 +45,10 @@ func TestPane_View(t *testing.T) {
 	t.Run("cuts a row to a narrow box", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: 6, Height: boxHeight}).
-			WithTree(browse.Tree{RootSnippetCount: 42, Folders: nil})
+		pane := withTree(
+			paneIn(t, look.Size{Width: 6, Height: boxHeight}),
+			browse.Tree{RootSnippetCount: 42, Folders: nil},
+		)
 
 		assert.Equal(t, []string{"◆ … 42"}, viewLines(pane))
 	})
@@ -55,8 +56,7 @@ func TestPane_View(t *testing.T) {
 	t.Run("scrolls to keep the cursor in a short box", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: 2}).
-			WithTree(foldertree.New(t).Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: 2}), foldertree.New(t).Tree)
 
 		pane = pressed(pane, keypress.Letter('G'))
 
@@ -98,7 +98,7 @@ func TestPane_Update(t *testing.T) {
 			t.Parallel()
 
 			sample := foldertree.New(t)
-			pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
+			pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 
 			pane = pressed(pane, tt.keys...)
 
@@ -110,7 +110,7 @@ func TestPane_Update(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 
 		_, outcomes, _ := pane.Update(keypress.Letter('j'))
 
@@ -120,8 +120,7 @@ func TestPane_Update(t *testing.T) {
 	t.Run("reports nothing when the cursor stays", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).
-			WithTree(foldertree.New(t).Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), foldertree.New(t).Tree)
 
 		_, outcomes, _ := pane.Update(keypress.Letter('k'))
 
@@ -131,8 +130,7 @@ func TestPane_Update(t *testing.T) {
 	t.Run("ignores keys that do not move", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).
-			WithTree(foldertree.New(t).Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), foldertree.New(t).Tree)
 
 		_, outcomes, _ := pane.Update(keypress.Letter('x'))
 
@@ -147,9 +145,9 @@ func TestPane_WithCursorOn(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 
-		pane = pane.WithCursorOn(sample.Tests.ID())
+		pane = withCursorOn(pane, sample.Tests.ID())
 
 		assert.Equal(t, sample.Tests.ID(), pane.Selected())
 	})
@@ -157,10 +155,10 @@ func TestPane_WithCursorOn(t *testing.T) {
 	t.Run("selects the Root", func(t *testing.T) {
 		t.Parallel()
 
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(foldertree.New(t).Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), foldertree.New(t).Tree)
 		pane = pressed(pane, keypress.Letter('G'))
 
-		pane = pane.WithCursorOn(domain.FolderID{})
+		pane = withCursorOn(pane, domain.FolderID{})
 
 		assert.Equal(t, domain.FolderID{}, pane.Selected())
 	})
@@ -170,10 +168,10 @@ func TestPane_WithCursorOn(t *testing.T) {
 
 		ids := testkit.NewSequentialIDs()
 		sample := foldertree.New(t)
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 		pane = pressed(pane, keypress.Letter('j'))
 
-		pane = pane.WithCursorOn(ids.NewFolderID())
+		pane = withCursorOn(pane, ids.NewFolderID())
 
 		assert.Equal(t, sample.Docker.ID(), pane.Selected())
 	})
@@ -187,13 +185,13 @@ func TestPane_WithTree(t *testing.T) {
 
 		ids := testkit.NewSequentialIDs()
 		sample := foldertree.New(t)
-		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
-		pane = pane.WithCursorOn(sample.Go.ID())
+		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
+		pane = withCursorOn(pane, sample.Go.ID())
 		added := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "awk"})
 		grown := sample.Tree
 		grown.Folders = append([]browse.FolderNode{{Folder: added, SnippetCount: 0, Children: nil}}, grown.Folders...)
 
-		pane = pane.WithTree(grown)
+		pane = withTree(pane, grown)
 
 		assert.Equal(t, sample.Go.ID(), pane.Selected())
 	})

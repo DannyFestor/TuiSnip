@@ -10,6 +10,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -23,5 +24,9 @@ func Default(t *testing.T) tui.Settings {
 	})
 	require.NoError(t, err)
 
-	return bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle)
+	return bootstrap.SettingsFrom(
+		cfg,
+		time.UTC,
+		mainscreen.Remembered{SortOrder: domain.SortOrderTitle, CollapsedFolders: nil},
+	)
 }

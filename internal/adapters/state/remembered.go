@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"uuid"
 
 	"github.com/BurntSushi/toml"
 
@@ -11,14 +12,40 @@ import (
 
 type remembered struct {
 	SnippetList snippetList `toml:"snippet_list"`
+	Folders     folders     `toml:"folders"`
 }
 
 type snippetList struct {
 	Sort domain.SortOrder `toml:"sort"`
 }
 
+type folders struct {
+	Collapsed []uuid.UUID `toml:"collapsed"`
+}
+
 func defaults() remembered {
-	return remembered{SnippetList: snippetList{Sort: domain.SortOrderTitle}}
+	return remembered{
+		SnippetList: snippetList{Sort: domain.SortOrderTitle},
+		Folders:     folders{Collapsed: nil},
+	}
+}
+
+func (f folders) collapsedIDs() []domain.FolderID {
+	ids := make([]domain.FolderID, 0, len(f.Collapsed))
+	for _, id := range f.Collapsed {
+		ids = append(ids, domain.FolderID(id))
+	}
+
+	return ids
+}
+
+func foldersCollapsing(ids []domain.FolderID) folders {
+	collapsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		collapsed = append(collapsed, uuid.UUID(id))
+	}
+
+	return folders{Collapsed: collapsed}
 }
 
 func decode(data []byte) (remembered, error) {

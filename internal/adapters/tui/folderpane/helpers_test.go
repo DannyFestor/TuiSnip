@@ -10,6 +10,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -29,8 +31,20 @@ func upperCursor() look.FrameStyle {
 func paneIn(t *testing.T, box look.Size) folderpane.Pane {
 	t.Helper()
 
-	pane := folderpane.New(testsettings.Default(t).Keys)
+	pane := folderpane.New(testsettings.Default(t).Keys, nil)
 	pane, _, _ = pane.Update(look.Resized{Box: box})
+
+	return pane
+}
+
+func withTree(pane folderpane.Pane, tree browse.Tree) folderpane.Pane {
+	pane, _ = pane.WithTree(tree)
+
+	return pane
+}
+
+func withCursorOn(pane folderpane.Pane, id domain.FolderID) folderpane.Pane {
+	pane, _ = pane.WithCursorOn(id)
 
 	return pane
 }

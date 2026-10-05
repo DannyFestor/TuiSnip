@@ -52,6 +52,7 @@ type actions struct {
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
 	sortOrderSaver        tui.SortOrderSaver
+	collapsedFoldersSaver tui.CollapsedFoldersSaver
 }
 
 func emptyTree() browse.Tree {
@@ -114,8 +115,12 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		),
 		FolderDeleter:  orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
 		SortOrderSaver: orMock(with.sortOrderSaver, func() tui.SortOrderSaver { return NewMockSortOrderSaver(t) }),
-		Settings:       settings,
-		Logger:         slog.New(slog.DiscardHandler),
+		CollapsedFoldersSaver: orMock(
+			with.collapsedFoldersSaver,
+			func() tui.CollapsedFoldersSaver { return NewMockCollapsedFoldersSaver(t) },
+		),
+		Settings: settings,
+		Logger:   slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 

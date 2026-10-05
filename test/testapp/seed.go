@@ -15,6 +15,12 @@ func SeedFolder(t *testing.T, app *bootstrap.App, folder domain.Folder) {
 	require.NoError(t, app.FolderRepository.Insert(t.Context(), folder))
 }
 
+func SeedTag(t *testing.T, app *bootstrap.App, tag domain.Tag) {
+	t.Helper()
+
+	require.NoError(t, app.TagRepository.Insert(t.Context(), tag))
+}
+
 func SeedSnippet(t *testing.T, app *bootstrap.App, snippet domain.Snippet) {
 	t.Helper()
 

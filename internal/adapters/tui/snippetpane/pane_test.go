@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -73,6 +74,20 @@ func TestPane_View(t *testing.T) {
 			Showing(snippetWith(t, testkit.SnippetSpec{FolderID: sample.Tests.ID()}))
 
 		assert.Equal(t, "Root / go / testing · Go", strings.TrimSpace(lines(pane)[1]))
+	})
+
+	t.Run("shows the Tags the Snippet carries after its Language", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		tags := []domain.Tag{
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"}),
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "http server"}),
+		}
+
+		pane := showing(t, snippetWith(t, testkit.SnippetSpec{Tags: tags}))
+
+		assert.Equal(t, "Root · Go · #go #http server", strings.TrimSpace(lines(pane)[1]))
 	})
 
 	t.Run("shows the dates in the configured location", func(t *testing.T) {

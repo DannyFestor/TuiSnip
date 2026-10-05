@@ -10,6 +10,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
 func TestFragment_New(t *testing.T) {
@@ -74,6 +75,42 @@ func TestFragment_Accessors(t *testing.T) {
 	assert.Equal(t, content, fragment.Content())
 	assert.Equal(t, created, fragment.CreatedAt())
 	assert.Equal(t, updated, fragment.UpdatedAt())
+}
+
+func TestFragment_WithContent(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+	later := created.Add(time.Hour)
+	fragment := testkit.Fragment(t, testkit.FragmentSpec{ID: fragmentID(), Content: "ls", CreatedAt: created})
+
+	t.Run("takes new content and the time", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := fragment.WithContent(mustContent(t, "ls -la"), later)
+
+		require.NoError(t, err)
+		assert.Equal(t, "ls -la", edited.Content().String())
+		assert.Equal(t, later, edited.UpdatedAt())
+		assert.Equal(t, "ls", fragment.Content().String(), "the original is untouched")
+	})
+
+	t.Run("keeps its time when the content is the same", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := fragment.WithContent(mustContent(t, "ls"), later)
+
+		require.NoError(t, err)
+		assert.Equal(t, created, edited.UpdatedAt())
+	})
+
+	t.Run("rejects a time before creation", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := fragment.WithContent(mustContent(t, "ls -la"), created.Add(-time.Hour))
+
+		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
+	})
 }
 
 func fragmentID() domain.FragmentID {

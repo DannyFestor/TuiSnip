@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -68,6 +69,10 @@ func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.C
 
 		return p, outcomes, cmd
 	case paneTags:
+		tags, outcomes, cmd := p.tags.Update(msg)
+		p.tags = tags
+
+		return p, outcomes, cmd
 	}
 
 	return p, nil, nil
@@ -98,8 +103,23 @@ func (p panes) withTree(tree browse.Tree) (panes, []outcome.Outcome) {
 	return p, outcomes
 }
 
-func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) (panes, error) {
-	if loaded.FolderID != p.folders.Selected() {
+func (p panes) withTags(tags []browse.TagCount) panes {
+	p.tags = p.tags.WithTags(tags)
+
+	return p
+}
+
+func (p panes) selectionIn(holder pane) browseselection.Selection {
+	tagID, ok := p.tags.Selected()
+	if holder == paneTags && ok {
+		return browseselection.WithTag(tagID)
+	}
+
+	return browseselection.InFolder(p.folders.Selected())
+}
+
+func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded, selection browseselection.Selection) (panes, error) {
+	if loaded.Selection != selection {
 		return p, nil
 	}
 
@@ -113,10 +133,10 @@ func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded) (panes, error)
 	return p.previewSelected(), err
 }
 
-func (p panes) sortCycleAsked() outcome.SortCycleAsked {
+func (p panes) sortCycleAsked(selection browseselection.Selection) outcome.SortCycleAsked {
 	selected, _ := p.list.Selected()
 
-	return outcome.SortCycleAsked{FolderID: p.folders.Selected(), Selecting: selected.ID()}
+	return outcome.SortCycleAsked{Selection: selection, Selecting: selected.ID()}
 }
 
 func (p panes) selectingFolder(id domain.FolderID) (panes, []outcome.Outcome) {
@@ -127,8 +147,18 @@ func (p panes) selectingFolder(id domain.FolderID) (panes, []outcome.Outcome) {
 	return p, outcomes
 }
 
-func (p panes) selectionAndOrder() string {
-	return p.paths.Full(p.folders.Selected()) + listTitleSeparator + p.orderLabel
+func (p panes) selectionAndOrder(selection browseselection.Selection) string {
+	return p.selectionTitle(selection) + listTitleSeparator + p.orderLabel
+}
+
+func (p panes) selectionTitle(selection browseselection.Selection) string {
+	if _, ok := selection.Tag(); ok {
+		return tagpane.TagPrefix + p.tags.SelectedName()
+	}
+
+	folderID, _ := selection.Folder()
+
+	return p.paths.Full(folderID)
 }
 
 func (p panes) listing() searchpopup.Listing {
@@ -151,7 +181,7 @@ func (p panes) body(of pane, frame look.FrameStyle) string {
 	case paneFolders:
 		return p.folders.View(frame)
 	case paneTags:
-		return p.tags.View()
+		return p.tags.View(frame)
 	case paneList:
 		return p.list.View(frame)
 	case paneSnippet:

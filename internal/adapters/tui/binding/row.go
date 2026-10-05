@@ -11,6 +11,7 @@ const (
 	labelDelete         = "delete"
 	labelCollapse       = "collapse"
 	labelCopy           = "Copy"
+	labelEdit           = "edit"
 	labelSort           = "sort"
 	labelWrap           = "wrap"
 	labelExternalEditor = "external editor"
@@ -18,6 +19,8 @@ const (
 	labelCancel         = "cancel"
 	labelField          = "field"
 	labelLeave          = "leave"
+	labelIndent         = "indent"
+	labelDedent         = "dedent"
 	labelMove           = "move"
 	labelReveal         = "reveal"
 	labelOpen           = "open"
@@ -42,8 +45,10 @@ func Rows() []Row {
 		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
+		Row{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
 		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
+		Row{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
 		Row{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
 		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},
 		Row{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
@@ -53,6 +58,8 @@ func Rows() []Row {
 		Row{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeContent, Name: Save, Label: labelSave},
 		Row{Scope: ScopeContent, Name: Leave, Label: labelLeave},
+		Row{Scope: ScopeContent, Name: Indent, Label: labelIndent},
+		Row{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
 		Row{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeSearch, Name: Down, Label: labelMove},
 		Row{Scope: ScopeSearch, Name: Up, Label: unlabelled},

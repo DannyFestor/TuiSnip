@@ -76,5 +76,8 @@ func TestWrappedSnippetPaneLayout(t *testing.T) {
 func layoutModel(t *testing.T, lister *MockFolderSnippetsLister) tui.Model {
 	t.Helper()
 
-	return browsingModel(t, foldertree.New(t), lister)
+	with := browsingActions(t, foldertree.New(t), lister)
+	with.tagLister = tagsOf(t, sampleTagCounts(t)...)
+
+	return modelWith(t, with)
 }

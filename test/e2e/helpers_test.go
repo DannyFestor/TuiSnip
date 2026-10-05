@@ -47,12 +47,16 @@ func seedNestedFolders(t *testing.T, app *bootstrap.App) domain.Folder {
 func titledSnippet(t *testing.T, ids *testkit.SequentialIDs, title string, folderID domain.FolderID) domain.Snippet {
 	t.Helper()
 
-	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    title,
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
-	})
+	return snippetWithIDs(t, ids, testkit.SnippetSpec{Title: title, FolderID: folderID})
+}
+
+func snippetWithIDs(t *testing.T, ids *testkit.SequentialIDs, spec testkit.SnippetSpec) domain.Snippet {
+	t.Helper()
+
+	spec.ID = ids.NewSnippetID()
+	spec.Fragment.ID = ids.NewFragmentID()
+
+	return testkit.Snippet(t, spec)
 }
 
 type session struct {

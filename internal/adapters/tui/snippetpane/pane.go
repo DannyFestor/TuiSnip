@@ -23,6 +23,8 @@ const (
 	blankGutter      = "     │ "
 	wrappedGutter    = "   ↪ │ "
 	metaSeparator    = " · "
+	tagMarker        = "#"
+	tagSeparator     = " "
 	fixedHeaderLines = 4
 )
 
@@ -99,6 +101,14 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 	next.shown = true
 
 	return next.rendered()
+}
+
+func (p Pane) Shown() (domain.Snippet, bool) {
+	return p.snippet, p.shown
+}
+
+func (p Pane) CodeStyle() string {
+	return p.codeStyle
 }
 
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
@@ -198,14 +208,28 @@ func (p Pane) sized() Pane {
 func (p Pane) header() []string {
 	lines := []string{
 		p.styles.Bold.Render(p.snippet.Title().String()),
-		p.styles.Dim.Render(
-			p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String(),
-		),
+		p.styles.Dim.Render(p.meta()),
 		p.styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)
 
 	return append(lines, p.styles.Dim.Render(strings.Repeat("─", p.box.Width)))
+}
+
+func (p Pane) meta() string {
+	place := p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String()
+
+	tags := p.snippet.Tags()
+	if len(tags) == 0 {
+		return place
+	}
+
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		names = append(names, tagMarker+tag.Name().String())
+	}
+
+	return place + metaSeparator + strings.Join(names, tagSeparator)
 }
 
 func (p Pane) headerHeight() int {

@@ -46,3 +46,19 @@ func (f Fragment) CreatedAt() time.Time {
 func (f Fragment) UpdatedAt() time.Time {
 	return f.updatedAt
 }
+
+func (f Fragment) WithContent(content value.Content, now time.Time) (Fragment, error) {
+	err := requireTimestamps(f.createdAt, now)
+	if err != nil {
+		return Fragment{}, fmt.Errorf("domain.Fragment.WithContent: %w", err)
+	}
+
+	if content == f.content {
+		return f, nil
+	}
+
+	f.content = content
+	f.updatedAt = now
+
+	return f, nil
+}

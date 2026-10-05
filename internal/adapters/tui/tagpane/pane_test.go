@@ -108,6 +108,20 @@ func TestPane_Update(t *testing.T) {
 
 		assert.Equal(t, styledPaneIn(t, light, box).View(light.Focused), restyled.View(light.Focused))
 	})
+
+	t.Run("keeps the Tags and the cursor when restyled", func(t *testing.T) {
+		t.Parallel()
+
+		sample := newSampleTags(t)
+		box := look.Size{Width: boxWidth, Height: boxHeight}
+		light := look.NewStyles(look.SchemeLight)
+		moved, _ := pressed(samplePane(t, sample), keypress.Letter('j'))
+
+		restyled, _, _ := moved.Update(look.Restyled{Styles: light})
+
+		styledFromStart, _ := pressed(styledPaneIn(t, light, box).WithTags(sample.counts), keypress.Letter('j'))
+		assert.Equal(t, styledFromStart.View(light.Focused), restyled.View(light.Focused))
+	})
 }
 
 func TestPane_WithTags(t *testing.T) {

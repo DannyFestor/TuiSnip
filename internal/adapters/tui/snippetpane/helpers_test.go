@@ -31,7 +31,13 @@ func created() time.Time {
 func paneIn(t *testing.T, location *time.Location, box look.Size) snippetpane.Pane {
 	t.Helper()
 
-	pane := snippetpane.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), location)
+	return styledPaneIn(t, look.NewStyles(look.SchemeDark), location, box)
+}
+
+func styledPaneIn(t *testing.T, styles look.Styles, location *time.Location, box look.Size) snippetpane.Pane {
+	t.Helper()
+
+	pane := snippetpane.New(testsettings.Default(t).Keys, styles, location)
 	pane, _, _ = pane.Update(look.Resized{Box: box})
 
 	return pane
@@ -40,7 +46,18 @@ func paneIn(t *testing.T, location *time.Location, box look.Size) snippetpane.Pa
 func showing(t *testing.T, snippet domain.Snippet) snippetpane.Pane {
 	t.Helper()
 
-	return paneIn(t, time.UTC, look.Size{Width: boxWidth, Height: headerLines + codeLines}).Showing(snippet)
+	return showingStyled(t, look.NewStyles(look.SchemeDark), snippet)
+}
+
+func showingStyled(t *testing.T, styles look.Styles, snippet domain.Snippet) snippetpane.Pane {
+	t.Helper()
+
+	return styledPaneIn(
+		t,
+		styles,
+		time.UTC,
+		look.Size{Width: boxWidth, Height: headerLines + codeLines},
+	).Showing(snippet)
 }
 
 func longSnippet(t *testing.T) domain.Snippet {
@@ -60,10 +77,10 @@ func snippetWith(t *testing.T, spec testkit.SnippetSpec) domain.Snippet {
 	return snippetWithContent(t, spec, strings.Join(lines, "\n"))
 }
 
-func snippetOf(t *testing.T, content string) domain.Snippet {
+func longLineSnippet(t *testing.T) domain.Snippet {
 	t.Helper()
 
-	return snippetWithContent(t, testkit.SnippetSpec{}, content)
+	return snippetWithContent(t, testkit.SnippetSpec{}, longLine)
 }
 
 func snippetWithContent(t *testing.T, spec testkit.SnippetSpec, content string) domain.Snippet {

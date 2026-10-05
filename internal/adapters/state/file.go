@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/atomicfile"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -56,9 +57,9 @@ func (f *File) write(ctx context.Context, next remembered) error {
 		return err
 	}
 
-	err = replaceAtomically(f.path, data)
+	err = atomicfile.Replace(f.path, data)
 	if err != nil {
-		return err
+		return fmt.Errorf("write: %w", err)
 	}
 
 	f.logger.DebugContext(ctx, "state file written", slog.String(keyPath, f.path))

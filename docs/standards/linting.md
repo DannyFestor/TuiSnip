@@ -90,6 +90,19 @@ A sealed union is an interface with an unexported marker method, marked `//sumty
 
 A `default:` case counts as handling every member. Leave it out where a missing case should fail, as in `Model.concluded`. Keep it where the switch handles a few members and passes the rest on, as in `editSession.Received`.
 
+ireturn rejects any function that returns the union itself, because the union is an interface. Return it inside a concrete type instead. `outcome.Step` carries its outcomes in a struct, and `folderpane.Pane.Update` returns `[]outcome.Outcome`. A slice or a struct is concrete, so both pass:
+
+```go
+// ❌ ireturn: returns interface outcome.Outcome
+func (p Pane) Update(msg tea.Msg) (Pane, outcome.Outcome, tea.Cmd)
+
+// ✅
+func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd)
+func Close() outcome.Step
+```
+
+When the members carry no data of their own, or share the same few fields, use a struct with an int enum instead of a union. `nameinput.Result` is a struct whose `Ending` field is an enum (`Typing`, `Committed`, `Cancelled`, `Refused`). exhaustive then checks the switches over `Ending`.
+
 ## No globals, no hidden state
 
 - gochecknoglobals and gochecknoinits: no package-level variables, no `init()`. Lip Gloss styles and default keymaps come from constructors (`DefaultKeyMap()`, `NewStyles(theme)`) and are injected, because keybindings and themes are configurable.
@@ -100,7 +113,7 @@ A `default:` case counts as handling every member. Leave it out where a missing 
   - bans `context.WithValue`, because dependencies are passed explicitly
   - bans `panic` outside tests, because every failure is a returned error (see [code](code.md#errors))
 - containedctx: no `context.Context` fields in structs. The one exception is the TUI root model (see [architecture](architecture.md)).
-- nonamedreturns: no named results, except where a deferred function changes the returned error (`defer func() { err = errors.Join(err, rows.Close()) }()`).
+- nonamedreturns: no named results, except where a deferred function changes the returned error (`defer func() { err = errors.Join(err, rows.Close()) }()`). gocritic's `unnamedResult` asks for names on several results of the same type, so `(int, int)` fails one linter or the other. A `//nolint` isn't the fix here. Change the signature instead: return a struct that names each value, or have the type do the work so the caller needs a single result. `move.Cursor.VisibleRows` renders the visible rows itself instead of returning a start and an end.
 
 ## Errors
 

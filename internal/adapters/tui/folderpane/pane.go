@@ -110,6 +110,8 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 		return p.startedNaming(newFolder{parentID: p.Selected()}, "")
 	case p.keys.Matches(msg, binding.Rename) && !p.Selected().IsNil():
 		return p.startedNaming(renamedFolder{folderID: p.Selected()}, p.selectedRow().name)
+	case p.keys.Matches(msg, binding.Delete) && !p.Selected().IsNil():
+		return p, []outcome.Outcome{outcome.FolderDeleteAsked{ID: p.Selected()}}, nil
 	}
 
 	return p.moved(msg)

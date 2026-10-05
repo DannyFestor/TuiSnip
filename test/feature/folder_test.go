@@ -49,6 +49,35 @@ func TestFolderCreatedInsideAnotherCopiesItsDefaultLanguage(t *testing.T) {
 	assert.Equal(t, "Go", stored.DefaultLanguage().String())
 }
 
+func TestFolderDeletedWithItsSubtreeAfterPreviewCountsIt(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	ids := testkit.NewSequentialIDs()
+	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
+	nested := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
+	docker := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "docker"})
+	seededSnippet(t, app, ids, golang.ID())
+	deleted := seededSnippet(t, app, ids, nested.ID())
+	kept := seededSnippet(t, app, ids, docker.ID())
+
+	preview, err := app.PreviewDeleteFolder.Run(t.Context(), folder.PreviewDeleteInput{FolderID: golang.ID()})
+	require.NoError(t, err)
+	assert.Equal(t, 1, preview.SubfolderCount)
+	assert.Equal(t, 2, preview.SnippetCount)
+
+	require.NoError(t, app.DeleteFolder.Run(t.Context(), folder.DeleteInput{FolderID: golang.ID()}))
+
+	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
+	require.NoError(t, err)
+	require.Len(t, tree.Folders, 1)
+	assert.Equal(t, docker.ID(), tree.Folders[0].Folder.ID())
+	_, err = app.SnippetRepository.Find(t.Context(), deleted.ID())
+	require.ErrorIs(t, err, domain.ErrNotFound)
+	_, err = app.SnippetRepository.Find(t.Context(), kept.ID())
+	assert.NoError(t, err)
+}
+
 func TestRenamedFolderShowsInTree(t *testing.T) {
 	t.Parallel()
 

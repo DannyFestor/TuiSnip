@@ -500,11 +500,120 @@ func TestScreen_Update(t *testing.T) {
 		grown := sample.Tree
 		grown.Folders = append([]browse.FolderNode{{Folder: created, SnippetCount: 0, Children: nil}}, grown.Folders...)
 
-		screen.Send(mainscreen.FolderCreated{Tree: grown, ID: created.ID()})
+		screen.Send(mainscreen.TreeChanged{Tree: grown, Selecting: created.ID()})
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: created.ID()}}, screen.Outcomes())
 		assert.Contains(t, screen.Screen(), "3 Root / awk · by title")
 	})
+}
+
+func TestScreen_UpdateFolderDelete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("d passes on the ask to delete the Folder under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+
+		screen.Press(keypress.Letter('j'), keypress.Letter('d'))
+
+		assert.Contains(t, screen.Outcomes(), outcome.FolderDeleteAsked{ID: sample.Docker.ID()})
+	})
+
+	t.Run("asks to confirm with the counts from the preview", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+
+		screen.Send(mainscreen.FolderDeletePreviewed{
+			Preview: folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 1, SnippetCount: 15},
+		})
+
+		assert.Contains(t, screen.Screen(), "Delete Folder")
+		assert.Contains(
+			t,
+			screen.Screen(),
+			`Permanently delete Folder "docker", 1 subfolder, and 15 Snippets? This cannot be undone. [y/N]`,
+		)
+	})
+
+	t.Run("yes asks to delete the Folder, remembering its parent", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Send(mainscreen.FolderDeletePreviewed{
+			Preview: folder.DeletePreview{Folder: sample.Tests, SubfolderCount: 0, SnippetCount: 1},
+		})
+
+		screen.Press(keypress.Letter('y'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderDeleteRequested{
+			Input:    folder.DeleteInput{FolderID: sample.Tests.ID()},
+			ParentID: sample.Go.ID(),
+		}}, screen.Outcomes())
+	})
+
+	t.Run("no closes the confirmation without deleting", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Send(mainscreen.FolderDeletePreviewed{
+			Preview: folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 0, SnippetCount: 0},
+		})
+
+		screen.Press(keypress.Letter('n'))
+
+		assert.Empty(t, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), "Delete Folder")
+	})
+
+	t.Run("makes the deleted Folder's parent the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Letter('j'), keypress.Letter('j'), keypress.Letter('j'))
+
+		shrunk := sample.Tree
+		shrunk.Folders = []browse.FolderNode{sample.Tree.Folders[0], sample.Tree.Folders[1]}
+		shrunk.Folders[1].Children = nil
+
+		screen.Send(mainscreen.TreeChanged{Tree: shrunk, Selecting: sample.Go.ID()})
+
+		assert.Contains(t, screen.Outcomes(), outcome.FolderSelected{ID: sample.Go.ID()})
+		assert.Contains(t, screen.Screen(), "3 Root / go · by title")
+	})
+}
+
+func TestScreen_folderDeleteQuestion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		subfolders int
+		snippets   int
+		want       string
+	}{
+		{name: "pluralises zero counts", subfolders: 0, snippets: 0, want: "0 subfolders, and 0 Snippets?"},
+		{name: "keeps single counts singular", subfolders: 1, snippets: 1, want: "1 subfolder, and 1 Snippet?"},
+		{name: "pluralises larger counts", subfolders: 2, snippets: 15, want: "2 subfolders, and 15 Snippets?"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, sample := browsing(t)
+
+			screen.Send(mainscreen.FolderDeletePreviewed{
+				Preview: folder.DeletePreview{
+					Folder:         sample.Docker,
+					SubfolderCount: tt.subfolders,
+					SnippetCount:   tt.snippets,
+				},
+			})
+
+			assert.Contains(t, screen.Screen(), `Permanently delete Folder "docker", `+tt.want)
+		})
+	}
 }
 
 func TestScreen_Received(t *testing.T) {

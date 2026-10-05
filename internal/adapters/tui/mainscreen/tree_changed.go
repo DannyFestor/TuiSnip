@@ -5,7 +5,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-type FolderCreated struct {
-	Tree browse.Tree
-	ID   domain.FolderID
+type TreeChanged struct {
+	Tree      browse.Tree
+	Selecting domain.FolderID
 }

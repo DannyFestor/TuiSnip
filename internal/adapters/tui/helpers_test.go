@@ -42,13 +42,15 @@ func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetC
 }
 
 type actions struct {
-	lister        tui.FolderSnippetsLister
-	treeLister    tui.FolderTreeLister
-	copier        tui.SnippetCopier
-	creator       tui.SnippetCreator
-	searcher      tui.SnippetSearcher
-	folderCreator tui.FolderCreator
-	folderRenamer tui.FolderRenamer
+	lister                tui.FolderSnippetsLister
+	treeLister            tui.FolderTreeLister
+	copier                tui.SnippetCopier
+	creator               tui.SnippetCreator
+	searcher              tui.SnippetSearcher
+	folderCreator         tui.FolderCreator
+	folderRenamer         tui.FolderRenamer
+	folderDeletePreviewer tui.FolderDeletePreviewer
+	folderDeleter         tui.FolderDeleter
 }
 
 func emptyTree() browse.Tree {
@@ -93,6 +95,11 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),
+		FolderDeletePreviewer: orMock(
+			with.folderDeletePreviewer,
+			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
+		),
+		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
 		Settings:      settings,
 		Logger:        slog.New(slog.DiscardHandler),
 	})

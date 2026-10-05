@@ -17,7 +17,7 @@ import (
 
 const (
 	editOverlayTitle = "Editing"
-	quitQuestion     = "Quit and discard the unsaved changes? y/N"
+	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
 )
 
 func TestModel_editOverlay(t *testing.T) {

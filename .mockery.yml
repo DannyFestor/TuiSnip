@@ -13,6 +13,8 @@ packages:
     interfaces:
       CreateRepository: {}
       RenameRepository: {}
+      PreviewDeleteRepository: {}
+      Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -30,6 +32,8 @@ packages:
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}
+      FolderDeletePreviewer: {}
+      FolderDeleter: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:
     interfaces:
       Overlay: {}

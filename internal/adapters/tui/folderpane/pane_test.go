@@ -199,6 +199,29 @@ func TestPane_WithTree(t *testing.T) {
 	})
 }
 
+func TestPane_UpdateDelete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("asks to delete the Folder under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		pane := pressed(samplePane(t, sample), keypress.Letter('j'))
+
+		_, outcomes, _ := pane.Update(keypress.Letter('d'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderDeleteAsked{ID: sample.Docker.ID()}}, outcomes)
+	})
+
+	t.Run("leaves the Root alone", func(t *testing.T) {
+		t.Parallel()
+
+		_, outcomes, _ := samplePane(t, foldertree.New(t)).Update(keypress.Letter('d'))
+
+		assert.Empty(t, outcomes)
+	})
+}
+
 func TestPane_ShortHelp(t *testing.T) {
 	t.Parallel()
 

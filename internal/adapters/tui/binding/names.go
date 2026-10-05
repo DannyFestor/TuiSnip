@@ -24,6 +24,7 @@ const (
 	PageUp       = "page_up"
 	NewFolder    = "new_folder"
 	Rename       = "rename"
+	Delete       = "delete"
 	Copy         = "copy"
 	OpenInEditor = "open_in_editor"
 	Save         = "save"

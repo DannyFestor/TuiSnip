@@ -23,18 +23,20 @@ import (
 )
 
 type App struct {
-	Create            *snippet.Create
-	Copy              *snippet.Copy
-	Query             *search.Query
-	SnippetsInFolder  *browse.SnippetsInFolder
-	FolderTree        *browse.FolderTree
-	CreateFolder      *folder.Create
-	RenameFolder      *folder.Rename
-	SnippetRepository *sqlite.SnippetRepository
-	FolderRepository  *sqlite.FolderRepository
-	model             tui.Model
-	database          *sqlite.Database
-	log               *logging.Log
+	Create              *snippet.Create
+	Copy                *snippet.Copy
+	Query               *search.Query
+	SnippetsInFolder    *browse.SnippetsInFolder
+	FolderTree          *browse.FolderTree
+	CreateFolder        *folder.Create
+	RenameFolder        *folder.Rename
+	PreviewDeleteFolder *folder.PreviewDelete
+	DeleteFolder        *folder.Delete
+	SnippetRepository   *sqlite.SnippetRepository
+	FolderRepository    *sqlite.FolderRepository
+	model               tui.Model
+	database            *sqlite.Database
+	log                 *logging.Log
 }
 
 func New(ctx context.Context, options Options) (*App, error) {
@@ -120,15 +122,17 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.log = opened.log
 
 	app.model, err = newModel(ctx, cfg, tui.Deps{
-		Lister:        app.SnippetsInFolder,
-		TreeLister:    app.FolderTree,
-		Copier:        app.Copy,
-		Creator:       app.Create,
-		Searcher:      app.Query,
-		FolderCreator: app.CreateFolder,
-		FolderRenamer: app.RenameFolder,
-		Settings:      SettingsFrom(cfg, time.Local),
-		Logger:        logger,
+		Lister:                app.SnippetsInFolder,
+		TreeLister:            app.FolderTree,
+		Copier:                app.Copy,
+		Creator:               app.Create,
+		Searcher:              app.Query,
+		FolderCreator:         app.CreateFolder,
+		FolderRenamer:         app.RenameFolder,
+		FolderDeletePreviewer: app.PreviewDeleteFolder,
+		FolderDeleter:         app.DeleteFolder,
+		Settings:              SettingsFrom(cfg, time.Local),
+		Logger:                logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build TUI: %w", err)
@@ -170,25 +174,32 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
 	createFolder, createFolderErr := folder.NewCreate(repos.folders, system.NewIDs(), system.NewClock())
 	renameFolder, renameFolderErr := folder.NewRename(repos.folders, system.NewClock())
+	previewDeleteFolder, previewDeleteFolderErr := folder.NewPreviewDelete(repos.folders)
+	deleteFolder, deleteFolderErr := folder.NewDelete(repos.folders)
 
-	err = errors.Join(createErr, queryErr, listErr, treeErr, createFolderErr, renameFolderErr)
+	err = errors.Join(
+		createErr, queryErr, listErr, treeErr,
+		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
 
 	return &App{
-		Create:            create,
-		Copy:              copyAction,
-		Query:             query,
-		SnippetsInFolder:  snippetsInFolder,
-		FolderTree:        folderTree,
-		CreateFolder:      createFolder,
-		RenameFolder:      renameFolder,
-		SnippetRepository: repos.snippets,
-		FolderRepository:  repos.folders,
-		model:             tui.Model{},
-		database:          nil,
-		log:               nil,
+		Create:              create,
+		Copy:                copyAction,
+		Query:               query,
+		SnippetsInFolder:    snippetsInFolder,
+		FolderTree:          folderTree,
+		CreateFolder:        createFolder,
+		RenameFolder:        renameFolder,
+		PreviewDeleteFolder: previewDeleteFolder,
+		DeleteFolder:        deleteFolder,
+		SnippetRepository:   repos.snippets,
+		FolderRepository:    repos.folders,
+		model:               tui.Model{},
+		database:            nil,
+		log:                 nil,
 	}, nil
 }
 

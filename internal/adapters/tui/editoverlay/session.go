@@ -13,6 +13,7 @@ import (
 
 const (
 	overlayPercent  = 90
+	unsavedTitle    = "Unsaved changes"
 	discardQuestion = "Discard the unsaved changes?"
 	quitQuestion    = "Quit and discard the unsaved changes?"
 )
@@ -144,7 +145,9 @@ func (s Session) saved(msg SaveFinished) outcome.Step {
 }
 
 func (s Session) confirming(question string, onYes outcome.Outcome) outcome.Step {
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, question, onYes))
+	asked := confirm.Question{Title: unsavedTitle, Text: question}
+
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, asked, onYes))
 }
 
 func (s Session) resized(screen look.Size) Session {

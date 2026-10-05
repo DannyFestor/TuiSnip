@@ -7,6 +7,7 @@ const (
 	labelCapture        = "Capture"
 	labelNewFolder      = "new Folder"
 	labelRename         = "rename"
+	labelDelete         = "delete"
 	labelCopy           = "Copy"
 	labelExternalEditor = "external editor"
 	labelSave           = "save"
@@ -34,6 +35,7 @@ func Rows() []Row {
 	return append(rows,
 		Row{Scope: ScopeFolders, Name: NewFolder, Label: labelNewFolder},
 		Row{Scope: ScopeFolders, Name: Rename, Label: labelRename},
+		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},

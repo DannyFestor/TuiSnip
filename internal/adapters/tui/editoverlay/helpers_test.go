@@ -21,8 +21,8 @@ const (
 	overlayTitle     = "Editing"
 	unsavedTitle     = "Editing •"
 	contentEntryHint = "enter or down to edit"
-	discardQuestion  = "Discard the unsaved changes? y/N"
-	quitQuestion     = "Quit and discard the unsaved changes? y/N"
+	discardQuestion  = "Discard the unsaved changes? [y/N]"
+	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
 	titleInputWidth  = 91
 	contentRows      = 31
 )

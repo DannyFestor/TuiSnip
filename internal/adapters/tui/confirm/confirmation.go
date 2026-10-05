@@ -15,20 +15,21 @@ import (
 )
 
 const (
-	title           = "Unsaved changes"
 	rows            = 1
 	titlePadding    = 2
 	answerSeparator = "/"
+	answersOpen     = "["
+	answersClose    = "]"
 )
 
 type Confirmation struct {
 	keys     binding.Set
 	styles   look.Styles
-	question string
+	question Question
 	onYes    outcome.Outcome
 }
 
-func New(keys binding.Keys, styles look.Styles, question string, onYes outcome.Outcome) Confirmation {
+func New(keys binding.Keys, styles look.Styles, question Question, onYes outcome.Outcome) Confirmation {
 	return Confirmation{keys: keys.For(binding.ScopeConfirm), styles: styles, question: question, onYes: onYes}
 }
 
@@ -50,10 +51,10 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 
 func (c Confirmation) View() string {
 	prompt := c.prompt()
-	width := max(ansi.StringWidth(prompt), ansi.StringWidth(title)+titlePadding)
+	width := max(ansi.StringWidth(prompt), ansi.StringWidth(c.question.Title)+titlePadding)
 	outer := look.Size{Width: width + look.BorderWidth, Height: rows + look.BorderWidth}
 
-	return look.Frame(c.styles.Focused, title, prompt, outer)
+	return look.Frame(c.styles.Focused, c.question.Title, prompt, outer)
 }
 
 func (c Confirmation) ShortHelp() []key.Binding {
@@ -68,10 +69,10 @@ func (c Confirmation) prompt() string {
 	answers := binding.BoundOnly(c.keys.FirstKey(binding.Yes), markedAsDefault(c.keys.FirstKey(binding.No)))
 
 	if len(answers) == 0 {
-		return c.question
+		return c.question.Text
 	}
 
-	return c.question + " " + strings.Join(answers, answerSeparator)
+	return c.question.Text + " " + answersOpen + strings.Join(answers, answerSeparator) + answersClose
 }
 
 func markedAsDefault(answer string) string {

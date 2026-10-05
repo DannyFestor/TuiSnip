@@ -53,13 +53,13 @@ func TestConfirmation_Update(t *testing.T) {
 func TestConfirmation_View(t *testing.T) {
 	t.Parallel()
 
-	t.Run("asks with the answers, No as the default", func(t *testing.T) {
+	t.Run("asks under the opener's title with the answers in brackets, No as the default", func(t *testing.T) {
 		t.Parallel()
 
 		screen := asking(t)
 
-		assert.Contains(t, screen.Screen(), "Unsaved changes")
-		assert.Contains(t, screen.Screen(), question+" y/N")
+		assert.Contains(t, screen.Screen(), title)
+		assert.Contains(t, screen.Screen(), question+" [y/N]")
 	})
 
 	t.Run("fits the frame to a question wider than the title", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestConfirmation_View(t *testing.T) {
 
 		screen := asking(t)
 
-		assert.Equal(t, len(question+" y/N")+2, screen.TopBorderWidth())
+		assert.Equal(t, len(question+" [y/N]")+2, screen.TopBorderWidth())
 	})
 
 	t.Run("keeps the frame wide enough for the title over a short question", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestConfirmation_View(t *testing.T) {
 
 		screen := askingWith(t, testsettings.Default(t).Keys, "Go?")
 
-		assert.Equal(t, len(" Unsaved changes ")+2, screen.TopBorderWidth())
+		assert.Equal(t, len(" "+title+" ")+2, screen.TopBorderWidth())
 	})
 }
 
@@ -109,7 +109,7 @@ func TestConfirmation_answers(t *testing.T) {
 
 			screen := askingWith(t, keys, question)
 
-			assert.Contains(t, screen.Screen(), "│"+question+" "+tt.want+"│")
+			assert.Contains(t, screen.Screen(), "│"+question+" ["+tt.want+"]│")
 		})
 	}
 

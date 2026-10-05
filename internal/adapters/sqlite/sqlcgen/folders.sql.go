@@ -11,6 +11,51 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countSnippetsInSubtree = `-- name: CountSnippetsInSubtree :one
+WITH RECURSIVE subtree (id) AS (
+    SELECT folders.id FROM folders WHERE folders.id = ?1
+    UNION ALL
+    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+)
+SELECT COUNT(*) FROM snippets WHERE snippets.folder_id IN (SELECT subtree.id FROM subtree)
+`
+
+func (q *Queries) CountSnippetsInSubtree(ctx context.Context, id sqltype.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSnippetsInSubtree, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSubfolders = `-- name: CountSubfolders :one
+WITH RECURSIVE subtree (id) AS (
+    SELECT folders.id FROM folders WHERE folders.id = ?1
+    UNION ALL
+    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+)
+SELECT COUNT(*) - 1 FROM subtree
+`
+
+func (q *Queries) CountSubfolders(ctx context.Context, id sqltype.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSubfolders, id)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const deleteFolder = `-- name: DeleteFolder :execrows
+DELETE FROM folders
+WHERE id = ?
+`
+
+func (q *Queries) DeleteFolder(ctx context.Context, id sqltype.ID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteFolder, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getFolder = `-- name: GetFolder :one
 SELECT id, parent_id, name, default_language, created_at, updated_at
 FROM folders

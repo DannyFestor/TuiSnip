@@ -44,6 +44,7 @@ internal/
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program: Model and the wiring between components
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
+      browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Folder is deleted
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
@@ -59,7 +60,7 @@ internal/
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
-      tagpane/               the Tag pane: "No Tags yet." until Tags exist
+      tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

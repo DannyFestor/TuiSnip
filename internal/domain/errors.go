@@ -11,6 +11,7 @@ var (
 	ErrNoClipboardTool     = errors.New("domain: no clipboard tool found")
 	ErrNotFound            = errors.New("domain: record not found")
 	ErrNotOneFragment      = errors.New("domain: snippet must have exactly one fragment")
+	ErrTagNameTaken        = errors.New("domain: another tag already has this name, ignoring case")
 	ErrTimestampOutOfRange = errors.New("domain: timestamp is not storable as Unix nanoseconds after the epoch")
 	ErrUpdatedBeforeCreate = errors.New("domain: updated time is before created time")
 )

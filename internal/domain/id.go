@@ -13,12 +13,14 @@ type (
 	snippetEntity  struct{}
 	fragmentEntity struct{}
 	folderEntity   struct{}
+	tagEntity      struct{}
 )
 
 type (
 	SnippetID  = ID[snippetEntity]
 	FragmentID = ID[fragmentEntity]
 	FolderID   = ID[folderEntity]
+	TagID      = ID[tagEntity]
 )
 
 func (id ID[E]) String() string {

@@ -149,6 +149,27 @@ func newLoggingSnippetRepository(t *testing.T, path string, logged *bytes.Buffer
 	return sqlite.NewSnippetRepository(openDatabase(t, path), slog.New(slog.NewJSONHandler(logged, nil)))
 }
 
+func newTagRepository(t *testing.T, database *sqlite.Database) *sqlite.TagRepository {
+	t.Helper()
+
+	return sqlite.NewTagRepository(database, slog.New(slog.DiscardHandler))
+}
+
+func newLoggingTagRepository(t *testing.T, path string, logged *bytes.Buffer) *sqlite.TagRepository {
+	t.Helper()
+
+	return sqlite.NewTagRepository(openDatabase(t, path), slog.New(slog.NewJSONHandler(logged, nil)))
+}
+
+func insertTag(t *testing.T, repository *sqlite.TagRepository, ids *testkit.SequentialIDs, name string) domain.Tag {
+	t.Helper()
+
+	tag := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: name})
+	require.NoError(t, repository.Insert(t.Context(), tag))
+
+	return tag
+}
+
 func insertSnippet(
 	t *testing.T,
 	repository *sqlite.SnippetRepository,

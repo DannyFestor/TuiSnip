@@ -17,6 +17,7 @@ type Snippet struct {
 	description value.Description
 	folderID    FolderID
 	fragments   []Fragment
+	tags        []Tag
 	createdAt   time.Time
 	updatedAt   time.Time
 }
@@ -27,6 +28,7 @@ func NewSnippet(
 	description value.Description,
 	folderID FolderID,
 	fragments []Fragment,
+	tags []Tag,
 	createdAt, updatedAt time.Time,
 ) (Snippet, error) {
 	err := errors.Join(requireID(id), requireOneFragment(fragments), requireTimestamps(createdAt, updatedAt))
@@ -40,6 +42,7 @@ func NewSnippet(
 		description: description,
 		folderID:    folderID,
 		fragments:   slices.Clone(fragments),
+		tags:        slices.SortedFunc(slices.Values(tags), CompareTags),
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}, nil
@@ -71,6 +74,10 @@ func (s Snippet) Fragments() []Fragment {
 
 func (s Snippet) FirstFragment() Fragment {
 	return s.fragments[0]
+}
+
+func (s Snippet) Tags() []Tag {
+	return slices.Clone(s.tags)
 }
 
 func (s Snippet) CreatedAt() time.Time {

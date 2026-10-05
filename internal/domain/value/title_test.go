@@ -55,6 +55,7 @@ func TestTitle_CompareIgnoringCase(t *testing.T) {
 		{name: "orders a lowercase title before a later capitalised one", title: "awk", other: "Bash", want: -1},
 		{name: "orders a capitalised title after an earlier lowercase one", title: "Bash", other: "awk", want: 1},
 		{name: "finds titles differing only in ASCII case equal", title: "Curl", other: "cURL", want: 0},
+		{name: "folds a capital A, the first ASCII capital", title: "Awk", other: "awk", want: 0},
 		{name: "folds to lowercase, so an underscore orders before a capital", title: "_x", other: "Zx", want: -1},
 		{name: "keeps non-ASCII letters unfolded", title: "Écrire", other: "écrire", want: -1},
 	}

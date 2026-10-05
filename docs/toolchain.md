@@ -78,10 +78,10 @@ Rejected: Claude Code permission rules alongside the hooks (a second copy of the
 
 Each of these has cost an agent a retry:
 
-- Quote globs and URLs that contain `?`, such as `--include='*.go'`. zsh fails on a glob that matches nothing.
+- Quote every glob, such as `--include='*.go'`, and every URL that contains `?`. zsh fails on a glob that matches nothing.
 - macOS has no `timeout`.
-- `tee` test output to a file, then grep the file. Rerunning the suite to grep it a second way repeats the whole run.
-- Redirect to absolute paths. `guard-command.sh` can't resolve a relative redirect after `cd`, even into `/tmp`.
+- `tee` test output to a file, then grep that file. Rerunning the suite to grep it a second way repeats the whole run.
+- Write scratch output to an absolute path under `/tmp` or `$TMPDIR`, the only places `guard-command.sh` lets a redirect or `tee` write. It can't resolve a relative path after `cd`, even into `/tmp`.
 
 ## CI and release
 

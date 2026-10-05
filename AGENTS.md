@@ -4,7 +4,7 @@ Before writing or reviewing Go, read the matching standard. The index in `docs/s
 
 ## Workflow
 
-Edit files with the edit tool, branch before the first commit, and give each PR a Conventional Commit title. The hooks that enforce this and the shell pitfalls are in `docs/toolchain.md`.
+From the first action, follow the workflow `docs/toolchain.md` enforces: edit files with the edit tool, branch before the first commit, and give each PR a Conventional Commit title. It also lists the shell pitfalls.
 
 ## Agent skills
 

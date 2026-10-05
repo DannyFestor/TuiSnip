@@ -55,7 +55,7 @@ func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, styles, nil)
+	opened, _ := editoverlay.New(keys, styles, nil, destination())
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -63,7 +63,9 @@ func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlay
 func editingOffering(t *testing.T, curated []value.Language) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), curated)
+	opened, _ := editoverlay.New(
+		testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), curated, destination(),
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -79,6 +81,37 @@ func editingStoredOffering(t *testing.T, curated []value.Language, stored domain
 	)
 
 	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func capturing(t *testing.T, captured string) *overlaytest.Driver {
+	t.Helper()
+
+	return capturingIn(t, destination(), captured)
+}
+
+func capturingIn(t *testing.T, filedIn editoverlay.Destination, captured string) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.Capturing(
+		testsettings.Default(t).Keys,
+		look.NewStyles(look.SchemeDark),
+		nil,
+		editoverlay.Captured{Destination: filedIn, Content: captured},
+	)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func destination() editoverlay.Destination {
+	return editoverlay.Destination{
+		Selection: browseselection.InFolder(destinationFolderID()),
+		Tags:      nil,
+		Language:  value.PlainText(),
+	}
+}
+
+func destinationFolderID() domain.FolderID {
+	return testkit.NewSequentialIDs().NewFolderID()
 }
 
 func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
@@ -177,5 +210,12 @@ func input(title, description, content string) snippet.CreateInput {
 }
 
 func inputIn(title, description, language, content string) snippet.CreateInput {
-	return snippet.CreateInput{Title: title, Description: description, Language: language, Content: content}
+	return snippet.CreateInput{
+		Title:       title,
+		Description: description,
+		Language:    language,
+		Content:     content,
+		FolderID:    destinationFolderID(),
+		Tags:        nil,
+	}
 }

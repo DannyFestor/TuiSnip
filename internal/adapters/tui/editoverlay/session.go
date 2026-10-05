@@ -36,14 +36,25 @@ type Session struct {
 	saving  bool
 }
 
-func New(keys binding.Keys, styles look.Styles, curated []value.Language) (Session, tea.Cmd) {
+func New(
+	keys binding.Keys, styles look.Styles, curated []value.Language, destination Destination,
+) (Session, tea.Cmd) {
+	return Capturing(keys, styles, curated, Captured{Destination: destination, Content: ""})
+}
+
+func Capturing(
+	keys binding.Keys, styles look.Styles, curated []value.Language, captured Captured,
+) (Session, tea.Cmd) {
+	destination := captured.Destination
+	readOnly := readOnlyIfTabbed(captured.Content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(
 		formKeysOf(keys),
 		entered{title: "", description: "", language: value.PlainText(), content: ""},
-		editableContent(),
+		readOnly,
 	)
+	opened := blank.withContent(captured.Content)
 
-	return newSession(keys, styles, curated, blank).aimedAt(newSnippet{}), cmd
+	return newSession(keys, styles, curated, opened).aimedAt(newSnippet{destination: destination}), cmd
 }
 
 func Editing(
@@ -57,7 +68,8 @@ func Editing(
 		language:    fragment.Language(),
 		content:     fragment.Content().String(),
 	}
-	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, styles.CodeStyle))
+	readOnly := readOnlyIfTabbed(original.content, fragment.Language(), styles.CodeStyle)
+	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, curated, filled).aimedAt(target), cmd
@@ -176,7 +188,7 @@ func (s Session) pickingLanguage() outcome.Step {
 }
 
 func (s Session) pasteRefused(refusal string) outcome.Step {
-	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusedPasteText(refusal, s.form.externalEditorKey())})
+	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusalText(refusal, s.form.externalEditorKey())})
 }
 
 func (s Session) saveStarted() outcome.Step {

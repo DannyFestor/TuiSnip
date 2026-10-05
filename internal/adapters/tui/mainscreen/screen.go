@@ -18,6 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -76,8 +77,12 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.restyled(msg))
 	case FolderDeletePreviewed:
 		return s.confirmingFolderDelete(msg.Preview)
+	case TagDeletePreviewed:
+		return s.tagDeletePreviewed(msg.Preview)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
+	case Captured:
+		return s.captured(msg.Content)
 	}
 
 	return s.loaded(msg)
@@ -87,10 +92,6 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	switch received := received.(type) {
 	case outcome.SnippetRevealed:
 		next, expanded := s.revealing(received.FolderID)
-
-		return outcome.Stay(next).Passing(expanded...).Passing(received)
-	case outcome.SnippetSaved:
-		next, expanded := s.selectingFolder(received.FolderID)
 
 		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	default:
@@ -126,6 +127,10 @@ func (s Screen) loaded(msg tea.Msg) outcome.Step {
 		return s.treeChanged(msg)
 	case TagsLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withTags(msg.Tags)))
+	case TagCreated:
+		return s.tagCreated(msg)
+	case TagsChanged:
+		return s.tagsChanged(msg)
 	case SnippetsLoaded:
 		return s.snippetsLoaded(msg)
 	}
@@ -177,7 +182,9 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	case s.global.Matches(msg, binding.Help):
 		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp())), true
 	case s.global.Matches(msg, binding.NewSnippet):
-		return s.opening(editoverlay.New(s.keys, s.styles, s.curated)), true
+		return s.opening(editoverlay.New(s.keys, s.styles, s.curated, s.destination())), true
+	case s.global.Matches(msg, binding.Capture):
+		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
 		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing())), true
 	case s.global.Matches(msg, binding.Zoom):
@@ -227,6 +234,10 @@ func (s Screen) holding(holder pane) Screen {
 
 func (s Screen) selection() browseselection.Selection {
 	return s.panes.selectionIn(s.selectionHolder)
+}
+
+func (s Screen) destination() editoverlay.Destination {
+	return s.panes.destination(s.selection())
 }
 
 func selected(selection browseselection.Selection) []outcome.Outcome {
@@ -283,8 +294,50 @@ func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Ste
 	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, folderDeleteQuestion(preview), onYes))
 }
 
+func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {
+	onYes := outcome.TagDeleteRequested{Input: tag.DeleteInput{TagID: preview.Tag.ID()}}
+	if preview.SnippetCount == 0 {
+		return outcome.Stay(s).Passing(onYes)
+	}
+
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, tagDeleteQuestion(preview), onYes))
+}
+
+func (s Screen) tagCreated(created TagCreated) outcome.Step {
+	next := s.withPanes(s.panes.withTags(created.Tags).withTagCursorOn(created.ID)).holding(paneTags).arranged()
+
+	return outcome.Stay(next).Passing(selected(next.selection())...)
+}
+
+func (s Screen) tagsChanged(changed TagsChanged) outcome.Step {
+	next := s.withPanes(s.panes.withTags(changed.Tags).withTagCursorOn(changed.Selecting)).
+		holdingFoldersWithoutTags().
+		arranged()
+	listed, _ := next.panes.list.Selected()
+
+	return outcome.Stay(next).Passing(outcome.TagsChanged{Selection: next.selection(), Selecting: listed.ID()})
+}
+
+func (s Screen) holdingFoldersWithoutTags() Screen {
+	if _, ok := s.panes.tags.Selected(); !ok {
+		s.selectionHolder = paneFolders
+	}
+
+	return s
+}
+
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
+}
+
+func (s Screen) captured(content string) outcome.Step {
+	if refusal, refused := editoverlay.CaptureRefusal(s.keys, content); refused {
+		return outcome.Stay(s.withStatus(refusal))
+	}
+
+	captured := editoverlay.Captured{Destination: s.destination(), Content: content}
+
+	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.curated, captured))
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {

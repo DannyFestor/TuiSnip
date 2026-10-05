@@ -61,6 +61,33 @@ func TestTag_Accessors(t *testing.T) {
 	assert.Equal(t, updated, tag.UpdatedAt())
 }
 
+func TestTag_Rename(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC)
+	tag := testkit.Tag(t, testkit.TagSpec{ID: tagID(), Name: "go", CreatedAt: created})
+
+	t.Run("takes the name and the time", func(t *testing.T) {
+		t.Parallel()
+
+		renamed, err := tag.Rename(mustTagName(t, "Golang"), created.Add(time.Hour))
+
+		require.NoError(t, err)
+		assert.Equal(t, "Golang", renamed.Name().String())
+		assert.Equal(t, created.Add(time.Hour), renamed.UpdatedAt())
+		assert.Equal(t, tag.ID(), renamed.ID())
+		assert.Equal(t, "go", tag.Name().String(), "the original is untouched")
+	})
+
+	t.Run("rejects a time before creation", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := tag.Rename(mustTagName(t, "golang"), created.Add(-time.Hour))
+
+		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
+	})
+}
+
 func TestCompareTags(t *testing.T) {
 	t.Parallel()
 

@@ -45,6 +45,19 @@ func (q *Queries) CountSnippetsByTag(ctx context.Context) ([]CountSnippetsByTagR
 	return items, nil
 }
 
+const countSnippetsWithTag = `-- name: CountSnippetsWithTag :one
+SELECT COUNT(*)
+FROM snippet_tag
+WHERE tag_id = ?
+`
+
+func (q *Queries) CountSnippetsWithTag(ctx context.Context, tagID sqltype.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSnippetsWithTag, tagID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertSnippetTag = `-- name: InsertSnippetTag :exec
 INSERT INTO snippet_tag (snippet_id, tag_id)
 VALUES (?, ?)
@@ -57,5 +70,22 @@ type InsertSnippetTagParams struct {
 
 func (q *Queries) InsertSnippetTag(ctx context.Context, arg InsertSnippetTagParams) error {
 	_, err := q.db.ExecContext(ctx, insertSnippetTag, arg.SnippetID, arg.TagID)
+	return err
+}
+
+const moveSnippetTags = `-- name: MoveSnippetTags :exec
+INSERT OR IGNORE INTO snippet_tag (snippet_id, tag_id)
+SELECT moved.snippet_id, ?1
+FROM snippet_tag AS moved
+WHERE moved.tag_id = ?2
+`
+
+type MoveSnippetTagsParams struct {
+	ToTagID   sqltype.ID
+	FromTagID sqltype.ID
+}
+
+func (q *Queries) MoveSnippetTags(ctx context.Context, arg MoveSnippetTagsParams) error {
+	_, err := q.db.ExecContext(ctx, moveSnippetTags, arg.ToTagID, arg.FromTagID)
 	return err
 }

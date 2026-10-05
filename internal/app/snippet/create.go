@@ -28,13 +28,13 @@ func NewCreate(inserter Inserter, ids IDGenerator, clock Clock) (*Create, error)
 	return &Create{inserter: inserter, ids: ids, clock: clock}, nil
 }
 
-func (c *Create) Run(ctx context.Context, in CreateInput) (domain.Snippet, error) {
-	parsed, err := parseFields(in.Title, in.Description, in.Language, in.Content)
+func (c *Create) Run(ctx context.Context, input CreateInput) (domain.Snippet, error) {
+	parsed, err := parseFields(input.Title, input.Description, input.Language, input.Content)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
 
-	snippet, err := c.atRoot(parsed, c.clock.Now())
+	snippet, err := c.filed(parsed, input, c.clock.Now())
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
@@ -47,7 +47,7 @@ func (c *Create) Run(ctx context.Context, in CreateInput) (domain.Snippet, error
 	return snippet, nil
 }
 
-func (c *Create) atRoot(parsed fields, now time.Time) (domain.Snippet, error) {
+func (c *Create) filed(parsed fields, input CreateInput, now time.Time) (domain.Snippet, error) {
 	fragment, err := domain.NewFragment(c.ids.NewFragmentID(), parsed.language, parsed.content, now, now)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("new fragment: %w", err)
@@ -57,9 +57,9 @@ func (c *Create) atRoot(parsed fields, now time.Time) (domain.Snippet, error) {
 		c.ids.NewSnippetID(),
 		parsed.title,
 		parsed.description,
-		domain.FolderID{},
+		input.FolderID,
 		[]domain.Fragment{fragment},
-		nil,
+		input.Tags,
 		now,
 		now,
 	)

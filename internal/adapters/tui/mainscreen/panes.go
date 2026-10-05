@@ -8,6 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -48,7 +49,7 @@ func (p panes) withOrderLabel(label string) panes {
 }
 
 func (p panes) naming() bool {
-	return p.folders.Naming()
+	return p.folders.Naming() || p.tags.Naming()
 }
 
 func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
@@ -111,6 +112,12 @@ func (p panes) withTags(tags []browse.TagCount) panes {
 	return p
 }
 
+func (p panes) withTagCursorOn(id domain.TagID) panes {
+	p.tags = p.tags.WithCursorOn(id)
+
+	return p
+}
+
 func (p panes) selectionIn(holder pane) browseselection.Selection {
 	tagID, ok := p.tags.Selected()
 	if holder == paneTags && ok {
@@ -118,6 +125,25 @@ func (p panes) selectionIn(holder pane) browseselection.Selection {
 	}
 
 	return browseselection.InFolder(p.folders.Selected())
+}
+
+func (p panes) destination(selection browseselection.Selection) editoverlay.Destination {
+	folderID, _ := selection.Folder()
+
+	return editoverlay.Destination{
+		Selection: selection,
+		Tags:      p.tagsFor(selection),
+		Language:  p.folders.DefaultLanguageOf(folderID),
+	}
+}
+
+func (p panes) tagsFor(selection browseselection.Selection) []domain.Tag {
+	tag, ok := p.tags.SelectedTag()
+	if _, withTag := selection.Tag(); withTag && ok {
+		return []domain.Tag{tag}
+	}
+
+	return nil
 }
 
 func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded, selection browseselection.Selection) (panes, error) {

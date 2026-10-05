@@ -119,17 +119,20 @@ func TestKeys_For(t *testing.T) {
 		})
 	}
 
-	t.Run("Tags hints open before search", func(t *testing.T) {
+	t.Run("Tags hints open, new Tag, rename and delete before search", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
 			bound{scope: binding.ScopeGlobal, name: binding.Open, keys: []string{"enter"}},
 			bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+			bound{scope: binding.ScopeTags, name: binding.NewTag, keys: []string{"N"}},
+			bound{scope: binding.ScopeTags, name: binding.Rename, keys: []string{"r"}},
+			bound{scope: binding.ScopeTags, name: binding.Delete, keys: []string{"d"}},
 		)
 
 		got := keys.For(binding.ScopeTags).ShortHelp()
 
-		assert.Equal(t, []string{"enter open", "/ search"}, hintTexts(got))
+		assert.Equal(t, []string{"enter open", "N new Tag", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
 	t.Run("name input hints save and cancel", func(t *testing.T) {

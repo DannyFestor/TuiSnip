@@ -54,6 +54,7 @@ type actions struct {
 	tagSnippetsLister     tui.TagSnippetsLister
 	copier                tui.SnippetCopier
 	creator               tui.SnippetCreator
+	capturer              tui.SnippetCapturer
 	updater               tui.SnippetUpdater
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
@@ -61,6 +62,10 @@ type actions struct {
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
 	defaultLanguageSetter tui.FolderDefaultLanguageSetter
+	tagCreator            tui.TagCreator
+	tagRenamer            tui.TagRenamer
+	tagDeletePreviewer    tui.TagDeletePreviewer
+	tagDeleter            tui.TagDeleter
 	sortOrderSaver        tui.SortOrderSaver
 	collapsedFoldersSaver tui.CollapsedFoldersSaver
 }
@@ -139,6 +144,7 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		),
 		Copier:        with.copier,
 		Creator:       with.creator,
+		Capturer:      orMock(with.capturer, func() tui.SnippetCapturer { return NewMockSnippetCapturer(t) }),
 		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
@@ -152,6 +158,13 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.defaultLanguageSetter,
 			func() tui.FolderDefaultLanguageSetter { return NewMockFolderDefaultLanguageSetter(t) },
 		),
+		TagCreator: orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
+		TagRenamer: orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
+		TagDeletePreviewer: orMock(
+			with.tagDeletePreviewer,
+			func() tui.TagDeletePreviewer { return NewMockTagDeletePreviewer(t) },
+		),
+		TagDeleter:     orMock(with.tagDeleter, func() tui.TagDeleter { return NewMockTagDeleter(t) }),
 		SortOrderSaver: orMock(with.sortOrderSaver, func() tui.SortOrderSaver { return NewMockSortOrderSaver(t) }),
 		CollapsedFoldersSaver: orMock(
 			with.collapsedFoldersSaver,

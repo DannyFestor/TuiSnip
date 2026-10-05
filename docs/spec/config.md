@@ -86,7 +86,7 @@ Each entry is a chroma lexer name, parsed by `value.NewLanguage`. An unknown nam
 - `native` only uses a platform tool. If none is installed, Copy fails and the status line says "No clipboard tool found (pbcopy, wl-copy, xclip, xsel)".
 - `osc52` always sends OSC 52 and never runs a tool.
 
-Capture always reads with the platform tool. OSC 52 can't read.
+Capture always reads with the platform tool (`pbpaste`, `wl-paste`, `xclip`, `xsel`), whatever `clipboard` says. OSC 52 can't read. If no tool is installed, Capture opens nothing and the status line says "No clipboard tool found (pbpaste, wl-paste, xclip, xsel)".
 
 ## Bindings
 

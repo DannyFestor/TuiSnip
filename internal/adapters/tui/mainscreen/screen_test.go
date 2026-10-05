@@ -19,6 +19,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
@@ -870,6 +871,153 @@ func TestScreen_Update(t *testing.T) {
 	})
 }
 
+const (
+	nothingTyped = ""
+	capturedText = "docker ps\n"
+)
+
+func TestScreen_newSnippet(t *testing.T) {
+	t.Parallel()
+
+	for _, place := range browseSelections() {
+		t.Run("n files the Snippet for "+place.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, want := place.browse(t)
+
+			screen.Press(keypress.Typed("nx")...)
+			screen.Press(keypress.Ctrl('s'))
+
+			assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(nothingTyped)}}, lastOutcome(screen))
+		})
+
+		t.Run("captured content is filed for "+place.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, want := place.browse(t)
+
+			screen.Press(keypress.Letter('p'))
+			screen.Send(mainscreen.Captured{Content: capturedText})
+			screen.Press(keypress.Letter('x'), keypress.Ctrl('s'))
+
+			assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: want(capturedText)}}, lastOutcome(screen))
+		})
+	}
+
+	t.Run("p asks for Capture without opening anything", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('p'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.CaptureAsked{}}, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("captured content opens the edit overlay on Title as an unsaved change", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.Captured{Content: capturedText})
+
+		assert.Contains(t, screen.Screen(), "Editing •")
+		assert.Contains(t, screen.Screen(), "› Title")
+		assert.Contains(t, screen.Screen(), strings.TrimSpace(capturedText))
+	})
+
+	t.Run("captured content over 10,000 lines is refused on the status line and opens nothing", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.Captured{Content: strings.Repeat("line\n", 10_000)})
+
+		assert.Contains(t, statusLine(screen), "Clipboard is longer than 10,000 lines; use ctrl+e to edit in $EDITOR")
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("captured content with tabs is highlighted in the selected Folder's Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		inGo := capturedInFolderOf(t, "Go")
+		inPlainText := capturedInFolderOf(t, value.PlainText().String())
+
+		assert.Contains(t, inGo.Screen(), "Contains tabs")
+		assert.Equal(t, inPlainText.Screen(), inGo.Screen())
+		assert.NotEqual(t, inPlainText.StyledScreen(), inGo.StyledScreen())
+	})
+}
+
+func capturedInFolderOf(t *testing.T, defaultLanguage string) *overlaytest.Driver {
+	t.Helper()
+
+	filing := testkit.Folder(t, testkit.FolderSpec{Name: "go", DefaultLanguage: defaultLanguage})
+	screen := showing(t, wide())
+	screen.Send(mainscreen.TreeLoaded{Tree: browse.Tree{
+		RootSnippetCount: 0,
+		Folders:          []browse.FolderNode{{Folder: filing, SnippetCount: 0, Children: nil}},
+	}})
+	screen.Press(keypress.Letter('j'))
+	screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
+
+	return screen
+}
+
+type createdFor func(content string) snippet.CreateInput
+
+type browseSelection struct {
+	name   string
+	browse func(t *testing.T) (*overlaytest.Driver, createdFor)
+}
+
+func browseSelections() []browseSelection {
+	return []browseSelection{
+		{name: "the Root at the Root", browse: browsingRoot},
+		{name: "a Folder in that Folder", browse: browsingFolder},
+		{name: "a Tag at the Root carrying the Tag", browse: browsingTag},
+	}
+}
+
+func browsingRoot(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	return showing(t, wide()), createdIn(domain.FolderID{})
+}
+
+func browsingFolder(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	screen, sample := browsing(t)
+	screen.Press(keypress.Letter('j'))
+
+	return screen, createdIn(sample.Docker.ID())
+}
+
+func browsingTag(t *testing.T) (*overlaytest.Driver, createdFor) {
+	t.Helper()
+
+	screen, tags := browsingTags(t)
+	screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+	return screen, createdIn(domain.FolderID{}, tags[0].Tag)
+}
+
+func createdIn(folderID domain.FolderID, tags ...domain.Tag) createdFor {
+	return func(content string) snippet.CreateInput {
+		return snippet.CreateInput{
+			Title: "x", Description: "", Language: "plaintext", Content: content, FolderID: folderID, Tags: tags,
+		}
+	}
+}
+
+func lastOutcome(screen *overlaytest.Driver) []outcome.Outcome {
+	outcomes := screen.Outcomes()
+
+	return outcomes[len(outcomes)-1:]
+}
+
 func TestScreen_sortOrder(t *testing.T) {
 	t.Parallel()
 
@@ -1141,18 +1289,21 @@ func TestScreen_Received(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "3 Root / go / testing")
 	})
 
-	t.Run("makes a saved Snippet's Folder the Browse selection and passes it on", func(t *testing.T) {
+	t.Run("keeps the Browse selection for a saved Snippet and passes it on", func(t *testing.T) {
 		t.Parallel()
 
-		screen, sample := browsing(t)
-		screen.Press(keypress.Letter('j'))
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
 
-		saved := outcome.SnippetSaved{ID: filedIn(t, domain.FolderID{}).ID(), FolderID: domain.FolderID{}}
+		saved := outcome.SnippetSaved{
+			ID:        filedIn(t, domain.FolderID{}).ID(),
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+		}
 
 		screen.Offer(saved)
 
-		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}, saved}, screen.Outcomes())
-		assert.Contains(t, screen.Screen(), "3 Root · by title")
+		assert.Equal(t, []outcome.Outcome{outcome.TagSelected{ID: tags[0].Tag.ID()}, saved}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), strings.ToUpper("3 # docker · by title"))
 	})
 
 	t.Run("keeps the Browse selection for a reloaded Snippet and passes it on", func(t *testing.T) {
@@ -1250,7 +1401,7 @@ func TestScreen_help(t *testing.T) {
 		assert.Regexp(t, `z\s+zoom`, screen.Screen())
 	})
 
-	t.Run("opens from the Tags Pane over the global Bindings only", func(t *testing.T) {
+	t.Run("opens from the Tags Pane over the global Bindings and the Tags Pane's", func(t *testing.T) {
 		t.Parallel()
 
 		screen, _ := browsingTags(t)
@@ -1258,6 +1409,7 @@ func TestScreen_help(t *testing.T) {
 		screen.Press(keypress.Letter('2'), keypress.Letter('?'))
 
 		assert.Regexp(t, `q\s+quit`, screen.Screen())
+		assert.Regexp(t, `N\s+new Tag`, screen.Screen())
 		assert.NotContains(t, screen.Screen(), "new Folder")
 		assert.Equal(t, "? close · esc close", screen.Hints())
 	})
@@ -1435,6 +1587,238 @@ func lastOutcomeOf[O outcome.Outcome](t *testing.T, outcomes []outcome.Outcome) 
 	require.True(t, ok)
 
 	return last
+}
+
+func TestScreen_UpdateTagNaming(t *testing.T) {
+	t.Parallel()
+
+	t.Run("keys type into a Tag name instead of acting", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('N'))
+		screen.Press(keypress.Typed("qn/1")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagCreateRequested{Input: tag.CreateInput{Name: "qn/1"}},
+		}, screen.Outcomes())
+	})
+
+	t.Run("a paste goes into a Tag name", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('N'))
+		screen.Send(tea.PasteMsg{Content: "awk"})
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagCreateRequested{Input: tag.CreateInput{Name: "awk"}},
+		}, screen.Outcomes())
+	})
+
+	t.Run("hints save and cancel while a Tag name is typed", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('r'))
+
+		assert.Equal(t, "enter save · esc cancel", screen.Hints())
+	})
+
+	t.Run("hints new Tag, rename and delete in Tags", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'))
+
+		assert.Equal(t, "enter open · N new Tag · r rename · d delete · z zoom · / search · ? help", screen.Hints())
+	})
+}
+
+func TestScreen_UpdateTagCreated(t *testing.T) {
+	t.Parallel()
+
+	screen, tags := browsingTags(t)
+	created := testkit.Tag(t, testkit.TagSpec{ID: testkit.NewSequentialIDs().NewTagID(), Name: "awk"})
+	grown := append([]browse.TagCount{{Tag: created, SnippetCount: 0}}, tags...)
+
+	screen.Send(mainscreen.TagCreated{Tags: grown, ID: created.ID()})
+
+	assert.Equal(t, []outcome.Outcome{outcome.TagSelected{ID: created.ID()}}, screen.Outcomes())
+	assert.Contains(t, screen.Screen(), "3 # awk · by title")
+	assert.Regexp(t, `# awk +0`, screen.Screen())
+}
+
+func TestScreen_UpdateTagsChanged(t *testing.T) {
+	t.Parallel()
+
+	t.Run("puts the cursor on the Tag it names and relists the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		renamed := testkit.Tag(t, testkit.TagSpec{ID: tags[0].Tag.ID(), Name: "kubernetes"})
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('j'))
+
+		screen.Send(mainscreen.TagsChanged{
+			Tags:      []browse.TagCount{tags[1], {Tag: renamed, SnippetCount: 3}},
+			Selecting: renamed.ID(),
+		})
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagSelected{ID: tags[1].Tag.ID()},
+			outcome.TagsChanged{Selection: browseselection.WithTag(renamed.ID()), Selecting: sampleSnippets(t)[0].ID()},
+		}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 # kubernetes · by title")
+	})
+
+	t.Run("keeps a Folder holding the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		renamed := testkit.Tag(t, testkit.TagSpec{ID: tags[1].Tag.ID(), Name: "golang"})
+
+		screen.Send(mainscreen.TagsChanged{
+			Tags:      []browse.TagCount{tags[0], {Tag: renamed, SnippetCount: 4}},
+			Selecting: renamed.ID(),
+		})
+
+		assert.Equal(t, []outcome.Outcome{outcome.TagsChanged{
+			Selection: browseselection.InFolder(domain.FolderID{}),
+			Selecting: sampleSnippets(t)[0].ID(),
+		}}, screen.Outcomes())
+		assert.Regexp(t, `# golang +4`, screen.Screen())
+	})
+
+	t.Run("hands the Browse selection to the Tag under the cursor once the selected Tag is gone", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Letter('j'))
+
+		screen.Send(mainscreen.TagsChanged{Tags: tags[:1], Selecting: domain.TagID{}})
+
+		assert.Contains(t, screen.Outcomes(), outcome.TagsChanged{
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+			Selecting: sampleSnippets(t)[0].ID(),
+		})
+	})
+
+	t.Run("hands the Browse selection back to the Folders once every Tag is gone", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		screen.Send(mainscreen.TagsChanged{Tags: nil, Selecting: domain.TagID{}})
+
+		assert.Contains(t, screen.Outcomes(), outcome.TagsChanged{
+			Selection: browseselection.InFolder(domain.FolderID{}),
+			Selecting: sampleSnippets(t)[0].ID(),
+		})
+		assert.NotContains(t, screen.Outcomes(), outcome.TagSelected{ID: tags[1].Tag.ID()})
+		assert.Contains(t, screen.Screen(), strings.ToUpper(snippetListTitle))
+	})
+}
+
+func TestScreen_UpdateTagDelete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("d passes on the ask to delete the Tag under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('d'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.TagDeleteAsked{ID: tags[0].Tag.ID()}}, screen.Outcomes())
+	})
+
+	t.Run("asks to confirm with the count from the preview", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+
+		screen.Send(mainscreen.TagDeletePreviewed{Preview: tag.DeletePreview{Tag: tags[1].Tag, SnippetCount: 4}})
+
+		assert.Contains(t, screen.Screen(), tagDeleteTitle)
+		assert.Contains(
+			t,
+			screen.Screen(),
+			`Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`,
+		)
+		assert.Empty(t, screen.Outcomes())
+	})
+
+	t.Run("yes asks to delete the Tag", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Send(mainscreen.TagDeletePreviewed{Preview: tag.DeletePreview{Tag: tags[1].Tag, SnippetCount: 1}})
+
+		screen.Press(keypress.Letter('y'))
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagDeleteRequested{Input: tag.DeleteInput{TagID: tags[1].Tag.ID()}},
+		}, screen.Outcomes())
+	})
+
+	t.Run("no closes the confirmation without deleting", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Send(mainscreen.TagDeletePreviewed{Preview: tag.DeletePreview{Tag: tags[1].Tag, SnippetCount: 1}})
+
+		screen.Press(keypress.Letter('n'))
+
+		assert.Empty(t, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), tagDeleteTitle)
+	})
+
+	t.Run("deletes a Tag no Snippet carries without asking", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+
+		screen.Send(mainscreen.TagDeletePreviewed{Preview: tag.DeletePreview{Tag: tags[1].Tag, SnippetCount: 0}})
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagDeleteRequested{Input: tag.DeleteInput{TagID: tags[1].Tag.ID()}},
+		}, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), tagDeleteTitle)
+	})
+}
+
+func TestScreen_tagDeleteQuestion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		snippets int
+		want     string
+	}{
+		{name: "keeps a single count singular", snippets: 1, want: "remove it from 1 Snippet?"},
+		{name: "pluralises larger counts", snippets: 15, want: "remove it from 15 Snippets?"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, tags := browsingTags(t)
+
+			screen.Send(mainscreen.TagDeletePreviewed{
+				Preview: tag.DeletePreview{Tag: tags[0].Tag, SnippetCount: tt.snippets},
+			})
+
+			assert.Contains(t, screen.Screen(), tt.want)
+		})
+	}
 }
 
 func TestNew(t *testing.T) {

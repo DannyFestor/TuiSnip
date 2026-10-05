@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/clipboard"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
@@ -22,10 +23,12 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 )
 
 type App struct {
 	Create                   *snippet.Create
+	Capture                  *snippet.Capture
 	Update                   *snippet.Update
 	Copy                     *snippet.Copy
 	Query                    *search.Query
@@ -38,6 +41,10 @@ type App struct {
 	PreviewDeleteFolder      *folder.PreviewDelete
 	DeleteFolder             *folder.Delete
 	SetFolderDefaultLanguage *folder.SetDefaultLanguage
+	CreateTag                *tag.Create
+	RenameTag                *tag.Rename
+	PreviewDeleteTag         *tag.PreviewDelete
+	DeleteTag                *tag.Delete
 	SnippetRepository        *sqlite.SnippetRepository
 	FolderRepository         *sqlite.FolderRepository
 	TagRepository            *sqlite.TagRepository
@@ -138,6 +145,7 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		TagSnippetsLister:           app.SnippetsWithTag,
 		Copier:                      app.Copy,
 		Creator:                     app.Create,
+		Capturer:                    app.Capture,
 		Updater:                     app.Update,
 		Searcher:                    app.Query,
 		FolderCreator:               app.CreateFolder,
@@ -145,6 +153,10 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		FolderDeletePreviewer:       app.PreviewDeleteFolder,
 		FolderDeleter:               app.DeleteFolder,
 		FolderDefaultLanguageSetter: app.SetFolderDefaultLanguage,
+		TagCreator:                  app.CreateTag,
+		TagRenamer:                  app.RenameTag,
+		TagDeletePreviewer:          app.PreviewDeleteTag,
+		TagDeleter:                  app.DeleteTag,
 		SortOrderSaver:              opened.remembered,
 		CollapsedFoldersSaver:       opened.remembered,
 		Settings:                    SettingsFrom(cfg, time.Local, rememberedIn(opened.remembered)),
@@ -185,39 +197,45 @@ func openRepositories(database *sqlite.Database, logger *slog.Logger) repositori
 }
 
 func newActions(cfg config.Config, options Options, repos repositories, logger *slog.Logger) (*App, error) {
-	copyAction, err := newCopy(cfg.Copy, options, repos.snippets, logger)
+	clipboardOptions := clipboardOptionsFrom(options, logger)
+
+	copyAction, err := newCopy(cfg.Copy, clipboardOptions, repos.snippets)
 	if err != nil {
 		return nil, err
 	}
 
 	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	capture, captureErr := snippet.NewCapture(clipboard.NewNative(clipboardOptions))
 	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
-	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
-	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
-	tagList, tagListErr := browse.NewTagList(repos.tags, repos.snippets)
-	snippetsWithTag, withTagErr := browse.NewSnippetsWithTag(repos.snippets)
+	browsing, browseErr := newBrowseActions(repos)
 	folders, foldersErr := newFolderActions(repos.folders)
+	tags, tagsErr := newTagActions(repos.tags)
 
-	err = errors.Join(createErr, updateErr, queryErr, listErr, treeErr, tagListErr, withTagErr, foldersErr)
+	err = errors.Join(createErr, captureErr, updateErr, queryErr, browseErr, foldersErr, tagsErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
 
 	return &App{
 		Create:                   create,
+		Capture:                  capture,
 		Update:                   update,
 		Copy:                     copyAction,
 		Query:                    query,
-		SnippetsInFolder:         snippetsInFolder,
-		FolderTree:               folderTree,
-		TagList:                  tagList,
-		SnippetsWithTag:          snippetsWithTag,
+		SnippetsInFolder:         browsing.snippetsInFolder,
+		FolderTree:               browsing.folderTree,
+		TagList:                  browsing.tagList,
+		SnippetsWithTag:          browsing.snippetsWithTag,
 		CreateFolder:             folders.create,
 		RenameFolder:             folders.rename,
 		PreviewDeleteFolder:      folders.previewDelete,
 		DeleteFolder:             folders.remove,
 		SetFolderDefaultLanguage: folders.setDefaultLanguage,
+		CreateTag:                tags.create,
+		RenameTag:                tags.rename,
+		PreviewDeleteTag:         tags.previewDelete,
+		DeleteTag:                tags.delete,
 		SnippetRepository:        repos.snippets,
 		FolderRepository:         repos.folders,
 		TagRepository:            repos.tags,
@@ -225,30 +243,6 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		database:                 nil,
 		log:                      nil,
 	}, nil
-}
-
-type folderActions struct {
-	create             *folder.Create
-	rename             *folder.Rename
-	previewDelete      *folder.PreviewDelete
-	remove             *folder.Delete
-	setDefaultLanguage *folder.SetDefaultLanguage
-}
-
-func newFolderActions(folders *sqlite.FolderRepository) (folderActions, error) {
-	create, createErr := folder.NewCreate(folders, system.NewIDs(), system.NewClock())
-	rename, renameErr := folder.NewRename(folders, system.NewClock())
-	previewDelete, previewDeleteErr := folder.NewPreviewDelete(folders)
-	remove, removeErr := folder.NewDelete(folders)
-	setDefaultLanguage, setDefaultLanguageErr := folder.NewSetDefaultLanguage(folders, system.NewClock())
-
-	return folderActions{
-		create:             create,
-		rename:             rename,
-		previewDelete:      previewDelete,
-		remove:             remove,
-		setDefaultLanguage: setDefaultLanguage,
-	}, errors.Join(createErr, renameErr, previewDeleteErr, removeErr, setDefaultLanguageErr)
 }
 
 func logStarted(ctx context.Context, logger *slog.Logger, paths xdg.Paths) {

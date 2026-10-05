@@ -37,6 +37,7 @@ const (
 	filedTitle       = "Table test skeleton"
 	filedSnippetID   = "0194c3a0-0000-7000-8000-0000000f11ed"
 	topRightCorner   = "╮"
+	tagDeleteTitle   = "DELETE TAG"
 )
 
 func wide() look.Size {

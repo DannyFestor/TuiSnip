@@ -11,12 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -178,9 +182,40 @@ func TestSession_save(t *testing.T) {
 		screen.Press(keypress.Letter('x'), save())
 		screen.Send(editoverlay.SaveFinished{Snippet: saved, Err: nil})
 
-		reported := outcome.SnippetSaved{ID: saved.ID(), FolderID: saved.FolderID()}
+		reported := outcome.SnippetSaved{ID: saved.ID(), Selection: destination().Selection}
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reported))
 		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("files a Snippet for a Tag at the Root carrying the Tag, and returns to the Tag", func(t *testing.T) {
+		t.Parallel()
+
+		tag := testkit.Tag(t, testkit.TagSpec{Name: "docker"})
+		selection := browseselection.WithTag(tag.ID())
+		opened, _ := editoverlay.New(
+			testsettings.Default(t).Keys,
+			look.NewStyles(look.SchemeDark),
+			nil,
+			editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}, Language: value.PlainText()},
+		)
+		screen := overlaytest.Open(t, screenSize(), opened)
+		saved := savedSnippet(t)
+
+		screen.Press(keypress.Letter('x'), save())
+		screen.Send(editoverlay.SaveFinished{Snippet: saved, Err: nil})
+
+		created := snippet.CreateInput{
+			Title:       "x",
+			Description: "",
+			Language:    value.PlainText().String(),
+			Content:     "",
+			FolderID:    domain.FolderID{},
+			Tags:        []domain.Tag{tag},
+		}
+		assert.Equal(t, []outcome.Outcome{
+			outcome.SaveRequested{Input: created},
+			outcome.SnippetSaved{ID: saved.ID(), Selection: selection},
+		}, screen.Outcomes())
 	})
 
 	t.Run("up on the first line of Content returns to Language", func(t *testing.T) {

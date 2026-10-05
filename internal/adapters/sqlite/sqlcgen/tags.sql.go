@@ -11,6 +11,38 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const deleteTag = `-- name: DeleteTag :execrows
+DELETE FROM tags
+WHERE id = ?
+`
+
+func (q *Queries) DeleteTag(ctx context.Context, id sqltype.ID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteTag, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getTag = `-- name: GetTag :one
+SELECT id, name, name_key, created_at, updated_at
+FROM tags
+WHERE id = ?
+`
+
+func (q *Queries) GetTag(ctx context.Context, id sqltype.ID) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTag, id)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.NameKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertTag = `-- name: InsertTag :exec
 INSERT INTO tags (id, name, name_key, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?)
@@ -33,6 +65,46 @@ func (q *Queries) InsertTag(ctx context.Context, arg InsertTagParams) error {
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const listOtherTagsWithNameKey = `-- name: ListOtherTagsWithNameKey :many
+SELECT id, name, name_key, created_at, updated_at
+FROM tags
+WHERE name_key = ?1 AND id <> ?2
+`
+
+type ListOtherTagsWithNameKeyParams struct {
+	NameKey string
+	ID      sqltype.ID
+}
+
+func (q *Queries) ListOtherTagsWithNameKey(ctx context.Context, arg ListOtherTagsWithNameKeyParams) ([]Tag, error) {
+	rows, err := q.db.QueryContext(ctx, listOtherTagsWithNameKey, arg.NameKey, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tag{}
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NameKey,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSnippetTags = `-- name: ListSnippetTags :many
@@ -235,4 +307,30 @@ func (q *Queries) ListTags(ctx context.Context) ([]Tag, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTag = `-- name: UpdateTag :execrows
+UPDATE tags
+SET name = ?, name_key = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateTagParams struct {
+	Name      string
+	NameKey   string
+	UpdatedAt sqltype.Timestamp
+	ID        sqltype.ID
+}
+
+func (q *Queries) UpdateTag(ctx context.Context, arg UpdateTagParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateTag,
+		arg.Name,
+		arg.NameKey,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

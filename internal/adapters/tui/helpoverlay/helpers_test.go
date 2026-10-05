@@ -25,7 +25,13 @@ func helping(t *testing.T) *overlaytest.Driver {
 func helpingWith(t *testing.T, keys binding.Keys, screen look.Size) *overlaytest.Driver {
 	t.Helper()
 
-	return overlaytest.Open(t, screen, helpoverlay.New(keys, look.NewStyles(look.SchemeDark), listedFor(keys)))
+	return helpingStyled(t, keys, look.NewStyles(look.SchemeDark), screen)
+}
+
+func helpingStyled(t *testing.T, keys binding.Keys, styles look.Styles, screen look.Size) *overlaytest.Driver {
+	t.Helper()
+
+	return overlaytest.Open(t, screen, helpoverlay.New(keys, styles, listedFor(keys)))
 }
 
 func listedFor(keys binding.Keys) [][]key.Binding {

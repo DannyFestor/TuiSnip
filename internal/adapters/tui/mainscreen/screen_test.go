@@ -666,8 +666,31 @@ func TestScreen_restyle(t *testing.T) {
 		assert.Equal(t, showingStyled(t, wide(), light, sampleSnippets(t)...).StyledScreen(), screen.StyledScreen())
 	})
 
-	for _, opening := range []rune{'n', '/'} {
-		t.Run("opens the Overlay on "+string(opening)+" in the new Styles", func(t *testing.T) {
+	t.Run("draws the zoomed Pane in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		screen := showing(t, wide(), sampleSnippets(t)...)
+		styledFromStart := showingStyled(t, wide(), light, sampleSnippets(t)...)
+
+		screen.Press(keypress.Typed("3z")...)
+		screen.Send(look.Restyled{Styles: light})
+		styledFromStart.Press(keypress.Typed("3z")...)
+
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+	})
+
+	openings := []struct {
+		typed string
+		title string
+	}{
+		{typed: "n", title: "╭ Editing "},
+		{typed: "/", title: "╭ Search "},
+		{typed: "?", title: "╭ Help "},
+		{typed: "3e", title: "╭ Editing "},
+	}
+	for _, opening := range openings {
+		t.Run("opens the Overlay on "+opening.typed+" in the new Styles", func(t *testing.T) {
 			t.Parallel()
 
 			light := look.NewStyles(look.SchemeLight)
@@ -675,9 +698,10 @@ func TestScreen_restyle(t *testing.T) {
 			screen.Send(look.Restyled{Styles: light})
 			styledFromStart := showingStyled(t, wide(), light, sampleSnippets(t)...)
 
-			screen.Press(keypress.Letter(opening))
-			styledFromStart.Press(keypress.Letter(opening))
+			screen.Press(keypress.Typed(opening.typed)...)
+			styledFromStart.Press(keypress.Typed(opening.typed)...)
 
+			assert.Contains(t, screen.Screen(), opening.title)
 			assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 		})
 	}

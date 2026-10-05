@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/clipboard"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
@@ -26,6 +27,7 @@ import (
 
 type App struct {
 	Create              *snippet.Create
+	Capture             *snippet.Capture
 	Update              *snippet.Update
 	Copy                *snippet.Copy
 	Query               *search.Query
@@ -137,6 +139,7 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		TagSnippetsLister:     app.SnippetsWithTag,
 		Copier:                app.Copy,
 		Creator:               app.Create,
+		Capturer:              app.Capture,
 		Updater:               app.Update,
 		Searcher:              app.Query,
 		FolderCreator:         app.CreateFolder,
@@ -183,12 +186,15 @@ func openRepositories(database *sqlite.Database, logger *slog.Logger) repositori
 }
 
 func newActions(cfg config.Config, options Options, repos repositories, logger *slog.Logger) (*App, error) {
-	copyAction, err := newCopy(cfg.Copy, options, repos.snippets, logger)
+	clipboardOptions := clipboardOptionsFrom(options, logger)
+
+	copyAction, err := newCopy(cfg.Copy, clipboardOptions, repos.snippets)
 	if err != nil {
 		return nil, err
 	}
 
 	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	capture, captureErr := snippet.NewCapture(clipboard.NewNative(clipboardOptions))
 	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
@@ -201,7 +207,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	deleteFolder, deleteFolderErr := folder.NewDelete(repos.folders)
 
 	err = errors.Join(
-		createErr, updateErr, queryErr, listErr, treeErr, tagListErr, withTagErr,
+		createErr, captureErr, updateErr, queryErr, listErr, treeErr, tagListErr, withTagErr,
 		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr,
 	)
 	if err != nil {
@@ -210,6 +216,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 
 	return &App{
 		Create:              create,
+		Capture:             capture,
 		Update:              update,
 		Copy:                copyAction,
 		Query:               query,

@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -194,6 +195,40 @@ func TestPane_WithTree(t *testing.T) {
 
 		assert.Equal(t, sample.Go.ID(), pane.Selected())
 	})
+}
+
+func TestPane_DefaultLanguageOf(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	parent := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go", DefaultLanguage: "Go"})
+	child := testkit.Folder(t, testkit.FolderSpec{
+		ID: ids.NewFolderID(), Name: "scripts", ParentID: parent.ID(), DefaultLanguage: "Bash",
+	})
+	tree := browse.Tree{RootSnippetCount: 0, Folders: []browse.FolderNode{{
+		Folder:       parent,
+		SnippetCount: 0,
+		Children:     []browse.FolderNode{{Folder: child, SnippetCount: 0, Children: nil}},
+	}}}
+	pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), tree)
+
+	tests := []struct {
+		name   string
+		folder domain.FolderID
+		want   value.Language
+	}{
+		{name: "a top-level Folder's", folder: parent.ID(), want: parent.DefaultLanguage()},
+		{name: "a nested Folder's", folder: child.ID(), want: child.DefaultLanguage()},
+		{name: "plaintext for the Root", folder: domain.FolderID{}, want: value.PlainText()},
+		{name: "plaintext for a Folder missing from the tree", folder: ids.NewFolderID(), want: value.PlainText()},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, pane.DefaultLanguageOf(tt.folder))
+		})
+	}
 }
 
 func TestPane_UpdateDelete(t *testing.T) {

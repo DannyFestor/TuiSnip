@@ -16,18 +16,19 @@ import (
 )
 
 const (
-	overlayTitle    = "Editing"
-	unsavedMarker   = " •"
-	fieldCursor     = "› "
-	fieldIndent     = "  "
-	fieldLabelWidth = 12
-	fieldRows       = 3
-	tabCharacter    = "\t"
-	lineBreak       = "\n"
-	carriageReturn  = "\r"
-	maxContentLines = 10_000
-	entryKeysJoiner = " or "
-	entrySuffix     = " to edit"
+	overlayTitle      = "Editing"
+	unsavedMarker     = " •"
+	fieldCursor       = "› "
+	fieldIndent       = "  "
+	fieldLabelWidth   = 12
+	fieldRows         = 3
+	tabCharacter      = "\t"
+	lineBreak         = "\n"
+	carriageReturn    = "\r"
+	maxContentLines   = 10_000
+	emptyContentLines = 1
+	entryKeysJoiner   = " or "
+	entrySuffix       = " to edit"
 )
 
 type form struct {
@@ -57,11 +58,15 @@ func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, t
 	filled.title.SetValue(original.title)
 	filled.description.SetValue(original.description)
 
-	if !readOnly.held {
-		filled.content.SetValue(original.content)
+	return filled.withContent(original.content).focused(domain.FieldTitle)
+}
+
+func (f form) withContent(content string) form {
+	if !f.readOnly.held {
+		f.content.SetValue(content)
 	}
 
-	return filled.focused(domain.FieldTitle)
+	return f
 }
 
 func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
@@ -113,7 +118,7 @@ func (f form) changed() bool {
 func (f form) entered() entered {
 	content := f.content.Value()
 	if f.readOnly.held {
-		content = f.original.content
+		content = f.readOnly.content
 	}
 
 	return entered{title: f.title.Value(), description: f.description.Value(), content: content}
@@ -128,7 +133,7 @@ func (f form) hints() []key.Binding {
 }
 
 func (f form) externalEditorKey() string {
-	return f.keys.content.FirstKey(binding.OpenInEditor)
+	return f.keys.externalEditorKey()
 }
 
 func (f form) view(styles look.Styles, outer look.Size) string {
@@ -211,6 +216,10 @@ func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
 
 func (f form) linesAfterPaste(pasted string) int {
 	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
+}
+
+func overflowsEmptyContent(text string) bool {
+	return emptyContentLines+lineBreaksOnInsert(text) > maxContentLines
 }
 
 // The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.

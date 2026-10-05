@@ -172,6 +172,22 @@ func TestPane_SelectedName(t *testing.T) {
 	assert.Empty(t, paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).SelectedName())
 }
 
+func TestPane_SelectedTag(t *testing.T) {
+	t.Parallel()
+
+	sample := newSampleTags(t)
+	pane, _ := pressed(samplePane(t, sample), keypress.Letter('j'))
+
+	tag, ok := pane.SelectedTag()
+
+	assert.True(t, ok)
+	assert.Equal(t, sample.golang, tag)
+
+	_, ok = paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).SelectedTag()
+
+	assert.False(t, ok)
+}
+
 func TestPane_ShortHelp(t *testing.T) {
 	t.Parallel()
 

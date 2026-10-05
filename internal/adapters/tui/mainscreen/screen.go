@@ -72,6 +72,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return s.confirmingFolderDelete(msg.Preview)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
+	case Captured:
+		return s.captured(msg.Content)
 	}
 
 	return s.loaded(msg)
@@ -81,10 +83,6 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	switch received := received.(type) {
 	case outcome.SnippetRevealed:
 		next, expanded := s.revealing(received.FolderID)
-
-		return outcome.Stay(next).Passing(expanded...).Passing(received)
-	case outcome.SnippetSaved:
-		next, expanded := s.selectingFolder(received.FolderID)
 
 		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	default:
@@ -158,7 +156,9 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	case s.global.Matches(msg, binding.Help):
 		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp())), true
 	case s.global.Matches(msg, binding.NewSnippet):
-		return s.opening(editoverlay.New(s.keys, s.styles)), true
+		return s.opening(editoverlay.New(s.keys, s.styles, s.destination())), true
+	case s.global.Matches(msg, binding.Capture):
+		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
 		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing())), true
 	case s.global.Matches(msg, binding.Zoom):
@@ -208,6 +208,10 @@ func (s Screen) holding(holder pane) Screen {
 
 func (s Screen) selection() browseselection.Selection {
 	return s.panes.selectionIn(s.selectionHolder)
+}
+
+func (s Screen) destination() editoverlay.Destination {
+	return s.panes.destination(s.selection())
 }
 
 func selected(selection browseselection.Selection) []outcome.Outcome {
@@ -266,6 +270,14 @@ func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Ste
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
+}
+
+func (s Screen) captured(content string) outcome.Step {
+	if refusal, refused := editoverlay.CaptureRefusal(s.keys, content); refused {
+		return outcome.Stay(s.withStatus(refusal))
+	}
+
+	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.destination(), content))
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {

@@ -53,7 +53,7 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, domain.ErrMissingDependency)
 
 			for _, name := range []string{
-				"lister", "treeLister", "tagLister", "tagSnippetsLister", "copier", "creator", "updater", "searcher",
+				"lister", "treeLister", "tagLister", "tagSnippetsLister", "copier", "creator", "capturer", "updater", "searcher",
 				"sortOrderSaver", "logger", "location",
 			} {
 				assert.ErrorContains(t, err, name)

@@ -6,6 +6,7 @@ PROPERTY_DEEP_CHECKS := 10000
 # Each mutant recompiles under parallel workers, which the coverage-run baseline doesn't account for.
 # At 20 or below, tui/overlay times out nearly every mutant; 30 is the edge, 50 leaves headroom.
 MUTATION_TIMEOUT_COEFFICIENT := 50
+MUTATION_TAGS := feature
 GENERATED_FILES := sqlcgen/|_gen\.go$$|_enum\.go$$|mocks_test\.go$$
 SUBMAKE := $(MAKE) --no-print-directory
 
@@ -111,8 +112,12 @@ test-property-deep: ## Run the property tests with 10000 checks
 
 .PHONY: test-mutation
 test-mutation: ## Write the gremlins mutation report (PKG=./internal/... for one package)
-	gremlins unleash --tags feature --exclude-files '$(GENERATED_FILES)' \
+	gremlins unleash --tags $(MUTATION_TAGS) --exclude-files '$(GENERATED_FILES)' \
 		--timeout-coefficient $(MUTATION_TIMEOUT_COEFFICIENT) --output mutation-report.json $(PKG)
+
+.PHONY: test-mutation-changed
+test-mutation-changed: ## Mutation-test the packages changed since origin/main, skipping those a parent package's run covers
+	MUTATION_TAGS=$(MUTATION_TAGS) scripts/test-mutation-changed.sh
 
 ##@ Build
 

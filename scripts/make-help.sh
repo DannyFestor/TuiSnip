@@ -9,5 +9,5 @@ BEGIN { print "Usage: make [target]" }
 	sub(/:.*/, "", name)
 	description = $0
 	sub(/.*## /, "", description)
-	printf "  %-20s %s\n", name, description
+	printf "  %-22s %s\n", name, description
 }' "$@"

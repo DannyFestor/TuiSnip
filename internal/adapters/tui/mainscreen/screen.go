@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -64,19 +65,13 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.resized(msg.Box))
 	case tea.BackgroundColorMsg:
 		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
-	case TreeLoaded:
-		return s.treeLoaded(msg.Tree)
-	case TreeChanged:
-		return s.treeChanged(msg)
 	case FolderDeletePreviewed:
 		return s.confirmingFolderDelete(msg.Preview)
-	case SnippetsLoaded:
-		return s.snippetsLoaded(msg)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
 	}
 
-	return outcome.Stay(s)
+	return s.loaded(msg)
 }
 
 func (s Screen) Received(received outcome.Outcome) outcome.Step {
@@ -114,6 +109,21 @@ func (s Screen) FullHelp() [][]key.Binding {
 	return s.panes.keyMaps()[s.focus].FullHelp()
 }
 
+func (s Screen) loaded(msg tea.Msg) outcome.Step {
+	switch msg := msg.(type) {
+	case TreeLoaded:
+		return s.treeLoaded(msg.Tree)
+	case TreeChanged:
+		return s.treeChanged(msg)
+	case TagsLoaded:
+		return outcome.Stay(s.withPanes(s.panes.withTags(msg.Tags)))
+	case SnippetsLoaded:
+		return s.snippetsLoaded(msg)
+	}
+
+	return outcome.Stay(s)
+}
+
 func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 	if s.panes.naming() {
 		return s.focusedUpdated(msg)
@@ -128,15 +138,54 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing()))
 	}
 
+	if s.focus.inLeftColumn() && s.global.Matches(msg, binding.Open) {
+		return s.opened()
+	}
+
 	if navigate, ok := navigationFor(s.global, msg); ok {
 		return outcome.Stay(s.focusedOn(navigate(s.focus, s.selectionHolder)))
 	}
 
 	if s.focus == paneList && s.listKeys.Matches(msg, binding.CycleSort) {
-		return outcome.Stay(s).Passing(s.panes.sortCycleAsked())
+		return outcome.Stay(s).Passing(s.panes.sortCycleAsked(s.selection()))
 	}
 
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) opened() outcome.Step {
+	next := s.holding(s.focus)
+	step := outcome.Stay(next.focusedOn(s.focus.drillIn(s.selectionHolder)))
+
+	if next.selection() == s.selection() {
+		return step
+	}
+
+	return step.Passing(selected(next.selection())...)
+}
+
+func (s Screen) holding(holder pane) Screen {
+	if _, ok := s.panes.tags.Selected(); holder == paneTags && !ok {
+		return s
+	}
+
+	s.selectionHolder = holder
+
+	return s
+}
+
+func (s Screen) selection() browseselection.Selection {
+	return s.panes.selectionIn(s.selectionHolder)
+}
+
+func selected(selection browseselection.Selection) []outcome.Outcome {
+	if tagID, ok := selection.Tag(); ok {
+		return []outcome.Outcome{outcome.TagSelected{ID: tagID}}
+	}
+
+	folderID, _ := selection.Folder()
+
+	return []outcome.Outcome{outcome.FolderSelected{ID: folderID}}
 }
 
 func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
@@ -164,7 +213,7 @@ func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
 }
 
 func (s Screen) snippetsLoaded(loaded SnippetsLoaded) outcome.Step {
-	next, err := s.panes.withSnippetsIfStillSelected(loaded)
+	next, err := s.panes.withSnippetsIfStillSelected(loaded, s.selection())
 	step := outcome.Stay(s.withPanes(next))
 
 	if err != nil {
@@ -189,8 +238,23 @@ func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {
 	updated, outcomes, cmd := s.panes.updated(s.focus, msg)
+	next := s.withPanes(updated).holdingAfter(outcomes).arranged()
 
-	return outcome.Stay(s.withPanes(updated)).Passing(outcomes...).Running(cmd)
+	return outcome.Stay(next).Passing(outcomes...).Running(cmd)
+}
+
+func (s Screen) holdingAfter(outcomes []outcome.Outcome) Screen {
+	for _, reported := range outcomes {
+		switch reported.(type) {
+		case outcome.FolderSelected:
+			s.selectionHolder = paneFolders
+		case outcome.TagSelected:
+			s.selectionHolder = paneTags
+		default:
+		}
+	}
+
+	return s
 }
 
 func (s Screen) withPanes(next panes) Screen {
@@ -273,7 +337,7 @@ func (s Screen) panesView() string {
 func (s Screen) paneFrame(p pane) string {
 	frame := s.paneStyle(p)
 
-	return look.Frame(frame, p.title(s.panes.selectionAndOrder()), s.panes.body(p, frame), s.layout.of(p))
+	return look.Frame(frame, p.title(s.panes.selectionAndOrder(s.selection())), s.panes.body(p, frame), s.layout.of(p))
 }
 
 func (s Screen) paneStyle(p pane) look.FrameStyle {

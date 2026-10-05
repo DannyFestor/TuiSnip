@@ -50,6 +50,19 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
+	t.Run("Tags hints open before search", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeGlobal, name: binding.Open, keys: []string{"enter"}},
+			bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+		)
+
+		got := keys.For(binding.ScopeTags).ShortHelp()
+
+		assert.Equal(t, []string{"enter open", "/ search"}, hintTexts(got))
+	})
+
 	t.Run("name input hints save and cancel", func(t *testing.T) {
 		t.Parallel()
 

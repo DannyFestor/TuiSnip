@@ -32,6 +32,15 @@ func seededFolder(t *testing.T, app *bootstrap.App, spec testkit.FolderSpec) dom
 	return folder
 }
 
+func seededTag(t *testing.T, app *bootstrap.App, spec testkit.TagSpec) domain.Tag {
+	t.Helper()
+
+	tag := testkit.Tag(t, spec)
+	testapp.SeedTag(t, app, tag)
+
+	return tag
+}
+
 func seededSnippet(
 	t *testing.T,
 	app *bootstrap.App,
@@ -40,12 +49,21 @@ func seededSnippet(
 ) domain.Snippet {
 	t.Helper()
 
-	filed := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
-	})
-	testapp.SeedSnippet(t, app, filed)
+	return seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{FolderID: folderID})
+}
 
-	return filed
+func seededTaggedSnippet(
+	t *testing.T,
+	app *bootstrap.App,
+	ids *testkit.SequentialIDs,
+	spec testkit.SnippetSpec,
+) domain.Snippet {
+	t.Helper()
+
+	spec.ID = ids.NewSnippetID()
+	spec.Fragment.ID = ids.NewFragmentID()
+	seeded := testkit.Snippet(t, spec)
+	testapp.SeedSnippet(t, app, seeded)
+
+	return seeded
 }

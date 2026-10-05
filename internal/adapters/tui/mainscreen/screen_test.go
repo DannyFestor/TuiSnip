@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
@@ -52,9 +53,9 @@ func TestScreen_navigation(t *testing.T) {
 			title: snippetPaneTitle,
 		},
 		{
-			name:  "enter does nothing in Tags",
+			name:  "enter drills from Tags to the Snippet list",
 			keys:  []tea.KeyPressMsg{keypress.Letter('2'), keypress.Special(tea.KeyEnter)},
-			title: tagPaneTitle,
+			title: snippetListTitle,
 		},
 		{
 			name: "esc backs out from the Snippet pane to Folders",
@@ -151,7 +152,12 @@ func TestScreen_browse(t *testing.T) {
 
 		screen.Press(keypress.Typed("jj")...)
 
-		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Snippets: []domain.Snippet{filed}})
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				Selection: browseselection.InFolder(sample.Go.ID()),
+				Snippets:  []domain.Snippet{filed},
+			},
+		)
 
 		assert.Contains(t, screen.Screen(), filedTitle)
 		assert.NotContains(t, screen.Screen(), secondTitle)
@@ -163,7 +169,12 @@ func TestScreen_browse(t *testing.T) {
 		screen, sample := browsing(t)
 		screen.Press(keypress.Typed("3j1j")...)
 
-		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Docker.ID(), Snippets: sampleSnippets(t)})
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				Selection: browseselection.InFolder(sample.Docker.ID()),
+				Snippets:  sampleSnippets(t),
+			},
+		)
 
 		assert.Contains(t, screen.Screen(), firstDescription)
 	})
@@ -175,7 +186,10 @@ func TestScreen_browse(t *testing.T) {
 		screen.Press(keypress.Letter('j'))
 
 		screen.Send(
-			mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Snippets: []domain.Snippet{filedIn(t, sample.Go.ID())}},
+			mainscreen.SnippetsLoaded{
+				Selection: browseselection.InFolder(sample.Go.ID()),
+				Snippets:  []domain.Snippet{filedIn(t, sample.Go.ID())},
+			},
 		)
 
 		assert.NotContains(t, screen.Screen(), filedTitle)
@@ -201,8 +215,8 @@ func TestScreen_browse(t *testing.T) {
 
 		screen.Send(
 			mainscreen.SnippetsLoaded{
-				FolderID: sample.Tests.ID(),
-				Snippets: []domain.Snippet{filedIn(t, sample.Tests.ID())},
+				Selection: browseselection.InFolder(sample.Tests.ID()),
+				Snippets:  []domain.Snippet{filedIn(t, sample.Tests.ID())},
 			},
 		)
 
@@ -216,14 +230,148 @@ func TestScreen_browse(t *testing.T) {
 		screen.Press(keypress.Typed("G")...)
 		screen.Send(
 			mainscreen.SnippetsLoaded{
-				FolderID: sample.Tests.ID(),
-				Snippets: []domain.Snippet{filedIn(t, sample.Tests.ID())},
+				Selection: browseselection.InFolder(sample.Tests.ID()),
+				Snippets:  []domain.Snippet{filedIn(t, sample.Tests.ID())},
 			},
 		)
 
 		screen.Press(keypress.Letter('/'))
 
 		assert.Regexp(t, filedTitle+` +go / testing`, screen.Screen())
+	})
+}
+
+func TestScreen_browseTags(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shows the Tags with their Snippet counts", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		assert.Regexp(t, `# docker +3`, screen.Screen())
+		assert.Regexp(t, `# go +4`, screen.Screen())
+	})
+
+	t.Run("moving the cursor onto a Tag selects it", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('j'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.TagSelected{ID: tags[1].Tag.ID()}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 # go · by title")
+	})
+
+	t.Run("enter makes the Tag under the cursor the Browse selection and focuses the Snippet list", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{outcome.TagSelected{ID: tags[0].Tag.ID()}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), strings.ToUpper("3 # docker · by title"))
+	})
+
+	t.Run("enter on the Tag that already holds the selection selects nothing again", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		assert.Len(t, screen.Outcomes(), 1)
+	})
+
+	t.Run("enter with no Tags keeps the Folder selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen := browsingWithTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		assert.Empty(t, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), strings.ToUpper(snippetListTitle))
+	})
+
+	t.Run("enter on Folders takes the selection back from a Tag", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Letter('j'))
+
+		screen.Press(keypress.Letter('1'), keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.TagSelected{ID: tags[1].Tag.ID()},
+			outcome.FolderSelected{ID: domain.FolderID{}},
+		}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), strings.ToUpper(snippetListTitle))
+	})
+
+	t.Run("lists the Snippets loaded for the selected Tag and ignores those of the Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		carrying := filedIn(t, domain.FolderID{})
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('j'))
+		screen.Send(mainscreen.SnippetsLoaded{Selection: browseselection.InFolder(domain.FolderID{})})
+		screen.Send(mainscreen.SnippetsLoaded{
+			Selection: browseselection.WithTag(tags[1].Tag.ID()),
+			Snippets:  []domain.Snippet{carrying},
+		})
+
+		assert.Contains(t, screen.Screen(), filedTitle)
+		assert.NotContains(t, screen.Screen(), secondTitle)
+	})
+
+	t.Run("esc from the Snippet list returns to Tags while a Tag holds the selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape))
+
+		assert.Contains(t, screen.Screen(), strings.ToUpper(tagPaneTitle))
+	})
+
+	t.Run("enter on Folders takes the selection back once the Tags are gone", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+		screen.Send(mainscreen.TagsLoaded{Tags: nil})
+
+		screen.Press(keypress.Letter('1'), keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape))
+
+		assert.Contains(t, screen.Screen(), strings.ToUpper(folderPaneTitle))
+	})
+
+	t.Run("s asks for the selected Tag", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		screen.Press(keypress.Letter('s'))
+
+		assert.Contains(t, screen.Outcomes(), outcome.SortCycleAsked{
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+			Selecting: sampleSnippets(t)[0].ID(),
+		})
+	})
+
+	t.Run("keeps a Tag tall in the left column while it holds the selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, 13, lineIndexOf(screen, tagPaneTitle))
 	})
 }
 
@@ -520,7 +668,7 @@ func TestScreen_sortOrder(t *testing.T) {
 		screen.Press(keypress.Typed("3js")...)
 
 		assert.Equal(t, []outcome.Outcome{outcome.SortCycleAsked{
-			FolderID:  domain.FolderID{},
+			Selection: browseselection.Selection{},
 			Selecting: snippets[1].ID(),
 		}}, screen.Outcomes())
 	})
@@ -531,15 +679,15 @@ func TestScreen_sortOrder(t *testing.T) {
 		screen, sample := browsing(t)
 		screen.Press(keypress.Typed("jj")...)
 		screen.Send(mainscreen.SnippetsLoaded{
-			FolderID: sample.Go.ID(),
-			Snippets: []domain.Snippet{filedIn(t, sample.Go.ID())},
-			Order:    domain.SortOrderTitle,
+			Selection: browseselection.InFolder(sample.Go.ID()),
+			Snippets:  []domain.Snippet{filedIn(t, sample.Go.ID())},
+			Order:     domain.SortOrderTitle,
 		})
 
 		screen.Press(keypress.Typed("3s")...)
 
 		assert.Contains(t, screen.Outcomes(), outcome.SortCycleAsked{
-			FolderID:  sample.Go.ID(),
+			Selection: browseselection.InFolder(sample.Go.ID()),
 			Selecting: filedIn(t, sample.Go.ID()).ID(),
 		})
 	})
@@ -588,7 +736,12 @@ func TestScreen_sortOrder(t *testing.T) {
 
 		screen, sample := browsing(t)
 
-		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Order: domain.SortOrderCreated})
+		screen.Send(
+			mainscreen.SnippetsLoaded{
+				Selection: browseselection.InFolder(sample.Go.ID()),
+				Order:     domain.SortOrderCreated,
+			},
+		)
 
 		assert.Contains(t, screen.Screen(), "3 Root · by title")
 	})
@@ -746,7 +899,7 @@ func TestScreen_Received(t *testing.T) {
 		screen.Offer(outcome.SnippetRevealed{ID: filed.ID(), FolderID: sample.Go.ID()})
 		screen.Send(
 			mainscreen.SnippetsLoaded{
-				FolderID:  sample.Go.ID(),
+				Selection: browseselection.InFolder(sample.Go.ID()),
 				Snippets:  []domain.Snippet{filed},
 				Selecting: filed.ID(),
 				Order:     domain.SortOrderTitle,

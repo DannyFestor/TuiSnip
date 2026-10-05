@@ -119,6 +119,8 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 		_, err := tui.New(t.Context(), tui.Deps{
 			Lister:                NewMockFolderSnippetsLister(t),
 			TreeLister:            NewMockFolderTreeLister(t),
+			TagLister:             NewMockTagLister(t),
+			TagSnippetsLister:     NewMockTagSnippetsLister(t),
 			Copier:                NewMockSnippetCopier(t),
 			Creator:               NewMockSnippetCreator(t),
 			Searcher:              NewMockSnippetSearcher(t),

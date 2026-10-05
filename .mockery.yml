@@ -47,6 +47,10 @@ packages:
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
+      TagCreator: {}
+      TagRenamer: {}
+      TagDeletePreviewer: {}
+      TagDeleter: {}
       SortOrderSaver: {}
       CollapsedFoldersSaver: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:

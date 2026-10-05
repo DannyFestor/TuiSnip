@@ -18,6 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -70,6 +71,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.restyled(msg))
 	case FolderDeletePreviewed:
 		return s.confirmingFolderDelete(msg.Preview)
+	case TagDeletePreviewed:
+		return s.tagDeletePreviewed(msg.Preview)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
 	}
@@ -120,6 +123,10 @@ func (s Screen) loaded(msg tea.Msg) outcome.Step {
 		return s.treeChanged(msg)
 	case TagsLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withTags(msg.Tags)))
+	case TagCreated:
+		return s.tagCreated(msg)
+	case TagsChanged:
+		return s.tagsChanged(msg)
 	case SnippetsLoaded:
 		return s.snippetsLoaded(msg)
 	}
@@ -262,6 +269,38 @@ func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Ste
 	}
 
 	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, folderDeleteQuestion(preview), onYes))
+}
+
+func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {
+	onYes := outcome.TagDeleteRequested{Input: tag.DeleteInput{TagID: preview.Tag.ID()}}
+	if preview.SnippetCount == 0 {
+		return outcome.Stay(s).Passing(onYes)
+	}
+
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, tagDeleteQuestion(preview), onYes))
+}
+
+func (s Screen) tagCreated(created TagCreated) outcome.Step {
+	next := s.withPanes(s.panes.withTags(created.Tags).withTagCursorOn(created.ID)).holding(paneTags).arranged()
+
+	return outcome.Stay(next).Passing(selected(next.selection())...)
+}
+
+func (s Screen) tagsChanged(changed TagsChanged) outcome.Step {
+	next := s.withPanes(s.panes.withTags(changed.Tags).withTagCursorOn(changed.Selecting)).
+		holdingFoldersWithoutTags().
+		arranged()
+	listed, _ := next.panes.list.Selected()
+
+	return outcome.Stay(next).Passing(outcome.TagsChanged{Selection: next.selection(), Selecting: listed.ID()})
+}
+
+func (s Screen) holdingFoldersWithoutTags() Screen {
+	if _, ok := s.panes.tags.Selected(); !ok {
+		s.selectionHolder = paneFolders
+	}
+
+	return s
 }
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {

@@ -8,6 +8,7 @@ const (
 	labelNew            = "new"
 	labelCapture        = "Capture"
 	labelNewFolder      = "new Folder"
+	labelNewTag         = "new Tag"
 	labelRename         = "rename"
 	labelDelete         = "delete"
 	labelCollapse       = "collapse"
@@ -60,6 +61,9 @@ func Rows() []Row {
 		Row{Scope: ScopeFolders, Name: Rename, Label: labelRename},
 		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
+		Row{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
+		Row{Scope: ScopeTags, Name: Rename, Label: labelRename},
+		Row{Scope: ScopeTags, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
 		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},

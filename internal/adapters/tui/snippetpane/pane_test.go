@@ -263,6 +263,18 @@ func TestPane_Showing(t *testing.T) {
 		assert.Equal(t, "   1 │ line 1", trimmed(code(pane.Showing(changed)))[0])
 	})
 
+	t.Run("shows the Tags of the same Snippet after a Tag change, keeping the scroll", func(t *testing.T) {
+		t.Parallel()
+
+		pane := pressed(t, showing(t, longSnippet(t)), keypress.Letter('j'))
+		renamed := testkit.Tag(t, testkit.TagSpec{ID: testkit.NewSequentialIDs().NewTagID(), Name: "golang"})
+
+		pane = pane.Showing(snippetWith(t, testkit.SnippetSpec{Tags: []domain.Tag{renamed}}))
+
+		assert.Equal(t, "Root · Go · #golang", strings.TrimSpace(lines(pane)[1]))
+		assert.Equal(t, "   2 │ line 2", trimmed(code(pane))[0])
+	})
+
 	t.Run("shows a Snippet again after being cleared", func(t *testing.T) {
 		t.Parallel()
 

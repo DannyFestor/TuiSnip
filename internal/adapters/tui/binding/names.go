@@ -24,6 +24,7 @@ const (
 	PageDown     = "page_down"
 	PageUp       = "page_up"
 	NewFolder    = "new_folder"
+	NewTag       = "new_tag"
 	Rename       = "rename"
 	Delete       = "delete"
 	Collapse     = "collapse"

@@ -26,7 +26,7 @@ internal/
   app/
     snippet/                 Create, Update, Delete, Move, Duplicate, Capture, Copy
     folder/                  Create, Rename, Move, Delete, SetDefaultLanguage
-    tag/                     Rename (merges on a name clash), Delete
+    tag/                     Create, Rename (merges on a name clash), PreviewDelete, Delete
     browse/                  FolderTree, TagList, SnippetsInFolder, SnippetsWithTag
     search/                  Query
   adapters/
@@ -61,7 +61,7 @@ internal/
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
-      tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist
+      tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

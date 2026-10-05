@@ -70,7 +70,9 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 | Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap |
 
 - In-place entry commits with `enter` and cancels with `esc` (the `name_input` Scope). A blank name is refused. A new Folder becomes the Browse selection once it is created.
-- A new Tag whose name already exists, compared case-insensitively, is refused with "Tag go already exists". A comma is refused too.
+- A new Tag is typed on a row below the cursor, and becomes the Browse selection once it is created. A name that already exists, compared case-insensitively, is refused with "Tag go already exists", naming the existing Tag as it is spelled. A comma is refused with "Tag name contains a comma", and a blank name with "Tag name is blank". A refused name stays in the row to be fixed.
+- Renaming a Tag onto another Tag's name merges the two. The other Tag survives with the typed spelling, every Snippet that carried either Tag carries it once, and the cursor moves onto it.
+- Deleting a Tag no Snippet carries happens at once. Otherwise a confirmation asks first, default No. After a delete the cursor keeps its row. When the deleted Tag held the Browse selection, the Tag now under the cursor takes it, or the Folders take it back when no Tag is left.
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
   - A Tag: the Snippet goes to the Root and already carries the Tag, so it shows up in the list being looked at.
@@ -201,7 +203,7 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 ╰──────────────────────────────────────────╯
 ```
 
-- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right. The Tags Pane has no Bindings of its own yet, so with Tags focused help lists only the `global` ones.
+- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right.
 - Each row shows every key the user configured for the Binding, joined with `, `, then the Binding's label. A Binding with no keys is left out.
 - Help closes with its own `help` key or the `global` `back` key, `?` and `esc` by default. Every other key does nothing.
 - A terminal too small for help cuts it to fit: a column that doesn't fit is dropped, and rows past the bottom are cut off.

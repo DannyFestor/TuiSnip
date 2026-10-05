@@ -230,7 +230,7 @@ func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
 		if f.inContent {
 			f.content, cmd = f.content.Update(msg)
 		}
-	case domain.FieldFolderName:
+	case domain.FieldFolderName, domain.FieldTagName:
 	}
 
 	return f, requestNothing, cmd
@@ -269,7 +269,7 @@ func (f form) focused(field domain.Field) (form, tea.Cmd) {
 		return f, f.title.Focus()
 	case domain.FieldDescription:
 		return f, f.description.Focus()
-	case domain.FieldContent, domain.FieldLanguage, domain.FieldFolderName:
+	case domain.FieldContent, domain.FieldLanguage, domain.FieldFolderName, domain.FieldTagName:
 	}
 
 	return f, nil
@@ -351,7 +351,7 @@ func fieldLabel(field domain.Field) string {
 		return "Content"
 	case domain.FieldLanguage:
 		return "Language"
-	case domain.FieldFolderName:
+	case domain.FieldFolderName, domain.FieldTagName:
 	}
 
 	return field.String()

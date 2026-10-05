@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -32,27 +31,9 @@ func (r *FolderRepository) Insert(ctx context.Context, folder domain.Folder) err
 }
 
 func (r *FolderRepository) Find(ctx context.Context, id domain.FolderID) (domain.Folder, error) {
-	var row sqlcgen.Folder
+	get := func(queries *sqlcgen.Queries) (sqlcgen.Folder, error) { return queries.GetFolder(ctx, columnID(id)) }
 
-	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
-		var getErr error
-
-		row, getErr = queries.GetFolder(ctx, columnID(id))
-		if errors.Is(getErr, sql.ErrNoRows) {
-			return domain.ErrNotFound
-		}
-
-		if getErr != nil {
-			return fmt.Errorf("get folder: %w", getErr)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return domain.Folder{}, fmt.Errorf("sqlite.FolderRepository.Find: %w", err)
-	}
-
-	folder, err := r.rebuild(ctx, row, slog.LevelError)
+	folder, err := findRebuilt(ctx, r.db, get, r.rebuild)
 	if err != nil {
 		return domain.Folder{}, fmt.Errorf("sqlite.FolderRepository.Find: %w", err)
 	}
@@ -101,7 +82,7 @@ func (r *FolderRepository) Delete(ctx context.Context, id domain.FolderID) error
 }
 
 func (r *FolderRepository) CountSubfolders(ctx context.Context, id domain.FolderID) (int, error) {
-	count, err := r.count(ctx, func(queries *sqlcgen.Queries) (int64, error) {
+	count, err := readCount(ctx, r.db, func(queries *sqlcgen.Queries) (int64, error) {
 		return queries.CountSubfolders(ctx, columnID(id))
 	})
 	if err != nil {
@@ -112,7 +93,7 @@ func (r *FolderRepository) CountSubfolders(ctx context.Context, id domain.Folder
 }
 
 func (r *FolderRepository) CountSnippetsInSubtree(ctx context.Context, id domain.FolderID) (int, error) {
-	count, err := r.count(ctx, func(queries *sqlcgen.Queries) (int64, error) {
+	count, err := readCount(ctx, r.db, func(queries *sqlcgen.Queries) (int64, error) {
 		return queries.CountSnippetsInSubtree(ctx, columnID(id))
 	})
 	if err != nil {
@@ -140,26 +121,6 @@ func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
 	}
 
 	return r.rebuildAll(ctx, rows), nil
-}
-
-func (r *FolderRepository) count(
-	ctx context.Context,
-	query func(queries *sqlcgen.Queries) (int64, error),
-) (int, error) {
-	var count int64
-
-	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
-		var countErr error
-
-		count, countErr = query(queries)
-		if countErr != nil {
-			return fmt.Errorf("count: %w", countErr)
-		}
-
-		return nil
-	})
-
-	return int(count), err
 }
 
 func (r *FolderRepository) rebuildAll(ctx context.Context, rows []sqlcgen.Folder) []domain.Folder {

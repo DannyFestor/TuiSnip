@@ -42,6 +42,18 @@ func (t Tag) UpdatedAt() time.Time {
 	return t.updatedAt
 }
 
+func (t Tag) Rename(name value.TagName, now time.Time) (Tag, error) {
+	err := requireTimestamps(t.createdAt, now)
+	if err != nil {
+		return Tag{}, fmt.Errorf("domain.Tag.Rename: %w", err)
+	}
+
+	t.name = name
+	t.updatedAt = now
+
+	return t, nil
+}
+
 func CompareTags(a, b Tag) int {
 	return cmp.Or(strings.Compare(a.name.Key(), b.name.Key()), a.id.Compare(b.id))
 }

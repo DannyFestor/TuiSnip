@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 type queryFunc func(queries *sqlcgen.Queries) error
@@ -38,6 +40,49 @@ func readRows[R any](
 	})
 
 	return rows, err
+}
+
+func readOne[R any](ctx context.Context, db *sql.DB, query func(queries *sqlcgen.Queries) (R, error)) (R, error) {
+	var row R
+
+	err := inReadTransaction(ctx, db, func(queries *sqlcgen.Queries) error {
+		var queryErr error
+
+		row, queryErr = query(queries)
+		if errors.Is(queryErr, sql.ErrNoRows) {
+			return domain.ErrNotFound
+		}
+
+		if queryErr != nil {
+			return fmt.Errorf("read row: %w", queryErr)
+		}
+
+		return nil
+	})
+
+	return row, err
+}
+
+func findRebuilt[R, E any](
+	ctx context.Context,
+	db *sql.DB,
+	get func(queries *sqlcgen.Queries) (R, error),
+	rebuild func(ctx context.Context, row R, corruptLevel slog.Level) (E, error),
+) (E, error) {
+	row, err := readOne(ctx, db, get)
+	if err != nil {
+		var none E
+
+		return none, err
+	}
+
+	return rebuild(ctx, row, slog.LevelError)
+}
+
+func readCount(ctx context.Context, db *sql.DB, query func(queries *sqlcgen.Queries) (int64, error)) (int, error) {
+	count, err := readOne(ctx, db, query)
+
+	return int(count), err
 }
 
 func inTransaction(ctx context.Context, db *sql.DB, options *sql.TxOptions, run queryFunc) error {

@@ -6,6 +6,25 @@ VALUES (?, ?, ?, ?, ?);
 SELECT id, name, name_key, created_at, updated_at
 FROM tags;
 
+-- name: GetTag :one
+SELECT id, name, name_key, created_at, updated_at
+FROM tags
+WHERE id = ?;
+
+-- name: ListOtherTagsWithNameKey :many
+SELECT id, name, name_key, created_at, updated_at
+FROM tags
+WHERE name_key = sqlc.arg(name_key) AND id <> sqlc.arg(id);
+
+-- name: UpdateTag :execrows
+UPDATE tags
+SET name = ?, name_key = ?, updated_at = ?
+WHERE id = ?;
+
+-- name: DeleteTag :execrows
+DELETE FROM tags
+WHERE id = ?;
+
 -- name: ListSnippetTags :many
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag

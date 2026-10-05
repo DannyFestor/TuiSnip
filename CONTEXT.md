@@ -62,6 +62,10 @@ _Avoid_: Explore, navigate
 How Browse lists Snippets: by title ignoring case, by last updated, or by creation date, the dates newest first. A key cycles through the three, and TuiSnip remembers the choice between runs.
 _Avoid_: Sorting, sort mode, ordering
 
+**Collapsed Folder**:
+A Folder whose subtree is hidden in the Folders Pane, so only the Folder itself shows. A key collapses or expands it, and TuiSnip remembers collapsed Folders between runs.
+_Avoid_: Closed folder, folded folder, hidden folder
+
 **Capture**:
 Creating a new Snippet from the clipboard's current content.
 _Avoid_: Import, paste, grab

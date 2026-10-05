@@ -118,7 +118,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
 		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed:
-		return m.overlaysUpdated(msg)
+		return m.overlaysUpdatedSharingTree(msg)
 	case folderTreeChangedMsg:
 		return m, m.loadTreeSelecting(msg.selecting)
 	case folderRenamedMsg:
@@ -181,6 +181,34 @@ func (m Model) pressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	}
 
 	return m.overlaysUpdated(msg)
+}
+
+func (m Model) overlaysUpdatedSharingTree(msg tea.Msg) (Model, tea.Cmd) {
+	tree, ok := arrivedTree(msg)
+	if !ok {
+		return m.overlaysUpdated(msg)
+	}
+
+	return m.treeArrived(msg, tree)
+}
+
+func arrivedTree(msg tea.Msg) (browse.Tree, bool) {
+	switch msg := msg.(type) {
+	case mainscreen.TreeLoaded:
+		return msg.Tree, true
+	case mainscreen.TreeChanged:
+		return msg.Tree, true
+	}
+
+	return browse.Tree{}, false
+}
+
+// The Search popup can't import mainscreen, so it hears about the tree through its own message.
+func (m Model) treeArrived(msg tea.Msg, tree browse.Tree) (Model, tea.Cmd) {
+	screenUpdated, screenCmd := m.overlaysUpdated(msg)
+	popupUpdated, popupCmd := screenUpdated.overlaysUpdated(searchpopup.TreeLoaded{Tree: tree})
+
+	return popupUpdated, tea.Batch(screenCmd, popupCmd)
 }
 
 func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {

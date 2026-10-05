@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
@@ -54,7 +55,7 @@ func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listin
 		styles:  styles,
 		query:   input.NewLine(searchPrompt),
 		browse:  listing.Snippets,
-		results: snippetlist.New(keys, styles, listing.shortPath).WithSnippets(listing.Snippets),
+		results: snippetlist.New(keys, styles, shortPathIn(listing.Paths)).WithSnippets(listing.Snippets),
 		preview: preview.WithPaths(listing.Paths),
 		outer:   look.Size{Width: 0, Height: 0},
 	}
@@ -75,6 +76,8 @@ func (p Popup) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.withBackground(msg))
 	case HitsFound:
 		return outcome.Stay(p.withHits(msg.Text, msg.Hits))
+	case TreeLoaded:
+		return outcome.Stay(p.withPaths(folderpath.New(msg.Tree)))
 	}
 
 	return outcome.Stay(p)
@@ -138,6 +141,13 @@ func (p Popup) withHits(text string, hits []domain.SearchHit) Popup {
 	}
 
 	return p.listing(snippets)
+}
+
+func (p Popup) withPaths(paths folderpath.Paths) Popup {
+	p.results = p.results.WithMeta(shortPathIn(paths))
+	p.preview = p.preview.WithPaths(paths)
+
+	return p
 }
 
 func (p Popup) withBackground(msg tea.BackgroundColorMsg) Popup {

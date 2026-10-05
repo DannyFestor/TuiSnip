@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
@@ -38,6 +39,18 @@ func TestPopup_View(t *testing.T) {
 		t.Parallel()
 
 		screen, _ := searchingInFolder(t)
+
+		assert.Regexp(t, `Table test skeleton +go / testing`, screen.Screen())
+		assert.Contains(t, screen.Screen(), "Root / go / testing · plaintext")
+	})
+
+	t.Run("shows the Folder paths once the Folder tree loads", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := searchingBeforeTreeLoads(t)
+		require.Contains(t, screen.Screen(), "Root / … · plaintext")
+
+		screen.Send(searchpopup.TreeLoaded{Tree: sample.Tree})
 
 		assert.Regexp(t, `Table test skeleton +go / testing`, screen.Screen())
 		assert.Contains(t, screen.Screen(), "Root / go / testing · plaintext")

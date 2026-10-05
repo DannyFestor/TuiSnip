@@ -194,6 +194,17 @@ func TestList_View(t *testing.T) {
 	})
 }
 
+func TestList_WithMeta(t *testing.T) {
+	t.Parallel()
+
+	list := listOf(t, numberedSnippets(t, 1))
+	list, _, _ = list.Update(look.Resized{Box: look.Size{Width: 12, Height: 1}})
+
+	list = list.WithMeta(func(domain.Snippet) string { return "Root" })
+
+	assert.Equal(t, []string{"SNIPPE… ROOT"}, rows(list))
+}
+
 func TestList_WithSnippets(t *testing.T) {
 	t.Parallel()
 

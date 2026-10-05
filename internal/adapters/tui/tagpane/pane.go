@@ -260,7 +260,7 @@ func (p Pane) highlighted() int {
 }
 
 func (p Pane) placement() placement {
-	return p.naming.placed(p.cursor.Index(), p.tags)
+	return p.naming.placed(p.cursor.Index(), p.tags, p.field.Typed())
 }
 
 func (p Pane) fieldWidth() int {

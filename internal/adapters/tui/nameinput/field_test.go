@@ -151,6 +151,24 @@ func TestField_View(t *testing.T) {
 	})
 }
 
+func TestField_Typed(t *testing.T) {
+	t.Parallel()
+
+	t.Run("holds the name it started with", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, "go", newField(t, "go").Typed())
+	})
+
+	t.Run("holds the name as typed so far", func(t *testing.T) {
+		t.Parallel()
+
+		field, _ := pressed(newField(t, "go"), append(keypress.Typed(" lang"), keypress.Special(tea.KeyBackspace))...)
+
+		assert.Equal(t, "go lan", field.Typed())
+	})
+}
+
 func TestField_ShortHelp(t *testing.T) {
 	t.Parallel()
 

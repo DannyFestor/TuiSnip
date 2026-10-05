@@ -1,6 +1,7 @@
 package tagpane_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -192,10 +193,10 @@ func TestPane_UpdateWhileNaming(t *testing.T) {
 func TestPane_ViewWhileNaming(t *testing.T) {
 	t.Parallel()
 
-	t.Run("types a new Tag on a row below the cursor", func(t *testing.T) {
+	t.Run("types a new Tag on the row where its name sorts", func(t *testing.T) {
 		t.Parallel()
 
-		pane, _ := pressed(tallPane(t, newSampleTags(t)), keypress.Letter('j'), keypress.Letter('N'))
+		pane, _ := pressed(tallPane(t, newSampleTags(t)), keypress.Letter('N'))
 		pane, _ = pressed(pane, keypress.Typed("hx")...)
 
 		lines := viewLines(pane)
@@ -204,6 +205,47 @@ func TestPane_ViewWhileNaming(t *testing.T) {
 		assert.Equal(t, "# go           4", lines[1])
 		assert.Regexp(t, `^# HX +0$`, lines[2])
 		assert.Equal(t, "# unused       0", lines[3])
+	})
+
+	sorted := []struct {
+		name      string
+		typed     string
+		wantIndex int
+	}{
+		{name: "an empty name sorts first", typed: "", wantIndex: 0},
+		{name: "a name before every Tag sorts first", typed: "awk", wantIndex: 0},
+		{name: "a name after every Tag sorts last", typed: "zsh", wantIndex: 3},
+		{name: "sorts ignoring case", typed: "Hx", wantIndex: 2},
+		{name: "sorts by the trimmed name", typed: "  zsh", wantIndex: 3},
+		{name: "sorts a name the next Tag starts with before it", typed: "unuse", wantIndex: 2},
+		{name: "sorts a name with a comma as typed", typed: "zsh,", wantIndex: 3},
+	}
+	for _, tt := range sorted {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			pane, _ := pressed(tallPane(t, newSampleTags(t)), keypress.Letter('j'), keypress.Letter('N'))
+			pane, _ = pressed(pane, keypress.Typed(tt.typed)...)
+
+			lines := viewLines(pane)
+
+			require.Len(t, lines, 4)
+			assert.Regexp(t, `0$`, lines[tt.wantIndex])
+			assert.Equal(t, strings.ToUpper(lines[tt.wantIndex]), lines[tt.wantIndex], "the cursor is on the typed row")
+		})
+	}
+
+	t.Run("moves the row as the name is typed", func(t *testing.T) {
+		t.Parallel()
+
+		pane, _ := pressed(tallPane(t, newSampleTags(t)), keypress.Letter('N'), keypress.Letter('z'))
+		pane, _ = pressed(pane, keypress.Special(tea.KeyBackspace), keypress.Letter('a'))
+
+		lines := viewLines(pane)
+
+		require.Len(t, lines, 4)
+		assert.Regexp(t, `^# A +0$`, lines[0])
+		assert.Equal(t, "# docker       3", lines[1])
 	})
 
 	t.Run("types the first Tag in place of the empty text", func(t *testing.T) {

@@ -67,3 +67,33 @@ func TestTagName_Key(t *testing.T) {
 		})
 	}
 }
+
+func TestTagNameKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "matches the key of the Tag name", raw: "  ſhell Ärger ", want: mustTagName(t, "  ſhell Ärger ").Key()},
+		{name: "keys a blank name as empty", raw: " \t", want: ""},
+		{name: "keys a name with a comma as typed", raw: " Go,Docker ", want: "GO,DOCKER"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, value.TagNameKey(tt.raw))
+		})
+	}
+}
+
+func mustTagName(t *testing.T, raw string) value.TagName {
+	t.Helper()
+
+	name, err := value.NewTagName(raw)
+	require.NoError(t, err)
+
+	return name
+}

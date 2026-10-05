@@ -22,7 +22,7 @@ const (
 )
 
 type naming interface {
-	placed(cursor int, tags []browse.TagCount) placement
+	placed(cursor int, tags []browse.TagCount, typed string) placement
 	validated(raw string) error
 	requested(name string) []outcome.Outcome
 }
@@ -47,12 +47,8 @@ type renamedTag struct {
 	snippetCount int
 }
 
-func (newTag) placed(cursor int, tags []browse.TagCount) placement {
-	if len(tags) == 0 {
-		return placement{index: 0, insert: true, meta: newTagCount}
-	}
-
-	return placement{index: cursor + 1, insert: true, meta: newTagCount}
+func (newTag) placed(_ int, tags []browse.TagCount, typed string) placement {
+	return placement{index: sortedIndex(tags, typed), insert: true, meta: newTagCount}
 }
 
 func (n newTag) validated(raw string) error {
@@ -75,7 +71,7 @@ func (newTag) requested(name string) []outcome.Outcome {
 	return []outcome.Outcome{outcome.TagCreateRequested{Input: tag.CreateInput{Name: name}}}
 }
 
-func (r renamedTag) placed(cursor int, tags []browse.TagCount) placement {
+func (r renamedTag) placed(cursor int, tags []browse.TagCount, _ string) placement {
 	return placement{index: cursor, insert: len(tags) == 0, meta: strconv.Itoa(r.snippetCount)}
 }
 
@@ -110,6 +106,19 @@ func linesOf(tags []browse.TagCount) []line {
 	}
 
 	return lines
+}
+
+func sortedIndex(tags []browse.TagCount, typed string) int {
+	key := value.TagNameKey(typed)
+
+	index := slices.IndexFunc(tags, func(counted browse.TagCount) bool {
+		return counted.Tag.Name().Key() > key
+	})
+	if index < 0 {
+		return len(tags)
+	}
+
+	return index
 }
 
 func parseName(raw string) (value.TagName, error) {

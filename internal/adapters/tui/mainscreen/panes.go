@@ -122,12 +122,22 @@ func (p panes) selectionIn(holder pane) browseselection.Selection {
 }
 
 func (p panes) destination(selection browseselection.Selection) editoverlay.Destination {
+	folderID, _ := selection.Folder()
+
+	return editoverlay.Destination{
+		Selection: selection,
+		Tags:      p.tagsFor(selection),
+		Language:  p.folders.DefaultLanguageOf(folderID),
+	}
+}
+
+func (p panes) tagsFor(selection browseselection.Selection) []domain.Tag {
 	tag, ok := p.tags.SelectedTag()
 	if _, withTag := selection.Tag(); withTag && ok {
-		return editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}}
+		return []domain.Tag{tag}
 	}
 
-	return editoverlay.Destination{Selection: selection, Tags: nil}
+	return nil
 }
 
 func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded, selection browseselection.Selection) (panes, error) {

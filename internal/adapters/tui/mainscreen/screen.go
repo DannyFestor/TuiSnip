@@ -73,7 +73,7 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
 	case Captured:
-		return s.opening(editoverlay.Capturing(s.keys, s.styles, s.destination(), msg.Content))
+		return s.captured(msg.Content)
 	}
 
 	return s.loaded(msg)
@@ -270,6 +270,14 @@ func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Ste
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
+}
+
+func (s Screen) captured(content string) outcome.Step {
+	if refusal, refused := editoverlay.CaptureRefusal(s.keys, content); refused {
+		return outcome.Stay(s.withStatus(refusal))
+	}
+
+	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.destination(), content))
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {

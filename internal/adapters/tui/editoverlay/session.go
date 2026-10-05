@@ -11,7 +11,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 const (
@@ -41,7 +40,7 @@ func Capturing(keys binding.Keys, styles look.Styles, destination Destination, c
 }
 
 func newFilledWith(keys binding.Keys, styles look.Styles, destination Destination, content string) (Session, tea.Cmd) {
-	readOnly := readOnlyIfTabbed(content, value.PlainText(), styles.CodeStyle)
+	readOnly := readOnlyIfTabbed(content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(formKeysOf(keys), entered{title: "", description: "", content: ""}, readOnly)
 
 	return newSession(keys, styles, blank.withContent(content), newSnippet{destination: destination}), cmd
@@ -150,7 +149,7 @@ func (s Session) requested(asked request) outcome.Step {
 }
 
 func (s Session) pasteRefused(refusal string) outcome.Step {
-	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusedPasteText(refusal, s.form.externalEditorKey())})
+	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusalText(refusal, s.form.externalEditorKey())})
 }
 
 func (s Session) saveStarted() outcome.Step {

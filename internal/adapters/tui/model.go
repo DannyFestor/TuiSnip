@@ -565,11 +565,12 @@ func (m Model) captureSnippet() tea.Cmd {
 }
 
 func (m Model) captureFinished(msg captureFinishedMsg) (Model, tea.Cmd) {
-	switch {
-	case msg.err == nil:
+	if msg.err == nil {
 		return m.overlaysUpdated(mainscreen.Captured{Content: msg.content})
-	case errors.Is(msg.err, domain.ErrClipboardEmpty):
-		return m.shown(clipboardEmptyText)
+	}
+
+	if refusal, refused := captureRefusalText(msg.err); refused {
+		return m.shown(refusal)
 	}
 
 	return m.failedShowing(operationCapture, msg.err, captureFailureText(msg.err))

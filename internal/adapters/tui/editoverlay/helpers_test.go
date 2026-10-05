@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
@@ -58,10 +59,16 @@ func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlay
 func capturing(t *testing.T, captured string) *overlaytest.Driver {
 	t.Helper()
 
+	return capturingIn(t, destination(), captured)
+}
+
+func capturingIn(t *testing.T, filedIn editoverlay.Destination, captured string) *overlaytest.Driver {
+	t.Helper()
+
 	opened, _ := editoverlay.Capturing(
 		testsettings.Default(t).Keys,
 		look.NewStyles(look.SchemeDark),
-		destination(),
+		filedIn,
 		captured,
 	)
 
@@ -72,6 +79,7 @@ func destination() editoverlay.Destination {
 	return editoverlay.Destination{
 		Selection: browseselection.InFolder(destinationFolderID()),
 		Tags:      nil,
+		Language:  value.PlainText(),
 	}
 }
 

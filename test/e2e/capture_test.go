@@ -3,6 +3,7 @@
 package e2e_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -50,17 +51,41 @@ func TestCaptureIntoFolder(t *testing.T) {
 	assert.Equal(t, clipboardText, listed[0].FirstFragment().Content().String())
 }
 
-func TestCaptureFromEmptyClipboardOpensNothing(t *testing.T) {
+func TestCaptureRefusalOpensNothing(t *testing.T) {
 	t.Parallel()
 
-	_, app := testapp.Start(t, testapp.RecordingTool)
-	screen := open(t, app)
-	screen.waitForFrame("1 Folders")
+	tests := []struct {
+		name      string
+		clipboard string
+		want      string
+	}{
+		{name: "an empty clipboard", clipboard: "", want: "Clipboard is empty"},
+		{
+			name:      "a clipboard over 256 KiB",
+			clipboard: strings.Repeat("c", 256<<10+1),
+			want:      "Clipboard is larger than 256 KiB",
+		},
+		{
+			name:      "a clipboard over 10,000 lines",
+			clipboard: strings.Repeat("line\n", 10_000),
+			want:      "Clipboard is longer than 10,000 lines",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	screen.press(keypress.Letter('p'))
-	screen.waitForFrame("Clipboard is empty")
+			home, app := testapp.Start(t, testapp.RecordingTool)
+			home.PutOnClipboard(t, tt.clipboard)
+			screen := open(t, app)
+			screen.waitForFrame("1 Folders")
 
-	assert.NotContains(t, screen.frame.get(), "Editing")
+			screen.press(keypress.Letter('p'))
+			screen.waitForFrame(tt.want)
+
+			assert.NotContains(t, screen.frame.get(), "Editing")
+		})
+	}
 }
 
 func TestNewSnippetForTag(t *testing.T) {

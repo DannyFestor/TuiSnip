@@ -16,18 +16,19 @@ import (
 )
 
 const (
-	overlayTitle    = "Editing"
-	unsavedMarker   = " •"
-	fieldCursor     = "› "
-	fieldIndent     = "  "
-	fieldLabelWidth = 12
-	fieldRows       = 3
-	tabCharacter    = "\t"
-	lineBreak       = "\n"
-	carriageReturn  = "\r"
-	maxContentLines = 10_000
-	entryKeysJoiner = " or "
-	entrySuffix     = " to edit"
+	overlayTitle      = "Editing"
+	unsavedMarker     = " •"
+	fieldCursor       = "› "
+	fieldIndent       = "  "
+	fieldLabelWidth   = 12
+	fieldRows         = 3
+	tabCharacter      = "\t"
+	lineBreak         = "\n"
+	carriageReturn    = "\r"
+	maxContentLines   = 10_000
+	emptyContentLines = 1
+	entryKeysJoiner   = " or "
+	entrySuffix       = " to edit"
 )
 
 type form struct {
@@ -132,7 +133,7 @@ func (f form) hints() []key.Binding {
 }
 
 func (f form) externalEditorKey() string {
-	return f.keys.content.FirstKey(binding.OpenInEditor)
+	return f.keys.externalEditorKey()
 }
 
 func (f form) view(styles look.Styles, outer look.Size) string {
@@ -215,6 +216,10 @@ func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
 
 func (f form) linesAfterPaste(pasted string) int {
 	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
+}
+
+func overflowsEmptyContent(text string) bool {
+	return emptyContentLines+lineBreaksOnInsert(text) > maxContentLines
 }
 
 // The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.

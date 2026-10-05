@@ -20,6 +20,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
@@ -923,6 +924,43 @@ func TestScreen_newSnippet(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "› Title")
 		assert.Contains(t, screen.Screen(), strings.TrimSpace(capturedText))
 	})
+
+	t.Run("captured content over 10,000 lines is refused on the status line and opens nothing", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.Captured{Content: strings.Repeat("line\n", 10_000)})
+
+		assert.Contains(t, statusLine(screen), "Clipboard is longer than 10,000 lines; use ctrl+e to edit in $EDITOR")
+		assert.NotContains(t, screen.Screen(), "Editing")
+	})
+
+	t.Run("captured content with tabs is highlighted in the selected Folder's Default Language", func(t *testing.T) {
+		t.Parallel()
+
+		inGo := capturedInFolderOf(t, "Go")
+		inPlainText := capturedInFolderOf(t, value.PlainText().String())
+
+		assert.Contains(t, inGo.Screen(), "Contains tabs")
+		assert.Equal(t, inPlainText.Screen(), inGo.Screen())
+		assert.NotEqual(t, inPlainText.StyledScreen(), inGo.StyledScreen())
+	})
+}
+
+func capturedInFolderOf(t *testing.T, defaultLanguage string) *overlaytest.Driver {
+	t.Helper()
+
+	filing := testkit.Folder(t, testkit.FolderSpec{Name: "go", DefaultLanguage: defaultLanguage})
+	screen := showing(t, wide())
+	screen.Send(mainscreen.TreeLoaded{Tree: browse.Tree{
+		RootSnippetCount: 0,
+		Folders:          []browse.FolderNode{{Folder: filing, SnippetCount: 0, Children: nil}},
+	}})
+	screen.Press(keypress.Letter('j'))
+	screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
+
+	return screen
 }
 
 type createdFor func(content string) snippet.CreateInput

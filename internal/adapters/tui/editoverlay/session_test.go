@@ -195,7 +195,7 @@ func TestSession_save(t *testing.T) {
 		opened, _ := editoverlay.New(
 			testsettings.Default(t).Keys,
 			look.NewStyles(look.SchemeDark),
-			editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}},
+			editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}, Language: value.PlainText()},
 		)
 		screen := overlaytest.Open(t, screenSize(), opened)
 		saved := savedSnippet(t)

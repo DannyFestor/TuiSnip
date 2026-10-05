@@ -6,3 +6,7 @@ type formKeys struct {
 	fields  binding.Set
 	content binding.Set
 }
+
+func (k formKeys) externalEditorKey() string {
+	return k.content.FirstKey(binding.OpenInEditor)
+}

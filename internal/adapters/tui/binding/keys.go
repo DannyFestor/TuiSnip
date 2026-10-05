@@ -1,23 +1,46 @@
 package binding
 
-import "charm.land/bubbles/v2/key"
+import (
+	"strings"
+
+	"charm.land/bubbles/v2/key"
+)
+
+const listedKeySeparator = ", "
 
 type Keys map[Scope]map[string][]string
 
 func (k Keys) For(scope Scope) Set {
 	bound := make(map[string]key.Binding)
 
+	var listed []key.Binding
+
 	for _, row := range Rows() {
 		if row.Scope == scope {
-			bound[row.Name] = k.resolved(rowRef{scope: row.Scope, name: row.Name}, row.Label)
+			ref := rowRef{scope: row.Scope, name: row.Name}
+			bound[row.Name] = k.resolved(ref, row.Label)
+			listed = append(listed, k.listed(ref, row.Label))
 		}
 	}
 
-	return Set{bound: bound, hints: k.resolvedHints(statusHintList(scope))}
+	return Set{bound: bound, hints: k.resolvedHints(statusHintList(scope)), listed: listed}
 }
 
 func (k Keys) EmptyListHints() []key.Binding {
 	return k.resolvedHints(emptyListHintList())
+}
+
+func (k Keys) HelpOverlayHints() []key.Binding {
+	return k.resolvedHints(helpOverlayHintList())
+}
+
+func (k Keys) listed(ref rowRef, label string) key.Binding {
+	listed := k.resolved(ref, label)
+	if listed.Enabled() {
+		listed.SetHelp(strings.Join(listed.Keys(), listedKeySeparator), label)
+	}
+
+	return listed
 }
 
 func (k Keys) resolvedHints(hints []labelledRef) []key.Binding {

@@ -3,10 +3,12 @@ package editoverlay_test
 import (
 	"errors"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -53,12 +55,57 @@ func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlay
 	return overlaytest.Open(t, screenSize(), opened)
 }
 
+func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
+	return editingStoredWith(t, testsettings.Default(t).Keys, stored)
+}
+
+func editingStoredWith(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.Editing(
+		keys,
+		look.NewStyles(look.SchemeDark),
+		editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+	)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func browsed() browseselection.Selection {
+	return browseselection.WithTag(testkit.NewSequentialIDs().NewTagID())
+}
+
+func storedSnippet(t *testing.T, content string) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:          ids.NewSnippetID(),
+		Title:       "Prune",
+		Description: "Reclaim",
+		FolderID:    ids.NewFolderID(),
+		Fragment:    testkit.FragmentSpec{Language: "Go", Content: content},
+		UpdatedAt:   time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
+	})
+}
+
 func enterContent() []tea.KeyPressMsg {
 	return []tea.KeyPressMsg{
 		keypress.Special(tea.KeyDown),
 		keypress.Special(tea.KeyDown),
 		keypress.Special(tea.KeyEnter),
 	}
+}
+
+func shiftTab() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+}
+
+func shiftUp() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
 }
 
 func save() tea.KeyPressMsg {

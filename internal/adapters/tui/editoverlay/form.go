@@ -12,7 +12,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
-	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -24,6 +23,9 @@ const (
 	fieldLabelWidth = 12
 	fieldRows       = 3
 	tabCharacter    = "\t"
+	lineBreak       = "\n"
+	carriageReturn  = "\r"
+	maxContentLines = 10_000
 	entryKeysJoiner = " or "
 	entrySuffix     = " to edit"
 )
@@ -33,23 +35,33 @@ type form struct {
 	title       textinput.Model
 	description textinput.Model
 	content     textarea.Model
+	readOnly    readOnlyContent
+	original    entered
 	field       domain.Field
 	inContent   bool
 	invalid     []domain.Field
 }
 
-func newForm(keys formKeys) (form, tea.Cmd) {
-	entered := form{
+func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, tea.Cmd) {
+	filled := form{
 		keys:        keys,
 		title:       input.NewLine(""),
 		description: input.NewLine(""),
 		content:     input.NewContentArea(),
+		readOnly:    readOnly,
+		original:    original,
 		field:       domain.FieldTitle,
 		inContent:   false,
 		invalid:     nil,
 	}
+	filled.title.SetValue(original.title)
+	filled.description.SetValue(original.description)
 
-	return entered.focused(domain.FieldTitle)
+	if !readOnly.held {
+		filled.content.SetValue(original.content)
+	}
+
+	return filled.focused(domain.FieldTitle)
 }
 
 func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
@@ -89,15 +101,16 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 }
 
 func (f form) changed() bool {
-	return f.title.Value() != "" || f.description.Value() != "" || f.content.Value() != ""
+	return f.entered() != f.original
 }
 
-func (f form) input() snippet.CreateInput {
-	return snippet.CreateInput{
-		Title:       f.title.Value(),
-		Description: f.description.Value(),
-		Content:     f.content.Value(),
+func (f form) entered() entered {
+	content := f.content.Value()
+	if f.readOnly.held {
+		content = f.original.content
 	}
+
+	return entered{title: f.title.Value(), description: f.description.Value(), content: content}
 }
 
 func (f form) hints() []key.Binding {
@@ -117,10 +130,18 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
 		f.fieldLine(styles, domain.FieldContent, f.contentEntryHint(styles)),
-		f.content.View(),
+		f.contentView(),
 	}
 
 	return look.Frame(styles.Focused, f.frameTitle(), strings.Join(lines, "\n"), outer)
+}
+
+func (f form) contentView() string {
+	if f.readOnly.held {
+		return f.readOnly.highlighted
+	}
+
+	return f.content.View()
 }
 
 func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
@@ -146,6 +167,16 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case f.keys.content.Matches(msg, binding.Leave):
 		return f.leftContent(), requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Indent):
+		f.content = indentedLine(f.content)
+
+		return f, requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Dedent):
+		var cmd tea.Cmd
+
+		f.content, cmd = dedentedLine(f.content)
+
+		return f, requestNothing, cmd
 	case f.leavesContentUpward(msg):
 		return f.steppedBack()
 	}
@@ -158,11 +189,27 @@ func (f form) leavesContentUpward(msg tea.KeyPressMsg) bool {
 }
 
 func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
-	if f.inContent && strings.Contains(msg.Content, tabCharacter) {
-		return f, requestRefusePaste, nil
+	if !f.inContent {
+		return f.typed(msg)
+	}
+
+	switch {
+	case strings.Contains(msg.Content, tabCharacter):
+		return f, requestRefusePasteWithTabs, nil
+	case f.linesAfterPaste(msg.Content) > maxContentLines:
+		return f, requestRefuseOverlongPaste, nil
 	}
 
 	return f.typed(msg)
+}
+
+func (f form) linesAfterPaste(pasted string) int {
+	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
+}
+
+// The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.
+func lineBreaksOnInsert(text string) int {
+	return strings.Count(text, lineBreak) + strings.Count(text, carriageReturn)
 }
 
 func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
@@ -185,6 +232,10 @@ func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
 
 func (f form) advanced() (form, request, tea.Cmd) {
 	if f.field == domain.FieldContent {
+		if f.readOnly.held {
+			return f, requestNothing, nil
+		}
+
 		next, cmd := f.enteredContent()
 
 		return next, requestNothing, cmd
@@ -255,6 +306,10 @@ func (f form) fieldLine(styles look.Styles, field domain.Field, entered string) 
 }
 
 func (f form) contentEntryHint(styles look.Styles) string {
+	if f.readOnly.held {
+		return styles.Dim.Render(readOnlyText(f.externalEditorKey()))
+	}
+
 	if f.inContent {
 		return ""
 	}

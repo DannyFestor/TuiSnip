@@ -140,6 +140,36 @@ func TestModel_folderDelete(t *testing.T) {
 		assert.NotContains(t, screen.screen(), "  testing")
 	})
 
+	t.Run("recounts the Tags once the Folder is gone", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		previewer := NewMockFolderDeletePreviewer(t)
+		previewer.EXPECT().Run(mock.Anything, mock.Anything).
+			Return(folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 0, SnippetCount: 3}, nil)
+
+		deleter := NewMockFolderDeleter(t)
+		deleter.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
+
+		counted := sampleTagCounts(t)[0]
+		emptied := counted
+		emptied.SnippetCount = 0
+		tags := NewMockTagLister(t)
+		tags.EXPECT().Run(mock.Anything, browse.TagListInput{}).Return([]browse.TagCount{counted}, nil).Once()
+		tags.EXPECT().Run(mock.Anything, browse.TagListInput{}).Return([]browse.TagCount{emptied}, nil).Once()
+
+		lister := listerOf(t)
+		listingIn(lister, sample.Docker.ID())
+		screen := start(t, folderModel(t, folderActions{
+			lister: lister, trees: treesOf(t, sample.Tree, sample.Tree), previewer: previewer, deleter: deleter,
+			tags: tags,
+		}), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('j'), keypress.Letter('d'), keypress.Letter('y'))
+
+		assert.Regexp(t, `# docker +0`, screen.screen())
+	})
+
 	t.Run("reports a failed preview without asking", func(t *testing.T) {
 		t.Parallel()
 
@@ -189,6 +219,7 @@ type folderActions struct {
 	renamer   tui.FolderRenamer
 	previewer tui.FolderDeletePreviewer
 	deleter   tui.FolderDeleter
+	tags      tui.TagLister
 }
 
 func folderModel(t *testing.T, with folderActions) tui.Model {
@@ -197,6 +228,7 @@ func folderModel(t *testing.T, with folderActions) tui.Model {
 	return modelWith(t, actions{
 		lister:                with.lister,
 		treeLister:            with.trees,
+		tagLister:             with.tags,
 		copier:                NewMockSnippetCopier(t),
 		creator:               NewMockSnippetCreator(t),
 		searcher:              NewMockSnippetSearcher(t),

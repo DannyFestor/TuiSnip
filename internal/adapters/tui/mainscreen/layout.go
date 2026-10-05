@@ -31,11 +31,11 @@ type layout struct {
 }
 
 func arrange(screen look.Size, focus, tallLeft pane) layout {
-	panes := look.Size{Width: screen.Width, Height: max(0, screen.Height-statusLineHeight)}
-	if screen.Width < minimumWidth || screen.Height < minimumHeight {
-		return singlePane(panes)
+	if tooSmall(screen) {
+		return singlePane(screen)
 	}
 
+	panes := paneArea(screen)
 	widths := columnWidths(panes.Width, focus)
 	tall := panes.Height * tallShareNumerator / tallShareDenominator
 	folderHeight, tagHeight := panes.Height-tall, tall
@@ -53,8 +53,18 @@ func arrange(screen look.Size, focus, tallLeft pane) layout {
 	}
 }
 
-func singlePane(panes look.Size) layout {
+func tooSmall(screen look.Size) bool {
+	return screen.Width < minimumWidth || screen.Height < minimumHeight
+}
+
+func singlePane(screen look.Size) layout {
+	panes := paneArea(screen)
+
 	return layout{single: true, folders: panes, tags: panes, list: panes, snippet: panes}
+}
+
+func paneArea(screen look.Size) look.Size {
+	return look.Size{Width: screen.Width, Height: max(0, screen.Height-statusLineHeight)}
 }
 
 func columnWidths(width int, focus pane) columns {

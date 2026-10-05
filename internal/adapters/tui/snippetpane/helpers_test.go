@@ -21,6 +21,7 @@ const (
 	codeLines   = 3
 	headerLines = 4
 	lineCount   = 10
+	longLine    = "docker system prune --all"
 )
 
 func created() time.Time {
@@ -56,10 +57,22 @@ func snippetWith(t *testing.T, spec testkit.SnippetSpec) domain.Snippet {
 		lines = append(lines, "line "+strconv.Itoa(number))
 	}
 
+	return snippetWithContent(t, spec, strings.Join(lines, "\n"))
+}
+
+func snippetOf(t *testing.T, content string) domain.Snippet {
+	t.Helper()
+
+	return snippetWithContent(t, testkit.SnippetSpec{}, content)
+}
+
+func snippetWithContent(t *testing.T, spec testkit.SnippetSpec, content string) domain.Snippet {
+	t.Helper()
+
 	ids := testkit.NewSequentialIDs()
 	spec.ID = ids.NewSnippetID()
 	spec.Title = "Long"
-	spec.Fragment = testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go", Content: strings.Join(lines, "\n")}
+	spec.Fragment = testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go", Content: content}
 	spec.CreatedAt = created()
 
 	return testkit.Snippet(t, spec)

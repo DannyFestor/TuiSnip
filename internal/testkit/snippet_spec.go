@@ -23,6 +23,7 @@ type SnippetSpec struct {
 	Description string
 	FolderID    domain.FolderID
 	Fragment    FragmentSpec
+	Tags        []domain.Tag
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -43,6 +44,7 @@ func Snippet(tb testing.TB, spec SnippetSpec) domain.Snippet {
 		description,
 		spec.FolderID,
 		[]domain.Fragment{Fragment(tb, spec.Fragment)},
+		spec.Tags,
 		createdAt,
 		cmp.Or(spec.UpdatedAt, createdAt),
 	)

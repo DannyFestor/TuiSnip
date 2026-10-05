@@ -17,6 +17,7 @@ type Snippet struct {
 	description value.Description
 	folderID    FolderID
 	fragments   []Fragment
+	tags        []Tag
 	createdAt   time.Time
 	updatedAt   time.Time
 }
@@ -27,6 +28,7 @@ func NewSnippet(
 	description value.Description,
 	folderID FolderID,
 	fragments []Fragment,
+	tags []Tag,
 	createdAt, updatedAt time.Time,
 ) (Snippet, error) {
 	err := errors.Join(requireID(id), requireOneFragment(fragments), requireTimestamps(createdAt, updatedAt))
@@ -40,6 +42,7 @@ func NewSnippet(
 		description: description,
 		folderID:    folderID,
 		fragments:   slices.Clone(fragments),
+		tags:        slices.SortedFunc(slices.Values(tags), CompareTags),
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}, nil
@@ -73,12 +76,37 @@ func (s Snippet) FirstFragment() Fragment {
 	return s.fragments[0]
 }
 
+func (s Snippet) Tags() []Tag {
+	return slices.Clone(s.tags)
+}
+
 func (s Snippet) CreatedAt() time.Time {
 	return s.createdAt
 }
 
 func (s Snippet) UpdatedAt() time.Time {
 	return s.updatedAt
+}
+
+func (s Snippet) Edit(
+	title value.Title, description value.Description, content value.Content, now time.Time,
+) (Snippet, error) {
+	err := requireTimestamps(s.createdAt, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
+	}
+
+	fragment, err := s.FirstFragment().WithContent(content, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
+	}
+
+	s.title = title
+	s.description = description
+	s.fragments = []Fragment{fragment}
+	s.updatedAt = now
+
+	return s, nil
 }
 
 func requireOneFragment(fragments []Fragment) error {

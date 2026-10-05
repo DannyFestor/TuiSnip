@@ -3,7 +3,6 @@ package snippetlist_test
 import (
 	"testing"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -294,5 +293,5 @@ func TestList_ShortHelp(t *testing.T) {
 	list := listOf(t, nil)
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetList).ShortHelp(), list.ShortHelp())
-	assert.Equal(t, [][]key.Binding{list.ShortHelp()}, list.FullHelp())
+	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetList).FullHelp(), list.FullHelp())
 }

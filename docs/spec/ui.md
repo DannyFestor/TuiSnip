@@ -74,6 +74,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
   - A Tag: the Snippet goes to the Root and already carries the Tag, so it shows up in the list being looked at.
+- `w` wraps long lines in the Snippet pane, and pressing it again cuts them off at the Pane's edge. A wrapped line keeps its number on its first row, and each continuation row shows `↪` in the line-number gutter, so the gutter keeps its width and the `│` separator lines up.
 
 ## Search popup
 
@@ -120,8 +121,12 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **Inside Content:**
   - `esc` leaves the textarea but keeps the overlay open, and a second `esc` cancels.
   - `↑` on the first line moves to Language.
-  - `tab` indents and `shift+tab` removes one indent level from the cursor's line.
+  - `tab` indents and `shift+tab` removes one indent level from the cursor's line. An indent level is four spaces. `shift+tab` on a line with fewer leading spaces removes those, and the cursor stays on the same character.
+  - **A paste that would make Content longer than 10,000 lines** isn't inserted, because the textarea would cut it at 10,000 lines. The count is the lines Content would have after the paste: its current lines, minus the line breaks in a selection the paste replaces, plus the line breaks in the paste, since the paste's first line joins the cursor's line. The textarea turns every carriage return into a line break, so each `\r` counts as one, and a `\r\n` line ending counts as two. A paste that brings Content to exactly 10,000 lines goes in. The status line says "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Paste would make Content longer than 10,000 lines".
 - `ctrl+s` saves, closes the overlay, selects the Snippet in the list, and shows it in the Snippet pane. `esc` outside Content cancels, asking [y/N] first if anything changed.
+- **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
+  - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
+  - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
 - `ctrl+e` opens the Fragment in the external editor from any field.
 
 ### Content with tabs
@@ -129,7 +134,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
 
 - **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
-- **The tab key in editable content** inserts four spaces. That is the textarea's own behaviour and is visible, so nothing is silently changed.
+- **The tab key in editable content** indents the cursor's line with four spaces. That is visible, so nothing is silently changed.
 - **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
 - **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.
 
@@ -162,8 +167,64 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 
 - The **Language picker** shows the curated `languages` list when config sets one, and `ctrl+a` switches to every Language and back.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
-- **Confirmations** (default No) and **help** (`?`) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. Help lists the Bindings active where it was opened.
+- **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
+
+## Help
+
+`?` (`help`) opens help centred over the main screen. It opens from the main screen only: with all four Panes showing, with a Pane zoomed, and below 80×24. While an overlay is open or a Folder or Tag name is typed in place, the key belongs to that Scope, so `?` types a `?` into a text field and does nothing elsewhere.
+
+```
+╭ Help ────────────────────────────────────╮
+│q              quit                 y Copy│
+│?              help                 e edit│
+│/              search               s sort│
+│z              zoom                       │
+│n              new                        │
+│p              Capture                    │
+│tab            next Pane                  │
+│shift+tab      previous Pane              │
+│l, right       Pane to the right          │
+│h, left        Pane to the left           │
+│1              Folders                    │
+│2              Tags                       │
+│3              Snippet list               │
+│4              Snippet pane               │
+│enter          open                       │
+│esc            back                       │
+│j, down        down                       │
+│k, up          up                         │
+│g, home        first row                  │
+│G, end         last row                   │
+│pgdown, ctrl+d page down                  │
+│pgup, ctrl+u   page up                    │
+╰──────────────────────────────────────────╯
+```
+
+- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right. The Tags Pane has no Bindings of its own yet, so with Tags focused help lists only the `global` ones.
+- Each row shows every key the user configured for the Binding, joined with `, `, then the Binding's label. A Binding with no keys is left out.
+- Help closes with its own `help` key or the `global` `back` key, `?` and `esc` by default. Every other key does nothing.
+- A terminal too small for help cuts it to fit: a column that doesn't fit is dropped, and rows past the bottom are cut off.
+
+Labels are fixed. The `global` Bindings are labelled:
+
+| Binding | Label |
+|---|---|
+| `quit` | quit |
+| `help` | help |
+| `search` | search |
+| `zoom` | zoom |
+| `new_snippet` | new |
+| `capture` | Capture |
+| `focus_next` / `focus_prev` | next Pane / previous Pane |
+| `focus_right` / `focus_left` | Pane to the right / Pane to the left |
+| `focus_folders` `focus_tags` `focus_list` `focus_snippet` | Folders, Tags, Snippet list, Snippet pane |
+| `open` / `back` | open / back |
+| `down` / `up` | down / up |
+| `top` / `bottom` | first row / last row |
+| `page_down` / `page_up` | page down / page up |
+
+A pane Scope's Bindings carry the labels the [Status hint](#status-hint) gives them, and `collapse` is labelled collapse.
 
 ## Status hint
 
@@ -181,6 +242,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `picker` | move · pick · close |
 | `name_input` | save · cancel |
 | `confirm` | yes · no |
+| help (no Scope) | close · close, naming the first `help` key and the first `back` key: `? close · esc close` by default |
 
 ## Mouse
 

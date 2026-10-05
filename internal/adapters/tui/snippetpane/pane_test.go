@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -72,6 +72,20 @@ func TestPane_View(t *testing.T) {
 			Showing(snippetWith(t, testkit.SnippetSpec{FolderID: sample.Tests.ID()}))
 
 		assert.Equal(t, "Root / go / testing · Go", strings.TrimSpace(lines(pane)[1]))
+	})
+
+	t.Run("shows the Tags the Snippet carries after its Language", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		tags := []domain.Tag{
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"}),
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "http server"}),
+		}
+
+		pane := showing(t, snippetWith(t, testkit.SnippetSpec{Tags: tags}))
+
+		assert.Equal(t, "Root · Go · #go #http server", strings.TrimSpace(lines(pane)[1]))
 	})
 
 	t.Run("shows the dates in the configured location", func(t *testing.T) {
@@ -153,6 +167,35 @@ func TestPane_Update(t *testing.T) {
 		assert.Empty(t, outcomes)
 	})
 
+	t.Run("cuts a long line off without wrapping", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, snippetOf(t, longLine))
+
+		assert.Equal(t, []string{"   1 │ docker system pru"}, trimmed(code(pane))[:1])
+	})
+
+	t.Run("w wraps a long line under a continuation marker", func(t *testing.T) {
+		t.Parallel()
+
+		pane := pressed(t, showing(t, snippetOf(t, longLine)), keypress.Letter('w'))
+
+		assert.Equal(t, []string{
+			"   1 │ docker system pru",
+			"   ↪ │ ne --all",
+		}, trimmed(code(pane))[:2])
+	})
+
+	t.Run("w again stops wrapping", func(t *testing.T) {
+		t.Parallel()
+
+		unwrapped := showing(t, snippetOf(t, longLine))
+
+		pane := pressed(t, unwrapped, keypress.Letter('w'), keypress.Letter('w'))
+
+		assert.Equal(t, code(unwrapped), code(pane))
+	})
+
 	t.Run("redraws the shown Snippet in the new Styles", func(t *testing.T) {
 		t.Parallel()
 
@@ -224,5 +267,5 @@ func TestPane_ShortHelp(t *testing.T) {
 	pane := paneIn(t, time.UTC, look.Size{Width: boxWidth, Height: headerLines})
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetPane).ShortHelp(), pane.ShortHelp())
-	assert.Equal(t, [][]key.Binding{pane.ShortHelp()}, pane.FullHelp())
+	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetPane).FullHelp(), pane.FullHelp())
 }

@@ -49,12 +49,10 @@ func (p pane) left(selectionHolder pane) pane {
 
 func (p pane) drillIn(pane) pane {
 	switch p {
-	case paneFolders:
+	case paneFolders, paneTags:
 		return paneList
 	case paneList, paneSnippet:
 		return paneSnippet
-	case paneTags:
-		return paneTags
 	}
 
 	return p

@@ -1,6 +1,7 @@
 package binding_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,24 @@ func TestRows(t *testing.T) {
 			declared := binding.Row{Scope: row.Scope, Name: row.Name, Label: ""}
 			assert.False(t, seen[declared], "%s.%s", row.Scope, row.Name)
 			seen[declared] = true
+		}
+	})
+
+	t.Run("every row help can list has a label", func(t *testing.T) {
+		t.Parallel()
+
+		listable := []binding.Scope{
+			binding.ScopeGlobal,
+			binding.ScopeFolders,
+			binding.ScopeTags,
+			binding.ScopeSnippetList,
+			binding.ScopeSnippetPane,
+		}
+
+		for _, row := range binding.Rows() {
+			if slices.Contains(listable, row.Scope) {
+				assert.NotEmpty(t, row.Label, "%s.%s", row.Scope, row.Name)
+			}
 		}
 	})
 

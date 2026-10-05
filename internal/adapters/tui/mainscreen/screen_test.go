@@ -18,6 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -1178,6 +1179,43 @@ func TestScreen_help(t *testing.T) {
 		screen.Press(keypress.Letter('?'))
 
 		assert.Contains(t, screen.Screen(), "╭ Help ")
+	})
+
+	t.Run("opens while a Pane is zoomed and lists zoom", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('z'), keypress.Letter('?'))
+
+		assert.Contains(t, screen.Screen(), "╭ Help ")
+		assert.Regexp(t, `z\s+zoom`, screen.Screen())
+	})
+
+	t.Run("opens from the Tags Pane over the global Bindings only", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('?'))
+
+		assert.Regexp(t, `q\s+quit`, screen.Screen())
+		assert.NotContains(t, screen.Screen(), "new Folder")
+		assert.Equal(t, "? close · esc close", screen.Hints())
+	})
+
+	t.Run("? types into the edit overlay's Content instead of opening help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('n'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Letter('?'), keypress.Ctrl('s'))
+
+		assert.NotContains(t, screen.Screen(), "╭ Help ")
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{
+			Input: snippet.CreateInput{Title: "", Description: "", Content: "?"},
+		}}, screen.Outcomes())
 	})
 
 	t.Run("? types into the Search query instead of opening help", func(t *testing.T) {

@@ -65,8 +65,29 @@ func TestSmallTerminalLayout(t *testing.T) {
 	golden.RequireEqual(t, []byte(screen.screen()))
 }
 
+func TestZoomedPaneLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
+	screen.press(keypress.Letter('3'), keypress.Letter('z'))
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
+func TestWrappedSnippetPaneLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, layoutModel(t, listerOf(t, longLineSnippet(t))), wideWidth, wideHeight)
+	screen.press(keypress.Letter('4'), keypress.Letter('w'))
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
 func layoutModel(t *testing.T, lister *MockFolderSnippetsLister) tui.Model {
 	t.Helper()
 
-	return browsingModel(t, foldertree.New(t), lister)
+	with := browsingActions(t, foldertree.New(t), lister)
+	with.tagLister = tagsOf(t, sampleTagCounts(t)...)
+
+	return modelWith(t, with)
 }

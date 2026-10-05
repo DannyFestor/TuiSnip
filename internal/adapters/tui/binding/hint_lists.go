@@ -24,24 +24,27 @@ func statusHintList(scope Scope) []labelledRef {
 }
 
 func paneHintList(scope Scope) []labelledRef {
-	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Search, Help)...)...)
+	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)...)
 }
 
 func paneOwnHintList(scope Scope) []labelledRef {
+	open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
+
 	switch scope {
 	case ScopeFolders:
-		open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
-
 		return append([]labelledRef{open}, withRowLabels(refsIn(scope, NewFolder, Rename, Delete)...)...)
+	case ScopeTags:
+		return []labelledRef{open}
 	case ScopeSnippetList:
 		return withRowLabels(
 			rowRef{scope: scope, name: Copy},
+			rowRef{scope: scope, name: Edit},
 			rowRef{scope: ScopeGlobal, name: NewSnippet},
 			rowRef{scope: scope, name: CycleSort},
 		)
 	case ScopeSnippetPane:
-		return withRowLabels(rowRef{scope: scope, name: Copy})
-	case ScopeTags, ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
+		return withRowLabels(refsIn(scope, Copy, Edit, Wrap)...)
+	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
 	}
 
 	return nil
@@ -52,7 +55,7 @@ func nonPaneHintList(scope Scope) []labelledRef {
 	case ScopeEditor:
 		return withRowLabels(refsIn(scope, Save, Cancel, NextField)...)
 	case ScopeContent:
-		return withRowLabels(refsIn(scope, Save, Leave)...)
+		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent)...)
 	case ScopeSearch:
 		return withRowLabels(refsIn(scope, Down, Accept, Copy, Cancel)...)
 	case ScopeNameInput:

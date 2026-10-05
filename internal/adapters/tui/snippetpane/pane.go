@@ -21,7 +21,10 @@ const (
 	dateLayout       = "2006-01-02"
 	lineNumberFormat = "%4d │ "
 	blankGutter      = "     │ "
+	wrappedGutter    = "   ↪ │ "
 	metaSeparator    = " · "
+	tagMarker        = "#"
+	tagSeparator     = " "
 	fixedHeaderLines = 4
 )
 
@@ -100,6 +103,14 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 	return next.rendered()
 }
 
+func (p Pane) Shown() (domain.Snippet, bool) {
+	return p.snippet, p.shown
+}
+
+func (p Pane) CodeStyle() string {
+	return p.codeStyle
+}
+
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
 	p.paths = paths
 
@@ -115,6 +126,10 @@ func (p Pane) Cleared() Pane {
 }
 
 func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
+	if p.keys.Matches(msg, binding.Wrap) {
+		return p.wrapToggled()
+	}
+
 	direction, ok := move.Pressed(p.global, msg)
 	if !ok {
 		return p
@@ -129,6 +144,12 @@ func (p Pane) copyRequested(msg tea.KeyPressMsg) []outcome.Outcome {
 	}
 
 	return []outcome.Outcome{outcome.CopyRequested{ID: p.snippet.ID()}}
+}
+
+func (p Pane) wrapToggled() Pane {
+	p.viewport.SoftWrap = !p.viewport.SoftWrap
+
+	return p
 }
 
 func (p Pane) withCodeStyle(codeStyle string) Pane {
@@ -187,14 +208,28 @@ func (p Pane) sized() Pane {
 func (p Pane) header() []string {
 	lines := []string{
 		p.styles.Bold.Render(p.snippet.Title().String()),
-		p.styles.Dim.Render(
-			p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String(),
-		),
+		p.styles.Dim.Render(p.meta()),
 		p.styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)
 
 	return append(lines, p.styles.Dim.Render(strings.Repeat("─", p.box.Width)))
+}
+
+func (p Pane) meta() string {
+	place := p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String()
+
+	tags := p.snippet.Tags()
+	if len(tags) == 0 {
+		return place
+	}
+
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		names = append(names, tagMarker+tag.Name().String())
+	}
+
+	return place + metaSeparator + strings.Join(names, tagSeparator)
 }
 
 func (p Pane) headerHeight() int {
@@ -217,7 +252,11 @@ func (p Pane) timestamps() string {
 
 func lineNumbers(styles look.Styles) viewport.GutterFunc {
 	return func(line viewport.GutterContext) string {
-		if line.Soft || line.Index >= line.TotalLines {
+		if line.Soft {
+			return styles.Dim.Render(wrappedGutter)
+		}
+
+		if line.Index >= line.TotalLines {
 			return styles.Dim.Render(blankGutter)
 		}
 

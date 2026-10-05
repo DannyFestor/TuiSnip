@@ -49,6 +49,24 @@ func TestSnippetRepository_Find(t *testing.T) {
 		assert.Equal(t, folderID, got.FolderID())
 	})
 
+	t.Run("returns an inserted Snippet with the Tags it carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, tags, ids, "go")
+		docker := insertTag(t, tags, ids, "docker")
+		insertTag(t, tags, ids, "unused")
+		snippet := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
+
+		got, err := repository.Find(t.Context(), snippet.ID())
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{docker, golang}, got.Tags())
+	})
+
 	t.Run("reports an unknown ID as not found", func(t *testing.T) {
 		t.Parallel()
 
@@ -82,6 +100,81 @@ func TestSnippetRepository_Insert(t *testing.T) {
 		require.Error(t, repository.Insert(t.Context(), second))
 
 		_, err := repository.Find(t.Context(), second.ID())
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("writes nothing when it carries a Tag that was never stored", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		ids := testkit.NewSequentialIDs()
+		unstored := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID()})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Tags: []domain.Tag{unstored}})
+
+		require.Error(t, repository.Insert(t.Context(), snippet))
+
+		_, err := repository.Find(t.Context(), snippet.ID())
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestSnippetRepository_Update(t *testing.T) {
+	t.Parallel()
+
+	t.Run("writes the edited Snippet and its Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		stored := insertSnippet(t, repository, testkit.NewSequentialIDs(), testkit.SnippetSpec{Title: "curl"})
+		edited := editedSnippet(t, stored, "if x {\n\treturn\n}\n")
+
+		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, edited, got)
+	})
+
+	t.Run("keeps the Tags the Snippet carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, newTagRepository(t, database), ids, "go")
+		stored := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+
+		require.NoError(t, repository.Update(t.Context(), editedSnippet(t, stored, "go"), stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{golang}, got.Tags())
+	})
+
+	t.Run("refuses a save over a Snippet changed since it was loaded", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		stored := insertSnippet(t, repository, testkit.NewSequentialIDs(), testkit.SnippetSpec{Title: "curl"})
+		elsewhere := editedSnippet(t, stored, "changed elsewhere")
+		require.NoError(t, repository.Update(t.Context(), elsewhere, stored.UpdatedAt()))
+
+		err := repository.Update(t.Context(), editedSnippet(t, stored, "stale"), stored.UpdatedAt())
+
+		require.ErrorIs(t, err, domain.ErrConflict)
+		got, findErr := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, findErr)
+		assert.Equal(t, elsewhere, got)
+	})
+
+	t.Run("reports a Snippet that is gone as not found", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		missing := testkit.Snippet(t, testkit.SnippetSpec{})
+
+		err := repository.Update(t.Context(), editedSnippet(t, missing, "gone"), missing.UpdatedAt())
+
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
@@ -177,6 +270,44 @@ func TestSnippetRepository_List(t *testing.T) {
 		assert.ElementsMatch(t, []domain.Snippet{first, second}, got)
 	})
 
+	t.Run("returns each Snippet with the Tags it carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, tags, ids, "go")
+		docker := insertTag(t, tags, ids, "docker")
+		tagged := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
+		untagged := insertSnippet(t, repository, ids, testkit.SnippetSpec{})
+
+		got, err := repository.List(t.Context())
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.Snippet{tagged, untagged}, got)
+	})
+
+	t.Run("skips a Snippet carrying a corrupt Tag", func(t *testing.T) {
+		t.Parallel()
+
+		var logged bytes.Buffer
+
+		path := newDatabasePath(t)
+		repository := newLoggingSnippetRepository(t, path, &logged)
+		ids := testkit.NewSequentialIDs()
+		broken := insertTag(t, newTagRepository(t, openDatabase(t, path)), ids, "docker")
+		healthy := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "healthy"})
+		corrupt := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{broken}})
+		execRaw(t, path, "UPDATE tags SET name = 'docker,compose' WHERE id = ?", broken.ID().String())
+
+		got, err := repository.List(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Snippet{healthy}, got)
+		assertCorruptRowLogged(t, &logged, "WARN", corrupt.ID())
+	})
+
 	t.Run("returns no Snippets from an empty database", func(t *testing.T) {
 		t.Parallel()
 
@@ -219,8 +350,11 @@ func TestSnippetRepository_ListInFolder(t *testing.T) {
 			ids := testkit.NewSequentialIDs()
 			folderID := ids.NewFolderID()
 			insertRawFolder(t, path, folderID)
-			insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root"})
-			filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
+			golang := insertTag(t, newTagRepository(t, openDatabase(t, path)), ids, "go")
+			insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root", Tags: []domain.Tag{golang}})
+			filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{
+				Title: "filed", FolderID: folderID, Tags: []domain.Tag{golang},
+			})
 
 			got, err := repository.ListInFolder(t.Context(), folderID, order)
 
@@ -319,6 +453,96 @@ func TestSnippetRepository_ListInFolder_SortOrder(t *testing.T) {
 			assert.Equal(t, tt.want, titlesOf(got))
 		})
 	}
+}
+
+func TestSnippetRepository_ListWithTag(t *testing.T) {
+	t.Parallel()
+
+	for _, order := range []domain.SortOrder{domain.SortOrderTitle, domain.SortOrderUpdated, domain.SortOrderCreated} {
+		t.Run("returns the Snippets carrying the Tag across Folders by "+order.String(), func(t *testing.T) {
+			t.Parallel()
+
+			path := newDatabasePath(t)
+			database := openDatabase(t, path)
+			repository := newSnippetRepository(t, database)
+			tags := newTagRepository(t, database)
+			ids := testkit.NewSequentialIDs()
+			folderID := ids.NewFolderID()
+			insertRawFolder(t, path, folderID)
+			golang := insertTag(t, tags, ids, "go")
+			docker := insertTag(t, tags, ids, "docker")
+			atRoot := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "a", Tags: []domain.Tag{golang}})
+			filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{
+				Title: "b", FolderID: folderID, Tags: []domain.Tag{golang, docker},
+			})
+			insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "c", Tags: []domain.Tag{docker}})
+			insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "d"})
+
+			got, err := repository.ListWithTag(t.Context(), golang.ID(), order)
+
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []domain.Snippet{atRoot, filed}, got)
+		})
+	}
+
+	t.Run("orders the Snippets like a Folder listing", func(t *testing.T) {
+		t.Parallel()
+
+		earlier := time.Date(2026, time.March, 1, 9, 0, 0, 0, time.UTC)
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, newTagRepository(t, database), ids, "go")
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{
+			Title: "zebra", CreatedAt: earlier, Tags: []domain.Tag{golang},
+		})
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{
+			Title: "Apple", CreatedAt: earlier.Add(time.Hour), Tags: []domain.Tag{golang},
+		})
+
+		byTitle, err := repository.ListWithTag(t.Context(), golang.ID(), domain.SortOrderTitle)
+		require.NoError(t, err)
+
+		byCreated, err := repository.ListWithTag(t.Context(), golang.ID(), domain.SortOrderCreated)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"Apple", "zebra"}, titlesOf(byTitle))
+		assert.Equal(t, []string{"Apple", "zebra"}, titlesOf(byCreated))
+	})
+
+	t.Run("returns no Snippets for a Tag no Snippet carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		unused := insertTag(t, newTagRepository(t, database), ids, "unused")
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{})
+
+		got, err := repository.ListWithTag(t.Context(), unused.ID(), domain.SortOrderTitle)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
+func TestSnippetRepository_CountByTag(t *testing.T) {
+	t.Parallel()
+
+	database := openDatabase(t, newDatabasePath(t))
+	repository := newSnippetRepository(t, database)
+	tags := newTagRepository(t, database)
+	ids := testkit.NewSequentialIDs()
+	golang := insertTag(t, tags, ids, "go")
+	docker := insertTag(t, tags, ids, "docker")
+	insertTag(t, tags, ids, "unused")
+	insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
+	insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+
+	got, err := repository.CountByTag(t.Context())
+
+	require.NoError(t, err)
+	assert.Equal(t, map[domain.TagID]int{golang.ID(): 2, docker.ID(): 1}, got)
 }
 
 func titlesOf(snippets []domain.Snippet) []string {

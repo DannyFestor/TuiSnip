@@ -10,8 +10,10 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
@@ -25,7 +27,7 @@ const (
 	snippetListTitle = "3 Root · by title"
 	snippetPaneTitle = "4 Snippet"
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
-	listHint         = "y Copy · n new · s sort · / search · ? help"
+	listHint         = "y Copy · e edit · n new · s sort · z zoom · / search · ? help"
 	helpHint         = "? help"
 	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
 	firstDescription = "Stop accepting, drain, exit"
@@ -58,7 +60,7 @@ func showingStyled(t *testing.T, screen look.Size, styles look.Styles, snippets 
 
 	driver := opened(t, screen, styles, domain.SortOrderTitle)
 	driver.Send(mainscreen.SnippetsLoaded{
-		FolderID:  domain.FolderID{},
+		Selection: browseselection.Selection{},
 		Snippets:  snippets,
 		Selecting: domain.SnippetID{},
 		Order:     domain.SortOrderTitle,
@@ -95,6 +97,27 @@ func browsing(t *testing.T) (*overlaytest.Driver, foldertree.Sample) {
 	driver.Send(mainscreen.TreeLoaded{Tree: sample.Tree})
 
 	return driver, sample
+}
+
+func browsingTags(t *testing.T) (*overlaytest.Driver, []browse.TagCount) {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+	tags := []browse.TagCount{
+		{Tag: testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "docker"}), SnippetCount: 3},
+		{Tag: testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"}), SnippetCount: 4},
+	}
+
+	return browsingWithTags(t, tags...), tags
+}
+
+func browsingWithTags(t *testing.T, tags ...browse.TagCount) *overlaytest.Driver {
+	t.Helper()
+
+	driver := showingStyled(t, wide(), upperFocusedTitle(), sampleSnippets(t)...)
+	driver.Send(mainscreen.TagsLoaded{Tags: tags})
+
+	return driver
 }
 
 func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {

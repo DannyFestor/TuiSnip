@@ -236,3 +236,145 @@ func (q *Queries) ListSnippetsInFolderByUpdated(ctx context.Context, folderID *s
 	}
 	return items, nil
 }
+
+const listSnippetsWithTagByCreated = `-- name: ListSnippetsWithTagByCreated :many
+SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
+FROM snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+WHERE snippet_tag.tag_id = ?1
+ORDER BY snippets.created_at DESC, snippets.title COLLATE NOCASE, snippets.id
+`
+
+func (q *Queries) ListSnippetsWithTagByCreated(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByCreated, tagID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Snippet{}
+	for rows.Next() {
+		var i Snippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnippetsWithTagByTitle = `-- name: ListSnippetsWithTagByTitle :many
+SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
+FROM snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+WHERE snippet_tag.tag_id = ?1
+ORDER BY snippets.title COLLATE NOCASE, snippets.id
+`
+
+func (q *Queries) ListSnippetsWithTagByTitle(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByTitle, tagID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Snippet{}
+	for rows.Next() {
+		var i Snippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnippetsWithTagByUpdated = `-- name: ListSnippetsWithTagByUpdated :many
+SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
+FROM snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+WHERE snippet_tag.tag_id = ?1
+ORDER BY snippets.updated_at DESC, snippets.title COLLATE NOCASE, snippets.id
+`
+
+func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByUpdated, tagID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Snippet{}
+	for rows.Next() {
+		var i Snippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSnippet = `-- name: UpdateSnippet :execrows
+UPDATE snippets
+SET title = ?1, description = ?2, updated_at = ?3
+WHERE id = ?4 AND updated_at = ?5
+`
+
+type UpdateSnippetParams struct {
+	Title           string
+	Description     string
+	UpdatedAt       sqltype.Timestamp
+	ID              sqltype.ID
+	LoadedUpdatedAt sqltype.Timestamp
+}
+
+func (q *Queries) UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateSnippet,
+		arg.Title,
+		arg.Description,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.LoadedUpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}

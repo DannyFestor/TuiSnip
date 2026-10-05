@@ -8,8 +8,9 @@
 │                        ││                                          ││   2 │     return srv.Shutdown(ctx)             │
 │                        ││           ╭ Help ────────────────────────────────────╮                                     │
 │                        ││           │q              quit                 y Copy│                                     │
-│                        ││           │?              help                 s sort│                                     │
-│                        ││           │/              search                     │                                     │
+│                        ││           │?              help                 e edit│                                     │
+│                        ││           │/              search               s sort│                                     │
+│                        ││           │z              zoom                       │                                     │
 │                        ││           │n              new                        │                                     │
 │                        ││           │p              Capture                    │                                     │
 │                        ││           │tab            next Pane                  │                                     │
@@ -22,14 +23,13 @@
 │                        ││           │4              Snippet pane               │                                     │
 │                        ││           │enter          open                       │                                     │
 │                        ││           │esc            back                       │                                     │
-│                        ││           │j, down        down                       │                                     │
-╰────────────────────────╯│           │k, up          up                         │                                     │
-╭ 2 Tags ────────────────╮│           │g, home        first row                  │                                     │
-│No Tags yet.            ││           │G, end         last row                   │                                     │
+╰────────────────────────╯│           │j, down        down                       │                                     │
+╭ 2 Tags ────────────────╮│           │k, up          up                         │                                     │
+│# docker               3││           │g, home        first row                  │                                     │
+│# go                   4││           │G, end         last row                   │                                     │
 │                        ││           │pgdown, ctrl+d page down                  │                                     │
 │                        ││           │pgup, ctrl+u   page up                    │                                     │
 │                        ││           ╰──────────────────────────────────────────╯                                     │
-│                        ││                                          ││                                                │
 │                        ││                                          ││                                                │
 │                        ││                                          ││                                                │
 │                        ││                                          ││                                                │

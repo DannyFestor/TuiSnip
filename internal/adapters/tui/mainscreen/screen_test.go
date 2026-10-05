@@ -331,38 +331,60 @@ func TestScreen_statusLine(t *testing.T) {
 		assert.True(t, strings.HasPrefix(statusLine(screen), " Copied "))
 	})
 
-	t.Run("cuts a status text too long to fit beside the hints", func(t *testing.T) {
+	t.Run("cuts a status text too long to fit beside help", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 		screen.Press(keypress.Letter('3'))
 
-		room := wide().Width - ansi.StringWidth(listHint) - 1
+		room := wide().Width - ansi.StringWidth(helpHint) - 1
 		screen.Send(mainscreen.StatusShown{Text: strings.Repeat("x", room)})
 
-		assert.Equal(t, " "+strings.Repeat("x", room-2)+"… "+listHint, statusLine(screen))
+		assert.Equal(t, " "+strings.Repeat("x", room-2)+"… "+helpHint, statusLine(screen))
 	})
 
-	t.Run("keeps the hints that fit in half the width", func(t *testing.T) {
+	t.Run("keeps every hint that fits beside the status text", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
 
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(listHint))})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), " "+listHint))
+	})
+
+	t.Run("drops hints from the right but keeps help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(listHint) - 1)})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), " y Copy · n new · s sort · "+helpHint))
+	})
+
+	t.Run("keeps only help when nothing else fits", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(helpHint))})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), "x "+helpHint))
+	})
+
+	t.Run("drops an Overlay's hints from the right", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
 		screen.Press(keypress.Letter('/'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(searchHint) - 1)})
 
 		assert.True(t, strings.HasSuffix(statusLine(screen), " down move · enter reveal · ctrl+y Copy"))
-	})
-
-	t.Run("keeps hints exactly half the width wide", func(t *testing.T) {
-		t.Parallel()
-
-		hints := "down move · enter reveal · ctrl+y Copy"
-		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Send(tea.WindowSizeMsg{Width: 2 * ansi.StringWidth(hints), Height: minimum().Height})
-
-		screen.Press(keypress.Letter('/'))
-
-		assert.True(t, strings.HasSuffix(statusLine(screen), " "+hints))
 	})
 
 	t.Run("says the terminal is too small below the minimum size", func(t *testing.T) {

@@ -19,8 +19,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-const hintWidthDivisor = 2
-
 type Screen struct {
 	keys            binding.Keys
 	global          binding.Set
@@ -257,7 +255,7 @@ func (s Screen) hint(hints []key.Binding) string {
 		return tooSmallHint
 	}
 
-	return hintFor(hints, s.box.Width/hintWidthDivisor)
+	return hintFor(hints, hintRoom(s.status, s.box.Width))
 }
 
 func (s Screen) panesView() string {

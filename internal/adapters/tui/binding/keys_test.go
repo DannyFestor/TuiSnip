@@ -8,6 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 type bound struct {
@@ -48,6 +49,19 @@ func TestKeys_For(t *testing.T) {
 		got := keys.For(binding.ScopeFolders).ShortHelp()
 
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
+	})
+
+	t.Run("every pane Scope's hints end with help", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+
+		for _, scope := range []binding.Scope{
+			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeSnippetPane,
+		} {
+			hints := hintTexts(keys.For(scope).ShortHelp())
+			assert.Equal(t, "? help", hints[len(hints)-1], "%s", scope)
+		}
 	})
 
 	t.Run("name input hints save and cancel", func(t *testing.T) {
@@ -141,6 +155,18 @@ func TestKeys_EmptyListHints(t *testing.T) {
 	got := keys.EmptyListHints()
 
 	assert.Equal(t, []string{"n new Snippet", "p Capture", "/ Search", "N new Folder"}, hintTexts(got))
+}
+
+func TestAlwaysShown(t *testing.T) {
+	t.Parallel()
+
+	hints := keysWith(
+		bound{scope: binding.ScopeGlobal, name: binding.Help, keys: []string{"f1"}},
+		bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+	).For(binding.ScopeTags).ShortHelp()
+
+	assert.False(t, binding.AlwaysShown(hints[0]), "search")
+	assert.True(t, binding.AlwaysShown(hints[1]), "help")
 }
 
 func keysWith(bindings ...bound) binding.Keys {

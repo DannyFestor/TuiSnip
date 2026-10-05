@@ -41,7 +41,7 @@ func TestRows(t *testing.T) {
 
 		for _, scope := range []binding.Scope{
 			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeSnippetPane,
-			binding.ScopeEditor, binding.ScopeContent, binding.ScopeSearch, binding.ScopeConfirm,
+			binding.ScopeEditor, binding.ScopeContent, binding.ScopeSearch, binding.ScopeNameInput, binding.ScopeConfirm,
 		} {
 			for _, hint := range keys.For(scope).ShortHelp() {
 				assert.True(t, hint.Enabled(), "%s", scope)

@@ -17,6 +17,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/xdg"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 )
@@ -27,6 +28,8 @@ type App struct {
 	Query             *search.Query
 	SnippetsInFolder  *browse.SnippetsInFolder
 	FolderTree        *browse.FolderTree
+	CreateFolder      *folder.Create
+	RenameFolder      *folder.Rename
 	SnippetRepository *sqlite.SnippetRepository
 	FolderRepository  *sqlite.FolderRepository
 	model             tui.Model
@@ -117,13 +120,15 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.log = opened.log
 
 	app.model, err = newModel(ctx, cfg, tui.Deps{
-		Lister:     app.SnippetsInFolder,
-		TreeLister: app.FolderTree,
-		Copier:     app.Copy,
-		Creator:    app.Create,
-		Searcher:   app.Query,
-		Settings:   SettingsFrom(cfg, time.Local),
-		Logger:     logger,
+		Lister:        app.SnippetsInFolder,
+		TreeLister:    app.FolderTree,
+		Copier:        app.Copy,
+		Creator:       app.Create,
+		Searcher:      app.Query,
+		FolderCreator: app.CreateFolder,
+		FolderRenamer: app.RenameFolder,
+		Settings:      SettingsFrom(cfg, time.Local),
+		Logger:        logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build TUI: %w", err)
@@ -163,8 +168,10 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
 	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
+	createFolder, createFolderErr := folder.NewCreate(repos.folders, system.NewIDs(), system.NewClock())
+	renameFolder, renameFolderErr := folder.NewRename(repos.folders, system.NewClock())
 
-	err = errors.Join(createErr, queryErr, listErr, treeErr)
+	err = errors.Join(createErr, queryErr, listErr, treeErr, createFolderErr, renameFolderErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
@@ -175,6 +182,8 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		Query:             query,
 		SnippetsInFolder:  snippetsInFolder,
 		FolderTree:        folderTree,
+		CreateFolder:      createFolder,
+		RenameFolder:      renameFolder,
 		SnippetRepository: repos.snippets,
 		FolderRepository:  repos.folders,
 		model:             tui.Model{},

@@ -50,6 +50,11 @@ func TestLoad_BindingRules(t *testing.T) {
 			want:     `bindings.picker.accept: "space" types text in picker; add a modifier`,
 		},
 		{
+			name:     "rejects a printable key without a modifier in the name input",
+			contents: "[bindings.name_input]\naccept = [\"a\"]\n",
+			want:     `bindings.name_input.accept: "a" types text in name_input; add a modifier`,
+		},
+		{
 			name:     "rejects binding ctrl+c",
 			contents: "[bindings.confirm]\nno = [\"ctrl+c\"]\n",
 			want:     `bindings.confirm.no: "ctrl+c" always quits and cannot be bound`,

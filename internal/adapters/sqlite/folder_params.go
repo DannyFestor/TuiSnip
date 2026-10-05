@@ -16,3 +16,12 @@ func insertFolderParams(folder domain.Folder) sqlcgen.InsertFolderParams {
 		UpdatedAt:       sqltype.Timestamp(folder.UpdatedAt()),
 	}
 }
+
+func updateFolderParams(folder domain.Folder) sqlcgen.UpdateFolderParams {
+	return sqlcgen.UpdateFolderParams{
+		Name:            folder.Name().String(),
+		DefaultLanguage: folder.DefaultLanguage().String(),
+		UpdatedAt:       sqltype.Timestamp(folder.UpdatedAt()),
+		ID:              columnID(folder.ID()),
+	}
+}

@@ -127,6 +127,11 @@ accept = ["enter"]
 cancel = ["esc"]
 show_all_languages = ["ctrl+a"]
 
+# The row a Folder or Tag name is typed into, in the Folders or Tags Pane.
+[bindings.name_input]
+accept = ["enter"]
+cancel = ["esc"]
+
 # y/N confirmations. enter picks the default, No.
 [bindings.confirm]
 yes = ["y"]

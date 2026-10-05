@@ -29,6 +29,8 @@ const (
 	ScopeSearch Scope = "search"
 	// ScopePicker is a Scope of type picker.
 	ScopePicker Scope = "picker"
+	// ScopeNameInput is a Scope of type name_input.
+	ScopeNameInput Scope = "name_input"
 	// ScopeConfirm is a Scope of type confirm.
 	ScopeConfirm Scope = "confirm"
 )
@@ -45,6 +47,7 @@ var _ScopeNames = []string{
 	string(ScopeContent),
 	string(ScopeSearch),
 	string(ScopePicker),
+	string(ScopeNameInput),
 	string(ScopeConfirm),
 }
 
@@ -77,6 +80,7 @@ var _ScopeValue = map[string]Scope{
 	"content":      ScopeContent,
 	"search":       ScopeSearch,
 	"picker":       ScopePicker,
+	"name_input":   ScopeNameInput,
 	"confirm":      ScopeConfirm,
 }
 

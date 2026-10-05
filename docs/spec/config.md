@@ -116,6 +116,7 @@ delete = []
 | `content` | the edit overlay's Content textarea is entered | yes |
 | `search` | the Search popup is open | yes |
 | `picker` | the Language picker, the Folder picker, or the Tag editor is open | yes |
+| `name_input` | a Folder or Tag name is typed in place in the Folders or Tags Pane | yes |
 | `confirm` | a y/N confirmation is open | no |
 
 Help closes with its own `help` key or with `esc`, so it has no Scope.
@@ -135,6 +136,7 @@ Help closes with its own `help` key or with `esc`, so it has no Scope.
 | `content` | `save` ctrl+s · `leave` esc · `indent` tab · `dedent` shift+tab · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
 | `search` | `down` down, ctrl+n, ctrl+j · `up` up, ctrl+p, ctrl+k · `accept` enter · `copy` ctrl+y · `cancel` esc |
 | `picker` | `down` down, ctrl+n, ctrl+j · `up` up, ctrl+p, ctrl+k · `accept` enter · `cancel` esc · `show_all_languages` ctrl+a |
+| `name_input` | `accept` enter · `cancel` esc |
 | `confirm` | `yes` y · `no` n, esc, enter |
 
 - `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag.
@@ -145,6 +147,7 @@ Help closes with its own `help` key or with `esc`, so it has no Scope.
 - `search.accept` reveals the highlighted Snippet in its Folder and focuses the Snippet pane. `search.copy` copies it and closes the popup.
 - `picker.accept` picks and closes, except in the Tag editor, where it toggles the highlighted Tag or creates the typed one.
 - `picker.show_all_languages` only acts in the Language picker when `languages` is set.
+- `name_input.accept` commits the typed name of a new or renamed Folder or Tag, and `name_input.cancel` drops it. While a name is typed, neither `global` nor the Pane's own Bindings are active.
 - In `confirm`, `enter` picks the default, No.
 
 ### Key strings

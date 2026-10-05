@@ -16,28 +16,48 @@ type labelledRef struct {
 }
 
 func statusHintList(scope Scope) []labelledRef {
+	if scope.isPane() {
+		return paneHintList(scope)
+	}
+
+	return nonPaneHintList(scope)
+}
+
+func paneHintList(scope Scope) []labelledRef {
 	search := rowRef{scope: ScopeGlobal, name: Search}
 
 	switch scope {
 	case ScopeFolders:
 		open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
 
-		return append([]labelledRef{open}, withRowLabels(search)...)
+		return append(
+			[]labelledRef{open},
+			withRowLabels(rowRef{scope: scope, name: NewFolder}, rowRef{scope: scope, name: Rename}, search)...)
 	case ScopeTags:
 		return withRowLabels(search)
 	case ScopeSnippetList:
 		return withRowLabels(rowRef{scope: scope, name: Copy}, rowRef{scope: ScopeGlobal, name: NewSnippet}, search)
 	case ScopeSnippetPane:
 		return withRowLabels(rowRef{scope: scope, name: Copy}, search)
+	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
+	}
+
+	return nil
+}
+
+func nonPaneHintList(scope Scope) []labelledRef {
+	switch scope {
 	case ScopeEditor:
 		return withRowLabels(refsIn(scope, Save, Cancel, NextField)...)
 	case ScopeContent:
 		return withRowLabels(refsIn(scope, Save, Leave)...)
 	case ScopeSearch:
 		return withRowLabels(refsIn(scope, Down, Accept, Copy, Cancel)...)
+	case ScopeNameInput:
+		return withRowLabels(refsIn(scope, Accept, Cancel)...)
 	case ScopeConfirm:
 		return withRowLabels(refsIn(scope, Yes, No)...)
-	case ScopeGlobal, ScopePicker:
+	case ScopeGlobal, ScopeFolders, ScopeTags, ScopeSnippetList, ScopeSnippetPane, ScopePicker:
 	}
 
 	return nil

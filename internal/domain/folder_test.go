@@ -191,6 +191,32 @@ func TestFolder_MoveToRoot(t *testing.T) {
 	assert.Equal(t, folder.UpdatedAt(), moved.UpdatedAt())
 }
 
+func TestFolder_Rename(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC)
+	folder := testkit.Folder(t, testkit.FolderSpec{ID: folderID(), Name: "go", CreatedAt: created})
+
+	t.Run("takes the name and the time", func(t *testing.T) {
+		t.Parallel()
+
+		renamed, err := folder.Rename(mustFolderName(t, "golang"), created.Add(time.Hour))
+
+		require.NoError(t, err)
+		assert.Equal(t, "golang", renamed.Name().String())
+		assert.Equal(t, created.Add(time.Hour), renamed.UpdatedAt())
+		assert.Equal(t, "go", folder.Name().String(), "the original is untouched")
+	})
+
+	t.Run("rejects a time before creation", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := folder.Rename(mustFolderName(t, "golang"), created.Add(-time.Hour))
+
+		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
+	})
+}
+
 func TestCompareFolders(t *testing.T) {
 	t.Parallel()
 

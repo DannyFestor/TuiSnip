@@ -23,6 +23,7 @@ const (
 	PageDown     = "page_down"
 	PageUp       = "page_up"
 	NewFolder    = "new_folder"
+	Rename       = "rename"
 	Copy         = "copy"
 	OpenInEditor = "open_in_editor"
 	Save         = "save"

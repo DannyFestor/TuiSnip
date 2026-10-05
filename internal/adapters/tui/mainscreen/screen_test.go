@@ -13,7 +13,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -449,6 +452,58 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Typed("y2y")...)
 
 		assert.Empty(t, screen.Outcomes())
+	})
+
+	t.Run("keys type into a Folder name instead of acting", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('N'))
+		screen.Press(keypress.Typed("qn/2")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
+			Input: folder.CreateInput{Name: "qn/2", ParentID: domain.FolderID{}},
+		}}, screen.Outcomes())
+	})
+
+	t.Run("a paste goes into a Folder name", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('N'))
+		screen.Send(tea.PasteMsg{Content: "docker"})
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
+			Input: folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+		}}, screen.Outcomes())
+	})
+
+	t.Run("hints save and cancel while a Folder name is typed", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Letter('N'))
+
+		assert.Equal(t, "enter save · esc cancel", screen.Hints())
+	})
+
+	t.Run("makes a created Folder the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		created := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "awk"})
+		grown := sample.Tree
+		grown.Folders = append([]browse.FolderNode{{Folder: created, SnippetCount: 0, Children: nil}}, grown.Folders...)
+
+		screen.Send(mainscreen.FolderCreated{Tree: grown, ID: created.ID()})
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: created.ID()}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "3 Root / awk · by title")
 	})
 }
 

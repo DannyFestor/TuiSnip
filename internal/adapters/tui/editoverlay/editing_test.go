@@ -96,7 +96,7 @@ func TestEditing_save(t *testing.T) {
 		screen.Press(keypress.Typed("!")...)
 		screen.Press(save())
 
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune all", "Reclaim", "echo hi!")}
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune all", "echo hi!")}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
@@ -110,7 +110,7 @@ func TestEditing_save(t *testing.T) {
 		screen.Press(keypress.Typed("lost")...)
 		screen.Press(save())
 
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune all", "Reclaim", tabbedContent)}
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune all", tabbedContent)}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
@@ -125,6 +125,80 @@ func TestEditing_save(t *testing.T) {
 		reported := outcome.SnippetReloaded{ID: stored.ID(), Selection: browsed()}
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reported))
 		assert.False(t, screen.IsOpen())
+	})
+}
+
+func TestEditing_readOnlyContent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		sent tea.Msg
+	}{
+		{name: "indent leaves it unchanged", sent: keypress.Special(tea.KeyTab)},
+		{name: "dedent leaves it unchanged", sent: shiftTab()},
+		{name: "a paste leaves it unchanged", sent: tea.PasteMsg{Content: "pasted"}},
+		{name: "a paste with tabs leaves it unchanged", sent: tea.PasteMsg{Content: "\tpasted"}},
+		{name: "a paste over 10,000 lines leaves it unchanged", sent: tea.PasteMsg{Content: linesOf(10_001)}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			stored := storedSnippet(t, tabbedContent)
+			screen := editingStored(t, stored)
+			screen.Press(enterContent()...)
+			screen.Send(tt.sent)
+			screen.Press(save())
+
+			want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", tabbedContent)}
+			assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+		})
+	}
+}
+
+func TestEditing_editableContent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("indents the cursor's line of the stored content", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "first\nsecond")
+		screen := editingStored(t, stored)
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Special(tea.KeyTab), save())
+
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", "first\n    second")}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+	})
+
+	t.Run("refuses a paste that makes the stored content longer than 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, storedSnippet(t, linesOf(5_000)))
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(5_002)})
+
+		want := outcome.NoticeShown{
+			Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
+		}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+	})
+
+	t.Run("inserts a paste that makes the stored content exactly 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, linesOf(5_000))
+		screen := editingStored(t, stored)
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(5_001)})
+		screen.Press(save())
+
+		content := linesOf(4_999) + "\nlineline\n" + linesOf(5_000)
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", content)}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 }
 
@@ -219,12 +293,12 @@ func refusedAsStale(t *testing.T, keys binding.Keys, stored domain.Snippet) *ove
 	return screen
 }
 
-func updateInput(stored domain.Snippet, title, description, content string) snippet.UpdateInput {
+func updateInput(stored domain.Snippet, title, content string) snippet.UpdateInput {
 	return snippet.UpdateInput{
 		SnippetID:       stored.ID(),
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
-		Description:     description,
+		Description:     stored.Description().String(),
 		Content:         content,
 	}
 }

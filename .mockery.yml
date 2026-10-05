@@ -16,6 +16,12 @@ packages:
       RenameRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
+  github.com/DannyFestor/TuiSnip/internal/app/tag:
+    interfaces:
+      Inserter: {}
+      RenameRepository: {}
+      PreviewDeleteRepository: {}
+      Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}

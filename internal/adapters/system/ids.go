@@ -23,3 +23,7 @@ func (IDs) NewFragmentID() domain.FragmentID {
 func (IDs) NewFolderID() domain.FolderID {
 	return domain.FolderID(uuid.NewV7())
 }
+
+func (IDs) NewTagID() domain.TagID {
+	return domain.TagID(uuid.NewV7())
+}

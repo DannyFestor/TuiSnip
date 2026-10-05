@@ -11,12 +11,15 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-func snippetFromRows(row sqlcgen.Snippet, fragmentRows []sqlcgen.Fragment) (domain.Snippet, error) {
+func snippetFromRows(
+	row sqlcgen.Snippet, fragmentRows []sqlcgen.Fragment, tagRows []sqlcgen.Tag,
+) (domain.Snippet, error) {
 	fragments, fragmentsErr := fragmentsFromRows(fragmentRows)
+	tags, tagsErr := tagsFromRows(tagRows)
 	title, titleErr := value.NewTitle(row.Title)
 	description, descriptionErr := value.NewDescription(row.Description)
 
-	err := errors.Join(fragmentsErr, titleErr, descriptionErr)
+	err := errors.Join(fragmentsErr, tagsErr, titleErr, descriptionErr)
 	if err != nil {
 		return domain.Snippet{}, corrupt(err)
 	}
@@ -27,6 +30,7 @@ func snippetFromRows(row sqlcgen.Snippet, fragmentRows []sqlcgen.Fragment) (doma
 		description,
 		folderFromColumn(row.FolderID),
 		fragments,
+		tags,
 		time.Time(row.CreatedAt),
 		time.Time(row.UpdatedAt),
 	)

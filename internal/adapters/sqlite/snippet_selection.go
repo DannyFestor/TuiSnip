@@ -11,11 +11,18 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-type folderListing func(ctx context.Context, folderID *sqltype.ID) ([]sqlcgen.Snippet, error)
+type snippetListing[A any] func(ctx context.Context, arg A) ([]sqlcgen.Snippet, error)
+
+type orderedListings[A any] struct {
+	byTitle   snippetListing[A]
+	byUpdated snippetListing[A]
+	byCreated snippetListing[A]
+}
 
 type snippetSelection struct {
 	snippets  func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error)
 	fragments func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error)
+	tags      func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error)
 }
 
 func snippetByID(id domain.SnippetID) snippetSelection {
@@ -37,6 +44,9 @@ func snippetByID(id domain.SnippetID) snippetSelection {
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
 			return queries.ListFragmentsBySnippet(ctx, column)
 		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return snippetTagRowsOf(queries.ListSnippetTagsBySnippet(ctx, column))
+		},
 	}
 }
 
@@ -48,6 +58,9 @@ func allSnippets() snippetSelection {
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
 			return queries.ListFragments(ctx)
 		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return queries.ListSnippetTags(ctx)
+		},
 	}
 }
 
@@ -56,30 +69,65 @@ func snippetsInFolder(folderID domain.FolderID, order domain.SortOrder) snippetS
 
 	return snippetSelection{
 		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
-			list, err := folderListingBy(queries, order)
-			if err != nil {
-				return nil, err
+			listings := orderedListings[*sqltype.ID]{
+				byTitle:   queries.ListSnippetsInFolderByTitle,
+				byUpdated: queries.ListSnippetsInFolderByUpdated,
+				byCreated: queries.ListSnippetsInFolderByCreated,
 			}
 
-			return list(ctx, column)
+			return listings.run(ctx, order, column)
 		},
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
 			return queries.ListFragmentsInFolder(ctx, column)
 		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return snippetTagRowsOf(queries.ListSnippetTagsInFolder(ctx, column))
+		},
 	}
 }
 
-func folderListingBy(queries *sqlcgen.Queries, order domain.SortOrder) (folderListing, error) {
-	switch order {
-	case domain.SortOrderTitle:
-		return queries.ListSnippetsInFolderByTitle, nil
-	case domain.SortOrderUpdated:
-		return queries.ListSnippetsInFolderByUpdated, nil
-	case domain.SortOrderCreated:
-		return queries.ListSnippetsInFolderByCreated, nil
+func snippetsWithTag(tagID domain.TagID, order domain.SortOrder) snippetSelection {
+	column := columnID(tagID)
+
+	return snippetSelection{
+		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
+			listings := orderedListings[sqltype.ID]{
+				byTitle:   queries.ListSnippetsWithTagByTitle,
+				byUpdated: queries.ListSnippetsWithTagByUpdated,
+				byCreated: queries.ListSnippetsWithTagByCreated,
+			}
+
+			return listings.run(ctx, order, column)
+		},
+		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
+			return queries.ListFragmentsWithTag(ctx, column)
+		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return snippetTagRowsOf(queries.ListSnippetTagsWithTag(ctx, column))
+		},
+	}
+}
+
+func (l orderedListings[A]) run(ctx context.Context, order domain.SortOrder, arg A) ([]sqlcgen.Snippet, error) {
+	listing, err := l.by(order)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("list snippets in folder: %w: %q", domain.ErrInvalidSortOrder, order)
+	return listing(ctx, arg)
+}
+
+func (l orderedListings[A]) by(order domain.SortOrder) (snippetListing[A], error) {
+	switch order {
+	case domain.SortOrderTitle:
+		return l.byTitle, nil
+	case domain.SortOrderUpdated:
+		return l.byUpdated, nil
+	case domain.SortOrderCreated:
+		return l.byCreated, nil
+	}
+
+	return nil, fmt.Errorf("list snippets: %w: %q", domain.ErrInvalidSortOrder, order)
 }
 
 func (s snippetSelection) selectRows(ctx context.Context, queries *sqlcgen.Queries) (loadedRows, error) {
@@ -93,5 +141,10 @@ func (s snippetSelection) selectRows(ctx context.Context, queries *sqlcgen.Queri
 		return loadedRows{}, fmt.Errorf("select fragments: %w", err)
 	}
 
-	return loadedRows{snippets: snippets, fragments: fragmentsBySnippet(fragments)}, nil
+	tags, err := s.tags(ctx, queries)
+	if err != nil {
+		return loadedRows{}, fmt.Errorf("select tags: %w", err)
+	}
+
+	return loadedRows{snippets: snippets, fragments: fragmentsBySnippet(fragments), tags: tagsBySnippet(tags)}, nil
 }

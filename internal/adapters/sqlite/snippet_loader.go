@@ -12,6 +12,7 @@ import (
 type loadedRows struct {
 	snippets  []sqlcgen.Snippet
 	fragments map[sqltype.ID][]sqlcgen.Fragment
+	tags      map[sqltype.ID][]sqlcgen.Tag
 }
 
 func (r *SnippetRepository) loadOne(ctx context.Context, selection snippetSelection) (domain.Snippet, error) {
@@ -64,7 +65,7 @@ func (r *SnippetRepository) read(ctx context.Context, selection snippetSelection
 func (r *SnippetRepository) rebuild(
 	ctx context.Context, rows loadedRows, row sqlcgen.Snippet, corruptLevel slog.Level,
 ) (domain.Snippet, error) {
-	snippet, err := snippetFromRows(row, rows.fragments[row.ID])
+	snippet, err := snippetFromRows(row, rows.fragments[row.ID], rows.tags[row.ID])
 	if err != nil {
 		r.logger.LogAttrs(
 			ctx,

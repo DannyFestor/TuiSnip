@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -50,6 +51,7 @@ func TestPane_UpdateNewTag(t *testing.T) {
 		want  string
 	}{
 		{name: "refuses a name a Tag has, ignoring case", typed: "GO", want: "Tag go already exists"},
+		{name: "refuses the name of the first Tag", typed: "docker", want: "Tag docker already exists"},
 		{name: "refuses a blank name", typed: "  ", want: "Tag name is blank"},
 		{name: "refuses a name with a comma", typed: "go,rust", want: "Tag name contains a comma"},
 	}
@@ -245,11 +247,42 @@ func TestPane_ShortHelpWhileNaming(t *testing.T) {
 func TestPane_WithCursorOn(t *testing.T) {
 	t.Parallel()
 
-	sample := newSampleTags(t)
+	t.Run("moves the cursor onto the Tag", func(t *testing.T) {
+		t.Parallel()
 
-	pane := tallPane(t, sample).WithCursorOn(sample.unused.ID())
+		sample := newSampleTags(t)
 
-	assert.Equal(t, selected(sample.unused.ID()), selectedOf(pane))
+		pane := tallPane(t, sample).WithCursorOn(sample.unused.ID())
+
+		assert.Equal(t, selected(sample.unused.ID()), selectedOf(pane))
+	})
+
+	t.Run("moves the cursor onto the first Tag", func(t *testing.T) {
+		t.Parallel()
+
+		sample := newSampleTags(t)
+		pane, _ := pressed(tallPane(t, sample), keypress.Letter('G'))
+
+		pane = pane.WithCursorOn(sample.docker.ID())
+
+		assert.Equal(t, selected(sample.docker.ID()), selectedOf(pane))
+	})
+
+	t.Run("keeps the cursor for a Tag it does not list", func(t *testing.T) {
+		t.Parallel()
+
+		sample := newSampleTags(t)
+		pane, _ := pressed(tallPane(t, sample), keypress.Letter('j'))
+
+		ids := testkit.NewSequentialIDs()
+		for range sample.counts {
+			ids.NewTagID()
+		}
+
+		pane = pane.WithCursorOn(ids.NewTagID())
+
+		assert.Equal(t, selected(sample.golang.ID()), selectedOf(pane))
+	})
 }
 
 func tallPane(t *testing.T, sample sampleTags) tagpane.Pane {

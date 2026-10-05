@@ -32,7 +32,7 @@ func paneHintList(scope Scope) []labelledRef {
 
 		return append(
 			[]labelledRef{open},
-			withRowLabels(rowRef{scope: scope, name: NewFolder}, rowRef{scope: scope, name: Rename}, search)...)
+			withRowLabels(append(refsIn(scope, NewFolder, Rename, Delete), search)...)...)
 	case ScopeTags:
 		return withRowLabels(search)
 	case ScopeSnippetList:

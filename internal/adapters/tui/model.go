@@ -21,29 +21,33 @@ import (
 )
 
 const (
-	operationList         = "list snippets"
-	operationTree         = "list folders"
-	operationCopy         = "copy"
-	operationSave         = "save snippet"
-	operationSearch       = "search"
-	operationCreateFolder = "create folder"
-	operationRenameFolder = "rename folder"
+	operationList          = "list snippets"
+	operationTree          = "list folders"
+	operationCopy          = "copy"
+	operationSave          = "save snippet"
+	operationSearch        = "search"
+	operationCreateFolder  = "create folder"
+	operationRenameFolder  = "rename folder"
+	operationPreviewDelete = "preview folder delete"
+	operationDeleteFolder  = "delete folder"
 )
 
 type Model struct {
 	//nolint:containedctx // Bubble Tea's Update has no context parameter, so the program context travels with the model.
-	ctx           context.Context
-	lister        FolderSnippetsLister
-	treeLister    FolderTreeLister
-	copier        SnippetCopier
-	creator       SnippetCreator
-	searcher      SnippetSearcher
-	folderCreator FolderCreator
-	folderRenamer FolderRenamer
-	logger        *slog.Logger
-	forcedQuitKey string
-	afterCopy     tea.Cmd
-	overlays      outcome.Stack
+	ctx                   context.Context
+	lister                FolderSnippetsLister
+	treeLister            FolderTreeLister
+	copier                SnippetCopier
+	creator               SnippetCreator
+	searcher              SnippetSearcher
+	folderCreator         FolderCreator
+	folderRenamer         FolderRenamer
+	folderDeletePreviewer FolderDeletePreviewer
+	folderDeleter         FolderDeleter
+	logger                *slog.Logger
+	forcedQuitKey         string
+	afterCopy             tea.Cmd
+	overlays              outcome.Stack
 }
 
 func New(ctx context.Context, deps Deps) (Model, error) {
@@ -73,6 +77,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		domain.RequireDependency("searcher", deps.Searcher),
 		domain.RequireDependency("folderCreator", deps.FolderCreator),
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
+		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
+		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
 		requirePointer("logger", deps.Logger),
 		requirePointer("location", deps.Settings.Location),
 	)
@@ -84,18 +90,20 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 	overlays, _, _ := outcome.NewStack().Pushed(mainScreen)
 
 	return Model{
-		ctx:           ctx,
-		lister:        deps.Lister,
-		treeLister:    deps.TreeLister,
-		copier:        deps.Copier,
-		creator:       deps.Creator,
-		searcher:      deps.Searcher,
-		folderCreator: deps.FolderCreator,
-		folderRenamer: deps.FolderRenamer,
-		logger:        deps.Logger,
-		forcedQuitKey: deps.Settings.ForcedQuitKey,
-		afterCopy:     afterCopy,
-		overlays:      overlays,
+		ctx:                   ctx,
+		lister:                deps.Lister,
+		treeLister:            deps.TreeLister,
+		copier:                deps.Copier,
+		creator:               deps.Creator,
+		searcher:              deps.Searcher,
+		folderCreator:         deps.FolderCreator,
+		folderRenamer:         deps.FolderRenamer,
+		folderDeletePreviewer: deps.FolderDeletePreviewer,
+		folderDeleter:         deps.FolderDeleter,
+		logger:                deps.Logger,
+		forcedQuitKey:         deps.Settings.ForcedQuitKey,
+		afterCopy:             afterCopy,
+		overlays:              overlays,
 	}, nil
 }
 
@@ -109,10 +117,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.pressed(msg)
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg, tea.PasteMsg,
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
-		mainscreen.FolderCreated:
+		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed:
 		return m.overlaysUpdated(msg)
-	case folderCreatedMsg:
-		return m, m.listTree(func(tree browse.Tree) tea.Msg { return mainscreen.FolderCreated{Tree: tree, ID: msg.id} })
+	case folderTreeChangedMsg:
+		return m, m.loadTreeSelecting(msg.selecting)
 	case folderRenamedMsg:
 		return m, m.loadTree()
 	case folderChangeFailedMsg:
@@ -139,6 +147,10 @@ func (m Model) View() tea.View {
 
 func (m Model) loadTree() tea.Cmd {
 	return m.listTree(func(tree browse.Tree) tea.Msg { return mainscreen.TreeLoaded{Tree: tree} })
+}
+
+func (m Model) loadTreeSelecting(id domain.FolderID) tea.Cmd {
+	return m.listTree(func(tree browse.Tree) tea.Msg { return mainscreen.TreeChanged{Tree: tree, Selecting: id} })
 }
 
 func (m Model) listTree(loaded func(tree browse.Tree) tea.Msg) tea.Cmd {
@@ -210,8 +222,9 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.querySnippets(reported.Text)
 	case outcome.CopyRequested:
 		return m, m.copySnippet(reported.ID)
-	case outcome.FolderCreateRequested, outcome.FolderRenameRequested:
-		return m, m.changeFolder(reported)
+	case outcome.FolderCreateRequested, outcome.FolderRenameRequested,
+		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested:
+		return m, m.runFolderAction(reported)
 	case outcome.DiscardConfirmed:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
@@ -241,12 +254,16 @@ func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 	}
 }
 
-func (m Model) changeFolder(reported outcome.Outcome) tea.Cmd {
+func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 	switch reported := reported.(type) {
 	case outcome.FolderCreateRequested:
 		return m.createFolder(reported.Input)
 	case outcome.FolderRenameRequested:
 		return m.renameFolder(reported.Input)
+	case outcome.FolderDeleteAsked:
+		return m.previewFolderDelete(folder.PreviewDeleteInput{FolderID: reported.ID})
+	case outcome.FolderDeleteRequested:
+		return m.deleteFolder(reported.Input, reported.ParentID)
 	default:
 		return nil
 	}
@@ -259,7 +276,29 @@ func (m Model) createFolder(in folder.CreateInput) tea.Cmd {
 			return folderChangeFailedMsg{operation: operationCreateFolder, err: err}
 		}
 
-		return folderCreatedMsg{id: created.ID()}
+		return folderTreeChangedMsg{selecting: created.ID()}
+	}
+}
+
+func (m Model) previewFolderDelete(in folder.PreviewDeleteInput) tea.Cmd {
+	return func() tea.Msg {
+		preview, err := m.folderDeletePreviewer.Run(m.ctx, in)
+		if err != nil {
+			return folderChangeFailedMsg{operation: operationPreviewDelete, err: err}
+		}
+
+		return mainscreen.FolderDeletePreviewed{Preview: preview}
+	}
+}
+
+func (m Model) deleteFolder(in folder.DeleteInput, parentID domain.FolderID) tea.Cmd {
+	return func() tea.Msg {
+		err := m.folderDeleter.Run(m.ctx, in)
+		if err != nil {
+			return folderChangeFailedMsg{operation: operationDeleteFolder, err: err}
+		}
+
+		return folderTreeChangedMsg{selecting: parentID}
 	}
 }
 

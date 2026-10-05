@@ -8,10 +8,12 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -55,8 +57,10 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
 	case TreeLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withTree(msg.Tree)))
-	case FolderCreated:
-		return s.folderCreated(msg)
+	case TreeChanged:
+		return s.treeChanged(msg)
+	case FolderDeletePreviewed:
+		return s.confirmingFolderDelete(msg.Preview)
 	case SnippetsLoaded:
 		return outcome.Stay(s.withPanes(s.panes.withSnippetsIfStillSelected(msg)))
 	case StatusShown:
@@ -126,10 +130,19 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) folderCreated(msg FolderCreated) outcome.Step {
-	next := s.withPanes(s.panes.withTree(msg.Tree)).selectingFolder(msg.ID)
+func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
+	next := s.withPanes(s.panes.withTree(msg.Tree)).selectingFolder(msg.Selecting)
 
-	return outcome.Stay(next).Passing(outcome.FolderSelected{ID: msg.ID})
+	return outcome.Stay(next).Passing(outcome.FolderSelected{ID: msg.Selecting})
+}
+
+func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Step {
+	onYes := outcome.FolderDeleteRequested{
+		Input:    folder.DeleteInput{FolderID: preview.Folder.ID()},
+		ParentID: preview.Folder.ParentID(),
+	}
+
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, folderDeleteQuestion(preview), onYes))
 }
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {

@@ -33,7 +33,7 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"c Copy", "a new", "ctrl+f search"}, hintTexts(got))
 	})
 
-	t.Run("Folders hints open, new Folder and rename before search", func(t *testing.T) {
+	t.Run("Folders hints open, new Folder, rename and delete before search", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
@@ -41,11 +41,12 @@ func TestKeys_For(t *testing.T) {
 			bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
 			bound{scope: binding.ScopeFolders, name: binding.NewFolder, keys: []string{"N"}},
 			bound{scope: binding.ScopeFolders, name: binding.Rename, keys: []string{"r"}},
+			bound{scope: binding.ScopeFolders, name: binding.Delete, keys: []string{"d"}},
 		)
 
 		got := keys.For(binding.ScopeFolders).ShortHelp()
 
-		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "/ search"}, hintTexts(got))
+		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
 	t.Run("name input hints save and cancel", func(t *testing.T) {

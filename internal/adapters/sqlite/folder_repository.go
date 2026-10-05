@@ -80,6 +80,48 @@ func (r *FolderRepository) Update(ctx context.Context, folder domain.Folder) err
 	return nil
 }
 
+func (r *FolderRepository) Delete(ctx context.Context, id domain.FolderID) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		deleted, deleteErr := queries.DeleteFolder(ctx, columnID(id))
+		if deleteErr != nil {
+			return fmt.Errorf("delete folder: %w", deleteErr)
+		}
+
+		if deleted == 0 {
+			return domain.ErrNotFound
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.FolderRepository.Delete: %w", err)
+	}
+
+	return nil
+}
+
+func (r *FolderRepository) CountSubfolders(ctx context.Context, id domain.FolderID) (int, error) {
+	count, err := r.count(ctx, func(queries *sqlcgen.Queries) (int64, error) {
+		return queries.CountSubfolders(ctx, columnID(id))
+	})
+	if err != nil {
+		return 0, fmt.Errorf("sqlite.FolderRepository.CountSubfolders: %w", err)
+	}
+
+	return count, nil
+}
+
+func (r *FolderRepository) CountSnippetsInSubtree(ctx context.Context, id domain.FolderID) (int, error) {
+	count, err := r.count(ctx, func(queries *sqlcgen.Queries) (int64, error) {
+		return queries.CountSnippetsInSubtree(ctx, columnID(id))
+	})
+	if err != nil {
+		return 0, fmt.Errorf("sqlite.FolderRepository.CountSnippetsInSubtree: %w", err)
+	}
+
+	return count, nil
+}
+
 func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
 	var rows []sqlcgen.Folder
 
@@ -98,6 +140,26 @@ func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
 	}
 
 	return r.rebuildAll(ctx, rows), nil
+}
+
+func (r *FolderRepository) count(
+	ctx context.Context,
+	query func(queries *sqlcgen.Queries) (int64, error),
+) (int, error) {
+	var count int64
+
+	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		var countErr error
+
+		count, countErr = query(queries)
+		if countErr != nil {
+			return fmt.Errorf("count: %w", countErr)
+		}
+
+		return nil
+	})
+
+	return int(count), err
 }
 
 func (r *FolderRepository) rebuildAll(ctx context.Context, rows []sqlcgen.Folder) []domain.Folder {

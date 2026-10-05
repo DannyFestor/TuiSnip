@@ -11,7 +11,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
-const question = "Discard the unsaved changes?"
+const (
+	title    = "Unsaved changes"
+	question = "Discard the unsaved changes?"
+)
 
 func screenSize() look.Size {
 	return look.Size{Width: 80, Height: 24}
@@ -26,7 +29,12 @@ func asking(t *testing.T) *overlaytest.Driver {
 func askingWith(t *testing.T, keys binding.Keys, asked string) *overlaytest.Driver {
 	t.Helper()
 
-	opened := confirm.New(keys, look.NewStyles(), asked, outcome.DiscardConfirmed{})
+	opened := confirm.New(
+		keys,
+		look.NewStyles(),
+		confirm.Question{Title: title, Text: asked},
+		outcome.DiscardConfirmed{},
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }

@@ -162,7 +162,7 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 
 - The **Language picker** shows the curated `languages` list when config sets one, and `ctrl+a` switches to every Language and back.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
-- **Confirmations** (y/N, default No) and **help** (`?`) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key, `y/N` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. Help lists the Bindings active where it was opened.
+- **Confirmations** (y/N, default No) and **help** (`?`) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. Help lists the Bindings active where it was opened.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
 
 ## Status hint

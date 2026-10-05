@@ -22,8 +22,8 @@ type searchFailedMsg struct {
 	err error
 }
 
-type folderCreatedMsg struct {
-	id domain.FolderID
+type folderTreeChangedMsg struct {
+	selecting domain.FolderID
 }
 
 type folderRenamedMsg struct{}

@@ -45,7 +45,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       confirm/               the y/N confirmation an Overlay opens before it throws work away
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
-      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place
+      folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one
       folderpath/            how a Snippet's Folder path is spelled
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text

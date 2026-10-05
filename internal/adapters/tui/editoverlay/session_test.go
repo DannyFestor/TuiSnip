@@ -130,7 +130,7 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen.Press(enterContent()...)
 
-		assert.Equal(t, "ctrl+s save · esc leave", screen.Hints())
+		assert.Equal(t, "ctrl+s save · esc leave · tab indent · shift+tab dedent", screen.Hints())
 	})
 }
 
@@ -561,4 +561,135 @@ func TestSession_paste(t *testing.T) {
 
 		assert.Equal(t, []outcome.Outcome{outcome.NoticeShown{Text: "Pasted text contains tabs"}}, screen.Outcomes())
 	})
+
+	t.Run("refuses a paste over 10,000 lines into Content", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
+
+		want := outcome.NoticeShown{Text: "Pasted text is over 10,000 lines; use ctrl+e to edit in $EDITOR"}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+	})
+
+	t.Run("inserts a paste of 10,000 lines into Content", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+		pasted := linesOf(10_000)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: pasted})
+		screen.Press(save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", pasted)}}, screen.Outcomes())
+	})
+
+	t.Run("names no key for a long paste when the external editor is unbound", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
+		screen := editingWith(t, keys)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
+
+		want := outcome.NoticeShown{Text: "Pasted text is over 10,000 lines"}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+	})
+}
+
+func TestSession_indent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pasted  string
+		pressed tea.KeyPressMsg
+		want    string
+	}{
+		{
+			name:    "indent adds four spaces to the cursor's line only",
+			pasted:  "first\n  second\nthird",
+			pressed: keypress.Special(tea.KeyTab),
+			want:    "first\n      second\nthird",
+		},
+		{
+			name:    "dedent removes four spaces from the cursor's line only",
+			pasted:  "    first\n      second\n    third",
+			pressed: shiftTab(),
+			want:    "    first\n  second\n    third",
+		},
+		{
+			name:    "dedent removes the spaces a line has when it has fewer than four",
+			pasted:  "first\n  second\nthird",
+			pressed: shiftTab(),
+			want:    "first\nsecond\nthird",
+		},
+		{
+			name:    "dedent leaves an unindented line unchanged",
+			pasted:  "first\nsecond\nthird",
+			pressed: shiftTab(),
+			want:    "first\nsecond\nthird",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen := editing(t)
+
+			screen.Press(enterContent()...)
+			screen.Send(tea.PasteMsg{Content: tt.pasted})
+			screen.Press(keypress.Special(tea.KeyUp), tt.pressed, save())
+
+			assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", tt.want)}}, screen.Outcomes())
+		})
+	}
+
+	t.Run("indent keeps the cursor on the same character", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Typed("ab")...)
+		screen.Press(keypress.Special(tea.KeyLeft), keypress.Special(tea.KeyTab), keypress.Letter('x'), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "    axb")}}, screen.Outcomes())
+	})
+
+	t.Run("dedent keeps the cursor on the same character", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: "    ab"})
+		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())
+	})
+
+	t.Run("dedent keeps the cursor on the line when it sat in the removed spaces", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: "      a"})
+		screen.Press(keypress.Special(tea.KeyHome), keypress.Special(tea.KeyRight), shiftTab())
+		screen.Press(keypress.Letter('x'), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "x  a")}}, screen.Outcomes())
+	})
+}
+
+func linesOf(count int) string {
+	return strings.TrimSuffix(strings.Repeat("line\n", count), "\n")
 }

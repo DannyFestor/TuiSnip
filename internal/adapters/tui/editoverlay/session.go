@@ -96,12 +96,18 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.saveStarted()
 	case requestCancel:
 		return s.cancelled()
-	case requestRefusePaste:
-		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: pasteHasTabsText(s.form.externalEditorKey())})
+	case requestRefusePasteWithTabs:
+		return s.pasteRefused(pasteHasTabs)
+	case requestRefuseLongPaste:
+		return s.pasteRefused(pasteTooLong)
 	case requestNothing:
 	}
 
 	return outcome.Stay(s)
+}
+
+func (s Session) pasteRefused(refusal string) outcome.Step {
+	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusedPasteText(refusal, s.form.externalEditorKey())})
 }
 
 func (s Session) saveStarted() outcome.Step {

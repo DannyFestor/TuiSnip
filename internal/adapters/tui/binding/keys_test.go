@@ -63,6 +63,21 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter save", "esc cancel"}, hintTexts(got))
 	})
 
+	t.Run("Content hints save, leave, indent and dedent", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeContent, name: binding.Save, keys: []string{"ctrl+s"}},
+			bound{scope: binding.ScopeContent, name: binding.Leave, keys: []string{"esc"}},
+			bound{scope: binding.ScopeContent, name: binding.Indent, keys: []string{"ctrl+]"}},
+			bound{scope: binding.ScopeContent, name: binding.Dedent, keys: []string{"ctrl+["}},
+		)
+
+		got := keys.For(binding.ScopeContent).ShortHelp()
+
+		assert.Equal(t, []string{"ctrl+s save", "esc leave", "ctrl+] indent", "ctrl+[ dedent"}, hintTexts(got))
+	})
+
 	t.Run("disables a hint whose Binding has no keys", func(t *testing.T) {
 		t.Parallel()
 

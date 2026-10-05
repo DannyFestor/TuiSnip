@@ -120,7 +120,8 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **Inside Content:**
   - `esc` leaves the textarea but keeps the overlay open, and a second `esc` cancels.
   - `↑` on the first line moves to Language.
-  - `tab` indents and `shift+tab` removes one indent level from the cursor's line.
+  - `tab` indents and `shift+tab` removes one indent level from the cursor's line. An indent level is four spaces. `shift+tab` on a line with fewer leading spaces removes those, and the cursor stays on the same character.
+  - **A paste over 10,000 lines** isn't inserted, because the textarea would cut it at 10,000 lines. The status line says "Pasted text is over 10,000 lines; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text is over 10,000 lines".
 - `ctrl+s` saves, closes the overlay, selects the Snippet in the list, and shows it in the Snippet pane. `esc` outside Content cancels, asking [y/N] first if anything changed.
 - `ctrl+e` opens the Fragment in the external editor from any field.
 
@@ -129,7 +130,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
 
 - **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
-- **The tab key in editable content** inserts four spaces. That is the textarea's own behaviour and is visible, so nothing is silently changed.
+- **The tab key in editable content** indents the cursor's line with four spaces. That is visible, so nothing is silently changed.
 - **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
 - **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.
 

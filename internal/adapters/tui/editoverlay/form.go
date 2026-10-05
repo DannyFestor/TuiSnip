@@ -24,6 +24,8 @@ const (
 	fieldLabelWidth = 12
 	fieldRows       = 3
 	tabCharacter    = "\t"
+	lineBreak       = "\n"
+	maxPastedLines  = 10_000
 	entryKeysJoiner = " or "
 	entrySuffix     = " to edit"
 )
@@ -146,6 +148,16 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case f.keys.content.Matches(msg, binding.Leave):
 		return f.leftContent(), requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Indent):
+		f.content = indentedLine(f.content)
+
+		return f, requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Dedent):
+		var cmd tea.Cmd
+
+		f.content, cmd = dedentedLine(f.content)
+
+		return f, requestNothing, cmd
 	case f.leavesContentUpward(msg):
 		return f.steppedBack()
 	}
@@ -158,8 +170,15 @@ func (f form) leavesContentUpward(msg tea.KeyPressMsg) bool {
 }
 
 func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
-	if f.inContent && strings.Contains(msg.Content, tabCharacter) {
-		return f, requestRefusePaste, nil
+	if !f.inContent {
+		return f.typed(msg)
+	}
+
+	switch {
+	case strings.Contains(msg.Content, tabCharacter):
+		return f, requestRefusePasteWithTabs, nil
+	case strings.Count(msg.Content, lineBreak) >= maxPastedLines:
+		return f, requestRefuseLongPaste, nil
 	}
 
 	return f.typed(msg)

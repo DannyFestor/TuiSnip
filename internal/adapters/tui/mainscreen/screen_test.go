@@ -389,6 +389,37 @@ func TestScreen_statusLine(t *testing.T) {
 	})
 }
 
+func TestScreen_restyle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("draws every Pane in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		assert.Equal(t, showingStyled(t, wide(), light, sampleSnippets(t)...).StyledScreen(), screen.StyledScreen())
+	})
+
+	for _, opening := range []rune{'n', '/'} {
+		t.Run("opens the Overlay on "+string(opening)+" in the new Styles", func(t *testing.T) {
+			t.Parallel()
+
+			light := look.NewStyles(look.SchemeLight)
+			screen := showing(t, wide(), sampleSnippets(t)...)
+			screen.Send(look.Restyled{Styles: light})
+			styledFromStart := showingStyled(t, wide(), light, sampleSnippets(t)...)
+
+			screen.Press(keypress.Letter(opening))
+			styledFromStart.Press(keypress.Letter(opening))
+
+			assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+		})
+	}
+}
+
 func TestScreen_Update(t *testing.T) {
 	t.Parallel()
 
@@ -557,7 +588,7 @@ func TestScreen_sortOrder(t *testing.T) {
 	t.Run("starts with the order it was opened with", func(t *testing.T) {
 		t.Parallel()
 
-		screen := opened(t, wide(), look.NewStyles(), domain.SortOrderCreated)
+		screen := opened(t, wide(), look.NewStyles(look.SchemeDark), domain.SortOrderCreated)
 
 		assert.Contains(t, screen.Screen(), "3 Root · by creation date")
 	})
@@ -802,7 +833,7 @@ func TestScreen_Received(t *testing.T) {
 func TestScreen_FullHelp(t *testing.T) {
 	t.Parallel()
 
-	screen := newScreen(t, look.NewStyles(), domain.SortOrderTitle)
+	screen := newScreen(t, look.NewStyles(look.SchemeDark), domain.SortOrderTitle)
 
 	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys, nil).FullHelp(), screen.FullHelp())
 }
@@ -812,7 +843,7 @@ func TestNew(t *testing.T) {
 
 	_, err := mainscreen.New(
 		testsettings.Default(t).Keys,
-		look.NewStyles(),
+		look.NewStyles(look.SchemeDark),
 		time.UTC,
 		mainscreen.Remembered{SortOrder: domain.SortOrder("language"), CollapsedFolders: nil},
 	)

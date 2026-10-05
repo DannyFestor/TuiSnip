@@ -12,6 +12,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -84,6 +85,27 @@ func TestSettingsFrom(t *testing.T) {
 
 		assert.Equal(t, remembered, settings.Remembered)
 	})
+
+	themes := []struct {
+		name   string
+		config string
+		want   look.Theme
+	}{
+		{name: "follows the terminal by default", config: "", want: look.ThemeAuto},
+		{name: "forces the light theme", config: "theme = \"light\"\n", want: look.ThemeLight},
+		{name: "forces the dark theme", config: "theme = \"dark\"\n", want: look.ThemeDark},
+	}
+	for _, tt := range themes {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(
+				t,
+				tt.want,
+				bootstrap.SettingsFrom(loadConfig(t, tt.config), time.UTC, nothingRemembered()).Theme,
+			)
+		})
+	}
 }
 
 func nothingRemembered() mainscreen.Remembered {

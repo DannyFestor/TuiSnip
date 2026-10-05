@@ -82,7 +82,9 @@ func (p panes) resized(to layout) panes {
 	return p
 }
 
-func (p panes) withBackground(msg tea.BackgroundColorMsg) panes {
+func (p panes) restyled(msg look.Restyled) panes {
+	p.tags, _, _ = p.tags.Update(msg)
+	p.list, _, _ = p.list.Update(msg)
 	p.preview, _, _ = p.preview.Update(msg)
 
 	return p

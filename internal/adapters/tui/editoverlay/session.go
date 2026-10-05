@@ -44,6 +44,8 @@ func (s Session) Update(msg tea.Msg) outcome.Step {
 		return s.formUpdated(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
+	case look.Restyled:
+		return outcome.Stay(s.restyled(msg.Styles))
 	case SaveFinished:
 		return s.saved(msg)
 	}
@@ -153,6 +155,12 @@ func (s Session) confirming(question string, onYes outcome.Outcome) outcome.Step
 func (s Session) resized(screen look.Size) Session {
 	s.outer = screen.Share(overlayPercent)
 	s.form = s.form.resized(s.outer)
+
+	return s
+}
+
+func (s Session) restyled(styles look.Styles) Session {
+	s.styles = styles
 
 	return s
 }

@@ -30,7 +30,7 @@ func created() time.Time {
 func paneIn(t *testing.T, location *time.Location, box look.Size) snippetpane.Pane {
 	t.Helper()
 
-	pane := snippetpane.New(testsettings.Default(t).Keys, look.NewStyles(), location)
+	pane := snippetpane.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), location)
 	pane, _, _ = pane.Update(look.Resized{Box: box})
 
 	return pane

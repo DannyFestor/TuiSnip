@@ -72,8 +72,8 @@ func (p Popup) Update(msg tea.Msg) outcome.Step {
 		return p.typed(msg)
 	case look.Resized:
 		return outcome.Stay(p.resized(msg.Box))
-	case tea.BackgroundColorMsg:
-		return outcome.Stay(p.withBackground(msg))
+	case look.Restyled:
+		return outcome.Stay(p.restyled(msg))
 	case HitsFound:
 		return outcome.Stay(p.withHits(msg.Text, msg.Hits))
 	case TreeLoaded:
@@ -150,7 +150,9 @@ func (p Popup) withPaths(paths folderpath.Paths) Popup {
 	return p
 }
 
-func (p Popup) withBackground(msg tea.BackgroundColorMsg) Popup {
+func (p Popup) restyled(msg look.Restyled) Popup {
+	p.styles = msg.Styles
+	p.results, _, _ = p.results.Update(msg)
 	p.preview, _, _ = p.preview.Update(msg)
 
 	return p

@@ -29,9 +29,15 @@ func asking(t *testing.T) *overlaytest.Driver {
 func askingWith(t *testing.T, keys binding.Keys, asked string) *overlaytest.Driver {
 	t.Helper()
 
+	return askingStyled(t, keys, look.NewStyles(look.SchemeDark), asked)
+}
+
+func askingStyled(t *testing.T, keys binding.Keys, styles look.Styles, asked string) *overlaytest.Driver {
+	t.Helper()
+
 	opened := confirm.New(
 		keys,
-		look.NewStyles(),
+		styles,
 		confirm.Question{Title: title, Text: asked},
 		outcome.DiscardConfirmed{},
 	)

@@ -48,7 +48,7 @@ func minimum() look.Size {
 func showing(t *testing.T, screen look.Size, snippets ...domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
-	return showingStyled(t, screen, look.NewStyles(), snippets...)
+	return showingStyled(t, screen, look.NewStyles(look.SchemeDark), snippets...)
 }
 
 func showingStyled(t *testing.T, screen look.Size, styles look.Styles, snippets ...domain.Snippet) *overlaytest.Driver {
@@ -107,7 +107,7 @@ func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
 }
 
 func upperFocusedTitle() look.Styles {
-	styles := look.NewStyles()
+	styles := look.NewStyles(look.SchemeDark)
 	styles.Focused.Title = lipgloss.NewStyle().Transform(strings.ToUpper)
 
 	return styles

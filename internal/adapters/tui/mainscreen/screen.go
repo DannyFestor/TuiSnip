@@ -62,8 +62,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return s.pasted(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
-	case tea.BackgroundColorMsg:
-		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
+	case look.Restyled:
+		return outcome.Stay(s.restyled(msg))
 	case TreeLoaded:
 		return s.treeLoaded(msg.Tree)
 	case TreeChanged:
@@ -195,6 +195,13 @@ func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {
 
 func (s Screen) withPanes(next panes) Screen {
 	s.panes = next
+
+	return s
+}
+
+func (s Screen) restyled(msg look.Restyled) Screen {
+	s.styles = msg.Styles
+	s.panes = s.panes.restyled(msg)
 
 	return s
 }

@@ -34,16 +34,11 @@ func New(keys binding.Keys, styles look.Styles, question Question, onYes outcome
 }
 
 func (c Confirmation) Update(msg tea.Msg) outcome.Step {
-	pressed, ok := msg.(tea.KeyPressMsg)
-	if !ok {
-		return outcome.Stay(c)
-	}
-
-	switch {
-	case c.keys.Matches(pressed, binding.Yes):
-		return outcome.Close().Passing(c.onYes)
-	case c.keys.Matches(pressed, binding.No):
-		return outcome.Close()
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		return c.pressed(msg)
+	case look.Restyled:
+		return outcome.Stay(c.restyled(msg.Styles))
 	}
 
 	return outcome.Stay(c)
@@ -63,6 +58,23 @@ func (c Confirmation) ShortHelp() []key.Binding {
 
 func (c Confirmation) FullHelp() [][]key.Binding {
 	return c.keys.FullHelp()
+}
+
+func (c Confirmation) pressed(pressed tea.KeyPressMsg) outcome.Step {
+	switch {
+	case c.keys.Matches(pressed, binding.Yes):
+		return outcome.Close().Passing(c.onYes)
+	case c.keys.Matches(pressed, binding.No):
+		return outcome.Close()
+	}
+
+	return outcome.Stay(c)
+}
+
+func (c Confirmation) restyled(styles look.Styles) Confirmation {
+	c.styles = styles
+
+	return c
 }
 
 func (c Confirmation) prompt() string {

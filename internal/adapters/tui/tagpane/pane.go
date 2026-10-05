@@ -27,8 +27,11 @@ func New(keys binding.Keys, styles look.Styles) Pane {
 
 //nolint:unparam // every embedded child returns a Cmd (architecture.md), so parents handle each child alike.
 func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
-	if resized, ok := msg.(look.Resized); ok {
-		p.box = resized.Box
+	switch msg := msg.(type) {
+	case look.Resized:
+		p.box = msg.Box
+	case look.Restyled:
+		p.styles = msg.Styles
 	}
 
 	return p, nil, nil

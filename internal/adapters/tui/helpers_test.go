@@ -345,5 +345,9 @@ func sequenceSteps(msg tea.Msg) ([]tea.Cmd, bool) {
 }
 
 func (d *driver) screen() string {
-	return ansi.Strip(d.model.View().Content)
+	return ansi.Strip(d.styledScreen())
+}
+
+func (d *driver) styledScreen() string {
+	return d.model.View().Content
 }

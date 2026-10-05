@@ -44,6 +44,10 @@ func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
 		return l.pressed(msg), l.copyRequested(msg), nil
 	case look.Resized:
 		return l.resized(msg.Box), nil, nil
+	case look.Restyled:
+		l.styles = msg.Styles
+
+		return l, nil, nil
 	}
 
 	return l, nil, nil

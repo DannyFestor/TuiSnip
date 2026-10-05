@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
@@ -76,6 +77,18 @@ func TestConfirmation_View(t *testing.T) {
 		screen := askingWith(t, testsettings.Default(t).Keys, "Go?")
 
 		assert.Equal(t, len(" "+title+" ")+2, screen.TopBorderWidth())
+	})
+
+	t.Run("draws in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := asking(t)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		assert.Equal(t, askingStyled(t, keys, light, question).StyledScreen(), screen.StyledScreen())
 	})
 }
 

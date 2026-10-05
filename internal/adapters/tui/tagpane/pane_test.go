@@ -32,6 +32,21 @@ func TestPane_View(t *testing.T) {
 	})
 }
 
+func TestPane_Update(t *testing.T) {
+	t.Parallel()
+
+	t.Run("draws in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		box := look.Size{Width: boxWidth, Height: boxHeight}
+		light := look.NewStyles(look.SchemeLight)
+
+		restyled, _, _ := paneIn(t, box).Update(look.Restyled{Styles: light})
+
+		assert.Equal(t, styledPaneIn(t, light, box).View(), restyled.View())
+	})
+}
+
 func TestPane_ShortHelp(t *testing.T) {
 	t.Parallel()
 

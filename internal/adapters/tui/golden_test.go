@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/x/exp/golden"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
@@ -53,6 +54,18 @@ func TestSmallTerminalLayout(t *testing.T) {
 	screen.press(keypress.Letter('4'))
 
 	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
+func TestDarkSchemeLayout(t *testing.T) {
+	t.Parallel()
+
+	golden.RequireEqual(t, []byte(themed(t, look.ThemeAuto).styledScreen()))
+}
+
+func TestLightSchemeLayout(t *testing.T) {
+	t.Parallel()
+
+	golden.RequireEqual(t, []byte(themed(t, look.ThemeLight).styledScreen()))
 }
 
 func layoutModel(t *testing.T, lister *MockFolderSnippetsLister) tui.Model {

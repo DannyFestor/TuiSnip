@@ -1,7 +1,6 @@
 package snippetpane_test
 
 import (
-	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -154,15 +153,24 @@ func TestPane_Update(t *testing.T) {
 		assert.Empty(t, outcomes)
 	})
 
-	t.Run("highlights for the terminal's background", func(t *testing.T) {
+	t.Run("redraws the shown Snippet in the new Styles", func(t *testing.T) {
 		t.Parallel()
 
 		pane := showing(t, longSnippet(t))
 
-		light, _, _ := pane.Update(tea.BackgroundColorMsg{Color: color.White})
+		light, _, _ := pane.Update(look.Restyled{Styles: look.NewStyles(look.SchemeLight)})
 
 		assert.NotEqual(t, pane.View(), light.View())
 		assert.Equal(t, lines(pane), lines(light))
+	})
+
+	t.Run("keeps the new Styles for the next Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, longSnippet(t))
+		restyled, _, _ := pane.Cleared().Update(look.Restyled{Styles: look.NewStyles(look.SchemeLight)})
+
+		assert.NotEqual(t, pane.View(), restyled.Showing(longSnippet(t)).View())
 	})
 
 	t.Run("ignores messages it does not handle", func(t *testing.T) {

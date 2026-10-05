@@ -42,7 +42,13 @@ func editing(t *testing.T) *overlaytest.Driver {
 func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, look.NewStyles())
+	return editingStyled(t, keys, look.NewStyles(look.SchemeDark))
+}
+
+func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.New(keys, styles)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }

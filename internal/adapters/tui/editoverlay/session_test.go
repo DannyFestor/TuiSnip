@@ -11,6 +11,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -109,6 +110,17 @@ func TestSession_View(t *testing.T) {
 		screen := editingWith(t, keys)
 
 		assert.NotContains(t, screen.Screen(), "to edit")
+	})
+
+	t.Run("draws in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		screen := editing(t)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		assert.Equal(t, editingStyled(t, testsettings.Default(t).Keys, light).StyledScreen(), screen.StyledScreen())
 	})
 }
 

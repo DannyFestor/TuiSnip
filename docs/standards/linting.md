@@ -105,7 +105,7 @@ When the members carry no data of their own, or share the same few fields, use a
 
 ## No globals, no hidden state
 
-- gochecknoglobals and gochecknoinits: no package-level variables, no `init()`. Lip Gloss styles and default keymaps come from constructors (`DefaultKeyMap()`, `NewStyles(theme)`) and are injected, because keybindings and themes are configurable.
+- gochecknoglobals and gochecknoinits: no package-level variables, no `init()`. Lip Gloss styles and default keymaps come from constructors (`DefaultKeyMap()`, `NewStyles(scheme)`) and are injected, because keybindings and themes are configurable.
 - forbidigo:
   - bans `fmt.Print*`, `print`, and `println`, because stdout belongs to the TUI
   - bans `time.Sleep` outside tests

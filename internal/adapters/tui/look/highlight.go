@@ -4,18 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 )
 
-const (
-	DarkCodeStyle  = "github-dark"
-	lightCodeStyle = "github"
-	tabAsSpaces    = "    "
-)
+const tabAsSpaces = "    "
 
 func Highlight(content, language, codeStyle string) string {
 	plain := strings.ReplaceAll(strings.TrimSuffix(content, "\n"), "\t", tabAsSpaces)
@@ -47,12 +42,4 @@ func tokenise(plain, language string) (chroma.Iterator, error) {
 	}
 
 	return iterator, nil
-}
-
-func CodeStyleFor(background tea.BackgroundColorMsg) string {
-	if background.IsDark() {
-		return DarkCodeStyle
-	}
-
-	return lightCodeStyle
 }

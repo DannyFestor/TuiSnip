@@ -153,3 +153,43 @@ func (q *Queries) ListFragmentsInFolder(ctx context.Context, folderID *sqltype.I
 	}
 	return items, nil
 }
+
+const listFragmentsWithTag = `-- name: ListFragmentsWithTag :many
+SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
+       fragments.created_at, fragments.updated_at
+FROM fragments
+JOIN snippet_tag ON snippet_tag.snippet_id = fragments.snippet_id
+WHERE snippet_tag.tag_id = ?1
+ORDER BY fragments.snippet_id, fragments.position
+`
+
+func (q *Queries) ListFragmentsWithTag(ctx context.Context, tagID sqltype.ID) ([]Fragment, error) {
+	rows, err := q.db.QueryContext(ctx, listFragmentsWithTag, tagID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Fragment{}
+	for rows.Next() {
+		var i Fragment
+		if err := rows.Scan(
+			&i.ID,
+			&i.SnippetID,
+			&i.Position,
+			&i.Language,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -104,6 +104,7 @@ func TestSnippet_New(t *testing.T) {
 				value.Description{},
 				domain.FolderID{},
 				tt.fragments,
+				nil,
 				tt.createdAt,
 				tt.updatedAt,
 			)
@@ -122,9 +123,10 @@ func TestSnippet_Accessors(t *testing.T) {
 	description := mustDescription(t, "POST with a JSON body")
 	folderID := domain.FolderID(uuid.MustParse(folderUUID))
 	fragment := testkit.Fragment(t, testkit.FragmentSpec{Content: "curl -d @body.json"})
+	tag := testkit.Tag(t, testkit.TagSpec{Name: "http"})
 
 	snippet, err := domain.NewSnippet(
-		snippetID(), title, description, folderID, []domain.Fragment{fragment}, created, updated,
+		snippetID(), title, description, folderID, []domain.Fragment{fragment}, []domain.Tag{tag}, created, updated,
 	)
 
 	require.NoError(t, err)
@@ -133,6 +135,7 @@ func TestSnippet_Accessors(t *testing.T) {
 	assert.Equal(t, description, snippet.Description())
 	assert.Equal(t, folderID, snippet.FolderID())
 	assert.Equal(t, []domain.Fragment{fragment}, snippet.Fragments())
+	assert.Equal(t, []domain.Tag{tag}, snippet.Tags())
 	assert.Equal(t, created, snippet.CreatedAt())
 	assert.Equal(t, updated, snippet.UpdatedAt())
 }
@@ -164,7 +167,7 @@ func TestSnippet_Fragments(t *testing.T) {
 
 	fragments := []domain.Fragment{testkit.Fragment(t, testkit.FragmentSpec{Content: "original"})}
 	snippet, err := domain.NewSnippet(
-		snippetID(), mustTitle(t, "curl json"), value.Description{}, domain.FolderID{}, fragments,
+		snippetID(), mustTitle(t, "curl json"), value.Description{}, domain.FolderID{}, fragments, nil,
 		time.Unix(1, 0), time.Unix(1, 0),
 	)
 	require.NoError(t, err)
@@ -173,6 +176,34 @@ func TestSnippet_Fragments(t *testing.T) {
 	snippet.Fragments()[0] = testkit.Fragment(t, testkit.FragmentSpec{Content: "changed through accessor"})
 
 	assert.Equal(t, "original", snippet.Fragments()[0].Content().String())
+}
+
+func TestSnippet_Tags(t *testing.T) {
+	t.Parallel()
+
+	t.Run("lists the Tags by name ignoring case", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		shell := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+		docker := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Docker"})
+
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{Tags: []domain.Tag{shell, docker}})
+
+		assert.Equal(t, []domain.Tag{docker, shell}, snippet.Tags())
+	})
+
+	t.Run("keeps its Tags from the caller and the accessor", func(t *testing.T) {
+		t.Parallel()
+
+		tags := []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "original"})}
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{Tags: tags})
+
+		tags[0] = testkit.Tag(t, testkit.TagSpec{Name: "changed by caller"})
+		snippet.Tags()[0] = testkit.Tag(t, testkit.TagSpec{Name: "changed through accessor"})
+
+		assert.Equal(t, "original", snippet.Tags()[0].Name().String())
+	})
 }
 
 func TestSnippet_FirstFragment(t *testing.T) {

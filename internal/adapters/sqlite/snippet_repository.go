@@ -61,19 +61,21 @@ func (r *SnippetRepository) ListInFolder(
 	return snippets, nil
 }
 
+func (r *SnippetRepository) ListWithTag(
+	ctx context.Context,
+	tagID domain.TagID,
+	order domain.SortOrder,
+) ([]domain.Snippet, error) {
+	snippets, err := r.loadAll(ctx, snippetsWithTag(tagID, order))
+	if err != nil {
+		return nil, fmt.Errorf("sqlite.SnippetRepository.ListWithTag: %w", err)
+	}
+
+	return snippets, nil
+}
+
 func (r *SnippetRepository) CountByFolder(ctx context.Context) (map[domain.FolderID]int, error) {
-	var rows []sqlcgen.CountSnippetsByFolderRow
-
-	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
-		var countErr error
-
-		rows, countErr = queries.CountSnippetsByFolder(ctx)
-		if countErr != nil {
-			return fmt.Errorf("count snippets: %w", countErr)
-		}
-
-		return nil
-	})
+	rows, err := readRows(ctx, r.db, (*sqlcgen.Queries).CountSnippetsByFolder)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite.SnippetRepository.CountByFolder: %w", err)
 	}
@@ -81,6 +83,20 @@ func (r *SnippetRepository) CountByFolder(ctx context.Context) (map[domain.Folde
 	counts := make(map[domain.FolderID]int, len(rows))
 	for _, row := range rows {
 		counts[folderFromColumn(row.FolderID)] = int(row.SnippetCount)
+	}
+
+	return counts, nil
+}
+
+func (r *SnippetRepository) CountByTag(ctx context.Context) (map[domain.TagID]int, error) {
+	rows, err := readRows(ctx, r.db, (*sqlcgen.Queries).CountSnippetsByTag)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite.SnippetRepository.CountByTag: %w", err)
+	}
+
+	counts := make(map[domain.TagID]int, len(rows))
+	for _, row := range rows {
+		counts[entityID[domain.TagID](row.TagID)] = int(row.SnippetCount)
 	}
 
 	return counts, nil
@@ -96,6 +112,13 @@ func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain
 		err = queries.InsertFragment(ctx, insertFragmentParams(snippet.ID(), position, fragment))
 		if err != nil {
 			return fmt.Errorf("insert fragment: %w", err)
+		}
+	}
+
+	for _, tag := range snippet.Tags() {
+		err = queries.InsertSnippetTag(ctx, insertSnippetTagParams(snippet.ID(), tag))
+		if err != nil {
+			return fmt.Errorf("insert snippet tag: %w", err)
 		}
 	}
 

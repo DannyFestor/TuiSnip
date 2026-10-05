@@ -17,6 +17,10 @@ func insertSnippetParams(snippet domain.Snippet) sqlcgen.InsertSnippetParams {
 	}
 }
 
+func insertSnippetTagParams(snippetID domain.SnippetID, tag domain.Tag) sqlcgen.InsertSnippetTagParams {
+	return sqlcgen.InsertSnippetTagParams{SnippetID: columnID(snippetID), TagID: columnID(tag.ID())}
+}
+
 func insertFragmentParams(
 	snippetID domain.SnippetID,
 	position int,

@@ -66,6 +66,7 @@ func (c *Create) atRoot(fields createFields, now time.Time) (domain.Snippet, err
 		fields.description,
 		domain.FolderID{},
 		[]domain.Fragment{fragment},
+		nil,
 		now,
 		now,
 	)

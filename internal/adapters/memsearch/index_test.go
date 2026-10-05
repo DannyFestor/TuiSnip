@@ -99,6 +99,28 @@ func TestIndex_Search(t *testing.T) {
 			wantOrder: []string{"docker container run"},
 		},
 		{
+			name:      "finds a Snippet by a Tag alone",
+			snippets:  []testkit.SnippetSpec{{Title: "notes", Tags: tagsNamed(t, "kubernetes")}, {Title: "other"}},
+			query:     "kubernetes",
+			wantOrder: []string{"notes"},
+		},
+		{
+			name:      "matches a Tag fuzzily, ignoring diacritics",
+			snippets:  []testkit.SnippetSpec{{Title: "notes", Tags: tagsNamed(t, "go", "Café")}},
+			query:     "cfe",
+			wantOrder: []string{"notes"},
+		},
+		{
+			name: "ranks a Tag match between a title and a Description match",
+			snippets: []testkit.SnippetSpec{
+				{Title: "notes", Description: "docker"},
+				{Title: "list", Tags: tagsNamed(t, "docker")},
+				{Title: "docker"},
+			},
+			query:     "docker",
+			wantOrder: []string{"docker", "list", "notes"},
+		},
+		{
 			name:      "returns no hits when nothing matches",
 			snippets:  []testkit.SnippetSpec{{Title: "curl json"}},
 			query:     "zzz",
@@ -225,6 +247,19 @@ func buildSnippets(t *testing.T, specs []testkit.SnippetSpec) []domain.Snippet {
 	}
 
 	return snippets
+}
+
+func tagsNamed(t *testing.T, names ...string) []domain.Tag {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+	tags := make([]domain.Tag, 0, len(names))
+
+	for _, name := range names {
+		tags = append(tags, testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: name}))
+	}
+
+	return tags
 }
 
 func hitTitles(hits []domain.SearchHit) []string {

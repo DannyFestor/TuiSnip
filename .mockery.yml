@@ -23,10 +23,15 @@ packages:
       SnippetLister: {}
       FolderLister: {}
       SnippetCounter: {}
+      TagLister: {}
+      TagSnippetCounter: {}
+      TagSnippetLister: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui:
     interfaces:
       FolderSnippetsLister: {}
       FolderTreeLister: {}
+      TagLister: {}
+      TagSnippetsLister: {}
       SnippetCopier: {}
       SnippetCreator: {}
       SnippetSearcher: {}

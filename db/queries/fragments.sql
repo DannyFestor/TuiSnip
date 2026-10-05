@@ -20,3 +20,11 @@ FROM fragments
 JOIN snippets ON snippets.id = fragments.snippet_id
 WHERE snippets.folder_id IS sqlc.narg(folder_id)
 ORDER BY fragments.snippet_id, fragments.position;
+
+-- name: ListFragmentsWithTag :many
+SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
+       fragments.created_at, fragments.updated_at
+FROM fragments
+JOIN snippet_tag ON snippet_tag.snippet_id = fragments.snippet_id
+WHERE snippet_tag.tag_id = sqlc.arg(tag_id)
+ORDER BY fragments.snippet_id, fragments.position;

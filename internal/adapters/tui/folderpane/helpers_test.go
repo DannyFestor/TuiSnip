@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -47,6 +48,12 @@ func withCursorOn(pane folderpane.Pane, id domain.FolderID) folderpane.Pane {
 	pane, _ = pane.WithCursorOn(id)
 
 	return pane
+}
+
+func samplePane(t *testing.T, sample foldertree.Sample) folderpane.Pane {
+	t.Helper()
+
+	return withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 }
 
 func pressed(pane folderpane.Pane, keys ...tea.KeyPressMsg) folderpane.Pane {

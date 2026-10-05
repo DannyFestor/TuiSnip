@@ -14,7 +14,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -244,13 +243,4 @@ func copyFirstSnippet(t *testing.T, build modelConstructor, result snippet.CopyR
 	screen.press(keypress.Letter('3'), keypress.Letter('y'))
 
 	return screen
-}
-
-func copied(t *testing.T, delivery domain.CopyDelivery) snippet.CopyResult {
-	t.Helper()
-
-	content, err := value.NewContent("echo copied")
-	require.NoError(t, err)
-
-	return snippet.CopyResult{Delivery: delivery, Content: content}
 }

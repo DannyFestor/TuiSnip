@@ -83,6 +83,8 @@ func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 }
 ```
 
+A test builder that more than one test file in a package uses lives in that package's `helpers_test.go`: `insertSnippet` in `sqlite`, `browsingModel` and `filedIn` in `tui`, `opened` and `browsing` in `mainscreen`, `seededFolder` and `seededSnippet` in `test/feature`. A builder only one file uses stays in that file. A fake with its own type keeps its own file, such as `fakeTools` in clipboard's `fake_tools_test.go`.
+
 ### export_test.go
 
 A package's tests are black-box (testpackage), so they see only its exported API. An `export_test.go` in the package itself (`package config`) may expose an unexported fact to the package's own black-box tests, such as the list of key names `config` accepts. It never exposes a way around the API, such as a constructor that skips validation. It is compiled only into the package's tests, so nothing else can reach it.

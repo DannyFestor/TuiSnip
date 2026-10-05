@@ -155,7 +155,7 @@ Interfaces belong to the package that uses them. There is no shared `ports` pack
 
 ## TUI components
 
-The TUI is built from small components, each in its own package under `tui/`. `tui` keeps Model and the wiring: it composes components and turns their outcomes into Actions.
+The TUI is built from small components, each in its own package under `tui/`. `tui` keeps Model and the wiring: it composes components and turns their outcomes into Actions. A new Pane, Overlay, or picker starts in its own package, never in `tui`.
 
 ### Two kinds of component
 
@@ -174,6 +174,8 @@ A component reports what happened by returning an `outcome.Outcome` in the step 
 ### Bindings
 
 Every Binding the TUI knows is one row of the `tui/binding` table: its Scope, its name as config spells it, and its status-hint label. A component takes its Scope's keys with `binding.Keys.For(scope)`, which dispatches with `Matches`, names keys in text with `FirstKey`, and implements `help.KeyMap` from the Scope's hint list. `tui/binding` imports nothing from `tui` or its other subpackages, so every component can use it.
+
+Config already parses every Binding in the spec (`internal/adapters/config/binding.go`), but the TUI knows only the rows in `tui/binding/row.go`. The status hints in [`ui.md`](../spec/ui.md#status-hint) map to `statusHintList` in `tui/binding/hint_lists.go`, which lists only the entries wired so far. So a ticket that wires a Binding adds its row to the table and its entries to the hint list.
 
 Text that names a key shows the key the user configured, never a hard-coded default.
 
@@ -233,6 +235,22 @@ Never edit a file whose header says `// Code generated ... DO NOT EDIT.`. Change
 - **End-to-end tests** live in `test/e2e/`, behind the `e2e` build tag. They drive the `bootstrap`-built TUI with teatest.
 
 go-arch-lint excludes `test/` and every `_test.go` file.
+
+## Adding a feature
+
+A typical feature touches every layer. This list names the files it adds or changes, in build order, so you can plan the whole path without opening the packages first. Skip the steps a feature doesn't need. `<concern>`, `<verb>`, and `<entity>` are placeholders, and the test builders each step reuses are in its package's `helpers_test.go` ([testing](testing.md#shared-setup)).
+
+1. **Domain.** A new rule goes on the entity in `internal/domain`, or into a value object in `internal/domain/value` ([code](code.md#value-objects)). A new field that can fail validation gets a `domain.Field` value in `internal/domain/field.go`, then `make generate-enums`. Test: `<type>_test.go` beside it.
+2. **Query.** The SQL goes in `db/queries/<table>.sql`, then `make generate-sql`. Add a migration only when the schema changes ([database](database.md)). The repository method goes on `sqlite.<Entity>Repository` in `internal/adapters/sqlite/<entity>_repository.go`, with its parameters and row conversion in `<entity>_params.go` and `<entity>_rows.go`. Test: `<entity>_repository_test.go`, against a real database file.
+3. **Action.** `internal/app/<concern>/<verb>.go` and `<verb>_input.go`, one file per new capability (`deleter.go`), and `<verb>_repository.go` when the Action combines several ([Interfaces](#interfaces)). List the interfaces it takes in `.mockery.yml`, then `make generate-mocks`. Test: `<verb>_test.go` with the mocks.
+4. **TUI dependency.** An interface named for the Action in `internal/adapters/tui/<name>.go` (`folder_deleter.go`), a field for it in `tui.Deps` (`deps.go`), and its `.mockery.yml` entry.
+5. **Component and outcomes.** The UI goes in a component package ([TUI components](#tui-components)). Each new outcome gets its own file in `tui/outcome/` (`folder_delete_requested.go`). `tui/model.go` turns the outcome into the Action's command. A result only Model handles is a message in `tui/messages.go`. A result a component handles is an exported message type in the component's package, such as `mainscreen.TreeChanged`, which Model passes down the Overlay stack. Status text for a new sentinel goes in `tui/status_text.go`. Test: the component's black-box tests (a stack member through `test/overlaytest`), and a Model test in `internal/adapters/tui` for each new outcome.
+6. **Binding row and status hint.** The name goes in `tui/binding/names.go`, the row in `tui/binding/row.go`, and the hint entry in `statusHintList` in `tui/binding/hint_lists.go` ([Bindings](#bindings)). A new Scope goes in `tui/binding/scope.go`, and in the `config.Scope` enum in `internal/adapters/config/scope.go`. A Binding the spec doesn't list yet goes in the `config.Binding` enum in `config/binding.go`, and into the spec with step 7. Run `make generate-enums` after either enum changes. Test: `binding/row_test.go` and `binding/keys_test.go`, and `config/binding_rules_test.go` for a new Scope.
+7. **Default config.** The Binding's default keys go in `embeds/config/default.toml`, and their description in [`config.md`](../spec/config.md). TUI tests pick the defaults up through `test/testsettings`.
+8. **Bootstrap.** Build the Action in `newActions` in `internal/bootstrap/app.go`, expose it as a field on `bootstrap.App` (the feature tier calls it there), and pass it into `tui.Deps` in `wire`. A new setting is a field on `tui.Settings` (`tui/settings.go`), filled by `SettingsFrom` in `bootstrap/settings.go`. Remembered state follows the same path. `state.File` (`internal/adapters/state/`) loads and saves it, a saver interface in `tui` (`collapsed_folders_saver.go`) gets it through `tui.Deps`, and `test/testsettings/default.go` gives TUI tests the state a first start has. Test: `settings_test.go` for a setting, `state/file_test.go` for remembered state. The feature and e2e tiers cover the wiring.
+9. **Feature test.** `test/feature/<concern>_test.go` runs the Action through `bootstrap` against SQLite.
+10. **e2e test.** `test/e2e/<flow>_test.go` drives the flow through the `bootstrap`-built TUI.
+11. **Docs.** The package's line in [Layout](#layout) when a package is added or its job grows, and the screens and keys in [`ui.md`](../spec/ui.md) and [`config.md`](../spec/config.md).
 
 ## Enforcement
 

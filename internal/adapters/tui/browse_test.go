@@ -2,25 +2,17 @@ package tui_test
 
 import (
 	"testing"
-	"uuid"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
-)
-
-const (
-	filedTitle     = "Table test skeleton"
-	filedSnippetID = "0194c3a0-0000-7000-8000-0000000f11ed"
 )
 
 func TestModel_browse(t *testing.T) {
@@ -114,37 +106,5 @@ func TestModel_browse(t *testing.T) {
 		screen.press(keypress.Ctrl('s'))
 
 		assert.Regexp(t, `◆ Root +1`, screen.screen())
-	})
-}
-
-func browsingModel(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) tui.Model {
-	t.Helper()
-
-	return modelWith(t, browsingActions(t, sample, lister))
-}
-
-func browsingActions(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) actions {
-	t.Helper()
-
-	return actions{
-		lister:     lister,
-		treeLister: treeOf(t, sample.Tree),
-		copier:     NewMockSnippetCopier(t),
-		creator:    NewMockSnippetCreator(t),
-		searcher:   NewMockSnippetSearcher(t),
-	}
-}
-
-func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
-	t.Helper()
-
-	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       domain.SnippetID(uuid.MustParse(filedSnippetID)),
-		Title:    filedTitle,
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{
-			Language: "Go",
-			Content:  "func TestParse(t *testing.T) {}\n",
-		},
 	})
 }

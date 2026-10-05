@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -210,10 +208,4 @@ func TestPane_ShortHelpWhileNaming(t *testing.T) {
 	pane := pressed(samplePane(t, foldertree.New(t)), keypress.Letter('N'))
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeNameInput).ShortHelp(), pane.ShortHelp())
-}
-
-func samplePane(t *testing.T, sample foldertree.Sample) folderpane.Pane {
-	t.Helper()
-
-	return withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 }

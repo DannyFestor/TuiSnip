@@ -143,12 +143,3 @@ func searchingModel(t *testing.T, searcher *MockSnippetSearcher) tui.Model {
 		searcher:   searcher,
 	})
 }
-
-func hitsOf(snippets ...domain.Snippet) []domain.SearchHit {
-	hits := make([]domain.SearchHit, 0, len(snippets))
-	for index := range snippets {
-		hits = append(hits, domain.NewSearchHit(snippets[index], domain.FieldScores{}))
-	}
-
-	return hits
-}

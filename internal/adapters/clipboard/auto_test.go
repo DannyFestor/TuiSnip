@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,12 @@ func TestAuto_Copy_Concurrent(t *testing.T) {
 			assert.Equal(t, domain.CopyDeliveryPlaced, delivery)
 		})
 	}
+}
+
+func withLogBuffer(options clipboard.Options) (clipboard.Options, *bytes.Buffer) {
+	var buffer bytes.Buffer
+
+	options.Logger = slog.New(slog.NewJSONHandler(&buffer, nil))
+
+	return options, &buffer
 }

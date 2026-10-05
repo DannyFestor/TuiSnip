@@ -7,18 +7,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
-	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
-const (
-	rootTitle   = "Prune at the Root"
-	filedTitle  = "Table test skeleton"
-	filedHeader = "Root / go / testing · plaintext"
-)
+const filedHeader = "Root / go / testing · plaintext"
 
 func TestBrowseIntoNestedFolder(t *testing.T) {
 	t.Parallel()
@@ -69,29 +62,4 @@ func TestCreateThenRenameFolder(t *testing.T) {
 	screen.press(keypress.Special(tea.KeyEnter))
 
 	screen.waitForFrame("3 Root / go / errors-wrapping")
-}
-
-func seedNestedFolders(t *testing.T, app *bootstrap.App) domain.Folder {
-	t.Helper()
-
-	ids := testkit.NewSequentialIDs()
-	golang := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
-	tests := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
-	testapp.SeedFolder(t, app, golang)
-	testapp.SeedFolder(t, app, tests)
-	testapp.SeedSnippet(t, app, titledSnippet(t, ids, rootTitle, domain.FolderID{}))
-	testapp.SeedSnippet(t, app, titledSnippet(t, ids, filedTitle, tests.ID()))
-
-	return golang
-}
-
-func titledSnippet(t *testing.T, ids *testkit.SequentialIDs, title string, folderID domain.FolderID) domain.Snippet {
-	t.Helper()
-
-	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    title,
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
-	})
 }

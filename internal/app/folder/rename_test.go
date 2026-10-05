@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,7 +12,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
 func TestNewRename(t *testing.T) {
@@ -113,16 +111,6 @@ func newRename(t *testing.T, repo folder.RenameRepository) *folder.Rename {
 	require.NoError(t, err)
 
 	return rename
-}
-
-func storedFolder(t *testing.T) domain.Folder {
-	t.Helper()
-
-	return testkit.Folder(t, testkit.FolderSpec{
-		ID:        testkit.NewSequentialIDs().NewFolderID(),
-		Name:      "go",
-		CreatedAt: now().Add(-time.Hour),
-	})
 }
 
 func longName() string {

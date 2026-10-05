@@ -88,17 +88,3 @@ func mustContent(t *testing.T, raw string) value.Content {
 
 	return content
 }
-
-func requireErrors(t *testing.T, err error, want []error) {
-	t.Helper()
-
-	if len(want) == 0 {
-		require.NoError(t, err)
-
-		return
-	}
-
-	for _, sentinel := range want {
-		require.ErrorIs(t, err, sentinel)
-	}
-}

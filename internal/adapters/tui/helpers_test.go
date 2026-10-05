@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 	"time"
+	"unsafe"
 	"uuid"
 
 	tea "charm.land/bubbletea/v2"
@@ -33,6 +34,7 @@ const (
 	listLongerThanPane = 45
 	filedTitle         = "Table test skeleton"
 	filedSnippetID     = "0194c3a0-0000-7000-8000-0000000f11ed"
+	execFieldCount     = 2
 )
 
 func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetCopier) tui.Model {
@@ -68,6 +70,7 @@ type actions struct {
 	tagDeleter            tui.TagDeleter
 	sortOrderSaver        tui.SortOrderSaver
 	collapsedFoldersSaver tui.CollapsedFoldersSaver
+	externalEditor        tui.ExternalEditor
 }
 
 func emptyTree() browse.Tree {
@@ -170,8 +173,13 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.collapsedFoldersSaver,
 			func() tui.CollapsedFoldersSaver { return NewMockCollapsedFoldersSaver(t) },
 		),
-		Settings: settings,
-		Logger:   slog.New(slog.DiscardHandler),
+		ExternalEditor: orMock(
+			with.externalEditor,
+			func() tui.ExternalEditor { return NewMockExternalEditor(t) },
+		),
+		EditedContentHandler: tui.IntoEditOverlay{},
+		Settings:             settings,
+		Logger:               slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 
@@ -394,8 +402,38 @@ func (d *driver) runSequenceOrSend(msg tea.Msg) {
 		return
 	}
 
+	if execute, ok := execStep(msg); ok {
+		d.run(execute)
+
+		return
+	}
+
 	d.emitted = append(d.emitted, msg)
 	d.send(msg)
+}
+
+// tea.Exec wraps its command and callback in an unexported struct that only the program can open, so the
+// driver reads both fields through unsafe to run the command the way the program would.
+func execStep(msg tea.Msg) (tea.Cmd, bool) {
+	reflected := reflect.ValueOf(msg)
+	if reflected.Kind() != reflect.Struct || reflected.NumField() != execFieldCount {
+		return nil, false
+	}
+
+	addressable := reflect.New(reflected.Type()).Elem()
+	addressable.Set(reflected)
+
+	command, isCommand := unexportedField(addressable, 0).(tea.ExecCommand)
+	callback, isCallback := unexportedField(addressable, 1).(tea.ExecCallback)
+
+	return func() tea.Msg { return callback(command.Run()) }, isCommand && isCallback
+}
+
+func unexportedField(addressable reflect.Value, index int) any {
+	field := addressable.Field(index)
+	pointer := unsafe.Pointer(field.UnsafeAddr()) //nolint:gosec // G103: see execStep
+
+	return reflect.NewAt(field.Type(), pointer).Elem().Interface()
 }
 
 // tea.Sequence wraps its commands in an unexported slice type, so only its shape identifies it.

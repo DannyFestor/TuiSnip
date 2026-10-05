@@ -137,6 +137,8 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			TagDeleter:                  NewMockTagDeleter(t),
 			SortOrderSaver:              NewMockSortOrderSaver(t),
 			CollapsedFoldersSaver:       NewMockCollapsedFoldersSaver(t),
+			ExternalEditor:              NewMockExternalEditor(t),
+			EditedContentHandler:        tui.IntoEditOverlay{},
 			Settings:                    settings,
 			Logger:                      slog.New(slog.DiscardHandler),
 		})

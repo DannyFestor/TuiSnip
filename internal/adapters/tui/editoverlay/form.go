@@ -75,6 +75,17 @@ func (f form) withContent(content string) form {
 	return f
 }
 
+func (f form) withExternalContent(content, codeStyle string) form {
+	next := f
+	next.readOnly = readOnlyIfTabbed(content, f.language, codeStyle)
+
+	if next.readOnly.held {
+		next = next.leftContent()
+	}
+
+	return next.withContent(content)
+}
+
 func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -182,6 +193,8 @@ func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case fields.Matches(msg, binding.Cancel):
 		return f, requestCancel, nil
+	case fields.Matches(msg, binding.OpenInEditor):
+		return f, requestExternalEditor, nil
 	case fields.Matches(msg, binding.PickLanguage),
 		f.field == domain.FieldLanguage && fields.Matches(msg, binding.OpenField):
 		return f, requestPickLanguage, nil
@@ -202,6 +215,8 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f.leftContent(), requestNothing, nil
 	case f.keys.content.Matches(msg, binding.PickLanguage):
 		return f, requestPickLanguage, nil
+	case f.keys.content.Matches(msg, binding.OpenInEditor):
+		return f, requestExternalEditor, nil
 	case f.keys.content.Matches(msg, binding.Indent):
 		f.content = indentedLine(f.content)
 

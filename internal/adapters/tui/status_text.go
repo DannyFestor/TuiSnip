@@ -16,6 +16,8 @@ const (
 	clipboardEmptyText    = "Clipboard is empty"
 	clipboardTooLargeText = "Clipboard is larger than 256 KiB"
 	noCaptureToolText     = "No clipboard tool found (pbpaste, wl-paste, xclip, xsel)"
+	noEditorText          = "No editor found; set `editor` in config.toml"
+	editorFailedText      = "Editor exited with an error; changes discarded"
 )
 
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
@@ -53,6 +55,25 @@ func captureRefusalText(err error) (string, bool) {
 func captureFailureText(err error) string {
 	if errors.Is(err, domain.ErrNoClipboardTool) {
 		return noCaptureToolText
+	}
+
+	return look.FailureText
+}
+
+func externalEditRefusalText(err error) (string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrNoEditor):
+		return noEditorText, true
+	case errors.Is(err, domain.ErrEditorFailed):
+		return editorFailedText, true
+	}
+
+	return "", false
+}
+
+func externalEditFailureText(err error) string {
+	if startErr, ok := errors.AsType[domain.EditorStartError](err); ok {
+		return startErr.Err.Error()
 	}
 
 	return look.FailureText

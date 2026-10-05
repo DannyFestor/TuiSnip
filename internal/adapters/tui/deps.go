@@ -23,6 +23,8 @@ type Deps struct {
 	TagDeleter                  TagDeleter
 	SortOrderSaver              SortOrderSaver
 	CollapsedFoldersSaver       CollapsedFoldersSaver
+	ExternalEditor              ExternalEditor
+	EditedContentHandler        EditedContentHandler
 	Settings                    Settings
 	Logger                      *slog.Logger
 }

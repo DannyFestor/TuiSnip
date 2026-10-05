@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -19,6 +20,12 @@ type copyFinishedMsg struct {
 }
 
 type captureFinishedMsg struct {
+	content string
+	err     error
+}
+
+type externalEditFinishedMsg struct {
+	asked   outcome.ExternalEditAsked
 	content string
 	err     error
 }

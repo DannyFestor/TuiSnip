@@ -9,4 +9,5 @@ const (
 	requestPickLanguage
 	requestRefusePasteWithTabs
 	requestRefuseOverlongPaste
+	requestExternalEditor
 )

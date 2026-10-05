@@ -489,6 +489,42 @@ func TestScreen_layout(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), folderPaneTitle)
 	})
 
+	t.Run("zooming Tags shows Tags without Folders", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('z'))
+
+		assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+		assert.Contains(t, screen.Screen(), strings.ToUpper(tagPaneTitle))
+		assert.Contains(t, screen.Screen(), "# docker")
+		assert.NotContains(t, screen.Screen(), folderPaneTitle)
+	})
+
+	zoomedEnters := []struct {
+		name      string
+		from      rune
+		leftTitle string
+	}{
+		{name: "enter on Folders while zoomed shows the Snippet list zoomed", from: '1', leftTitle: folderPaneTitle},
+		{name: "enter on Tags while zoomed shows the Snippet list zoomed", from: '2', leftTitle: tagPaneTitle},
+	}
+
+	for _, tt := range zoomedEnters {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, _ := browsingTags(t)
+
+			screen.Press(keypress.Letter(tt.from), keypress.Letter('z'), keypress.Special(tea.KeyEnter))
+
+			assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+			assert.Contains(t, screen.Screen(), " BY TITLE")
+			assert.NotContains(t, strings.ToUpper(screen.Screen()), strings.ToUpper(tt.leftTitle))
+		})
+	}
+
 	t.Run("draws the focused Pane in the focused style", func(t *testing.T) {
 		t.Parallel()
 

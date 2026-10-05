@@ -4,6 +4,7 @@ const (
 	Quit         = "quit"
 	Help         = "help"
 	Search       = "search"
+	Zoom         = "zoom"
 	NewSnippet   = "new_snippet"
 	Capture      = "capture"
 	FocusNext    = "focus_next"

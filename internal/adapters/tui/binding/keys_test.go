@@ -50,6 +50,31 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
+	zoomHints := []struct {
+		scope binding.Scope
+		want  []string
+	}{
+		{scope: binding.ScopeFolders, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeTags, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeSnippetList, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeSnippetPane, want: []string{"z zoom", "/ search"}},
+	}
+
+	for _, tt := range zoomHints {
+		t.Run("hints zoom before search in "+string(tt.scope), func(t *testing.T) {
+			t.Parallel()
+
+			keys := keysWith(
+				bound{scope: binding.ScopeGlobal, name: binding.Zoom, keys: []string{"z"}},
+				bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+			)
+
+			got := keys.For(tt.scope).ShortHelp()
+
+			assert.Equal(t, tt.want, hintTexts(got))
+		})
+	}
+
 	t.Run("name input hints save and cancel", func(t *testing.T) {
 		t.Parallel()
 

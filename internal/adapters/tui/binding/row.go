@@ -3,6 +3,7 @@ package binding
 const (
 	labelHelp           = "help"
 	labelSearch         = "search"
+	labelZoom           = "zoom"
 	labelNew            = "new"
 	labelCapture        = "Capture"
 	labelNewFolder      = "new Folder"
@@ -71,6 +72,7 @@ func globalRows() []Row {
 	labelled := []Row{
 		{Scope: ScopeGlobal, Name: Help, Label: labelHelp},
 		{Scope: ScopeGlobal, Name: Search, Label: labelSearch},
+		{Scope: ScopeGlobal, Name: Zoom, Label: labelZoom},
 		{Scope: ScopeGlobal, Name: NewSnippet, Label: labelNew},
 		{Scope: ScopeGlobal, Name: Capture, Label: labelCapture},
 	}

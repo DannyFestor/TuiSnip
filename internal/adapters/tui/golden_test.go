@@ -55,6 +55,15 @@ func TestSmallTerminalLayout(t *testing.T) {
 	golden.RequireEqual(t, []byte(screen.screen()))
 }
 
+func TestZoomedPaneLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
+	screen.press(keypress.Letter('3'), keypress.Letter('z'))
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
 func layoutModel(t *testing.T, lister *MockFolderSnippetsLister) tui.Model {
 	t.Helper()
 

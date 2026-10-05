@@ -1,6 +1,6 @@
 ## Code standards
 
-Before writing or reviewing Go, read the matching standard. The index in `docs/standards/README.md` says which one applies.
+Before writing or reviewing Go, start from the index in `docs/standards/README.md`.
 
 ## Workflow
 

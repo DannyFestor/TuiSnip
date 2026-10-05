@@ -1,6 +1,6 @@
 # Code
 
-This document holds the conventions no linter checks, and the reasons behind the ones a linter enforces in a way that isn't obvious. Read it before writing Go in this repo.
+This document holds the conventions no linter checks, and the reasons behind the ones a linter enforces in a way that isn't obvious. The [index](README.md) names the sections to read for each kind of change.
 
 - Layering, Actions, constructors, interfaces, error wrapping, where logging and context go: [architecture](architecture.md).
 - Everything golangci-lint enforces (function size, no globals, `nolint` format, formatting): [linting](linting.md).

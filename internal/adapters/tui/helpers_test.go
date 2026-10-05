@@ -238,6 +238,10 @@ func longLineSnippet(t *testing.T) domain.Snippet {
 			Language: "Bash",
 			Content:  "find . -type f -size +100M -not -path './.git/*' -exec ls -lh {} + | sort -k5 -h\necho done\n",
 		},
+		Tags: []domain.Tag{
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"}),
+			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "oneliner"}),
+		},
 		CreatedAt: time.Date(2026, time.September, 6, 9, 0, 0, 0, time.UTC),
 	})
 }

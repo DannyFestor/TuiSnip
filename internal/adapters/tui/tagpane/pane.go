@@ -103,6 +103,14 @@ func (p Pane) SelectedName() string {
 	return p.tags[p.cursor.Index()].Tag.Name().String()
 }
 
+func (p Pane) SelectedTag() (domain.Tag, bool) {
+	if len(p.tags) == 0 {
+		return domain.Tag{}, false
+	}
+
+	return p.tags[p.cursor.Index()].Tag, true
+}
+
 func (p Pane) moved(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	direction, pressed := move.Pressed(p.global, msg)
 	if !pressed {

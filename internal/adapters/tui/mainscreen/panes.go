@@ -8,6 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -118,6 +119,15 @@ func (p panes) selectionIn(holder pane) browseselection.Selection {
 	}
 
 	return browseselection.InFolder(p.folders.Selected())
+}
+
+func (p panes) destination(selection browseselection.Selection) editoverlay.Destination {
+	tag, ok := p.tags.SelectedTag()
+	if _, withTag := selection.Tag(); withTag && ok {
+		return editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}}
+	}
+
+	return editoverlay.Destination{Selection: selection, Tags: nil}
 }
 
 func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded, selection browseselection.Selection) (panes, error) {

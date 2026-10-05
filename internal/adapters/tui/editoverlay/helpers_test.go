@@ -50,9 +50,33 @@ func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, styles)
+	opened, _ := editoverlay.New(keys, styles, destination())
 
 	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func capturing(t *testing.T, captured string) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.Capturing(
+		testsettings.Default(t).Keys,
+		look.NewStyles(look.SchemeDark),
+		destination(),
+		captured,
+	)
+
+	return overlaytest.Open(t, screenSize(), opened)
+}
+
+func destination() editoverlay.Destination {
+	return editoverlay.Destination{
+		Selection: browseselection.InFolder(destinationFolderID()),
+		Tags:      nil,
+	}
+}
+
+func destinationFolderID() domain.FolderID {
+	return testkit.NewSequentialIDs().NewFolderID()
 }
 
 func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
@@ -128,5 +152,11 @@ func savedSnippet(t *testing.T) domain.Snippet {
 }
 
 func input(title, description, content string) snippet.CreateInput {
-	return snippet.CreateInput{Title: title, Description: description, Content: content}
+	return snippet.CreateInput{
+		Title:       title,
+		Description: description,
+		Content:     content,
+		FolderID:    destinationFolderID(),
+		Tags:        nil,
+	}
 }

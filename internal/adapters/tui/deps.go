@@ -9,6 +9,7 @@ type Deps struct {
 	TagSnippetsLister     TagSnippetsLister
 	Copier                SnippetCopier
 	Creator               SnippetCreator
+	Capturer              SnippetCapturer
 	Updater               SnippetUpdater
 	Searcher              SnippetSearcher
 	FolderCreator         FolderCreator

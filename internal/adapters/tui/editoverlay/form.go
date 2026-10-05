@@ -57,11 +57,15 @@ func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, t
 	filled.title.SetValue(original.title)
 	filled.description.SetValue(original.description)
 
-	if !readOnly.held {
-		filled.content.SetValue(original.content)
+	return filled.withContent(original.content).focused(domain.FieldTitle)
+}
+
+func (f form) withContent(content string) form {
+	if !f.readOnly.held {
+		f.content.SetValue(content)
 	}
 
-	return filled.focused(domain.FieldTitle)
+	return f
 }
 
 func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
@@ -113,7 +117,7 @@ func (f form) changed() bool {
 func (f form) entered() entered {
 	content := f.content.Value()
 	if f.readOnly.held {
-		content = f.original.content
+		content = f.readOnly.content
 	}
 
 	return entered{title: f.title.Value(), description: f.description.Value(), content: content}

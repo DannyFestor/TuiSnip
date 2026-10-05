@@ -4,27 +4,28 @@ import (
 	"strings"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
-	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 const readOnlyNotice = "Contains tabs: read-only here"
 
 type readOnlyContent struct {
 	held        bool
-	fragment    domain.Fragment
+	content     string
+	language    value.Language
 	highlighted string
 }
 
 func editableContent() readOnlyContent {
-	return readOnlyContent{held: false, fragment: domain.Fragment{}, highlighted: ""}
+	return readOnlyContent{held: false, content: "", language: value.Language{}, highlighted: ""}
 }
 
-func readOnlyIfTabbed(fragment domain.Fragment, codeStyle string) readOnlyContent {
-	if !strings.Contains(fragment.Content().String(), tabCharacter) {
+func readOnlyIfTabbed(content string, language value.Language, codeStyle string) readOnlyContent {
+	if !strings.Contains(content, tabCharacter) {
 		return editableContent()
 	}
 
-	held := readOnlyContent{held: true, fragment: fragment, highlighted: ""}
+	held := readOnlyContent{held: true, content: content, language: language, highlighted: ""}
 
 	return held.highlightedIn(codeStyle)
 }
@@ -34,7 +35,7 @@ func (r readOnlyContent) highlightedIn(codeStyle string) readOnlyContent {
 		return r
 	}
 
-	r.highlighted = look.Highlight(r.fragment.Content().String(), r.fragment.Language().String(), codeStyle)
+	r.highlighted = look.Highlight(r.content, r.language.String(), codeStyle)
 
 	return r
 }

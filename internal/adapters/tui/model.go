@@ -27,6 +27,7 @@ const (
 	operationTree                 = "list folders"
 	operationTags                 = "list tags"
 	operationCopy                 = "copy"
+	operationCapture              = "capture"
 	operationSave                 = "save snippet"
 	operationSearch               = "search"
 	operationCreateFolder         = "create folder"
@@ -48,6 +49,7 @@ type Model struct {
 	tagSnippetsLister     TagSnippetsLister
 	copier                SnippetCopier
 	creator               SnippetCreator
+	capturer              SnippetCapturer
 	updater               SnippetUpdater
 	searcher              SnippetSearcher
 	folderCreator         FolderCreator
@@ -109,6 +111,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		tagSnippetsLister:     deps.TagSnippetsLister,
 		copier:                deps.Copier,
 		creator:               deps.Creator,
+		capturer:              deps.Capturer,
 		updater:               deps.Updater,
 		searcher:              deps.Searcher,
 		folderCreator:         deps.FolderCreator,
@@ -135,6 +138,7 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("tagSnippetsLister", deps.TagSnippetsLister),
 		domain.RequireDependency("copier", deps.Copier),
 		domain.RequireDependency("creator", deps.Creator),
+		domain.RequireDependency("capturer", deps.Capturer),
 		domain.RequireDependency("updater", deps.Updater),
 		domain.RequireDependency("searcher", deps.Searcher),
 		domain.RequireDependency("folderCreator", deps.FolderCreator),
@@ -175,6 +179,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.failedWith(msg)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
+	case captureFinishedMsg:
+		return m.captureFinished(msg)
 	}
 
 	return m, nil
@@ -363,7 +369,8 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
-	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested:
+	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
+		outcome.CaptureAsked:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
 		outcome.TagSelected, outcome.SortCycleAsked:
@@ -399,7 +406,7 @@ func (m Model) reportedFailure(reported outcome.Outcome) (Model, tea.Cmd) {
 func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SnippetSaved:
-		return m, m.reloadSelecting(browseselection.InFolder(reported.FolderID), reported.ID)
+		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetReloaded:
 		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetRevealed:
@@ -416,7 +423,7 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 }
 
 func (m Model) reloadSelecting(selection browseselection.Selection, id domain.SnippetID) tea.Cmd {
-	return tea.Batch(m.loadTree(), m.loadSnippets(selection, id))
+	return tea.Batch(m.loadTree(), m.loadTags(), m.loadSnippets(selection, id))
 }
 
 func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
@@ -445,6 +452,8 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.querySnippets(reported.Text)
 	case outcome.CopyRequested:
 		return m.copySnippet(reported.ID)
+	case outcome.CaptureAsked:
+		return m.captureSnippet()
 	default:
 		return nil
 	}
@@ -547,6 +556,25 @@ func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {
 	return next, tea.Sequence(tea.Batch(cmd, terminalClipboard(msg.result)), m.afterCopy)
 }
 
+func (m Model) captureSnippet() tea.Cmd {
+	return func() tea.Msg {
+		content, err := m.capturer.Run(m.ctx, snippet.CaptureInput{})
+
+		return captureFinishedMsg{content: content.String(), err: err}
+	}
+}
+
+func (m Model) captureFinished(msg captureFinishedMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.err == nil:
+		return m.overlaysUpdated(mainscreen.Captured{Content: msg.content})
+	case errors.Is(msg.err, domain.ErrClipboardEmpty):
+		return m.shown(clipboardEmptyText)
+	}
+
+	return m.failedShowing(operationCapture, msg.err, captureFailureText(msg.err))
+}
+
 func terminalClipboard(result snippet.CopyResult) tea.Cmd {
 	if result.Delivery != domain.CopyDeliverySentToTerminal {
 		return nil
@@ -556,6 +584,10 @@ func terminalClipboard(result snippet.CopyResult) tea.Cmd {
 }
 
 func (m Model) failed(operation string, err error) (Model, tea.Cmd) {
+	return m.failedShowing(operation, err, failureText(err))
+}
+
+func (m Model) failedShowing(operation string, err error, text string) (Model, tea.Cmd) {
 	if errors.Is(err, context.Canceled) {
 		m.logger.DebugContext(m.ctx, "operation cancelled", slog.String(keyOperation, operation))
 
@@ -564,7 +596,7 @@ func (m Model) failed(operation string, err error) (Model, tea.Cmd) {
 
 	m.logger.ErrorContext(m.ctx, "operation failed", slog.String(keyOperation, operation), slog.Any(keyError, err))
 
-	return m.shown(failureText(err))
+	return m.shown(text)
 }
 
 func (m Model) shown(text string) (Model, tea.Cmd) {

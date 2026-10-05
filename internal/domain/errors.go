@@ -3,6 +3,7 @@ package domain
 import "errors"
 
 var (
+	ErrClipboardEmpty      = errors.New("domain: clipboard is empty")
 	ErrConflict            = errors.New("domain: snippet changed elsewhere since it was loaded")
 	ErrCorruptRecord       = errors.New("domain: stored record is corrupt")
 	ErrFolderCycle         = errors.New("domain: folder cannot move into itself or its own subtree")

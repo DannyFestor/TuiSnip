@@ -15,9 +15,11 @@ import (
 
 const (
 	platformGOOS      = "darwin"
-	platformTool      = "pbcopy"
+	platformCopyTool  = "pbcopy"
+	platformReadTool  = "pbpaste"
 	toolSearchPath    = "PATH=/usr/bin:/bin"
 	recordedStdin     = ".stdin"
+	clipboardContent  = ".clipboard"
 	scriptPermissions = 0o700
 	filePermissions   = 0o600
 	dirPermissions    = 0o700
@@ -109,7 +111,13 @@ func (h *Home) Copied(t *testing.T) string {
 }
 
 func (h *Home) ToolRecording() string {
-	return filepath.Join(h.toolsDir, platformTool+recordedStdin)
+	return filepath.Join(h.toolsDir, platformCopyTool+recordedStdin)
+}
+
+func (h *Home) PutOnClipboard(t *testing.T, text string) {
+	t.Helper()
+
+	h.writeFile(t, filepath.Join(h.toolsDir, platformReadTool+clipboardContent), text)
 }
 
 func (h *Home) Log(t *testing.T) string {
@@ -128,16 +136,28 @@ func (h *Home) installed(t *testing.T, tool ClipboardTool) func(string) (string,
 		return func(string) (string, error) { return "", exec.ErrNotFound }
 	}
 
-	path := filepath.Join(h.toolsDir, platformTool)
-	require.NoError(t, os.WriteFile(path, tool.script(), scriptPermissions))
+	paths := map[string]string{
+		platformCopyTool: h.installedScript(t, platformCopyTool, tool.copyScript()),
+		platformReadTool: h.installedScript(t, platformReadTool, tool.readScript()),
+	}
 
 	return func(name string) (string, error) {
-		if name != platformTool {
+		path, found := paths[name]
+		if !found {
 			return "", exec.ErrNotFound
 		}
 
 		return path, nil
 	}
+}
+
+func (h *Home) installedScript(t *testing.T, name string, script []byte) string {
+	t.Helper()
+
+	path := filepath.Join(h.toolsDir, name)
+	require.NoError(t, os.WriteFile(path, script, scriptPermissions))
+
+	return path
 }
 
 func (*Home) writeFile(t *testing.T, path, content string) {

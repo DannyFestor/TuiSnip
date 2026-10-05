@@ -22,18 +22,31 @@ import (
 func TestNative_CopyThroughRealPbcopy(t *testing.T) {
 	keepClipboard(t)
 
-	native := clipboard.NewNative(clipboard.Options{
+	delivery, err := realNative().Copy(t.Context(), unicodeText)
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.CopyDeliveryPlaced, delivery)
+	assert.Equal(t, unicodeText, pasteboard(t))
+}
+
+//nolint:paralleltest // the system clipboard is one shared resource
+func TestNative_ReadThroughRealPbpaste(t *testing.T) {
+	keepClipboard(t)
+	placeOnPasteboard(t.Context(), t, unicodeText)
+
+	read, err := realNative().ReadClipboard(t.Context())
+
+	require.NoError(t, err)
+	assert.Equal(t, unicodeText, read)
+}
+
+func realNative() *clipboard.Native {
+	return clipboard.NewNative(clipboard.Options{
 		Environ:  os.Environ,
 		LookPath: exec.LookPath,
 		GOOS:     runtime.GOOS,
 		Logger:   slog.New(slog.DiscardHandler),
 	})
-
-	delivery, err := native.Copy(t.Context(), unicodeText)
-
-	require.NoError(t, err)
-	assert.Equal(t, domain.CopyDeliveryPlaced, delivery)
-	assert.Equal(t, unicodeText, pasteboard(t))
 }
 
 func keepClipboard(t *testing.T) {
@@ -42,11 +55,17 @@ func keepClipboard(t *testing.T) {
 	previous := pasteboard(t)
 	ctx := context.WithoutCancel(t.Context())
 
-	t.Cleanup(func() {
-		restore := exec.CommandContext(ctx, "pbcopy")
-		restore.Stdin = strings.NewReader(previous)
-		require.NoError(t, restore.Run())
-	})
+	t.Cleanup(func() { placeOnPasteboard(ctx, t, previous) })
+}
+
+func placeOnPasteboard(ctx context.Context, t *testing.T, text string) {
+	t.Helper()
+
+	place := exec.CommandContext(ctx, "pbcopy")
+	place.Stdin = strings.NewReader(text)
+
+	place.Env = append(os.Environ(), "LC_CTYPE=UTF-8")
+	require.NoError(t, place.Run())
 }
 
 func pasteboard(t *testing.T) string {

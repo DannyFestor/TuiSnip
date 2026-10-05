@@ -15,18 +15,22 @@ type saveTarget interface {
 	reloaded() (outcome.SnippetReloaded, bool)
 }
 
-type newSnippet struct{}
+type newSnippet struct {
+	destination Destination
+}
 
-func (newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
+func (n newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
 	return outcome.Stay(saving).Passing(outcome.SaveRequested{Input: snippet.CreateInput{
 		Title:       values.title,
 		Description: values.description,
 		Content:     values.content,
+		FolderID:    n.destination.folderID(),
+		Tags:        n.destination.Tags,
 	}})
 }
 
-func (newSnippet) closedAfterSave(saved domain.Snippet) outcome.Step {
-	return outcome.Close().Passing(outcome.SnippetSaved{ID: saved.ID(), FolderID: saved.FolderID()})
+func (n newSnippet) closedAfterSave(saved domain.Snippet) outcome.Step {
+	return outcome.Close().Passing(outcome.SnippetSaved{ID: saved.ID(), Selection: n.destination.Selection})
 }
 
 func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {

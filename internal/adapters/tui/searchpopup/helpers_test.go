@@ -53,17 +53,32 @@ func searchingListing(t *testing.T, listing searchpopup.Listing) *overlaytest.Dr
 func searchingInFolder(t *testing.T) (*overlaytest.Driver, domain.Snippet) {
 	t.Helper()
 
-	ids := testkit.NewSequentialIDs()
 	sample := foldertree.New(t)
-	filed := testkit.Snippet(t, testkit.SnippetSpec{
+	filed := filedInTestingFolder(t, sample)
+	listing := searchpopup.Listing{Snippets: []domain.Snippet{filed}, Paths: folderpath.New(sample.Tree)}
+
+	return searchingListing(t, listing), filed
+}
+
+func searchingBeforeTreeLoads(t *testing.T) (*overlaytest.Driver, foldertree.Sample) {
+	t.Helper()
+
+	sample := foldertree.New(t)
+
+	return searchingIn(t, []domain.Snippet{filedInTestingFolder(t, sample)}), sample
+}
+
+func filedInTestingFolder(t *testing.T, sample foldertree.Sample) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
 		ID:       ids.NewSnippetID(),
 		Title:    "Table test skeleton",
 		FolderID: sample.Tests.ID(),
 		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
 	})
-	listing := searchpopup.Listing{Snippets: []domain.Snippet{filed}, Paths: folderpath.New(sample.Tree)}
-
-	return searchingListing(t, listing), filed
 }
 
 func sampleSnippets(t *testing.T) []domain.Snippet {

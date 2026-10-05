@@ -72,6 +72,12 @@ func (l List) WithSnippets(snippets []domain.Snippet) List {
 	return next.withCursor(l.cursor.Index())
 }
 
+func (l List) WithMeta(meta Meta) List {
+	l.meta = meta
+
+	return l
+}
+
 func (l List) WithCursorOn(id domain.SnippetID) List {
 	index := slices.IndexFunc(l.snippets, func(candidate domain.Snippet) bool { return candidate.ID() == id })
 	if index < 0 {

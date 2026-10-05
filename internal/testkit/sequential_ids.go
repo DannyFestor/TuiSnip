@@ -37,6 +37,10 @@ func (s *SequentialIDs) NewFolderID() domain.FolderID {
 	return domain.FolderID(s.next())
 }
 
+func (s *SequentialIDs) NewTagID() domain.TagID {
+	return domain.TagID(s.next())
+}
+
 func (s *SequentialIDs) next() uuid.UUID {
 	return sequentialV7(s.counter.Add(1))
 }

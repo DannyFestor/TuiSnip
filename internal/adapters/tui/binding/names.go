@@ -27,6 +27,7 @@ const (
 	Delete       = "delete"
 	Collapse     = "collapse"
 	Copy         = "copy"
+	Edit         = "edit"
 	CycleSort    = "cycle_sort"
 	OpenInEditor = "open_in_editor"
 	Save         = "save"

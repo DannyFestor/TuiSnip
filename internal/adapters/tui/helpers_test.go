@@ -50,8 +50,11 @@ func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetC
 type actions struct {
 	lister                tui.FolderSnippetsLister
 	treeLister            tui.FolderTreeLister
+	tagLister             tui.TagLister
+	tagSnippetsLister     tui.TagSnippetsLister
 	copier                tui.SnippetCopier
 	creator               tui.SnippetCreator
+	updater               tui.SnippetUpdater
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
 	folderRenamer         tui.FolderRenamer
@@ -63,6 +66,24 @@ type actions struct {
 
 func emptyTree() browse.Tree {
 	return browse.Tree{RootSnippetCount: 0, Folders: nil}
+}
+
+func tagsOf(t *testing.T, tags ...browse.TagCount) *MockTagLister {
+	t.Helper()
+
+	lister := NewMockTagLister(t)
+	lister.EXPECT().Run(mock.Anything, browse.TagListInput{}).Return(tags, nil)
+
+	return lister
+}
+
+func noTags(t *testing.T) *MockTagLister {
+	t.Helper()
+
+	lister := NewMockTagLister(t)
+	lister.EXPECT().Run(mock.Anything, browse.TagListInput{}).Return(nil, nil).Maybe()
+
+	return lister
 }
 
 func treeOf(t *testing.T, tree browse.Tree) *MockFolderTreeLister {
@@ -108,10 +129,16 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 	t.Helper()
 
 	model, err := build(t.Context(), tui.Deps{
-		Lister:        with.lister,
-		TreeLister:    with.treeLister,
+		Lister:     with.lister,
+		TreeLister: with.treeLister,
+		TagLister:  orMock(with.tagLister, func() tui.TagLister { return noTags(t) }),
+		TagSnippetsLister: orMock(
+			with.tagSnippetsLister,
+			func() tui.TagSnippetsLister { return NewMockTagSnippetsLister(t) },
+		),
 		Copier:        with.copier,
 		Creator:       with.creator,
+		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),

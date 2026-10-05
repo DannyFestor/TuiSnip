@@ -19,6 +19,27 @@ func inReadTransaction(ctx context.Context, db *sql.DB, run queryFunc) error {
 	return inTransaction(ctx, db, &sql.TxOptions{Isolation: sql.LevelDefault, ReadOnly: true}, run)
 }
 
+func readRows[R any](
+	ctx context.Context,
+	db *sql.DB,
+	query func(queries *sqlcgen.Queries, ctx context.Context) ([]R, error),
+) ([]R, error) {
+	var rows []R
+
+	err := inReadTransaction(ctx, db, func(queries *sqlcgen.Queries) error {
+		var queryErr error
+
+		rows, queryErr = query(queries, ctx)
+		if queryErr != nil {
+			return fmt.Errorf("read rows: %w", queryErr)
+		}
+
+		return nil
+	})
+
+	return rows, err
+}
+
 func inTransaction(ctx context.Context, db *sql.DB, options *sql.TxOptions, run queryFunc) error {
 	tx, err := db.BeginTx(ctx, options)
 	if err != nil {

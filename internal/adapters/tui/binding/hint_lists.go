@@ -25,25 +25,25 @@ func statusHintList(scope Scope) []labelledRef {
 
 func paneHintList(scope Scope) []labelledRef {
 	search := rowRef{scope: ScopeGlobal, name: Search}
+	open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
 
 	switch scope {
 	case ScopeFolders:
-		open := labelledRef{row: rowRef{scope: ScopeGlobal, name: Open}, label: labelOpen}
-
 		return append(
 			[]labelledRef{open},
 			withRowLabels(append(refsIn(scope, NewFolder, Rename, Delete), search)...)...)
 	case ScopeTags:
-		return withRowLabels(search)
+		return append([]labelledRef{open}, withRowLabels(search)...)
 	case ScopeSnippetList:
 		return withRowLabels(
 			rowRef{scope: scope, name: Copy},
+			rowRef{scope: scope, name: Edit},
 			rowRef{scope: ScopeGlobal, name: NewSnippet},
 			rowRef{scope: scope, name: CycleSort},
 			search,
 		)
 	case ScopeSnippetPane:
-		return withRowLabels(rowRef{scope: scope, name: Copy}, search)
+		return withRowLabels(append(refsIn(scope, Copy, Edit), search)...)
 	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
 	}
 

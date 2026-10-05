@@ -16,12 +16,6 @@ type Create struct {
 	clock    Clock
 }
 
-type createFields struct {
-	title       value.Title
-	description value.Description
-	content     value.Content
-}
-
 func NewCreate(inserter Inserter, ids IDGenerator, clock Clock) (*Create, error) {
 	err := errors.Join(
 		domain.RequireDependency("inserter", inserter),
@@ -36,12 +30,12 @@ func NewCreate(inserter Inserter, ids IDGenerator, clock Clock) (*Create, error)
 }
 
 func (c *Create) Run(ctx context.Context, in CreateInput) (domain.Snippet, error) {
-	fields, err := parseCreateInput(in)
+	parsed, err := parseFields(in.Title, in.Description, in.Content)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
 
-	snippet, err := c.atRoot(fields, c.clock.Now())
+	snippet, err := c.atRoot(parsed, c.clock.Now())
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
@@ -54,18 +48,19 @@ func (c *Create) Run(ctx context.Context, in CreateInput) (domain.Snippet, error
 	return snippet, nil
 }
 
-func (c *Create) atRoot(fields createFields, now time.Time) (domain.Snippet, error) {
-	fragment, err := domain.NewFragment(c.ids.NewFragmentID(), value.PlainText(), fields.content, now, now)
+func (c *Create) atRoot(parsed fields, now time.Time) (domain.Snippet, error) {
+	fragment, err := domain.NewFragment(c.ids.NewFragmentID(), value.PlainText(), parsed.content, now, now)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("new fragment: %w", err)
 	}
 
 	snippet, err := domain.NewSnippet(
 		c.ids.NewSnippetID(),
-		fields.title,
-		fields.description,
+		parsed.title,
+		parsed.description,
 		domain.FolderID{},
 		[]domain.Fragment{fragment},
+		nil,
 		now,
 		now,
 	)
@@ -74,16 +69,4 @@ func (c *Create) atRoot(fields createFields, now time.Time) (domain.Snippet, err
 	}
 
 	return snippet, nil
-}
-
-func parseCreateInput(in CreateInput) (createFields, error) {
-	title, titleErr := value.NewTitle(in.Title)
-	description, descriptionErr := value.NewDescription(in.Description)
-	content, contentErr := value.NewContent(in.Content)
-
-	return createFields{title: title, description: description, content: content}, errors.Join(
-		domain.OnField(domain.FieldTitle, titleErr),
-		domain.OnField(domain.FieldDescription, descriptionErr),
-		domain.OnField(domain.FieldContent, contentErr),
-	)
 }

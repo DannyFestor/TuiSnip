@@ -26,16 +26,20 @@ import (
 
 type App struct {
 	Create              *snippet.Create
+	Update              *snippet.Update
 	Copy                *snippet.Copy
 	Query               *search.Query
 	SnippetsInFolder    *browse.SnippetsInFolder
 	FolderTree          *browse.FolderTree
+	TagList             *browse.TagList
+	SnippetsWithTag     *browse.SnippetsWithTag
 	CreateFolder        *folder.Create
 	RenameFolder        *folder.Rename
 	PreviewDeleteFolder *folder.PreviewDelete
 	DeleteFolder        *folder.Delete
 	SnippetRepository   *sqlite.SnippetRepository
 	FolderRepository    *sqlite.FolderRepository
+	TagRepository       *sqlite.TagRepository
 	model               tui.Model
 	database            *sqlite.Database
 	log                 *logging.Log
@@ -129,8 +133,11 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 	app.model, err = newModel(ctx, cfg, tui.Deps{
 		Lister:                app.SnippetsInFolder,
 		TreeLister:            app.FolderTree,
+		TagLister:             app.TagList,
+		TagSnippetsLister:     app.SnippetsWithTag,
 		Copier:                app.Copy,
 		Creator:               app.Create,
+		Updater:               app.Update,
 		Searcher:              app.Query,
 		FolderCreator:         app.CreateFolder,
 		FolderRenamer:         app.RenameFolder,
@@ -164,12 +171,14 @@ func newModel(ctx context.Context, cfg config.Config, deps tui.Deps) (tui.Model,
 type repositories struct {
 	snippets *sqlite.SnippetRepository
 	folders  *sqlite.FolderRepository
+	tags     *sqlite.TagRepository
 }
 
 func openRepositories(database *sqlite.Database, logger *slog.Logger) repositories {
 	return repositories{
 		snippets: sqlite.NewSnippetRepository(database, logger),
 		folders:  sqlite.NewFolderRepository(database, logger),
+		tags:     sqlite.NewTagRepository(database, logger),
 	}
 }
 
@@ -180,16 +189,19 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	}
 
 	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
 	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
+	tagList, tagListErr := browse.NewTagList(repos.tags, repos.snippets)
+	snippetsWithTag, withTagErr := browse.NewSnippetsWithTag(repos.snippets)
 	createFolder, createFolderErr := folder.NewCreate(repos.folders, system.NewIDs(), system.NewClock())
 	renameFolder, renameFolderErr := folder.NewRename(repos.folders, system.NewClock())
 	previewDeleteFolder, previewDeleteFolderErr := folder.NewPreviewDelete(repos.folders)
 	deleteFolder, deleteFolderErr := folder.NewDelete(repos.folders)
 
 	err = errors.Join(
-		createErr, queryErr, listErr, treeErr,
+		createErr, updateErr, queryErr, listErr, treeErr, tagListErr, withTagErr,
 		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr,
 	)
 	if err != nil {
@@ -198,16 +210,20 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 
 	return &App{
 		Create:              create,
+		Update:              update,
 		Copy:                copyAction,
 		Query:               query,
 		SnippetsInFolder:    snippetsInFolder,
 		FolderTree:          folderTree,
+		TagList:             tagList,
+		SnippetsWithTag:     snippetsWithTag,
 		CreateFolder:        createFolder,
 		RenameFolder:        renameFolder,
 		PreviewDeleteFolder: previewDeleteFolder,
 		DeleteFolder:        deleteFolder,
 		SnippetRepository:   repos.snippets,
 		FolderRepository:    repos.folders,
+		TagRepository:       repos.tags,
 		model:               tui.Model{},
 		database:            nil,
 		log:                 nil,

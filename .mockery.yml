@@ -9,6 +9,7 @@ packages:
       Inserter: {}
       Finder: {}
       Copier: {}
+      UpdateRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}

@@ -3,8 +3,10 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -25,6 +27,17 @@ func (r *SnippetRepository) Insert(ctx context.Context, snippet domain.Snippet) 
 	})
 	if err != nil {
 		return fmt.Errorf("sqlite.SnippetRepository.Insert: %w", err)
+	}
+
+	return nil
+}
+
+func (r *SnippetRepository) Update(ctx context.Context, snippet domain.Snippet, loadedUpdatedAt time.Time) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		return updateSnippet(ctx, queries, snippet, loadedUpdatedAt)
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.SnippetRepository.Update: %w", err)
 	}
 
 	return nil
@@ -84,6 +97,40 @@ func (r *SnippetRepository) CountByFolder(ctx context.Context) (map[domain.Folde
 	}
 
 	return counts, nil
+}
+
+func updateSnippet(
+	ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet, loadedUpdatedAt time.Time,
+) error {
+	updated, err := queries.UpdateSnippet(ctx, updateSnippetParams(snippet, loadedUpdatedAt))
+	if err != nil {
+		return fmt.Errorf("update snippet: %w", err)
+	}
+
+	if updated == 0 {
+		return whyNotUpdated(ctx, queries, snippet.ID())
+	}
+
+	for _, fragment := range snippet.Fragments() {
+		err = queries.UpdateFragment(ctx, updateFragmentParams(fragment))
+		if err != nil {
+			return fmt.Errorf("update fragment: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func whyNotUpdated(ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID) error {
+	_, err := queries.GetSnippet(ctx, columnID(id))
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return domain.ErrNotFound
+	case err != nil:
+		return fmt.Errorf("get snippet: %w", err)
+	}
+
+	return domain.ErrConflict
 }
 
 func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {

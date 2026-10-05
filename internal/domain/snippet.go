@@ -81,6 +81,27 @@ func (s Snippet) UpdatedAt() time.Time {
 	return s.updatedAt
 }
 
+func (s Snippet) Edit(
+	title value.Title, description value.Description, content value.Content, now time.Time,
+) (Snippet, error) {
+	err := requireTimestamps(s.createdAt, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
+	}
+
+	fragment, err := s.FirstFragment().WithContent(content, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
+	}
+
+	s.title = title
+	s.description = description
+	s.fragments = []Fragment{fragment}
+	s.updatedAt = now
+
+	return s, nil
+}
+
 func requireOneFragment(fragments []Fragment) error {
 	if len(fragments) != fragmentsPerSnippet {
 		return ErrNotOneFragment

@@ -2,6 +2,11 @@
 INSERT INTO fragments (id, snippet_id, position, language, content, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?);
 
+-- name: UpdateFragment :exec
+UPDATE fragments
+SET language = ?, content = ?, updated_at = ?
+WHERE id = ?;
+
 -- name: ListFragmentsBySnippet :many
 SELECT id, snippet_id, position, language, content, created_at, updated_at
 FROM fragments

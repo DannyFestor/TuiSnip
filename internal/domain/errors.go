@@ -3,6 +3,7 @@ package domain
 import "errors"
 
 var (
+	ErrConflict            = errors.New("domain: snippet changed elsewhere since it was loaded")
 	ErrCorruptRecord       = errors.New("domain: stored record is corrupt")
 	ErrFolderCycle         = errors.New("domain: folder cannot move into itself or its own subtree")
 	ErrMissingDependency   = errors.New("domain: dependency is missing")

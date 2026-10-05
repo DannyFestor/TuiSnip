@@ -183,6 +183,57 @@ func TestSnippet_FirstFragment(t *testing.T) {
 	assert.Equal(t, "echo hi", snippet.FirstFragment().Content().String())
 }
 
+func TestSnippet_Edit(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+	later := created.Add(time.Hour)
+	stored := testkit.Snippet(t, testkit.SnippetSpec{
+		ID:        snippetID(),
+		Title:     "curl",
+		FolderID:  domain.FolderID(uuid.MustParse(storedID)),
+		Fragment:  testkit.FragmentSpec{Content: "curl", CreatedAt: created},
+		CreatedAt: created,
+	})
+
+	t.Run("takes the fields and the time", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := stored.Edit(
+			mustTitle(t, "curl json"), mustDescription(t, "POST"), mustContent(t, "curl -d @b.json"), later,
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, "curl json", edited.Title().String())
+		assert.Equal(t, "POST", edited.Description().String())
+		assert.Equal(t, "curl -d @b.json", edited.FirstFragment().Content().String())
+		assert.Equal(t, later, edited.UpdatedAt())
+		assert.Equal(t, later, edited.FirstFragment().UpdatedAt())
+		assert.Equal(t, "curl", stored.Title().String(), "the original is untouched")
+	})
+
+	t.Run("keeps the ID, Folder, Fragment and creation time", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, mustContent(t, "curl"), later)
+
+		require.NoError(t, err)
+		assert.Equal(t, stored.ID(), edited.ID())
+		assert.Equal(t, stored.FolderID(), edited.FolderID())
+		assert.Equal(t, stored.FirstFragment().ID(), edited.FirstFragment().ID())
+		assert.Equal(t, created, edited.CreatedAt())
+		assert.Equal(t, created, edited.FirstFragment().UpdatedAt(), "unchanged content keeps its time")
+	})
+
+	t.Run("rejects a time before creation", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := stored.Edit(mustTitle(t, "curl json"), value.Description{}, mustContent(t, "curl"), created.Add(-1))
+
+		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
+	})
+}
+
 func snippetID() domain.SnippetID {
 	return domain.SnippetID(uuid.MustParse(storedID))
 }

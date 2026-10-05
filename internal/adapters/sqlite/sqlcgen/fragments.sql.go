@@ -153,3 +153,26 @@ func (q *Queries) ListFragmentsInFolder(ctx context.Context, folderID *sqltype.I
 	}
 	return items, nil
 }
+
+const updateFragment = `-- name: UpdateFragment :exec
+UPDATE fragments
+SET language = ?, content = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateFragmentParams struct {
+	Language  string
+	Content   string
+	UpdatedAt sqltype.Timestamp
+	ID        sqltype.ID
+}
+
+func (q *Queries) UpdateFragment(ctx context.Context, arg UpdateFragmentParams) error {
+	_, err := q.db.ExecContext(ctx, updateFragment,
+		arg.Language,
+		arg.Content,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}

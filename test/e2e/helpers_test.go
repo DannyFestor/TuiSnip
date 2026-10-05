@@ -14,9 +14,10 @@ import (
 	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -33,30 +34,12 @@ const (
 func seedNestedFolders(t *testing.T, app *bootstrap.App) domain.Folder {
 	t.Helper()
 
-	ids := testkit.NewSequentialIDs()
-	golang := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
-	tests := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
-	testapp.SeedFolder(t, app, golang)
-	testapp.SeedFolder(t, app, tests)
-	testapp.SeedSnippet(t, app, titledSnippet(t, ids, rootTitle, domain.FolderID{}))
-	testapp.SeedSnippet(t, app, titledSnippet(t, ids, filedTitle, tests.ID()))
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
+	tests := testapp.SeedFolder(t, app, folder.CreateInput{Name: "testing", ParentID: golang.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: filedTitle, FolderID: tests.ID()})
 
 	return golang
-}
-
-func titledSnippet(t *testing.T, ids *testkit.SequentialIDs, title string, folderID domain.FolderID) domain.Snippet {
-	t.Helper()
-
-	return snippetWithIDs(t, ids, testkit.SnippetSpec{Title: title, FolderID: folderID})
-}
-
-func snippetWithIDs(t *testing.T, ids *testkit.SequentialIDs, spec testkit.SnippetSpec) domain.Snippet {
-	t.Helper()
-
-	spec.ID = ids.NewSnippetID()
-	spec.Fragment.ID = ids.NewFragmentID()
-
-	return testkit.Snippet(t, spec)
 }
 
 type session struct {

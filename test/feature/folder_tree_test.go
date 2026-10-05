@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -19,13 +19,12 @@ func TestSeededFoldersListAsTreeWithSnippetCounts(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
-	docker := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "docker"})
-	tests := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
-	seededSnippet(t, app, ids, golang.ID())
-	seededSnippet(t, app, ids, tests.ID())
-	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Language: plainText, Content: "ls"})
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
+	docker := testapp.SeedFolder(t, app, folder.CreateInput{Name: "docker"})
+	tests := testapp.SeedFolder(t, app, folder.CreateInput{Name: "testing", ParentID: golang.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: tests.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "at the Root"})
 
 	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
 
@@ -45,10 +44,9 @@ func TestSnippetsInFolderListOnlyThatFolder(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
-	filed := seededSnippet(t, app, ids, golang.ID())
-	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Language: plainText, Content: "ls"})
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
+	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "at the Root"})
 
 	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{
 		FolderID: golang.ID(),

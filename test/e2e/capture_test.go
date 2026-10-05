@@ -11,8 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -28,8 +29,7 @@ func TestCaptureIntoFolder(t *testing.T) {
 	t.Parallel()
 
 	home, app := testapp.Start(t, testapp.RecordingTool)
-	docker := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "docker"})
-	testapp.SeedFolder(t, app, docker)
+	docker := testapp.SeedFolder(t, app, folder.CreateInput{Name: "docker"})
 	home.PutOnClipboard(t, clipboardText)
 	screen := open(t, app)
 	screen.waitForFrame("docker")
@@ -92,8 +92,7 @@ func TestNewSnippetForTag(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	oneliner := testkit.Tag(t, testkit.TagSpec{ID: testkit.NewSequentialIDs().NewTagID(), Name: "oneliner"})
-	testapp.SeedTag(t, app, oneliner)
+	oneliner := testapp.SeedTag(t, app, tag.CreateInput{Name: "oneliner"})
 	screen := open(t, app)
 	screen.waitForFrame("# oneliner")
 

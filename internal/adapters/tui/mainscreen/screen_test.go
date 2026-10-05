@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -17,6 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -560,38 +562,60 @@ func TestScreen_statusLine(t *testing.T) {
 		assert.True(t, strings.HasPrefix(statusLine(screen), " Copied "))
 	})
 
-	t.Run("cuts a status text too long to fit beside the hints", func(t *testing.T) {
+	t.Run("cuts a status text too long to fit beside help", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 		screen.Press(keypress.Letter('3'))
 
-		room := wide().Width - ansi.StringWidth(listHint) - 1
+		room := wide().Width - ansi.StringWidth(helpHint) - 1
 		screen.Send(mainscreen.StatusShown{Text: strings.Repeat("x", room)})
 
-		assert.Equal(t, " "+strings.Repeat("x", room-2)+"… "+listHint, statusLine(screen))
+		assert.Equal(t, " "+strings.Repeat("x", room-2)+"… "+helpHint, statusLine(screen))
 	})
 
-	t.Run("keeps the hints that fit in half the width", func(t *testing.T) {
+	t.Run("keeps every hint that fits beside the status text", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
 
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(listHint))})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), " "+listHint))
+	})
+
+	t.Run("drops hints from the right but keeps help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(listHint) - 1)})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), " y Copy · e edit · n new · s sort · z zoom · "+helpHint))
+	})
+
+	t.Run("keeps only help when nothing else fits", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
+		screen.Press(keypress.Letter('3'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(helpHint))})
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), "x "+helpHint))
+	})
+
+	t.Run("drops an Overlay's hints from the right", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, minimum(), sampleSnippets(t)...)
 		screen.Press(keypress.Letter('/'))
+
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(searchHint) - 1)})
 
 		assert.True(t, strings.HasSuffix(statusLine(screen), " down move · enter reveal · ctrl+y Copy"))
-	})
-
-	t.Run("keeps hints exactly half the width wide", func(t *testing.T) {
-		t.Parallel()
-
-		hints := "down move · enter reveal · ctrl+y Copy"
-		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Send(tea.WindowSizeMsg{Width: 2 * ansi.StringWidth(hints), Height: minimum().Height})
-
-		screen.Press(keypress.Letter('/'))
-
-		assert.True(t, strings.HasSuffix(statusLine(screen), " "+hints))
 	})
 
 	t.Run("says the terminal is too small below the minimum size", func(t *testing.T) {
@@ -1104,9 +1128,119 @@ func TestScreen_Received(t *testing.T) {
 func TestScreen_FullHelp(t *testing.T) {
 	t.Parallel()
 
+	keys := testsettings.Default(t).Keys
 	screen := newScreen(t, look.NewStyles(), domain.SortOrderTitle)
 
-	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys, nil).FullHelp(), screen.FullHelp())
+	want := append(keys.For(binding.ScopeGlobal).FullHelp(), folderpane.New(keys, nil).FullHelp()...)
+	assert.Equal(t, want, screen.FullHelp())
+}
+
+func TestScreen_help(t *testing.T) {
+	t.Parallel()
+
+	t.Run("? opens help over the global Bindings and the focused Pane's", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('?'))
+
+		assert.Contains(t, screen.Screen(), "╭ Help ")
+		assert.Regexp(t, `q\s+quit`, screen.Screen())
+		assert.Regexp(t, `N\s+new Folder`, screen.Screen())
+	})
+
+	t.Run("lists the Snippet list's Bindings when it has focus", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Typed("3?")...)
+
+		assert.Regexp(t, `s\s+sort`, screen.Screen())
+		assert.NotContains(t, screen.Screen(), "new Folder")
+	})
+
+	t.Run("hints closing help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('?'))
+
+		assert.Equal(t, "? close · esc close", screen.Hints())
+	})
+
+	t.Run("opens below the minimum size", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, narrow())
+
+		screen.Press(keypress.Letter('?'))
+
+		assert.Contains(t, screen.Screen(), "╭ Help ")
+	})
+
+	t.Run("opens while a Pane is zoomed and lists zoom", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('z'), keypress.Letter('?'))
+
+		assert.Contains(t, screen.Screen(), "╭ Help ")
+		assert.Regexp(t, `z\s+zoom`, screen.Screen())
+	})
+
+	t.Run("opens from the Tags Pane over the global Bindings only", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('?'))
+
+		assert.Regexp(t, `q\s+quit`, screen.Screen())
+		assert.NotContains(t, screen.Screen(), "new Folder")
+		assert.Equal(t, "? close · esc close", screen.Hints())
+	})
+
+	t.Run("? types into the edit overlay's Content instead of opening help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('n'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Letter('?'), keypress.Ctrl('s'))
+
+		assert.NotContains(t, screen.Screen(), "╭ Help ")
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{
+			Input: snippet.CreateInput{Title: "", Description: "", Content: "?"},
+		}}, screen.Outcomes())
+	})
+
+	t.Run("? types into the Search query instead of opening help", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Typed("/?")...)
+
+		assert.Contains(t, screen.Screen(), "/ ?")
+		assert.NotContains(t, screen.Screen(), "╭ Help ")
+	})
+
+	t.Run("? types into a Folder name instead of opening help", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsing(t)
+
+		screen.Press(keypress.Typed("N?")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
+			Input: folder.CreateInput{Name: "?", ParentID: domain.FolderID{}},
+		}}, screen.Outcomes())
+	})
 }
 
 func TestNew(t *testing.T) {

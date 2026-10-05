@@ -8,6 +8,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 type bound struct {
@@ -63,6 +64,19 @@ func TestKeys_For(t *testing.T) {
 		got := keys.For(binding.ScopeFolders).ShortHelp()
 
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
+	})
+
+	t.Run("every pane Scope's hints end with help", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+
+		for _, scope := range []binding.Scope{
+			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeSnippetPane,
+		} {
+			hints := hintTexts(keys.For(scope).ShortHelp())
+			assert.Equal(t, "? help", hints[len(hints)-1], "%s", scope)
+		}
 	})
 
 	t.Run("Snippet pane hints Copy, edit and wrap before zoom", func(t *testing.T) {
@@ -159,16 +173,32 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"y yes"}, hintTexts(got))
 	})
 
-	t.Run("full help is the short hint as one column", func(t *testing.T) {
+	t.Run("full help lists every row of the Scope with all its keys, as one column", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
-			bound{scope: binding.ScopeConfirm, name: binding.Yes, keys: []string{"y"}},
-			bound{scope: binding.ScopeConfirm, name: binding.No, keys: []string{"n"}},
+			bound{scope: binding.ScopeFolders, name: binding.NewFolder, keys: []string{"N"}},
+			bound{scope: binding.ScopeFolders, name: binding.Rename, keys: []string{"r", "f2"}},
+			bound{scope: binding.ScopeFolders, name: binding.Delete, keys: []string{"d"}},
+			bound{scope: binding.ScopeFolders, name: binding.Collapse, keys: []string{"space"}},
 		)
-		scope := keys.For(binding.ScopeConfirm)
 
-		assert.Equal(t, [][]key.Binding{scope.ShortHelp()}, scope.FullHelp())
+		got := keys.For(binding.ScopeFolders).FullHelp()
+
+		assert.Equal(t, [][]string{{"N new Folder", "r, f2 rename", "d delete", "space collapse"}}, columnTexts(got))
+	})
+
+	t.Run("full help leaves out a Binding with no keys", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeConfirm, name: binding.Yes, keys: []string{}},
+			bound{scope: binding.ScopeConfirm, name: binding.No, keys: []string{"n", "esc"}},
+		)
+
+		got := keys.For(binding.ScopeConfirm).FullHelp()
+
+		assert.Equal(t, [][]string{{"n, esc no"}}, columnTexts(got))
 	})
 
 	t.Run("matches any of a Binding's keys", func(t *testing.T) {
@@ -226,6 +256,31 @@ func TestKeys_EmptyListHints(t *testing.T) {
 	assert.Equal(t, []string{"n new Snippet", "p Capture", "/ Search", "N new Folder"}, hintTexts(got))
 }
 
+func TestKeys_HelpOverlayHints(t *testing.T) {
+	t.Parallel()
+
+	keys := keysWith(
+		bound{scope: binding.ScopeGlobal, name: binding.Help, keys: []string{"f1", "?"}},
+		bound{scope: binding.ScopeGlobal, name: binding.Back, keys: []string{"backspace"}},
+	)
+
+	got := keys.HelpOverlayHints()
+
+	assert.Equal(t, []string{"f1 close", "backspace close"}, hintTexts(got))
+}
+
+func TestAlwaysShown(t *testing.T) {
+	t.Parallel()
+
+	hints := keysWith(
+		bound{scope: binding.ScopeGlobal, name: binding.Help, keys: []string{"f1"}},
+		bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+	).For(binding.ScopeTags).ShortHelp()
+
+	assert.False(t, binding.AlwaysShown(hints[len(hints)-2]), "search")
+	assert.True(t, binding.AlwaysShown(hints[len(hints)-1]), "help")
+}
+
 func keysWith(bindings ...bound) binding.Keys {
 	keys := make(binding.Keys)
 
@@ -247,6 +302,16 @@ func hintTexts(hints []key.Binding) []string {
 		if hint.Enabled() {
 			texts = append(texts, hint.Help().Key+" "+hint.Help().Desc)
 		}
+	}
+
+	return texts
+}
+
+func columnTexts(columns [][]key.Binding) [][]string {
+	texts := make([][]string, 0, len(columns))
+
+	for _, column := range columns {
+		texts = append(texts, hintTexts(column))
 	}
 
 	return texts

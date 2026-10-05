@@ -24,7 +24,7 @@ func statusHintList(scope Scope) []labelledRef {
 }
 
 func paneHintList(scope Scope) []labelledRef {
-	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Zoom, Search)...)...)
+	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)...)
 }
 
 func paneOwnHintList(scope Scope) []labelledRef {
@@ -75,6 +75,13 @@ func emptyListHintList() []labelledRef {
 		{row: rowRef{scope: ScopeGlobal, name: Search}, label: labelEmptyListSearch},
 		{row: rowRef{scope: ScopeFolders, name: NewFolder}, label: labelNewFolder},
 		{row: rowRef{scope: ScopeGlobal, name: Help}, label: labelHelp},
+	}
+}
+
+func helpOverlayHintList() []labelledRef {
+	return []labelledRef{
+		{row: rowRef{scope: ScopeGlobal, name: Help}, label: labelClose},
+		{row: rowRef{scope: ScopeGlobal, name: Back}, label: labelClose},
 	}
 }
 

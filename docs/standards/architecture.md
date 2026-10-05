@@ -49,6 +49,7 @@ internal/
       editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
+      helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
       look/                  sizes and the resized message, frames, rows, styles, syntax highlighting, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
@@ -160,7 +161,7 @@ The TUI is built from small components, each in its own package under `tui/`. `t
 
 ### Two kinds of component
 
-- **Stack members** are the Overlays and the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. `FullHelp()` is what the help overlay will show.
+- **Stack members** are the Overlays and the main screen. They implement `overlay.Overlay`: `Update(msg) Step[O]`, `View()`, and Bubbles' `help.KeyMap`. The overlay stack knows them only through that interface. `ShortHelp()` feeds the status line. The main screen's `FullHelp()`, the `global` column and the focused Pane's, is what the help overlay shows.
 - **The main screen sits at the bottom of the stack.** Model pushes it once at start, so keys always go to the top of the stack and hints always come from it. Model never asks whether an Overlay is open. The main screen is an `overlay.Base`: the stack draws it with `ViewUnder(hints)`, passing the top member's hints for its status line, and centres the Overlays over it. It opens the Overlays its Bindings ask for as its children and passes every other outcome on to Model.
 - **Embedded children** are the Snippet list inside the Search popup or the main screen, the text entries in the edit overlay, and the name input in the Folders Pane. They are concrete types. A child's `Update` returns its new value, a typed result, and a `tea.Cmd`. The parent holds the concrete type and reads the result directly.
 
@@ -174,7 +175,7 @@ A component reports what happened by returning an `outcome.Outcome` in the step 
 
 ### Bindings
 
-Every Binding the TUI knows is one row of the `tui/binding` table: its Scope, its name as config spells it, and its status-hint label. A component takes its Scope's keys with `binding.Keys.For(scope)`, which dispatches with `Matches`, names keys in text with `FirstKey`, and implements `help.KeyMap` from the Scope's hint list. `tui/binding` imports nothing from `tui` or its other subpackages, so every component can use it.
+Every Binding the TUI knows is one row of the `tui/binding` table: its Scope, its name as config spells it, and the label the status hint and help show. A component takes its Scope's keys with `binding.Keys.For(scope)`, which dispatches with `Matches`, names keys in text with `FirstKey`, and implements `help.KeyMap`: `ShortHelp` from the Scope's hint list, `FullHelp` from every row of the Scope with all its keys. `tui/binding` imports nothing from `tui` or its other subpackages, so every component can use it.
 
 Config already parses every Binding in the spec (`internal/adapters/config/binding.go`), but the TUI knows only the rows in `tui/binding/row.go`. The status hints in [`ui.md`](../spec/ui.md#status-hint) map to `statusHintList` in `tui/binding/hint_lists.go`, which lists only the entries wired so far. So a ticket that wires a Binding adds its row to the table and its entries to the hint list.
 

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -260,5 +259,5 @@ func TestPane_ShortHelp(t *testing.T) {
 	pane := paneIn(t, time.UTC, look.Size{Width: boxWidth, Height: headerLines})
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetPane).ShortHelp(), pane.ShortHelp())
-	assert.Equal(t, [][]key.Binding{pane.ShortHelp()}, pane.FullHelp())
+	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeSnippetPane).FullHelp(), pane.FullHelp())
 }

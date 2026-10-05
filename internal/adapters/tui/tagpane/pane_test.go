@@ -3,7 +3,6 @@ package tagpane_test
 import (
 	"testing"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
@@ -154,7 +153,7 @@ func TestPane_ShortHelp(t *testing.T) {
 	pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight})
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeTags).ShortHelp(), pane.ShortHelp())
-	assert.Equal(t, [][]key.Binding{pane.ShortHelp()}, pane.FullHelp())
+	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeTags).FullHelp(), pane.FullHelp())
 }
 
 type selection struct {

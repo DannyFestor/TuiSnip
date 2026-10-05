@@ -156,6 +156,20 @@ func TestModel_editOverlayStaleSave(t *testing.T) {
 		assert.NotContains(t, screen.screen(), "Snippet 1 mine")
 	})
 
+	t.Run("? does not open help over the Changed elsewhere confirmation", func(t *testing.T) {
+		t.Parallel()
+
+		lister := NewMockFolderSnippetsLister(t)
+		listingIn(lister, domain.FolderID{}, numberedSnippets(t, 2)...)
+		screen := start(t, updatingModel(t, refusingUpdater(t), lister), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e mine")...)
+		screen.press(keypress.Ctrl('s'), keypress.Letter('?'))
+
+		assert.Contains(t, screen.screen(), reloadQuestion)
+		assert.NotContains(t, screen.screen(), "╭ Help ")
+	})
+
 	t.Run("keeps a Tag as the Browse selection after the reload", func(t *testing.T) {
 		t.Parallel()
 

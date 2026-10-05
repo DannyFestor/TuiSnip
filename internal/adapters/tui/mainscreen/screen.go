@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/helpoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
@@ -19,8 +20,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
-
-const hintWidthDivisor = 2
 
 type Screen struct {
 	keys            binding.Keys
@@ -110,7 +109,7 @@ func (s Screen) ShortHelp() []key.Binding {
 }
 
 func (s Screen) FullHelp() [][]key.Binding {
-	return s.panes.keyMaps()[s.focus].FullHelp()
+	return append(s.global.FullHelp(), s.panes.keyMaps()[s.focus].FullHelp()...)
 }
 
 func (s Screen) loaded(msg tea.Msg) outcome.Step {
@@ -157,6 +156,8 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	switch {
 	case s.global.Matches(msg, binding.Quit):
 		return outcome.Stay(s).Passing(outcome.QuitAsked{}), true
+	case s.global.Matches(msg, binding.Help):
+		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp())), true
 	case s.global.Matches(msg, binding.NewSnippet):
 		return s.opening(editoverlay.New(s.keys, s.styles)), true
 	case s.global.Matches(msg, binding.Search):
@@ -368,7 +369,7 @@ func (s Screen) hint(hints []key.Binding) string {
 		return tooSmallHint
 	}
 
-	return hintFor(hints, s.box.Width/hintWidthDivisor)
+	return hintFor(hints, hintRoom(s.status, s.box.Width))
 }
 
 func (s Screen) panesView() string {

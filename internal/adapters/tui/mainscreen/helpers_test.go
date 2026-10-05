@@ -27,7 +27,9 @@ const (
 	snippetListTitle = "3 Root · by title"
 	snippetPaneTitle = "4 Snippet"
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
-	listHint         = "y Copy · e edit · n new · s sort · z zoom · / search"
+	listHint         = "y Copy · e edit · n new · s sort · z zoom · / search · ? help"
+	helpHint         = "? help"
+	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"
 	filedTitle       = "Table test skeleton"
@@ -169,6 +171,10 @@ func statusLine(driver *overlaytest.Driver) string {
 	all := lines(driver)
 
 	return all[len(all)-1]
+}
+
+func statusLeaving(hintRoom int) string {
+	return strings.Repeat("x", minimum().Width-len(" ")-len(" ")-hintRoom)
 }
 
 func columnWidths(driver *overlaytest.Driver) []int {

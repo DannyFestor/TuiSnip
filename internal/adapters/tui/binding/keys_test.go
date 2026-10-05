@@ -50,6 +50,20 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
+	t.Run("Snippet pane hints Copy and wrap before zoom", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeGlobal, name: binding.Zoom, keys: []string{"z"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.Copy, keys: []string{"y"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.Wrap, keys: []string{"w"}},
+		)
+
+		got := keys.For(binding.ScopeSnippetPane).ShortHelp()
+
+		assert.Equal(t, []string{"y Copy", "w wrap", "z zoom"}, hintTexts(got))
+	})
+
 	zoomHints := []struct {
 		scope binding.Scope
 		want  []string

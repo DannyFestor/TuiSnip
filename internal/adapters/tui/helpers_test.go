@@ -198,6 +198,23 @@ func sampleSnippets(t *testing.T) []domain.Snippet {
 	}
 }
 
+func longLineSnippet(t *testing.T) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:    ids.NewSnippetID(),
+		Title: "Find large files",
+		Fragment: testkit.FragmentSpec{
+			ID:       ids.NewFragmentID(),
+			Language: "Bash",
+			Content:  "find . -type f -size +100M -not -path './.git/*' -exec ls -lh {} + | sort -k5 -h\necho done\n",
+		},
+		CreatedAt: time.Date(2026, time.September, 6, 9, 0, 0, 0, time.UTC),
+	})
+}
+
 func numberedSnippets(t *testing.T, count int) []domain.Snippet {
 	t.Helper()
 

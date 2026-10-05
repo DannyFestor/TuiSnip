@@ -12,6 +12,7 @@ const (
 	labelCollapse       = "collapse"
 	labelCopy           = "Copy"
 	labelSort           = "sort"
+	labelWrap           = "wrap"
 	labelExternalEditor = "external editor"
 	labelSave           = "save"
 	labelCancel         = "cancel"
@@ -43,6 +44,7 @@ func Rows() []Row {
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
+		Row{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
 		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},
 		Row{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
 		Row{Scope: ScopeEditor, Name: NextField, Label: labelField},

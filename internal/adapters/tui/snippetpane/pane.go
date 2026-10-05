@@ -21,6 +21,7 @@ const (
 	dateLayout       = "2006-01-02"
 	lineNumberFormat = "%4d │ "
 	blankGutter      = "     │ "
+	wrappedGutter    = "   ↪ │ "
 	metaSeparator    = " · "
 	fixedHeaderLines = 4
 )
@@ -115,6 +116,10 @@ func (p Pane) Cleared() Pane {
 }
 
 func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
+	if p.keys.Matches(msg, binding.Wrap) {
+		return p.wrapToggled()
+	}
+
 	direction, ok := move.Pressed(p.global, msg)
 	if !ok {
 		return p
@@ -129,6 +134,12 @@ func (p Pane) copyRequested(msg tea.KeyPressMsg) []outcome.Outcome {
 	}
 
 	return []outcome.Outcome{outcome.CopyRequested{ID: p.snippet.ID()}}
+}
+
+func (p Pane) wrapToggled() Pane {
+	p.viewport.SoftWrap = !p.viewport.SoftWrap
+
+	return p
 }
 
 func (p Pane) withCodeStyle(codeStyle string) Pane {
@@ -217,7 +228,11 @@ func (p Pane) timestamps() string {
 
 func lineNumbers(styles look.Styles) viewport.GutterFunc {
 	return func(line viewport.GutterContext) string {
-		if line.Soft || line.Index >= line.TotalLines {
+		if line.Soft {
+			return styles.Dim.Render(wrappedGutter)
+		}
+
+		if line.Index >= line.TotalLines {
 			return styles.Dim.Render(blankGutter)
 		}
 

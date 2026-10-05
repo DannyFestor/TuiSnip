@@ -9,6 +9,7 @@ const (
 	labelRename         = "rename"
 	labelDelete         = "delete"
 	labelCopy           = "Copy"
+	labelSort           = "sort"
 	labelExternalEditor = "external editor"
 	labelSave           = "save"
 	labelCancel         = "cancel"
@@ -37,6 +38,7 @@ func Rows() []Row {
 		Row{Scope: ScopeFolders, Name: Rename, Label: labelRename},
 		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
+		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},
 		Row{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},

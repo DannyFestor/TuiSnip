@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
-	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -54,7 +53,9 @@ func TestNew(t *testing.T) {
 
 			require.ErrorIs(t, err, domain.ErrMissingDependency)
 
-			for _, name := range []string{"lister", "treeLister", "copier", "creator", "searcher", "logger", "location"} {
+			for _, name := range []string{
+				"lister", "treeLister", "copier", "creator", "searcher", "sortOrderSaver", "logger", "location",
+			} {
 				assert.ErrorContains(t, err, name)
 			}
 		})
@@ -88,7 +89,7 @@ func TestModel_start(t *testing.T) {
 		t.Parallel()
 
 		lister := NewMockFolderSnippetsLister(t)
-		lister.EXPECT().Run(mock.Anything, browse.SnippetsInFolderInput{}).Return(nil, errDatabaseLocked)
+		lister.EXPECT().Run(mock.Anything, atRootByTitle()).Return(nil, errDatabaseLocked)
 
 		screen := start(t, newModel(t, lister, NewMockSnippetCopier(t)), wideWidth, wideHeight)
 

@@ -87,6 +87,12 @@ func (h *Home) WriteConfig(t *testing.T, toml string) {
 	h.writeFile(t, h.Paths.ConfigFile, toml)
 }
 
+func (h *Home) WriteState(t *testing.T, toml string) {
+	t.Helper()
+
+	h.writeFile(t, h.Paths.StateFile, toml)
+}
+
 func (h *Home) Block(t *testing.T, dir string) {
 	t.Helper()
 

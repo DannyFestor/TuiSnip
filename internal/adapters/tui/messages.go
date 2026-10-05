@@ -28,7 +28,7 @@ type folderTreeChangedMsg struct {
 
 type folderRenamedMsg struct{}
 
-type folderChangeFailedMsg struct {
+type operationFailedMsg struct {
 	operation string
 	err       error
 }

@@ -1,11 +1,11 @@
 package mainscreen
 
 const (
-	folderPaneTitle   = "1 Folders"
-	tagPaneTitle      = "2 Tags"
-	snippetListNumber = "3 "
-	snippetListOrder  = " · by title"
-	snippetPaneTitle  = "4 Snippet"
+	folderPaneTitle    = "1 Folders"
+	tagPaneTitle       = "2 Tags"
+	snippetListNumber  = "3 "
+	listTitleSeparator = " · "
+	snippetPaneTitle   = "4 Snippet"
 )
 
 type pane int
@@ -77,14 +77,14 @@ func (p pane) inLeftColumn() bool {
 	return p == paneFolders || p == paneTags
 }
 
-func (p pane) title(browseSelection string) string {
+func (p pane) title(selectionAndOrder string) string {
 	switch p {
 	case paneFolders:
 		return folderPaneTitle
 	case paneTags:
 		return tagPaneTitle
 	case paneList:
-		return snippetListNumber + browseSelection + snippetListOrder
+		return snippetListNumber + selectionAndOrder
 	case paneSnippet:
 		return snippetPaneTitle
 	}

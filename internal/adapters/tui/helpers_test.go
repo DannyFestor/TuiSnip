@@ -51,6 +51,7 @@ type actions struct {
 	folderRenamer         tui.FolderRenamer
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
+	sortOrderSaver        tui.SortOrderSaver
 }
 
 func emptyTree() browse.Tree {
@@ -67,7 +68,19 @@ func treeOf(t *testing.T, tree browse.Tree) *MockFolderTreeLister {
 }
 
 func listingIn(lister *MockFolderSnippetsLister, folderID domain.FolderID, snippets ...domain.Snippet) {
-	lister.EXPECT().Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: folderID}).Return(snippets, nil).Once()
+	listingInOrder(lister, folderID, domain.SortOrderTitle, snippets...)
+}
+
+func listingInOrder(
+	lister *MockFolderSnippetsLister,
+	folderID domain.FolderID,
+	order domain.SortOrder,
+	snippets ...domain.Snippet,
+) {
+	lister.EXPECT().
+		Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: folderID, Order: order}).
+		Return(snippets, nil).
+		Once()
 }
 
 func modelWith(t *testing.T, with actions) tui.Model {
@@ -99,9 +112,10 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.folderDeletePreviewer,
 			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
 		),
-		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
-		Settings:      settings,
-		Logger:        slog.New(slog.DiscardHandler),
+		FolderDeleter:  orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
+		SortOrderSaver: orMock(with.sortOrderSaver, func() tui.SortOrderSaver { return NewMockSortOrderSaver(t) }),
+		Settings:       settings,
+		Logger:         slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 
@@ -121,7 +135,7 @@ func listerOf(t *testing.T, snippets ...domain.Snippet) *MockFolderSnippetsListe
 	t.Helper()
 
 	lister := NewMockFolderSnippetsLister(t)
-	lister.EXPECT().Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).Return(snippets, nil)
+	lister.EXPECT().Run(mock.Anything, atRootByTitle()).Return(snippets, nil)
 
 	return lister
 }
@@ -130,16 +144,14 @@ func listerReturning(t *testing.T, first, then []domain.Snippet) *MockFolderSnip
 	t.Helper()
 
 	lister := NewMockFolderSnippetsLister(t)
-	lister.EXPECT().
-		Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).
-		Return(first, nil).
-		Once()
-	lister.EXPECT().
-		Run(mock.Anything, browse.SnippetsInFolderInput{FolderID: domain.FolderID{}}).
-		Return(then, nil).
-		Once()
+	listingIn(lister, domain.FolderID{}, first...)
+	listingIn(lister, domain.FolderID{}, then...)
 
 	return lister
+}
+
+func atRootByTitle() browse.SnippetsInFolderInput {
+	return browse.SnippetsInFolderInput{FolderID: domain.FolderID{}, Order: domain.SortOrderTitle}
 }
 
 func sampleSnippets(t *testing.T) []domain.Snippet {

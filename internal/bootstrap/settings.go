@@ -6,13 +6,15 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-func SettingsFrom(cfg config.Config, location *time.Location) tui.Settings {
+func SettingsFrom(cfg config.Config, location *time.Location, order domain.SortOrder) tui.Settings {
 	return tui.Settings{
 		Keys:          keysFrom(cfg.Bindings),
 		ForcedQuitKey: config.ForcedQuitKey().String(),
 		Location:      location,
+		SortOrder:     order,
 	}
 }
 

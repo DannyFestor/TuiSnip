@@ -27,7 +27,7 @@ func TestNewSnippetsInFolder(t *testing.T) {
 func TestSnippetsInFolder_Run(t *testing.T) {
 	t.Parallel()
 
-	t.Run("returns the lister's Snippets for the Folder in order", func(t *testing.T) {
+	t.Run("returns the lister's Snippets for the Folder in the Input's sort order", func(t *testing.T) {
 		t.Parallel()
 
 		ids := testkit.NewSequentialIDs()
@@ -37,9 +37,12 @@ func TestSnippetsInFolder_Run(t *testing.T) {
 			testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Title: "git undo", FolderID: folderID}),
 		}
 		lister := NewMockSnippetLister(t)
-		lister.EXPECT().ListInFolder(mock.Anything, folderID).Return(want, nil)
+		lister.EXPECT().ListInFolder(mock.Anything, folderID, domain.SortOrderCreated).Return(want, nil)
 
-		got, err := newSnippetsInFolder(t, lister).Run(t.Context(), browse.SnippetsInFolderInput{FolderID: folderID})
+		got, err := newSnippetsInFolder(t, lister).Run(
+			t.Context(),
+			browse.SnippetsInFolderInput{FolderID: folderID, Order: domain.SortOrderCreated},
+		)
 
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
@@ -49,9 +52,14 @@ func TestSnippetsInFolder_Run(t *testing.T) {
 		t.Parallel()
 
 		lister := NewMockSnippetLister(t)
-		lister.EXPECT().ListInFolder(mock.Anything, domain.FolderID{}).Return(nil, errDatabaseLocked)
+		lister.EXPECT().
+			ListInFolder(mock.Anything, domain.FolderID{}, domain.SortOrderTitle).
+			Return(nil, errDatabaseLocked)
 
-		_, err := newSnippetsInFolder(t, lister).Run(t.Context(), browse.SnippetsInFolderInput{})
+		_, err := newSnippetsInFolder(t, lister).Run(
+			t.Context(),
+			browse.SnippetsInFolderInput{FolderID: domain.FolderID{}, Order: domain.SortOrderTitle},
+		)
 
 		require.ErrorIs(t, err, errDatabaseLocked)
 		assert.ErrorContains(t, err, "browse.SnippetsInFolder: ")

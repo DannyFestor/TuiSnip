@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 func Default(t *testing.T) tui.Settings {
@@ -22,5 +23,5 @@ func Default(t *testing.T) tui.Settings {
 	})
 	require.NoError(t, err)
 
-	return bootstrap.SettingsFrom(cfg, time.UTC)
+	return bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle)
 }

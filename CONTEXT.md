@@ -58,6 +58,10 @@ _Avoid_: Result, match
 Navigating the Folder tree or the Tag list to reach a Snippet without typing a query.
 _Avoid_: Explore, navigate
 
+**Sort order**:
+How Browse lists Snippets: by title ignoring case, by last updated, or by creation date, the dates newest first. A key cycles through the three, and TuiSnip remembers the choice between runs.
+_Avoid_: Sorting, sort mode, ordering
+
 **Capture**:
 Creating a new Snippet from the clipboard's current content.
 _Avoid_: Import, paste, grab

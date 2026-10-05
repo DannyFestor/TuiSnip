@@ -24,7 +24,7 @@ const (
 	snippetListTitle = "3 Root · by title"
 	snippetPaneTitle = "4 Snippet"
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
-	listHint         = "y Copy · n new · / search"
+	listHint         = "y Copy · n new · s sort · / search"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"
 	filedTitle       = "Table test skeleton"
@@ -53,12 +53,21 @@ func showing(t *testing.T, screen look.Size, snippets ...domain.Snippet) *overla
 func showingStyled(t *testing.T, screen look.Size, styles look.Styles, snippets ...domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
-	driver := overlaytest.Open(t, screen, mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC))
-	driver.Send(
-		mainscreen.SnippetsLoaded{FolderID: domain.FolderID{}, Snippets: snippets, Selecting: domain.SnippetID{}},
-	)
+	driver := opened(t, screen, styles, domain.SortOrderTitle)
+	driver.Send(mainscreen.SnippetsLoaded{
+		FolderID:  domain.FolderID{},
+		Snippets:  snippets,
+		Selecting: domain.SnippetID{},
+		Order:     domain.SortOrderTitle,
+	})
 
 	return driver
+}
+
+func opened(t *testing.T, screen look.Size, styles look.Styles, order domain.SortOrder) *overlaytest.Driver {
+	t.Helper()
+
+	return overlaytest.Open(t, screen, mainscreen.New(testsettings.Default(t).Keys, styles, time.UTC, order))
 }
 
 func browsing(t *testing.T) (*overlaytest.Driver, foldertree.Sample) {

@@ -118,7 +118,7 @@ func (s Snippet) Rename(title value.Title, now time.Time) Snippet {
 
 `Rename` can't fail because a `value.Title` is valid by construction. Entity invariants that span fields ("exactly one Fragment") are checked in `domain` and reported with `domain` sentinels.
 
-- Each entity's ID is its own type over `uuid.UUID` (`domain.SnippetID`, `domain.FragmentID`, `domain.FolderID`), so one can't be passed where another belongs. A constructor rejects the Nil UUID as the entity's own ID.
+- Each entity's ID is its own type over `uuid.UUID` (`domain.SnippetID`, `domain.FragmentID`, `domain.FolderID`), so one can't be passed where another belongs. All of them are declared in `internal/domain/id.go`, as instances of the generic `domain.ID[E]`, and a new entity's ID goes there too. The column type sqlc generates against is `sqltype.ID` in `internal/adapters/sqlite/sqltype/id.go`. A constructor rejects the Nil UUID as the entity's own ID.
 - `NewSnippet` and `NewFragment` take every field positionally. revive's `argument-limit` is lifted for `internal/domain` only, because the distinct value and ID types already catch most swapped arguments. The same constructor serves `snippet.Create` and the `sqlite` rebuild from rows.
 - The constructors also repeat the schema's timestamp CHECKs (after the epoch, storable as `int64` nanoseconds, `updatedAt >= createdAt`), so the domain never accepts a value a save would reject.
 

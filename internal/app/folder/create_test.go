@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -136,12 +135,4 @@ func expectInsert(repo *MockCreateRepository) *domain.Folder {
 		Return(nil)
 
 	return &inserted
-}
-
-func fixedClock() testkit.FixedClock {
-	return testkit.NewFixedClock(now())
-}
-
-func now() time.Time {
-	return time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 }

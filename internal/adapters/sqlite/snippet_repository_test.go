@@ -363,22 +363,6 @@ func TestSnippetRepository_CountByFolder(t *testing.T) {
 	})
 }
 
-func insertSnippet(
-	t *testing.T,
-	repository *sqlite.SnippetRepository,
-	ids *testkit.SequentialIDs,
-	spec testkit.SnippetSpec,
-) domain.Snippet {
-	t.Helper()
-
-	spec.ID = ids.NewSnippetID()
-	spec.Fragment.ID = ids.NewFragmentID()
-	snippet := testkit.Snippet(t, spec)
-	require.NoError(t, repository.Insert(t.Context(), snippet))
-
-	return snippet
-}
-
 func assertCorruptRowLogged(t *testing.T, logged *bytes.Buffer, level string, id domain.SnippetID) {
 	t.Helper()
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
-	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -59,31 +58,4 @@ func TestSnippetsInFolderListOnlyThatFolder(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, listed, 1)
 	assert.Equal(t, filed.ID(), listed[0].ID())
-}
-
-func seededFolder(t *testing.T, app *bootstrap.App, spec testkit.FolderSpec) domain.Folder {
-	t.Helper()
-
-	folder := testkit.Folder(t, spec)
-	testapp.SeedFolder(t, app, folder)
-
-	return folder
-}
-
-func seededSnippet(
-	t *testing.T,
-	app *bootstrap.App,
-	ids *testkit.SequentialIDs,
-	folderID domain.FolderID,
-) domain.Snippet {
-	t.Helper()
-
-	filed := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
-	})
-	testapp.SeedSnippet(t, app, filed)
-
-	return filed
 }

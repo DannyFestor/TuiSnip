@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 	"time"
+	"uuid"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -16,8 +17,11 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -27,6 +31,8 @@ const (
 	narrowWidth        = 60
 	narrowHeight       = 20
 	listLongerThanPane = 45
+	filedTitle         = "Table test skeleton"
+	filedSnippetID     = "0194c3a0-0000-7000-8000-0000000f11ed"
 )
 
 func newModel(t *testing.T, lister tui.FolderSnippetsLister, copier tui.SnippetCopier) tui.Model {
@@ -210,6 +216,56 @@ func numberedSnippets(t *testing.T, count int) []domain.Snippet {
 	return snippets
 }
 
+func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
+	t.Helper()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:       domain.SnippetID(uuid.MustParse(filedSnippetID)),
+		Title:    filedTitle,
+		FolderID: folderID,
+		Fragment: testkit.FragmentSpec{
+			Language: "Go",
+			Content:  "func TestParse(t *testing.T) {}\n",
+		},
+	})
+}
+
+func browsingModel(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) tui.Model {
+	t.Helper()
+
+	return modelWith(t, browsingActions(t, sample, lister))
+}
+
+func browsingActions(t *testing.T, sample foldertree.Sample, lister *MockFolderSnippetsLister) actions {
+	t.Helper()
+
+	return actions{
+		lister:     lister,
+		treeLister: treeOf(t, sample.Tree),
+		copier:     NewMockSnippetCopier(t),
+		creator:    NewMockSnippetCreator(t),
+		searcher:   NewMockSnippetSearcher(t),
+	}
+}
+
+func hitsOf(snippets ...domain.Snippet) []domain.SearchHit {
+	hits := make([]domain.SearchHit, 0, len(snippets))
+	for index := range snippets {
+		hits = append(hits, domain.NewSearchHit(snippets[index], domain.FieldScores{}))
+	}
+
+	return hits
+}
+
+func copied(t *testing.T, delivery domain.CopyDelivery) snippet.CopyResult {
+	t.Helper()
+
+	content, err := value.NewContent("echo copied")
+	require.NoError(t, err)
+
+	return snippet.CopyResult{Delivery: delivery, Content: content}
+}
+
 type driver struct {
 	t       *testing.T
 	model   tea.Model
@@ -280,12 +336,12 @@ func (d *driver) runSequenceOrSend(msg tea.Msg) {
 func sequenceSteps(msg tea.Msg) ([]tea.Cmd, bool) {
 	cmds := reflect.TypeFor[[]tea.Cmd]()
 
-	value := reflect.ValueOf(msg)
-	if value.Kind() != reflect.Slice || !value.Type().ConvertibleTo(cmds) {
+	reflected := reflect.ValueOf(msg)
+	if reflected.Kind() != reflect.Slice || !reflected.Type().ConvertibleTo(cmds) {
 		return nil, false
 	}
 
-	return reflect.TypeAssert[[]tea.Cmd](value.Convert(cmds))
+	return reflect.TypeAssert[[]tea.Cmd](reflected.Convert(cmds))
 }
 
 func (d *driver) screen() string {

@@ -1,7 +1,6 @@
 package clipboard_test
 
 import (
-	"bytes"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -82,12 +81,4 @@ func (f *fakeTools) options(goos string, env ...string) clipboard.Options {
 		GOOS:     goos,
 		Logger:   slog.New(slog.DiscardHandler),
 	}
-}
-
-func withLogBuffer(options clipboard.Options) (clipboard.Options, *bytes.Buffer) {
-	var buffer bytes.Buffer
-
-	options.Logger = slog.New(slog.NewJSONHandler(&buffer, nil))
-
-	return options, &buffer
 }

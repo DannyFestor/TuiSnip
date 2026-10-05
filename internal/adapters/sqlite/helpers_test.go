@@ -148,6 +148,22 @@ func newLoggingSnippetRepository(t *testing.T, path string, logged *bytes.Buffer
 	return sqlite.NewSnippetRepository(openDatabase(t, path), slog.New(slog.NewJSONHandler(logged, nil)))
 }
 
+func insertSnippet(
+	t *testing.T,
+	repository *sqlite.SnippetRepository,
+	ids *testkit.SequentialIDs,
+	spec testkit.SnippetSpec,
+) domain.Snippet {
+	t.Helper()
+
+	spec.ID = ids.NewSnippetID()
+	spec.Fragment.ID = ids.NewFragmentID()
+	snippet := testkit.Snippet(t, spec)
+	require.NoError(t, repository.Insert(t.Context(), snippet))
+
+	return snippet
+}
+
 func insertCorruptSnippet(
 	t *testing.T,
 	repository *sqlite.SnippetRepository,

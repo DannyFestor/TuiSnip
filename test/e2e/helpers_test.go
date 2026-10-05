@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -24,7 +26,34 @@ const (
 	screenHeight = 40
 	waitTimeout  = 5 * time.Second
 	pollInterval = 10 * time.Millisecond
+	rootTitle    = "Prune at the Root"
+	filedTitle   = "Table test skeleton"
 )
+
+func seedNestedFolders(t *testing.T, app *bootstrap.App) domain.Folder {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+	golang := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
+	tests := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "testing", ParentID: golang.ID()})
+	testapp.SeedFolder(t, app, golang)
+	testapp.SeedFolder(t, app, tests)
+	testapp.SeedSnippet(t, app, titledSnippet(t, ids, rootTitle, domain.FolderID{}))
+	testapp.SeedSnippet(t, app, titledSnippet(t, ids, filedTitle, tests.ID()))
+
+	return golang
+}
+
+func titledSnippet(t *testing.T, ids *testkit.SequentialIDs, title string, folderID domain.FolderID) domain.Snippet {
+	t.Helper()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:       ids.NewSnippetID(),
+		Title:    title,
+		FolderID: folderID,
+		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
+	})
+}
 
 type session struct {
 	t       *testing.T

@@ -106,15 +106,6 @@ func TestBlankSearchFindsNothing(t *testing.T) {
 	assert.Empty(t, hits)
 }
 
-func create(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domain.Snippet {
-	t.Helper()
-
-	created, err := app.Create.Run(t.Context(), in)
-	require.NoError(t, err)
-
-	return created
-}
-
 func listAtRoot(t *testing.T, app *bootstrap.App) []domain.Snippet {
 	t.Helper()
 

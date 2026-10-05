@@ -89,7 +89,7 @@ Do not edit generated files. Change the source of the generator, then run `make 
 
 - GitHub squash-merges each pull request. The pull request title becomes the commit message, so it must obey Conventional Commits.
 - CI must pass before a merge.
-- The coding standards are in [`docs/standards/`](docs/standards/README.md). Read the applicable standard before you change code.
+- The coding standards are in [`docs/standards/`](docs/standards/README.md). Start from its index before you change code.
 - The tools, and the reasons for each tool, are in [`docs/toolchain.md`](docs/toolchain.md).
 - Coding agents start from [`AGENTS.md`](AGENTS.md).
 

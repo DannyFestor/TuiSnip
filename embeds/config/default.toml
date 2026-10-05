@@ -132,7 +132,7 @@ show_all_languages = ["ctrl+a"]
 accept = ["enter"]
 cancel = ["esc"]
 
-# y/N confirmations. enter picks the default, No.
+# [y/N] confirmations. enter picks the default, No.
 [bindings.confirm]
 yes = ["y"]
 no = ["n", "esc", "enter"]

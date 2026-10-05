@@ -3,6 +3,7 @@ package binding
 const (
 	labelHelp           = "help"
 	labelSearch         = "search"
+	labelZoom           = "zoom"
 	labelNew            = "new"
 	labelCapture        = "Capture"
 	labelNewFolder      = "new Folder"
@@ -12,6 +13,7 @@ const (
 	labelCopy           = "Copy"
 	labelEdit           = "edit"
 	labelSort           = "sort"
+	labelWrap           = "wrap"
 	labelExternalEditor = "external editor"
 	labelSave           = "save"
 	labelCancel         = "cancel"
@@ -47,6 +49,7 @@ func Rows() []Row {
 		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
+		Row{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
 		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},
 		Row{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
 		Row{Scope: ScopeEditor, Name: NextField, Label: labelField},
@@ -78,6 +81,7 @@ func globalRows() []Row {
 	labelled := []Row{
 		{Scope: ScopeGlobal, Name: Help, Label: labelHelp},
 		{Scope: ScopeGlobal, Name: Search, Label: labelSearch},
+		{Scope: ScopeGlobal, Name: Zoom, Label: labelZoom},
 		{Scope: ScopeGlobal, Name: NewSnippet, Label: labelNew},
 		{Scope: ScopeGlobal, Name: Capture, Label: labelCapture},
 	}

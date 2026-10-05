@@ -65,6 +65,46 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter open", "N new Folder", "r rename", "d delete", "/ search"}, hintTexts(got))
 	})
 
+	t.Run("Snippet pane hints Copy, edit and wrap before zoom", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeGlobal, name: binding.Zoom, keys: []string{"z"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.Copy, keys: []string{"y"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.Edit, keys: []string{"e"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.Wrap, keys: []string{"w"}},
+		)
+
+		got := keys.For(binding.ScopeSnippetPane).ShortHelp()
+
+		assert.Equal(t, []string{"y Copy", "e edit", "w wrap", "z zoom"}, hintTexts(got))
+	})
+
+	zoomHints := []struct {
+		scope binding.Scope
+		want  []string
+	}{
+		{scope: binding.ScopeFolders, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeTags, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeSnippetList, want: []string{"z zoom", "/ search"}},
+		{scope: binding.ScopeSnippetPane, want: []string{"z zoom", "/ search"}},
+	}
+
+	for _, tt := range zoomHints {
+		t.Run("hints zoom before search in "+string(tt.scope), func(t *testing.T) {
+			t.Parallel()
+
+			keys := keysWith(
+				bound{scope: binding.ScopeGlobal, name: binding.Zoom, keys: []string{"z"}},
+				bound{scope: binding.ScopeGlobal, name: binding.Search, keys: []string{"/"}},
+			)
+
+			got := keys.For(tt.scope).ShortHelp()
+
+			assert.Equal(t, tt.want, hintTexts(got))
+		})
+	}
+
 	t.Run("Tags hints open before search", func(t *testing.T) {
 		t.Parallel()
 

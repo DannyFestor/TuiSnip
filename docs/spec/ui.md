@@ -74,6 +74,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
   - A Tag: the Snippet goes to the Root and already carries the Tag, so it shows up in the list being looked at.
+- `w` wraps long lines in the Snippet pane, and pressing it again cuts them off at the Pane's edge. A wrapped line keeps its number on its first row, and each continuation row shows `↪` in the line-number gutter, so the gutter keeps its width and the `│` separator lines up.
 
 ## Search popup
 

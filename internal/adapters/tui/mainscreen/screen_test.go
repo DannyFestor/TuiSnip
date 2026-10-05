@@ -444,6 +444,87 @@ func TestScreen_layout(t *testing.T) {
 		})
 	}
 
+	t.Run("z fills the screen with the focused Pane", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('3'), keypress.Letter('z'))
+
+		assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+		assert.Contains(t, screen.Screen(), snippetListTitle)
+		assert.NotContains(t, screen.Screen(), snippetPaneTitle)
+	})
+
+	t.Run("zooming Folders shows Folders without Tags", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('z'))
+
+		assert.Contains(t, screen.Screen(), folderPaneTitle)
+		assert.NotContains(t, screen.Screen(), tagPaneTitle)
+	})
+
+	t.Run("z again restores the layout", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('z'), keypress.Letter('z'))
+
+		assert.Equal(t, []int{34, 36, 50}, columnWidths(screen))
+	})
+
+	t.Run("moving focus while zoomed shows the newly focused Pane zoomed", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide())
+
+		screen.Press(keypress.Letter('z'), keypress.Letter('4'))
+
+		assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+		assert.Contains(t, screen.Screen(), snippetPaneTitle)
+		assert.NotContains(t, screen.Screen(), folderPaneTitle)
+	})
+
+	t.Run("zooming Tags shows Tags without Folders", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := browsingTags(t)
+
+		screen.Press(keypress.Letter('2'), keypress.Letter('z'))
+
+		assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+		assert.Contains(t, screen.Screen(), strings.ToUpper(tagPaneTitle))
+		assert.Contains(t, screen.Screen(), "# docker")
+		assert.NotContains(t, screen.Screen(), folderPaneTitle)
+	})
+
+	zoomedEnters := []struct {
+		name      string
+		from      rune
+		leftTitle string
+	}{
+		{name: "enter on Folders while zoomed shows the Snippet list zoomed", from: '1', leftTitle: folderPaneTitle},
+		{name: "enter on Tags while zoomed shows the Snippet list zoomed", from: '2', leftTitle: tagPaneTitle},
+	}
+
+	for _, tt := range zoomedEnters {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen, _ := browsingTags(t)
+
+			screen.Press(keypress.Letter(tt.from), keypress.Letter('z'), keypress.Special(tea.KeyEnter))
+
+			assert.Equal(t, []int{wide().Width}, columnWidths(screen))
+			assert.Contains(t, screen.Screen(), " BY TITLE")
+			assert.NotContains(t, strings.ToUpper(screen.Screen()), strings.ToUpper(tt.leftTitle))
+		})
+	}
+
 	t.Run("draws the focused Pane in the focused style", func(t *testing.T) {
 		t.Parallel()
 
@@ -523,6 +604,16 @@ func TestScreen_statusLine(t *testing.T) {
 			strings.Repeat(" ", narrow().Width-ansi.StringWidth(tooSmallHint))+tooSmallHint,
 			statusLine(screen),
 		)
+	})
+
+	t.Run("keeps the focused Pane's hints while zoomed", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Letter('3'), keypress.Letter('z'))
+
+		assert.True(t, strings.HasSuffix(statusLine(screen), " "+listHint))
 	})
 
 	t.Run("shows an open Overlay's hints instead of the too-small hint", func(t *testing.T) {

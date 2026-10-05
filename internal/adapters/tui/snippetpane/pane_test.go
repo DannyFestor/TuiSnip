@@ -169,6 +169,35 @@ func TestPane_Update(t *testing.T) {
 		assert.Empty(t, outcomes)
 	})
 
+	t.Run("cuts a long line off without wrapping", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, snippetOf(t, longLine))
+
+		assert.Equal(t, []string{"   1 │ docker system pru"}, trimmed(code(pane))[:1])
+	})
+
+	t.Run("w wraps a long line under a continuation marker", func(t *testing.T) {
+		t.Parallel()
+
+		pane := pressed(t, showing(t, snippetOf(t, longLine)), keypress.Letter('w'))
+
+		assert.Equal(t, []string{
+			"   1 │ docker system pru",
+			"   ↪ │ ne --all",
+		}, trimmed(code(pane))[:2])
+	})
+
+	t.Run("w again stops wrapping", func(t *testing.T) {
+		t.Parallel()
+
+		unwrapped := showing(t, snippetOf(t, longLine))
+
+		pane := pressed(t, unwrapped, keypress.Letter('w'), keypress.Letter('w'))
+
+		assert.Equal(t, code(unwrapped), code(pane))
+	})
+
 	t.Run("highlights for the terminal's background", func(t *testing.T) {
 		t.Parallel()
 

@@ -32,6 +32,7 @@ type Screen struct {
 	layout          layout
 	focus           pane
 	selectionHolder pane
+	zoomed          bool
 	panes           panes
 	status          string
 }
@@ -52,6 +53,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, remembe
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
+		zoomed:          false,
 		panes:           newPanes(keys, styles, location, remembered.CollapsedFolders).withOrderLabel(label),
 		status:          "",
 	}, nil
@@ -100,7 +102,7 @@ func (s Screen) ViewUnder(hints []key.Binding) string {
 }
 
 func (s Screen) ShortHelp() []key.Binding {
-	if s.layout.single {
+	if tooSmall(s.box) {
 		return nil
 	}
 
@@ -159,6 +161,8 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 		return s.opening(editoverlay.New(s.keys, s.styles)), true
 	case s.global.Matches(msg, binding.Search):
 		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing())), true
+	case s.global.Matches(msg, binding.Zoom):
+		return outcome.Stay(s.zoomToggled()), true
 	case s.focus.inLeftColumn() && s.global.Matches(msg, binding.Open):
 		return s.opened(), true
 	}
@@ -304,6 +308,13 @@ func (s Screen) focusedOn(target pane) Screen {
 	return next.arranged()
 }
 
+func (s Screen) zoomToggled() Screen {
+	next := s
+	next.zoomed = !s.zoomed
+
+	return next.arranged()
+}
+
 func (s Screen) revealing(folderID domain.FolderID) (Screen, []outcome.Outcome) {
 	next := s
 	next.focus = paneSnippet
@@ -330,10 +341,18 @@ func (s Screen) resized(box look.Size) Screen {
 }
 
 func (s Screen) arranged() Screen {
-	s.layout = arrange(s.box, s.focus, s.tallLeft())
+	s.layout = s.arrangement()
 	s.panes = s.panes.resized(s.layout)
 
 	return s
+}
+
+func (s Screen) arrangement() layout {
+	if s.zoomed {
+		return singlePane(s.box)
+	}
+
+	return arrange(s.box, s.focus, s.tallLeft())
 }
 
 func (s Screen) tallLeft() pane {
@@ -345,7 +364,7 @@ func (s Screen) tallLeft() pane {
 }
 
 func (s Screen) hint(hints []key.Binding) string {
-	if s.layout.single && len(hints) == 0 {
+	if tooSmall(s.box) && len(hints) == 0 {
 		return tooSmallHint
 	}
 

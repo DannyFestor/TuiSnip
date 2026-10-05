@@ -38,6 +38,7 @@ components:
   config:      { in: internal/adapters/config/** }
   xdg:         { in: internal/adapters/xdg/** }
   state:       { in: internal/adapters/state/** }
+  atomicfile:  { in: internal/adapters/atomicfile/** }
   editor:      { in: internal/adapters/editor/** }
   memsearch:   { in: internal/adapters/memsearch/** }
   system:      { in: internal/adapters/system/** }
@@ -72,12 +73,13 @@ deps:
   clipboard:   { mayDependOn: [ clipboard ] }
   default-config: { mayDependOn: [ default-config ] }
   config:
-    mayDependOn: [ config, default-config ]
+    mayDependOn: [ config, default-config, atomicfile ]
     canUse: [ toml ]
   xdg:         { mayDependOn: [ xdg ] }
   state:
-    mayDependOn: [ state ]
+    mayDependOn: [ state, atomicfile ]
     canUse: [ toml ]
+  atomicfile:  { mayDependOn: [ atomicfile ] }
   editor:
     mayDependOn: [ editor ]
     canUse: [ editor-launcher ]

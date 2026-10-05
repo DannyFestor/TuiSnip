@@ -21,15 +21,18 @@ import (
 )
 
 const (
-	operationList          = "list snippets"
-	operationTree          = "list folders"
-	operationCopy          = "copy"
-	operationSave          = "save snippet"
-	operationSearch        = "search"
-	operationCreateFolder  = "create folder"
-	operationRenameFolder  = "rename folder"
-	operationPreviewDelete = "preview folder delete"
-	operationDeleteFolder  = "delete folder"
+	operationList           = "list snippets"
+	operationTree           = "list folders"
+	operationCopy           = "copy"
+	operationSave           = "save snippet"
+	operationSearch         = "search"
+	operationCreateFolder   = "create folder"
+	operationRenameFolder   = "rename folder"
+	operationPreviewDelete  = "preview folder delete"
+	operationDeleteFolder   = "delete folder"
+	operationSaveSortOrder  = "save sort order"
+	operationCycleSortOrder = "cycle sort order"
+	operationShowSortOrder  = "show sort order"
 )
 
 type Model struct {
@@ -44,6 +47,8 @@ type Model struct {
 	folderRenamer         FolderRenamer
 	folderDeletePreviewer FolderDeletePreviewer
 	folderDeleter         FolderDeleter
+	sortOrderSaver        SortOrderSaver
+	sortOrder             domain.SortOrder
 	logger                *slog.Logger
 	forcedQuitKey         string
 	afterCopy             tea.Cmd
@@ -79,6 +84,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
 		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
 		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
+		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
 		requirePointer("logger", deps.Logger),
 		requirePointer("location", deps.Settings.Location),
 	)
@@ -86,7 +92,16 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		return Model{}, err
 	}
 
-	mainScreen := mainscreen.New(deps.Settings.Keys, look.NewStyles(), deps.Settings.Location)
+	mainScreen, err := mainscreen.New(
+		deps.Settings.Keys,
+		look.NewStyles(),
+		deps.Settings.Location,
+		deps.Settings.SortOrder,
+	)
+	if err != nil {
+		return Model{}, fmt.Errorf("main screen: %w", err)
+	}
+
 	overlays, _, _ := outcome.NewStack().Pushed(mainScreen)
 
 	return Model{
@@ -100,6 +115,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		folderRenamer:         deps.FolderRenamer,
 		folderDeletePreviewer: deps.FolderDeletePreviewer,
 		folderDeleter:         deps.FolderDeleter,
+		sortOrderSaver:        deps.SortOrderSaver,
+		sortOrder:             deps.Settings.SortOrder,
 		logger:                deps.Logger,
 		forcedQuitKey:         deps.Settings.ForcedQuitKey,
 		afterCopy:             afterCopy,
@@ -123,7 +140,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadTreeSelecting(msg.selecting)
 	case folderRenamedMsg:
 		return m, m.loadTree()
-	case folderChangeFailedMsg:
+	case operationFailedMsg:
 		return m.failed(msg.operation, msg.err)
 	case listFailedMsg:
 		return m.failed(operationList, msg.err)
@@ -165,13 +182,40 @@ func (m Model) listTree(loaded func(tree browse.Tree) tea.Msg) tea.Cmd {
 }
 
 func (m Model) loadSnippets(folderID domain.FolderID, selecting domain.SnippetID) tea.Cmd {
+	order := m.sortOrder
+
 	return func() tea.Msg {
-		snippets, err := m.lister.Run(m.ctx, browse.SnippetsInFolderInput{FolderID: folderID})
+		snippets, err := m.lister.Run(m.ctx, browse.SnippetsInFolderInput{FolderID: folderID, Order: order})
 		if err != nil {
 			return listFailedMsg{err: err}
 		}
 
-		return mainscreen.SnippetsLoaded{FolderID: folderID, Snippets: snippets, Selecting: selecting}
+		return mainscreen.SnippetsLoaded{FolderID: folderID, Snippets: snippets, Selecting: selecting, Order: order}
+	}
+}
+
+func (m Model) sortCycled(asked outcome.SortCycleAsked) (Model, tea.Cmd) {
+	order, err := m.sortOrder.Next()
+	if err != nil {
+		return m.failed(operationCycleSortOrder, err)
+	}
+
+	next := m
+	next.sortOrder = order
+
+	return next, tea.Batch(next.saveSortOrder(), next.loadSnippets(asked.FolderID, asked.Selecting))
+}
+
+func (m Model) saveSortOrder() tea.Cmd {
+	order := m.sortOrder
+
+	return func() tea.Msg {
+		err := m.sortOrderSaver.SaveSortOrder(m.ctx, order)
+		if err != nil {
+			return operationFailedMsg{operation: operationSaveSortOrder, err: err}
+		}
+
+		return nil
 	}
 }
 
@@ -240,10 +284,10 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested:
 		return m, m.createSnippet(reported.Input)
-	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected:
-		return m, m.relisted(reported)
-	case outcome.SaveFailed:
-		return m.failed(operationSave, reported.Err)
+	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected, outcome.SortCycleAsked:
+		return m.relisted(reported)
+	case outcome.SaveFailed, outcome.SortOrderRejected:
+		return m.reportedFailure(reported)
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
 	case outcome.SearchTyped:
@@ -261,16 +305,29 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) relisted(reported outcome.Outcome) tea.Cmd {
+func (m Model) reportedFailure(reported outcome.Outcome) (Model, tea.Cmd) {
+	switch reported := reported.(type) {
+	case outcome.SaveFailed:
+		return m.failed(operationSave, reported.Err)
+	case outcome.SortOrderRejected:
+		return m.failed(operationShowSortOrder, reported.Err)
+	default:
+		return m, nil
+	}
+}
+
+func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SnippetSaved:
-		return tea.Batch(m.loadTree(), m.loadSnippets(reported.FolderID, reported.ID))
+		return m, tea.Batch(m.loadTree(), m.loadSnippets(reported.FolderID, reported.ID))
 	case outcome.SnippetRevealed:
-		return m.loadSnippets(reported.FolderID, reported.ID)
+		return m, m.loadSnippets(reported.FolderID, reported.ID)
 	case outcome.FolderSelected:
-		return m.loadSnippets(reported.ID, domain.SnippetID{})
+		return m, m.loadSnippets(reported.ID, domain.SnippetID{})
+	case outcome.SortCycleAsked:
+		return m.sortCycled(reported)
 	default:
-		return nil
+		return m, nil
 	}
 }
 
@@ -301,7 +358,7 @@ func (m Model) createFolder(in folder.CreateInput) tea.Cmd {
 	return func() tea.Msg {
 		created, err := m.folderCreator.Run(m.ctx, in)
 		if err != nil {
-			return folderChangeFailedMsg{operation: operationCreateFolder, err: err}
+			return operationFailedMsg{operation: operationCreateFolder, err: err}
 		}
 
 		return folderTreeChangedMsg{selecting: created.ID()}
@@ -312,7 +369,7 @@ func (m Model) previewFolderDelete(in folder.PreviewDeleteInput) tea.Cmd {
 	return func() tea.Msg {
 		preview, err := m.folderDeletePreviewer.Run(m.ctx, in)
 		if err != nil {
-			return folderChangeFailedMsg{operation: operationPreviewDelete, err: err}
+			return operationFailedMsg{operation: operationPreviewDelete, err: err}
 		}
 
 		return mainscreen.FolderDeletePreviewed{Preview: preview}
@@ -323,7 +380,7 @@ func (m Model) deleteFolder(in folder.DeleteInput, parentID domain.FolderID) tea
 	return func() tea.Msg {
 		err := m.folderDeleter.Run(m.ctx, in)
 		if err != nil {
-			return folderChangeFailedMsg{operation: operationDeleteFolder, err: err}
+			return operationFailedMsg{operation: operationDeleteFolder, err: err}
 		}
 
 		return folderTreeChangedMsg{selecting: parentID}
@@ -334,7 +391,7 @@ func (m Model) renameFolder(in folder.RenameInput) tea.Cmd {
 	return func() tea.Msg {
 		_, err := m.folderRenamer.Run(m.ctx, in)
 		if err != nil {
-			return folderChangeFailedMsg{operation: operationRenameFolder, err: err}
+			return operationFailedMsg{operation: operationRenameFolder, err: err}
 		}
 
 		return folderRenamedMsg{}

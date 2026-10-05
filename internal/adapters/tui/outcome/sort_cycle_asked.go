@@ -1,10 +1,10 @@
-package mainscreen
+package outcome
 
 import "github.com/DannyFestor/TuiSnip/internal/domain"
 
-type SnippetsLoaded struct {
+type SortCycleAsked struct {
 	FolderID  domain.FolderID
-	Snippets  []domain.Snippet
 	Selecting domain.SnippetID
-	Order     domain.SortOrder
 }
+
+func (SortCycleAsked) isOutcome() {}

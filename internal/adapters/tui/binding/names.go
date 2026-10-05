@@ -26,6 +26,7 @@ const (
 	Rename       = "rename"
 	Delete       = "delete"
 	Copy         = "copy"
+	CycleSort    = "cycle_sort"
 	OpenInEditor = "open_in_editor"
 	Save         = "save"
 	Cancel       = "cancel"

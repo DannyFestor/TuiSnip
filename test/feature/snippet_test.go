@@ -118,7 +118,10 @@ func create(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domain.Sni
 func listAtRoot(t *testing.T, app *bootstrap.App) []domain.Snippet {
 	t.Helper()
 
-	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{FolderID: domain.FolderID{}})
+	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{
+		FolderID: domain.FolderID{},
+		Order:    domain.SortOrderTitle,
+	})
 	require.NoError(t, err)
 
 	return listed

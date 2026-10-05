@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 func TestSettingsFrom(t *testing.T) {
@@ -23,7 +24,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "[bindings.snippet_list]\ncopy = [\"shift+ctrl+y\", \"Y\"]\n")
 
-		keys := bootstrap.SettingsFrom(cfg, time.UTC).Keys
+		keys := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys
 
 		assert.Equal(t, []string{"ctrl+shift+y", "Y"}, keys[binding.ScopeSnippetList][binding.Copy])
 	})
@@ -33,7 +34,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "")
 
-		keys := bootstrap.SettingsFrom(cfg, time.UTC).Keys
+		keys := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys
 
 		for scope, bindings := range cfg.Bindings {
 			assert.Len(t, keys[binding.Scope(scope.String())], len(bindings), "%s", scope)
@@ -45,7 +46,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "[bindings.confirm]\nno = []\n")
 
-		no, ok := bootstrap.SettingsFrom(cfg, time.UTC).Keys[binding.ScopeConfirm][binding.No]
+		no, ok := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys[binding.ScopeConfirm][binding.No]
 
 		assert.True(t, ok)
 		assert.Empty(t, no)
@@ -54,7 +55,11 @@ func TestSettingsFrom(t *testing.T) {
 	t.Run("passes the forced quit key through", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, "ctrl+c", bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC).ForcedQuitKey)
+		assert.Equal(
+			t,
+			"ctrl+c",
+			bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, domain.SortOrderTitle).ForcedQuitKey,
+		)
 	})
 
 	t.Run("passes the Location through", func(t *testing.T) {
@@ -62,7 +67,15 @@ func TestSettingsFrom(t *testing.T) {
 
 		tokyo := time.FixedZone("JST", 9*60*60)
 
-		assert.Same(t, tokyo, bootstrap.SettingsFrom(loadConfig(t, ""), tokyo).Location)
+		assert.Same(t, tokyo, bootstrap.SettingsFrom(loadConfig(t, ""), tokyo, domain.SortOrderTitle).Location)
+	})
+
+	t.Run("passes the remembered sort order through", func(t *testing.T) {
+		t.Parallel()
+
+		settings := bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, domain.SortOrderCreated)
+
+		assert.Equal(t, domain.SortOrderCreated, settings.SortOrder)
 	})
 }
 

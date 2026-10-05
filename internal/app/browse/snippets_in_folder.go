@@ -21,7 +21,7 @@ func NewSnippetsInFolder(lister SnippetLister) (*SnippetsInFolder, error) {
 }
 
 func (s *SnippetsInFolder) Run(ctx context.Context, in SnippetsInFolderInput) ([]domain.Snippet, error) {
-	snippets, err := s.lister.ListInFolder(ctx, in.FolderID)
+	snippets, err := s.lister.ListInFolder(ctx, in.FolderID, in.Order)
 	if err != nil {
 		return nil, fmt.Errorf("browse.SnippetsInFolder: %w", err)
 	}

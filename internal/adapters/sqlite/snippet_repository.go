@@ -48,8 +48,12 @@ func (r *SnippetRepository) List(ctx context.Context) ([]domain.Snippet, error) 
 	return snippets, nil
 }
 
-func (r *SnippetRepository) ListInFolder(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error) {
-	snippets, err := r.loadAll(ctx, snippetsInFolder(folderID))
+func (r *SnippetRepository) ListInFolder(
+	ctx context.Context,
+	folderID domain.FolderID,
+	order domain.SortOrder,
+) ([]domain.Snippet, error) {
+	snippets, err := r.loadAll(ctx, snippetsInFolder(folderID, order))
 	if err != nil {
 		return nil, fmt.Errorf("sqlite.SnippetRepository.ListInFolder: %w", err)
 	}

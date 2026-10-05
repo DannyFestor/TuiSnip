@@ -244,8 +244,8 @@ func (_m *MockSnippetLister) EXPECT() *MockSnippetLister_Expecter {
 }
 
 // ListInFolder provides a mock function for the type MockSnippetLister
-func (_mock *MockSnippetLister) ListInFolder(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error) {
-	ret := _mock.Called(ctx, folderID)
+func (_mock *MockSnippetLister) ListInFolder(ctx context.Context, folderID domain.FolderID, order domain.SortOrder) ([]domain.Snippet, error) {
+	ret := _mock.Called(ctx, folderID, order)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListInFolder")
@@ -253,18 +253,18 @@ func (_mock *MockSnippetLister) ListInFolder(ctx context.Context, folderID domai
 
 	var r0 []domain.Snippet
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.FolderID) ([]domain.Snippet, error)); ok {
-		return returnFunc(ctx, folderID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.FolderID, domain.SortOrder) ([]domain.Snippet, error)); ok {
+		return returnFunc(ctx, folderID, order)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.FolderID) []domain.Snippet); ok {
-		r0 = returnFunc(ctx, folderID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.FolderID, domain.SortOrder) []domain.Snippet); ok {
+		r0 = returnFunc(ctx, folderID, order)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.Snippet)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.FolderID) error); ok {
-		r1 = returnFunc(ctx, folderID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.FolderID, domain.SortOrder) error); ok {
+		r1 = returnFunc(ctx, folderID, order)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -279,11 +279,12 @@ type MockSnippetLister_ListInFolder_Call struct {
 // ListInFolder is a helper method to define mock.On call
 //   - ctx context.Context
 //   - folderID domain.FolderID
-func (_e *MockSnippetLister_Expecter) ListInFolder(ctx any, folderID any) *MockSnippetLister_ListInFolder_Call {
-	return &MockSnippetLister_ListInFolder_Call{Call: _e.mock.On("ListInFolder", ctx, folderID)}
+//   - order domain.SortOrder
+func (_e *MockSnippetLister_Expecter) ListInFolder(ctx any, folderID any, order any) *MockSnippetLister_ListInFolder_Call {
+	return &MockSnippetLister_ListInFolder_Call{Call: _e.mock.On("ListInFolder", ctx, folderID, order)}
 }
 
-func (_c *MockSnippetLister_ListInFolder_Call) Run(run func(ctx context.Context, folderID domain.FolderID)) *MockSnippetLister_ListInFolder_Call {
+func (_c *MockSnippetLister_ListInFolder_Call) Run(run func(ctx context.Context, folderID domain.FolderID, order domain.SortOrder)) *MockSnippetLister_ListInFolder_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -293,9 +294,14 @@ func (_c *MockSnippetLister_ListInFolder_Call) Run(run func(ctx context.Context,
 		if args[1] != nil {
 			arg1 = args[1].(domain.FolderID)
 		}
+		var arg2 domain.SortOrder
+		if args[2] != nil {
+			arg2 = args[2].(domain.SortOrder)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -306,7 +312,7 @@ func (_c *MockSnippetLister_ListInFolder_Call) Return(snippets []domain.Snippet,
 	return _c
 }
 
-func (_c *MockSnippetLister_ListInFolder_Call) RunAndReturn(run func(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error)) *MockSnippetLister_ListInFolder_Call {
+func (_c *MockSnippetLister_ListInFolder_Call) RunAndReturn(run func(ctx context.Context, folderID domain.FolderID, order domain.SortOrder) ([]domain.Snippet, error)) *MockSnippetLister_ListInFolder_Call {
 	_c.Call.Return(run)
 	return _c
 }

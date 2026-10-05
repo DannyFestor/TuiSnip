@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,7 +121,7 @@ func TestSnippetRepository_corruptRow(t *testing.T) {
 			list: func(t *testing.T, repository *sqlite.SnippetRepository) ([]domain.Snippet, error) {
 				t.Helper()
 
-				return repository.ListInFolder(t.Context(), domain.FolderID{})
+				return repository.ListInFolder(t.Context(), domain.FolderID{}, domain.SortOrderTitle)
 			},
 		},
 	}
@@ -203,39 +204,130 @@ func TestSnippetRepository_ListInFolder(t *testing.T) {
 		apple := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "Apple"})
 		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
 
-		got, err := repository.ListInFolder(t.Context(), domain.FolderID{})
+		got, err := repository.ListInFolder(t.Context(), domain.FolderID{}, domain.SortOrderTitle)
 
 		require.NoError(t, err)
 		assert.Equal(t, []domain.Snippet{apple, zebra}, got)
 	})
 
-	t.Run("returns only the Snippets inside the Folder", func(t *testing.T) {
-		t.Parallel()
+	for _, order := range []domain.SortOrder{domain.SortOrderTitle, domain.SortOrderUpdated, domain.SortOrderCreated} {
+		t.Run("returns only the Snippets inside the Folder by "+order.String(), func(t *testing.T) {
+			t.Parallel()
 
-		path := newDatabasePath(t)
-		repository := newSnippetRepository(t, openDatabase(t, path))
-		ids := testkit.NewSequentialIDs()
-		folderID := ids.NewFolderID()
-		insertRawFolder(t, path, folderID)
-		insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root"})
-		filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
+			path := newDatabasePath(t)
+			repository := newSnippetRepository(t, openDatabase(t, path))
+			ids := testkit.NewSequentialIDs()
+			folderID := ids.NewFolderID()
+			insertRawFolder(t, path, folderID)
+			insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "at the Root"})
+			filed := insertSnippet(t, repository, ids, testkit.SnippetSpec{Title: "filed", FolderID: folderID})
 
-		got, err := repository.ListInFolder(t.Context(), folderID)
+			got, err := repository.ListInFolder(t.Context(), folderID, order)
 
-		require.NoError(t, err)
-		assert.Equal(t, []domain.Snippet{filed}, got)
-	})
+			require.NoError(t, err)
+			assert.Equal(t, []domain.Snippet{filed}, got)
+		})
+	}
 
 	t.Run("returns no Snippets for an empty Folder", func(t *testing.T) {
 		t.Parallel()
 
 		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
 
-		got, err := repository.ListInFolder(t.Context(), domain.FolderID{})
+		got, err := repository.ListInFolder(t.Context(), domain.FolderID{}, domain.SortOrderTitle)
 
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
+}
+
+func TestSnippetRepository_ListInFolder_SortOrder(t *testing.T) {
+	t.Parallel()
+
+	earlier := time.Date(2026, time.March, 1, 9, 0, 0, 0, time.UTC)
+	later := earlier.Add(time.Hour)
+	latest := later.Add(time.Hour)
+
+	tests := []struct {
+		name  string
+		order domain.SortOrder
+		specs []testkit.SnippetSpec
+		want  []string
+	}{
+		{
+			name:  "by last updated lists the most recently updated first",
+			order: domain.SortOrderUpdated,
+			specs: []testkit.SnippetSpec{
+				{Title: "a", CreatedAt: earlier, UpdatedAt: later.Add(time.Minute)},
+				{Title: "b", CreatedAt: earlier, UpdatedAt: latest},
+				{Title: "c", CreatedAt: later, UpdatedAt: later},
+			},
+			want: []string{"b", "a", "c"},
+		},
+		{
+			name:  "by creation date lists the newest first",
+			order: domain.SortOrderCreated,
+			specs: []testkit.SnippetSpec{
+				{Title: "a", CreatedAt: earlier, UpdatedAt: latest},
+				{Title: "b", CreatedAt: later, UpdatedAt: later},
+				{Title: "c", CreatedAt: latest, UpdatedAt: latest},
+			},
+			want: []string{"c", "b", "a"},
+		},
+		{
+			name:  "breaks a tie on last updated by title, ignoring case",
+			order: domain.SortOrderUpdated,
+			specs: []testkit.SnippetSpec{
+				{Title: "zebra", CreatedAt: earlier},
+				{Title: "Apple", CreatedAt: earlier},
+			},
+			want: []string{"Apple", "zebra"},
+		},
+		{
+			name:  "breaks a tie on creation date by title, ignoring case",
+			order: domain.SortOrderCreated,
+			specs: []testkit.SnippetSpec{
+				{Title: "zebra", CreatedAt: earlier},
+				{Title: "Apple", CreatedAt: earlier},
+			},
+			want: []string{"Apple", "zebra"},
+		},
+		{
+			name:  "breaks a tie on title by ID",
+			order: domain.SortOrderTitle,
+			specs: []testkit.SnippetSpec{
+				{Title: "same"},
+				{Title: "SAME"},
+			},
+			want: []string{"same", "SAME"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+			ids := testkit.NewSequentialIDs()
+
+			for _, spec := range tt.specs {
+				insertSnippet(t, repository, ids, spec)
+			}
+
+			got, err := repository.ListInFolder(t.Context(), domain.FolderID{}, tt.order)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, titlesOf(got))
+		})
+	}
+}
+
+func titlesOf(snippets []domain.Snippet) []string {
+	titles := make([]string, 0, len(snippets))
+	for index := range snippets {
+		titles = append(titles, snippets[index].Title().String())
+	}
+
+	return titles
 }
 
 func TestSnippetRepository_CountByFolder(t *testing.T) {

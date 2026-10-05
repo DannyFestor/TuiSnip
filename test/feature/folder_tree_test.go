@@ -51,7 +51,10 @@ func TestSnippetsInFolderListOnlyThatFolder(t *testing.T) {
 	filed := seededSnippet(t, app, ids, golang.ID())
 	create(t, app, snippet.CreateInput{Title: "at the Root", Description: "", Content: "ls"})
 
-	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{FolderID: golang.ID()})
+	listed, err := app.SnippetsInFolder.Run(t.Context(), browse.SnippetsInFolderInput{
+		FolderID: golang.ID(),
+		Order:    domain.SortOrderTitle,
+	})
 
 	require.NoError(t, err)
 	require.Len(t, listed, 1)

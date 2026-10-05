@@ -37,6 +37,7 @@ internal/
     config/                  loads and validates config.toml over the embedded defaults
     xdg/                     config, data, state, and log paths
     state/                   the remembered-state file (sort order)
+    atomicfile/              writes a file through a temporary file, so config and state never leave one half written
     editor/                  resolves the external editor command, runs it on a temp file, reads it back
     memsearch/               in-memory Search index
     system/                  Clock and IDGenerator
@@ -80,7 +81,8 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 | `domain` | Snippet, Fragment, Folder, Tag, IDs; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
 | `domain/value` | Title, Description, Content, FolderName, TagName, Language: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
-| driven adapters | one outside system each | import `app`, another adapter, or `bootstrap` |
+| driven adapters | one outside system each | import `app`, another adapter (except `atomicfile`), or `bootstrap` |
+| `atomicfile` | writing a file whole: replacing it, or creating it only when missing | import anything outside the standard library |
 | `tui` | screens, Bindings, `tui.Settings`, turning errors into status text | import driven adapters or `config` |
 | `bootstrap` | building the object graph, converting `config.Config` into `tui.Settings`, creating the logger, running the Bubble Tea program (`App.Run`, since `cmd/tuisnip` may not import `tui`) | hold behaviour beyond wiring |
 | `cmd/tuisnip` | parsing flags, printing `--version` and `--paths` | import anything but `bootstrap` and `xdg` |
@@ -98,6 +100,7 @@ cmd/tuisnip ──> bootstrap ──> everything
 cmd/tuisnip ──> xdg
 tui ──> app/<concern>
 sqlite ──> db/migrations
+config, state ──> atomicfile
 every component ──> domain
 ```
 

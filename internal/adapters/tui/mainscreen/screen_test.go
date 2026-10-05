@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -507,6 +508,108 @@ func TestScreen_Update(t *testing.T) {
 	})
 }
 
+func TestScreen_sortOrder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("s in the Snippet list asks to cycle the sort order, keeping the selected Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := sampleSnippets(t)
+		screen := showing(t, wide(), snippets...)
+
+		screen.Press(keypress.Typed("3js")...)
+
+		assert.Equal(t, []outcome.Outcome{outcome.SortCycleAsked{
+			FolderID:  domain.FolderID{},
+			Selecting: snippets[1].ID(),
+		}}, screen.Outcomes())
+	})
+
+	t.Run("s asks for the selected Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Typed("jj")...)
+		screen.Send(mainscreen.SnippetsLoaded{
+			FolderID: sample.Go.ID(),
+			Snippets: []domain.Snippet{filedIn(t, sample.Go.ID())},
+			Order:    domain.SortOrderTitle,
+		})
+
+		screen.Press(keypress.Typed("3s")...)
+
+		assert.Contains(t, screen.Outcomes(), outcome.SortCycleAsked{
+			FolderID:  sample.Go.ID(),
+			Selecting: filedIn(t, sample.Go.ID()).ID(),
+		})
+	})
+
+	t.Run("s does nothing outside the Snippet list", func(t *testing.T) {
+		t.Parallel()
+
+		screen := showing(t, wide(), sampleSnippets(t)...)
+
+		screen.Press(keypress.Typed("s2s4s")...)
+
+		assert.Empty(t, screen.Outcomes())
+	})
+
+	t.Run("starts with the order it was opened with", func(t *testing.T) {
+		t.Parallel()
+
+		screen := opened(t, wide(), look.NewStyles(), domain.SortOrderCreated)
+
+		assert.Contains(t, screen.Screen(), "3 Root · by creation date")
+	})
+
+	titles := []struct {
+		order domain.SortOrder
+		title string
+	}{
+		{order: domain.SortOrderTitle, title: "3 Root · by title"},
+		{order: domain.SortOrderUpdated, title: "3 Root · by last updated"},
+		{order: domain.SortOrderCreated, title: "3 Root · by creation date"},
+	}
+	for _, tt := range titles {
+		t.Run("titles the Snippet list with the order it was loaded in: "+tt.title, func(t *testing.T) {
+			t.Parallel()
+
+			snippets := sampleSnippets(t)
+			screen := showing(t, wide(), snippets...)
+
+			screen.Send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: tt.order})
+
+			assert.Contains(t, screen.Screen(), tt.title)
+		})
+	}
+
+	t.Run("keeps the title of the shown list when Snippets load for another Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+
+		screen.Send(mainscreen.SnippetsLoaded{FolderID: sample.Go.ID(), Order: domain.SortOrderCreated})
+
+		assert.Contains(t, screen.Screen(), "3 Root · by title")
+	})
+
+	t.Run("rejects an unknown order, keeping the title and listing the Snippets", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := sampleSnippets(t)
+		screen := showing(t, wide())
+
+		screen.Send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: domain.SortOrder("language")})
+
+		assert.Contains(t, screen.Screen(), "3 Root · by title")
+		assert.Contains(t, screen.Screen(), secondTitle)
+		require.Len(t, screen.Outcomes(), 1)
+		rejected, ok := screen.Outcomes()[0].(outcome.SortOrderRejected)
+		require.True(t, ok)
+		assert.ErrorIs(t, rejected.Err, domain.ErrInvalidSortOrder)
+	})
+}
+
 func TestScreen_UpdateFolderDelete(t *testing.T) {
 	t.Parallel()
 
@@ -646,6 +749,7 @@ func TestScreen_Received(t *testing.T) {
 				FolderID:  sample.Go.ID(),
 				Snippets:  []domain.Snippet{filed},
 				Selecting: filed.ID(),
+				Order:     domain.SortOrderTitle,
 			},
 		)
 
@@ -682,8 +786,16 @@ func TestScreen_Received(t *testing.T) {
 func TestScreen_FullHelp(t *testing.T) {
 	t.Parallel()
 
-	keys := testsettings.Default(t).Keys
-	screen := mainscreen.New(keys, look.NewStyles(), time.UTC)
+	screen := newScreen(t, look.NewStyles(), domain.SortOrderTitle)
 
-	assert.Equal(t, folderpane.New(keys).FullHelp(), screen.FullHelp())
+	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys).FullHelp(), screen.FullHelp())
+}
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	_, err := mainscreen.New(testsettings.Default(t).Keys, look.NewStyles(), time.UTC, domain.SortOrder("language"))
+
+	require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
+	assert.ErrorContains(t, err, "mainscreen.New: ")
 }

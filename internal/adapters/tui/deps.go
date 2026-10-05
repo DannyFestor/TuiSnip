@@ -12,6 +12,7 @@ type Deps struct {
 	FolderRenamer         FolderRenamer
 	FolderDeletePreviewer FolderDeletePreviewer
 	FolderDeleter         FolderDeleter
+	SortOrderSaver        SortOrderSaver
 	Settings              Settings
 	Logger                *slog.Logger
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/state"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/system"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/xdg"
@@ -97,7 +98,9 @@ func openApp(ctx context.Context, options Options, log *logging.Log) (*App, erro
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	app, err := wire(ctx, cfg, options, openResources{database: database, log: log})
+	remembered := state.Load(ctx, state.Options{Path: options.Paths.StateFile, Logger: logger})
+
+	app, err := wire(ctx, cfg, options, openResources{database: database, log: log, remembered: remembered})
 	if err != nil {
 		return nil, errors.Join(err, database.Close())
 	}
@@ -106,8 +109,9 @@ func openApp(ctx context.Context, options Options, log *logging.Log) (*App, erro
 }
 
 type openResources struct {
-	database *sqlite.Database
-	log      *logging.Log
+	database   *sqlite.Database
+	log        *logging.Log
+	remembered *state.File
 }
 
 func wire(ctx context.Context, cfg config.Config, options Options, opened openResources) (*App, error) {
@@ -131,7 +135,8 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		FolderRenamer:         app.RenameFolder,
 		FolderDeletePreviewer: app.PreviewDeleteFolder,
 		FolderDeleter:         app.DeleteFolder,
-		Settings:              SettingsFrom(cfg, time.Local),
+		SortOrderSaver:        opened.remembered,
+		Settings:              SettingsFrom(cfg, time.Local, opened.remembered.SortOrder()),
 		Logger:                logger,
 	})
 	if err != nil {

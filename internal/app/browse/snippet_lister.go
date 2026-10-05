@@ -7,5 +7,5 @@ import (
 )
 
 type SnippetLister interface {
-	ListInFolder(ctx context.Context, folderID domain.FolderID) ([]domain.Snippet, error)
+	ListInFolder(ctx context.Context, folderID domain.FolderID, order domain.SortOrder) ([]domain.Snippet, error)
 }

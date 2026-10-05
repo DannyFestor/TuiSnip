@@ -7,8 +7,11 @@ import (
 	"fmt"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
+
+type folderListing func(ctx context.Context, folderID *sqltype.ID) ([]sqlcgen.Snippet, error)
 
 type snippetSelection struct {
 	snippets  func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error)
@@ -48,17 +51,35 @@ func allSnippets() snippetSelection {
 	}
 }
 
-func snippetsInFolder(folderID domain.FolderID) snippetSelection {
+func snippetsInFolder(folderID domain.FolderID, order domain.SortOrder) snippetSelection {
 	column := folderColumn(folderID)
 
 	return snippetSelection{
 		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
-			return queries.ListSnippetsInFolder(ctx, column)
+			list, err := folderListingBy(queries, order)
+			if err != nil {
+				return nil, err
+			}
+
+			return list(ctx, column)
 		},
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
 			return queries.ListFragmentsInFolder(ctx, column)
 		},
 	}
+}
+
+func folderListingBy(queries *sqlcgen.Queries, order domain.SortOrder) (folderListing, error) {
+	switch order {
+	case domain.SortOrderTitle:
+		return queries.ListSnippetsInFolderByTitle, nil
+	case domain.SortOrderUpdated:
+		return queries.ListSnippetsInFolderByUpdated, nil
+	case domain.SortOrderCreated:
+		return queries.ListSnippetsInFolderByCreated, nil
+	}
+
+	return nil, fmt.Errorf("list snippets in folder: %w: %q", domain.ErrInvalidSortOrder, order)
 }
 
 func (s snippetSelection) selectRows(ctx context.Context, queries *sqlcgen.Queries) (loadedRows, error) {

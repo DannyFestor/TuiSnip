@@ -26,7 +26,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 - **Widths** are proportions of the terminal width: the left column about 22%, the Snippet list about 30%, and the Snippet pane the rest.
 - **The focused Pane grows by 8 columns.** They come from the Snippet pane, or from the other two columns when the Snippet pane has focus.
 - **The left column** splits its height two-thirds to one-third. The tall Pane is the focused one of Folders and Tags, or the one holding the Browse selection when focus is elsewhere. Folders is tall at start-up.
-- **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order.
+- **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order: `by title`, `by last updated`, or `by creation date`. Cycling the order keeps the cursor on the selected Snippet.
 - **The status line** under the Panes shows the last message on the left and the focused Scope's main Bindings on the right (see [Status hint](#status-hint)).
 - **Below 80×24** TuiSnip shows only the focused Pane, as when zoomed, with a hint that the terminal is too small for all four. Focus still moves between Panes.
 - The proportions, the growth, and the minimum size are named constants in `tui`.

@@ -34,6 +34,7 @@ packages:
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
+      SortOrderSaver: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:
     interfaces:
       Overlay: {}

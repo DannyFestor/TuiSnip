@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+
+	defaultconfig "github.com/DannyFestor/TuiSnip/embeds/config"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/atomicfile"
 )
 
 func Load(ctx context.Context, options Options) (Config, error) {
-	created, err := writeDefaultIfMissing(options.Path)
+	created, err := atomicfile.CreateIfMissing(options.Path, defaultconfig.Default())
 	if err != nil {
 		return Config{}, fmt.Errorf("config.Load: %w", err)
 	}

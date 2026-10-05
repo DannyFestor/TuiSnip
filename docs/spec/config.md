@@ -119,7 +119,7 @@ delete = []
 | `name_input` | a Folder or Tag name is typed in place in the Folders or Tags Pane | yes |
 | `confirm` | a [y/N] confirmation is open | no |
 
-Help closes with its own `help` key or with `esc`, so it has no Scope.
+Help opens from the main screen only, and closes with its own `help` key or with the `global` `back` key (`esc` by default), so it has no Scope ([UI spec](ui.md#help)).
 
 `global` Bindings are active only alongside the four pane Scopes: `folders`, `tags`, `snippet_list`, and `snippet_pane`. Text-entry Scopes and `confirm` get none of them, so typing `q` in the editor types a `q`. How the Panes are laid out and moved between is in [the UI spec](ui.md).
 

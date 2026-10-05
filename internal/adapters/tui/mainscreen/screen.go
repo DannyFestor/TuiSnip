@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/helpoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
@@ -109,7 +110,7 @@ func (s Screen) ShortHelp() []key.Binding {
 }
 
 func (s Screen) FullHelp() [][]key.Binding {
-	return s.panes.keyMaps()[s.focus].FullHelp()
+	return append(s.global.FullHelp(), s.panes.keyMaps()[s.focus].FullHelp()...)
 }
 
 func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
@@ -120,6 +121,8 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 	switch {
 	case s.global.Matches(msg, binding.Quit):
 		return outcome.Stay(s).Passing(outcome.QuitAsked{})
+	case s.global.Matches(msg, binding.Help):
+		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp()))
 	case s.global.Matches(msg, binding.NewSnippet):
 		return s.opening(editoverlay.New(s.keys, s.styles))
 	case s.global.Matches(msg, binding.Search):

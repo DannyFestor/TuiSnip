@@ -81,7 +81,7 @@ func (p Pane) ShortHelp() []key.Binding {
 }
 
 func (p Pane) FullHelp() [][]key.Binding {
-	return [][]key.Binding{p.ShortHelp()}
+	return p.keys.FullHelp()
 }
 
 func (p Pane) Naming() bool {

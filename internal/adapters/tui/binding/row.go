@@ -1,6 +1,7 @@
 package binding
 
 const (
+	labelQuit           = "quit"
 	labelHelp           = "help"
 	labelSearch         = "search"
 	labelNew            = "new"
@@ -22,6 +23,21 @@ const (
 	labelClose          = "close"
 	labelYes            = "yes"
 	labelNo             = "no"
+	labelNextPane       = "next Pane"
+	labelPreviousPane   = "previous Pane"
+	labelPaneRight      = "Pane to the right"
+	labelPaneLeft       = "Pane to the left"
+	labelFolders        = "Folders"
+	labelTags           = "Tags"
+	labelSnippetList    = "Snippet list"
+	labelSnippetPane    = "Snippet pane"
+	labelBack           = "back"
+	labelDown           = "down"
+	labelUp             = "up"
+	labelFirstRow       = "first row"
+	labelLastRow        = "last row"
+	labelPageDown       = "page down"
+	labelPageUp         = "page up"
 	unlabelled          = ""
 )
 
@@ -64,23 +80,27 @@ func Rows() []Row {
 }
 
 func globalRows() []Row {
-	unlabelledNames := []string{
-		Quit, FocusNext, FocusPrev, FocusRight, FocusLeft, FocusFolders, FocusTags, FocusList, FocusSnippet,
-		Open, Back, Down, Up, Top, Bottom, PageDown, PageUp,
-	}
-	labelled := []Row{
+	return []Row{
+		{Scope: ScopeGlobal, Name: Quit, Label: labelQuit},
 		{Scope: ScopeGlobal, Name: Help, Label: labelHelp},
 		{Scope: ScopeGlobal, Name: Search, Label: labelSearch},
 		{Scope: ScopeGlobal, Name: NewSnippet, Label: labelNew},
 		{Scope: ScopeGlobal, Name: Capture, Label: labelCapture},
+		{Scope: ScopeGlobal, Name: FocusNext, Label: labelNextPane},
+		{Scope: ScopeGlobal, Name: FocusPrev, Label: labelPreviousPane},
+		{Scope: ScopeGlobal, Name: FocusRight, Label: labelPaneRight},
+		{Scope: ScopeGlobal, Name: FocusLeft, Label: labelPaneLeft},
+		{Scope: ScopeGlobal, Name: FocusFolders, Label: labelFolders},
+		{Scope: ScopeGlobal, Name: FocusTags, Label: labelTags},
+		{Scope: ScopeGlobal, Name: FocusList, Label: labelSnippetList},
+		{Scope: ScopeGlobal, Name: FocusSnippet, Label: labelSnippetPane},
+		{Scope: ScopeGlobal, Name: Open, Label: labelOpen},
+		{Scope: ScopeGlobal, Name: Back, Label: labelBack},
+		{Scope: ScopeGlobal, Name: Down, Label: labelDown},
+		{Scope: ScopeGlobal, Name: Up, Label: labelUp},
+		{Scope: ScopeGlobal, Name: Top, Label: labelFirstRow},
+		{Scope: ScopeGlobal, Name: Bottom, Label: labelLastRow},
+		{Scope: ScopeGlobal, Name: PageDown, Label: labelPageDown},
+		{Scope: ScopeGlobal, Name: PageUp, Label: labelPageUp},
 	}
-
-	rows := make([]Row, 0, len(labelled)+len(unlabelledNames))
-	rows = append(rows, labelled...)
-
-	for _, name := range unlabelledNames {
-		rows = append(rows, Row{Scope: ScopeGlobal, Name: name, Label: unlabelled})
-	}
-
-	return rows
 }

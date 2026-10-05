@@ -162,8 +162,63 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 
 - The **Language picker** shows the curated `languages` list when config sets one, and `ctrl+a` switches to every Language and back.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
-- **Confirmations** (default No) and **help** (`?`) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. Help lists the Bindings active where it was opened.
+- **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
+
+## Help
+
+`?` (`help`) opens help centred over the main screen. It opens from the main screen only: with all four Panes showing, with a Pane zoomed, and below 80×24. While an overlay is open or a Folder or Tag name is typed in place, the key belongs to that Scope, so `?` types a `?` into a text field and does nothing elsewhere.
+
+```
+╭ Help ────────────────────────────────────╮
+│q              quit                 y Copy│
+│?              help                 s sort│
+│/              search                     │
+│n              new                        │
+│p              Capture                    │
+│tab            next Pane                  │
+│shift+tab      previous Pane              │
+│l, right       Pane to the right          │
+│h, left        Pane to the left           │
+│1              Folders                    │
+│2              Tags                       │
+│3              Snippet list               │
+│4              Snippet pane               │
+│enter          open                       │
+│esc            back                       │
+│j, down        down                       │
+│k, up          up                         │
+│g, home        first row                  │
+│G, end         last row                   │
+│pgdown, ctrl+d page down                  │
+│pgup, ctrl+u   page up                    │
+╰──────────────────────────────────────────╯
+```
+
+- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right. The Tags Pane has no Bindings of its own yet, so with Tags focused help lists only the `global` ones.
+- Each row shows every key the user configured for the Binding, joined with `, `, then the Binding's label. A Binding with no keys is left out.
+- Help closes with its own `help` key or the `global` `back` key, `?` and `esc` by default. Every other key does nothing.
+- A terminal too small for help cuts it to fit: a column that doesn't fit is dropped, and rows past the bottom are cut off.
+
+Labels are fixed. The `global` Bindings are labelled:
+
+| Binding | Label |
+|---|---|
+| `quit` | quit |
+| `help` | help |
+| `search` | search |
+| `zoom` | zoom |
+| `new_snippet` | new |
+| `capture` | Capture |
+| `focus_next` / `focus_prev` | next Pane / previous Pane |
+| `focus_right` / `focus_left` | Pane to the right / Pane to the left |
+| `focus_folders` `focus_tags` `focus_list` `focus_snippet` | Folders, Tags, Snippet list, Snippet pane |
+| `open` / `back` | open / back |
+| `down` / `up` | down / up |
+| `top` / `bottom` | first row / last row |
+| `page_down` / `page_up` | page down / page up |
+
+A pane Scope's Bindings carry the labels the [Status hint](#status-hint) gives them, and `collapse` is labelled collapse.
 
 ## Status hint
 
@@ -181,6 +236,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `picker` | move · pick · close |
 | `name_input` | save · cancel |
 | `confirm` | yes · no |
+| help (no Scope) | close · close, naming the first `help` key and the first `back` key: `? close · esc close` by default |
 
 ## Mouse
 

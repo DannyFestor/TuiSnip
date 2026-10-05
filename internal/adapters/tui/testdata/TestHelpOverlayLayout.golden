@@ -1,0 +1,40 @@
+╭ 1 Folders ─────────────╮╭ 3 Root · by title ───────────────────────╮╭ 4 Snippet ─────────────────────────────────────╮
+│◆ Root                 2││Graceful HTTP shutdown                  Go││Graceful HTTP shutdown                          │
+│  docker               3││Prune everything                      Bash││Root · Go                                       │
+│▾ go                   2││                                          ││created 2026-09-06 · updated 2026-09-27         │
+│    testing            1││                                          ││Stop accepting, drain, exit                     │
+│                        ││                                          ││────────────────────────────────────────────────│
+│                        ││                                          ││   1 │ func run(ctx context.Context) error {    │
+│                        ││                                          ││   2 │     return srv.Shutdown(ctx)             │
+│                        ││           ╭ Help ────────────────────────────────────╮                                     │
+│                        ││           │q              quit                 y Copy│                                     │
+│                        ││           │?              help                 s sort│                                     │
+│                        ││           │/              search                     │                                     │
+│                        ││           │n              new                        │                                     │
+│                        ││           │p              Capture                    │                                     │
+│                        ││           │tab            next Pane                  │                                     │
+│                        ││           │shift+tab      previous Pane              │                                     │
+│                        ││           │l, right       Pane to the right          │                                     │
+│                        ││           │h, left        Pane to the left           │                                     │
+│                        ││           │1              Folders                    │                                     │
+│                        ││           │2              Tags                       │                                     │
+│                        ││           │3              Snippet list               │                                     │
+│                        ││           │4              Snippet pane               │                                     │
+│                        ││           │enter          open                       │                                     │
+│                        ││           │esc            back                       │                                     │
+│                        ││           │j, down        down                       │                                     │
+╰────────────────────────╯│           │k, up          up                         │                                     │
+╭ 2 Tags ────────────────╮│           │g, home        first row                  │                                     │
+│No Tags yet.            ││           │G, end         last row                   │                                     │
+│                        ││           │pgdown, ctrl+d page down                  │                                     │
+│                        ││           │pgup, ctrl+u   page up                    │                                     │
+│                        ││           ╰──────────────────────────────────────────╯                                     │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+│                        ││                                          ││                                                │
+╰────────────────────────╯╰──────────────────────────────────────────╯╰────────────────────────────────────────────────╯
+                                                                                                     ? close · esc close

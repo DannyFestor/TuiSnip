@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
@@ -158,7 +157,7 @@ func TestField_ShortHelp(t *testing.T) {
 	field := newField(t, "")
 
 	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeNameInput).ShortHelp(), field.ShortHelp())
-	assert.Equal(t, [][]key.Binding{field.ShortHelp()}, field.FullHelp())
+	assert.Equal(t, testsettings.Default(t).Keys.For(binding.ScopeNameInput).FullHelp(), field.FullHelp())
 }
 
 func newField(t *testing.T, initial string) nameinput.Field {

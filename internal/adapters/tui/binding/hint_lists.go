@@ -75,6 +75,13 @@ func emptyListHintList() []labelledRef {
 	}
 }
 
+func helpOverlayHintList() []labelledRef {
+	return []labelledRef{
+		{row: rowRef{scope: ScopeGlobal, name: Help}, label: labelClose},
+		{row: rowRef{scope: ScopeGlobal, name: Back}, label: labelClose},
+	}
+}
+
 func refsIn(scope Scope, names ...string) []rowRef {
 	refs := make([]rowRef, 0, len(names))
 	for _, name := range names {

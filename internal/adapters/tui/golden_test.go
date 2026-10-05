@@ -46,6 +46,16 @@ func TestSearchPopupLayout(t *testing.T) {
 	golden.RequireEqual(t, []byte(screen.screen()))
 }
 
+func TestHelpOverlayLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
+	screen.press(keypress.Letter('3'))
+	screen.press(keypress.Letter('?'))
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
 func TestSmallTerminalLayout(t *testing.T) {
 	t.Parallel()
 

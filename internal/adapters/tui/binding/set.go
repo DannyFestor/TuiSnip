@@ -8,8 +8,9 @@ import (
 )
 
 type Set struct {
-	bound map[string]key.Binding
-	hints []key.Binding
+	bound  map[string]key.Binding
+	hints  []key.Binding
+	listed []key.Binding
 }
 
 func (s Set) Matches(msg tea.KeyPressMsg, name string) bool {
@@ -30,5 +31,5 @@ func (s Set) ShortHelp() []key.Binding {
 }
 
 func (s Set) FullHelp() [][]key.Binding {
-	return [][]key.Binding{s.ShortHelp()}
+	return [][]key.Binding{slices.Clone(s.listed)}
 }

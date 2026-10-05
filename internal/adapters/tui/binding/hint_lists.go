@@ -40,6 +40,8 @@ func paneOwnHintList(scope Scope) []labelledRef {
 			rowRef{scope: scope, name: Copy},
 			rowRef{scope: scope, name: Edit},
 			rowRef{scope: ScopeGlobal, name: NewSnippet},
+			rowRef{scope: scope, name: Duplicate},
+			rowRef{scope: scope, name: Delete},
 			rowRef{scope: scope, name: CycleSort},
 		)
 	case ScopeSnippetPane:

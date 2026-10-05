@@ -31,6 +31,7 @@ const (
 	Language     = "language"
 	Copy         = "copy"
 	Edit         = "edit"
+	Duplicate    = "duplicate"
 	CycleSort    = "cycle_sort"
 	Wrap         = "wrap"
 	OpenInEditor = "open_in_editor"

@@ -105,6 +105,19 @@ func (l List) Selected() (domain.Snippet, bool) {
 	return l.snippets[l.cursor.Index()], true
 }
 
+func (l List) Successor() (domain.Snippet, bool) {
+	index := l.cursor.Index() + 1
+	if index == len(l.snippets) {
+		index = l.cursor.Index() - 1
+	}
+
+	if index < 0 || index >= len(l.snippets) {
+		return domain.Snippet{}, false
+	}
+
+	return l.snippets[index], true
+}
+
 func (l List) Snippets() []domain.Snippet {
 	return l.snippets
 }

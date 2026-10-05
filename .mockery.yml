@@ -11,6 +11,8 @@ packages:
       Copier: {}
       ClipboardReader: {}
       UpdateRepository: {}
+      DuplicateRepository: {}
+      Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
@@ -44,6 +46,8 @@ packages:
       SnippetCreator: {}
       SnippetCapturer: {}
       SnippetUpdater: {}
+      SnippetDuplicator: {}
+      SnippetDeleter: {}
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}

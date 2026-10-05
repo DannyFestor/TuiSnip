@@ -30,6 +30,8 @@ const (
 	operationCopy                 = "copy"
 	operationCapture              = "capture"
 	operationSave                 = "save snippet"
+	operationDuplicate            = "duplicate snippet"
+	operationDeleteSnippet        = "delete snippet"
 	operationSearch               = "search"
 	operationCreateFolder         = "create folder"
 	operationRenameFolder         = "rename folder"
@@ -57,6 +59,8 @@ type Model struct {
 	creator               SnippetCreator
 	capturer              SnippetCapturer
 	updater               SnippetUpdater
+	duplicator            SnippetDuplicator
+	deleter               SnippetDeleter
 	searcher              SnippetSearcher
 	folderCreator         FolderCreator
 	folderRenamer         FolderRenamer
@@ -119,6 +123,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		creator:               deps.Creator,
 		capturer:              deps.Capturer,
 		updater:               deps.Updater,
+		duplicator:            deps.Duplicator,
+		deleter:               deps.Deleter,
 		searcher:              deps.Searcher,
 		folderCreator:         deps.FolderCreator,
 		folderRenamer:         deps.FolderRenamer,
@@ -164,6 +170,8 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("capturer", deps.Capturer),
 		domain.RequireDependency("updater", deps.Updater),
+		domain.RequireDependency("duplicator", deps.Duplicator),
+		domain.RequireDependency("deleter", deps.Deleter),
 		domain.RequireDependency("searcher", deps.Searcher),
 		domain.RequireDependency("folderCreator", deps.FolderCreator),
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
@@ -201,7 +209,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed, mainscreen.TagsLoaded,
 		mainscreen.TagCreated, mainscreen.TagsChanged, mainscreen.TagDeletePreviewed:
 		return m.overlaysUpdatedSharingTree(msg)
-	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg:
+	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg, snippetsChangedMsg:
 		return m, m.reloadAfter(msg)
 	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
 		return m.failedWith(msg)
@@ -271,6 +279,8 @@ func (m Model) reloadAfter(msg tea.Msg) tea.Cmd {
 		return m.listTags(func(tags []browse.TagCount) tea.Msg {
 			return mainscreen.TagsChanged{Tags: tags, Selecting: msg.selecting}
 		})
+	case snippetsChangedMsg:
+		return m.reloadSelecting(msg.selection, msg.selecting)
 	default:
 		return nil
 	}
@@ -419,7 +429,7 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
-		outcome.CaptureAsked:
+		outcome.CaptureAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
 		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked:
@@ -508,8 +518,36 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.copySnippet(reported.ID)
 	case outcome.CaptureAsked:
 		return m.captureSnippet()
+	case outcome.SnippetDuplicateRequested:
+		return m.duplicateSnippet(reported.Input, reported.Selection)
+	case outcome.SnippetDeleteRequested:
+		return m.deleteSnippet(reported.Input, reported.Selection, reported.Selecting)
 	default:
 		return nil
+	}
+}
+
+func (m Model) duplicateSnippet(in snippet.DuplicateInput, selection browseselection.Selection) tea.Cmd {
+	return func() tea.Msg {
+		duplicate, err := m.duplicator.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationDuplicate, err: err}
+		}
+
+		return snippetsChangedMsg{selection: selection, selecting: duplicate.ID()}
+	}
+}
+
+func (m Model) deleteSnippet(
+	in snippet.DeleteInput, selection browseselection.Selection, selecting domain.SnippetID,
+) tea.Cmd {
+	return func() tea.Msg {
+		err := m.deleter.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationDeleteSnippet, err: err}
+		}
+
+		return snippetsChangedMsg{selection: selection, selecting: selecting}
 	}
 }
 

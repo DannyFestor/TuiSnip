@@ -30,6 +30,8 @@ type App struct {
 	Create                   *snippet.Create
 	Capture                  *snippet.Capture
 	Update                   *snippet.Update
+	Duplicate                *snippet.Duplicate
+	Delete                   *snippet.Delete
 	Copy                     *snippet.Copy
 	Query                    *search.Query
 	SnippetsInFolder         *browse.SnippetsInFolder
@@ -147,6 +149,8 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		Creator:                     app.Create,
 		Capturer:                    app.Capture,
 		Updater:                     app.Update,
+		Duplicator:                  app.Duplicate,
+		Deleter:                     app.Delete,
 		Searcher:                    app.Query,
 		FolderCreator:               app.CreateFolder,
 		FolderRenamer:               app.RenameFolder,
@@ -204,23 +208,24 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		return nil, err
 	}
 
-	create, createErr := snippet.NewCreate(repos.snippets, system.NewIDs(), system.NewClock())
+	snippets, snippetsErr := newSnippetActions(repos.snippets)
 	capture, captureErr := snippet.NewCapture(clipboard.NewNative(clipboardOptions))
-	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	browsing, browseErr := newBrowseActions(repos)
 	folders, foldersErr := newFolderActions(repos.folders)
 	tags, tagsErr := newTagActions(repos.tags)
 
-	err = errors.Join(createErr, captureErr, updateErr, queryErr, browseErr, foldersErr, tagsErr)
+	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
 
 	return &App{
-		Create:                   create,
+		Create:                   snippets.create,
 		Capture:                  capture,
-		Update:                   update,
+		Update:                   snippets.update,
+		Duplicate:                snippets.duplicate,
+		Delete:                   snippets.remove,
 		Copy:                     copyAction,
 		Query:                    query,
 		SnippetsInFolder:         browsing.snippetsInFolder,

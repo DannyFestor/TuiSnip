@@ -45,6 +45,19 @@ func (q *Queries) CountSnippetsByFolder(ctx context.Context) ([]CountSnippetsByF
 	return items, nil
 }
 
+const deleteSnippet = `-- name: DeleteSnippet :execrows
+DELETE FROM snippets
+WHERE id = ?
+`
+
+func (q *Queries) DeleteSnippet(ctx context.Context, id sqltype.ID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSnippet, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getSnippet = `-- name: GetSnippet :one
 SELECT id, folder_id, title, description, created_at, updated_at
 FROM snippets

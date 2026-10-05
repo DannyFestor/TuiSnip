@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -19,6 +20,8 @@ import (
 const (
 	editOverlayTitle = "Editing"
 	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
+	reloadQuestion   = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
+	genericFailure   = "Something went wrong; see the log"
 )
 
 func TestModel_editOverlay(t *testing.T) {
@@ -86,14 +89,8 @@ func TestModel_editOverlay(t *testing.T) {
 			Description:     "Description 1",
 			Content:         "",
 		}).Return(edited, nil)
-		screen := start(t, modelWith(t, actions{
-			lister:     listerReturning(t, snippets, []domain.Snippet{edited, snippets[1]}),
-			treeLister: treeOf(t, emptyTree()),
-			copier:     NewMockSnippetCopier(t),
-			creator:    NewMockSnippetCreator(t),
-			updater:    updater,
-			searcher:   NewMockSnippetSearcher(t),
-		}), wideWidth, wideHeight)
+		lister := listerReturning(t, snippets, []domain.Snippet{edited, snippets[1]})
+		screen := start(t, updatingModel(t, updater, lister), wideWidth, wideHeight)
 
 		screen.press(keypress.Typed("3e edited")...)
 		screen.press(keypress.Ctrl('s'))
@@ -110,6 +107,44 @@ func TestModel_editOverlay(t *testing.T) {
 		screen.send(tea.PasteMsg{Content: "Pasted title"})
 
 		assert.NotContains(t, screen.screen(), "Pasted title")
+	})
+}
+
+func TestModel_editOverlayStaleSave(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reloads the stored Snippet when the reload is accepted", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 2)
+		changed := changedElsewhere(t, snippets[0])
+		lister := listerReturning(t, snippets, []domain.Snippet{changed, snippets[1]})
+		screen := start(t, updatingModel(t, refusingUpdater(t), lister), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e mine")...)
+		screen.press(keypress.Ctrl('s'))
+		asked := screen.screen()
+		screen.press(keypress.Letter('y'))
+
+		assert.Contains(t, asked, reloadQuestion)
+		assert.NotContains(t, asked, genericFailure)
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "Snippet 1 elsewhere")
+		assert.NotContains(t, screen.screen(), "Snippet 1 mine")
+	})
+
+	t.Run("keeps the edits open when the reload is declined", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 2)
+		screen := start(t, updatingModel(t, refusingUpdater(t), listerOf(t, snippets...)), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e mine")...)
+		screen.press(keypress.Ctrl('s'), keypress.Letter('n'))
+
+		assert.Contains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "Snippet 1 mine")
+		assert.NotContains(t, screen.screen(), reloadQuestion)
 	})
 }
 
@@ -155,6 +190,41 @@ func TestModel_editOverlayForcedQuit(t *testing.T) {
 		screen.press(keypress.Letter('n'), keypress.Letter('z'), keypress.Ctrl('q'))
 
 		assert.Contains(t, screen.screen(), quitQuestion)
+	})
+}
+
+func updatingModel(t *testing.T, updater *MockSnippetUpdater, lister *MockFolderSnippetsLister) tui.Model {
+	t.Helper()
+
+	return modelWith(t, actions{
+		lister:     lister,
+		treeLister: treeOf(t, emptyTree()),
+		copier:     NewMockSnippetCopier(t),
+		creator:    NewMockSnippetCreator(t),
+		updater:    updater,
+		searcher:   NewMockSnippetSearcher(t),
+	})
+}
+
+func refusingUpdater(t *testing.T) *MockSnippetUpdater {
+	t.Helper()
+
+	updater := NewMockSnippetUpdater(t)
+	updater.EXPECT().
+		Run(mock.Anything, mock.Anything).
+		Return(domain.Snippet{}, fmt.Errorf("snippet.Update: %w", domain.ErrConflict))
+
+	return updater
+}
+
+func changedElsewhere(t *testing.T, loaded domain.Snippet) domain.Snippet {
+	t.Helper()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:          loaded.ID(),
+		Title:       loaded.Title().String() + " elsewhere",
+		Description: loaded.Description().String(),
+		Fragment:    testkit.FragmentSpec{ID: loaded.FirstFragment().ID()},
 	})
 }
 

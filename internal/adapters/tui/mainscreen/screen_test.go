@@ -815,19 +815,43 @@ func TestScreen_Received(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "3 Root / go / testing")
 	})
 
-	t.Run("makes a saved Snippet's Folder the Browse selection and passes it on", func(t *testing.T) {
-		t.Parallel()
+	selectedAfterwards := []struct {
+		name    string
+		offered func(id domain.SnippetID) outcome.Outcome
+	}{
+		{
+			name: "makes a saved Snippet's Folder the Browse selection and passes it on",
+			offered: func(id domain.SnippetID) outcome.Outcome {
+				return outcome.SnippetSaved{ID: id, FolderID: domain.FolderID{}}
+			},
+		},
+		{
+			name: "makes a reloaded Snippet's Folder the Browse selection and passes it on",
+			offered: func(id domain.SnippetID) outcome.Outcome {
+				return outcome.SnippetReloaded{ID: id, FolderID: domain.FolderID{}}
+			},
+		},
+	}
 
-		screen, sample := browsing(t)
-		screen.Press(keypress.Letter('j'))
+	for _, tt := range selectedAfterwards {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		saved := outcome.SnippetSaved{ID: filedIn(t, domain.FolderID{}).ID(), FolderID: domain.FolderID{}}
+			screen, sample := browsing(t)
+			screen.Press(keypress.Letter('j'))
 
-		screen.Offer(saved)
+			offered := tt.offered(filedIn(t, domain.FolderID{}).ID())
 
-		assert.Equal(t, []outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}, saved}, screen.Outcomes())
-		assert.Contains(t, screen.Screen(), "3 Root · by title")
-	})
+			screen.Offer(offered)
+
+			assert.Equal(
+				t,
+				[]outcome.Outcome{outcome.FolderSelected{ID: sample.Docker.ID()}, offered},
+				screen.Outcomes(),
+			)
+			assert.Contains(t, screen.Screen(), "3 Root · by title")
+		})
+	}
 
 	t.Run("passes any other outcome on", func(t *testing.T) {
 		t.Parallel()

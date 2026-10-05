@@ -1,6 +1,7 @@
 package editoverlay_test
 
 import (
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -12,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -19,7 +21,12 @@ const (
 	tabbedContent   = "if x {\n\treturn\n}\n"
 	readOnlyNotice  = "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)"
 	unboundReadOnly = "Contains tabs: read-only here"
+
+	changedElsewhereTitle = "Changed elsewhere"
+	reloadQuestion        = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
 )
+
+var errChangedElsewhere = fmt.Errorf("snippet.Update: %w", domain.ErrConflict)
 
 func TestEditing_View(t *testing.T) {
 	t.Parallel()
@@ -121,6 +128,65 @@ func TestEditing_save(t *testing.T) {
 	})
 }
 
+func TestEditing_staleSave(t *testing.T) {
+	t.Parallel()
+
+	t.Run("offers to reload a Snippet changed elsewhere", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsStale(t, testsettings.Default(t).Keys, storedSnippet(t, "echo hi"))
+
+		assert.Contains(t, screen.Screen(), changedElsewhereTitle)
+		assert.Contains(t, screen.Screen(), reloadQuestion)
+		assert.Len(t, screen.Outcomes(), 1, "only the update request, no failure")
+	})
+
+	t.Run("closes and reloads the stored Snippet on yes", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "echo hi")
+		screen := refusedAsStale(t, testsettings.Default(t).Keys, stored)
+		screen.Press(keypress.Letter('y'))
+
+		reloaded := outcome.SnippetReloaded{ID: stored.ID(), FolderID: stored.FolderID()}
+		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reloaded))
+		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("reloads on the configured yes key", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeConfirm][binding.Yes] = []string{"o"}
+		screen := refusedAsStale(t, keys, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('o'))
+
+		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("keeps the edits open on no", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsStale(t, testsettings.Default(t).Keys, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('n'))
+
+		assert.Contains(t, screen.Screen(), unsavedTitle)
+		assert.Contains(t, screen.Screen(), "Prunex")
+		assert.NotContains(t, screen.Screen(), reloadQuestion)
+		assert.Len(t, screen.Outcomes(), 1, "only the update request, no reload")
+	})
+
+	t.Run("asks to update again on the next save after no", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsStale(t, testsettings.Default(t).Keys, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('n'), save())
+
+		assert.Len(t, screen.Outcomes(), 2)
+		assert.IsType(t, outcome.UpdateRequested{}, screen.Outcomes()[1])
+	})
+}
+
 func TestEditing_cancel(t *testing.T) {
 	t.Parallel()
 
@@ -141,6 +207,16 @@ func TestEditing_cancel(t *testing.T) {
 
 		assert.Contains(t, screen.Screen(), discardQuestion)
 	})
+}
+
+func refusedAsStale(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
+	screen := editingStoredWith(t, keys, stored)
+	screen.Press(keypress.Letter('x'), save())
+	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errChangedElsewhere})
+
+	return screen
 }
 
 func updateInput(stored domain.Snippet, title, description, content string) snippet.UpdateInput {

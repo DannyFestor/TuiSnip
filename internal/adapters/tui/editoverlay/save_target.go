@@ -10,6 +10,7 @@ import (
 
 type saveTarget interface {
 	savingAs(saving outcome.Overlay, values entered) outcome.Step
+	reloaded() (outcome.SnippetReloaded, bool)
 }
 
 type newSnippet struct{}
@@ -22,9 +23,18 @@ func (newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step 
 	}})
 }
 
+func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {
+	return outcome.SnippetReloaded{ID: domain.SnippetID{}, FolderID: domain.FolderID{}}, false
+}
+
 type storedSnippet struct {
 	id              domain.SnippetID
+	folderID        domain.FolderID
 	loadedUpdatedAt time.Time
+}
+
+func (s storedSnippet) reloaded() (outcome.SnippetReloaded, bool) {
+	return outcome.SnippetReloaded{ID: s.id, FolderID: s.folderID}, true
 }
 
 func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {

@@ -88,9 +88,9 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 
 		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	case outcome.SnippetSaved:
-		next, expanded := s.selectingFolder(received.FolderID)
-
-		return outcome.Stay(next).Passing(expanded...).Passing(received)
+		return s.selectingFolderOf(received.FolderID, received)
+	case outcome.SnippetReloaded:
+		return s.selectingFolderOf(received.FolderID, received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -162,6 +162,12 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	}
 
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) selectingFolderOf(folderID domain.FolderID, received outcome.Outcome) outcome.Step {
+	next, expanded := s.selectingFolder(folderID)
+
+	return outcome.Stay(next).Passing(expanded...).Passing(received)
 }
 
 func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {

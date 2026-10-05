@@ -1,6 +1,8 @@
 package editoverlay
 
 import (
+	"errors"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
@@ -16,6 +18,8 @@ const (
 	unsavedTitle    = "Unsaved changes"
 	discardQuestion = "Discard the unsaved changes?"
 	quitQuestion    = "Quit and discard the unsaved changes?"
+	staleTitle      = "Changed elsewhere"
+	reloadQuestion  = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
 )
 
 type Session struct {
@@ -45,7 +49,7 @@ func Editing(keys binding.Keys, styles look.Styles, stored domain.Snippet, codeS
 		content:     fragment.Content().String(),
 	}
 	filled, cmd := newForm(formKeysOf(keys), original, readOnlyIfTabbed(fragment, codeStyle))
-	target := storedSnippet{id: stored.ID(), loadedUpdatedAt: stored.UpdatedAt()}
+	target := storedSnippet{id: stored.ID(), folderID: stored.FolderID(), loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, filled, target), cmd
 }
@@ -82,9 +86,11 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 	switch received.(type) {
 	case outcome.DiscardConfirmed:
 		return outcome.Close()
+	case outcome.SnippetReloaded:
+		return outcome.Close().Passing(received)
 	case outcome.QuitAsked:
 		if s.form.changed() {
-			return s.confirming(quitQuestion, outcome.QuitConfirmed{})
+			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
 		}
 	default:
 	}
@@ -147,7 +153,7 @@ func (s Session) cancelled() outcome.Step {
 	case s.saving:
 		return outcome.Stay(s)
 	case s.form.changed():
-		return s.confirming(discardQuestion, outcome.DiscardConfirmed{})
+		return s.confirmingUnsaved(discardQuestion, outcome.DiscardConfirmed{})
 	}
 
 	return outcome.Close()
@@ -161,19 +167,30 @@ func (s Session) saved(msg SaveFinished) outcome.Step {
 	next := s
 	next.saving = false
 
-	fieldErrors := domain.FieldErrors(msg.Err)
-	if len(fieldErrors) == 0 {
-		return outcome.Stay(next).Passing(outcome.SaveFailed{Err: msg.Err})
+	return next.refused(msg.Err)
+}
+
+func (s Session) refused(err error) outcome.Step {
+	if reload, ok := s.target.reloaded(); ok && errors.Is(err, domain.ErrConflict) {
+		return s.confirming(confirm.Question{Title: staleTitle, Text: reloadQuestion}, reload)
 	}
 
+	fieldErrors := domain.FieldErrors(err)
+	if len(fieldErrors) == 0 {
+		return outcome.Stay(s).Passing(outcome.SaveFailed{Err: err})
+	}
+
+	next := s
 	next.form = s.form.withInvalid(fieldErrors)
 
 	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
 }
 
-func (s Session) confirming(question string, onYes outcome.Outcome) outcome.Step {
-	asked := confirm.Question{Title: unsavedTitle, Text: question}
+func (s Session) confirmingUnsaved(question string, onYes outcome.Outcome) outcome.Step {
+	return s.confirming(confirm.Question{Title: unsavedTitle, Text: question}, onYes)
+}
 
+func (s Session) confirming(asked confirm.Question, onYes outcome.Outcome) outcome.Step {
 	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, asked, onYes))
 }
 

@@ -314,7 +314,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested:
 		return m, m.runSnippetAction(reported)
-	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected, outcome.SortCycleAsked:
+	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
+		outcome.SortCycleAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
@@ -347,7 +348,9 @@ func (m Model) reportedFailure(reported outcome.Outcome) (Model, tea.Cmd) {
 func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SnippetSaved:
-		return m, tea.Batch(m.loadTree(), m.loadSnippets(reported.FolderID, reported.ID))
+		return m, m.reloadSelecting(reported.FolderID, reported.ID)
+	case outcome.SnippetReloaded:
+		return m, m.reloadSelecting(reported.FolderID, reported.ID)
 	case outcome.SnippetRevealed:
 		return m, m.loadSnippets(reported.FolderID, reported.ID)
 	case outcome.FolderSelected:
@@ -357,6 +360,10 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	default:
 		return m, nil
 	}
+}
+
+func (m Model) reloadSelecting(folderID domain.FolderID, id domain.SnippetID) tea.Cmd {
+	return tea.Batch(m.loadTree(), m.loadSnippets(folderID, id))
 }
 
 func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {

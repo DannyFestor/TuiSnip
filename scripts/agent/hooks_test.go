@@ -399,7 +399,7 @@ func TestClaudeAdapter_Stop(t *testing.T) {
 		assert.Equal(t, []string{
 			"go build ./...",
 			"go-arch-lint check",
-			"golangci-lint run ./pkg/clip",
+			"golangci-lint run --allow-serial-runners ./pkg/clip",
 			"go test -short -race ./pkg/clip",
 		}, box.stubCalls(t))
 	})

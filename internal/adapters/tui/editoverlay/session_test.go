@@ -570,9 +570,60 @@ func TestSession_paste(t *testing.T) {
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
 
-		want := outcome.NoticeShown{Text: "Pasted text is over 10,000 lines; use ctrl+e to edit in $EDITOR"}
+		want := outcome.NoticeShown{
+			Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
+		}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
+	})
+
+	t.Run("refuses a short paste that makes Content longer than 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+		existing := linesOf(5_000)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: existing})
+		screen.Send(tea.PasteMsg{Content: linesOf(5_002)})
+		screen.Press(save())
+
+		want := []outcome.Outcome{
+			outcome.NoticeShown{
+				Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
+			},
+			outcome.SaveRequested{Input: input("", "", existing)},
+		}
+		assert.Equal(t, want, screen.Outcomes())
+	})
+
+	t.Run("inserts a paste that makes Content exactly 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(5_000)})
+		screen.Send(tea.PasteMsg{Content: linesOf(5_001)})
+		screen.Press(save())
+
+		want := linesOf(4_999) + "\nlineline\n" + linesOf(5_000)
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
+	})
+
+	t.Run("counts the selection a paste replaces", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(10_000)})
+		screen.Press(shiftUp())
+		screen.Send(tea.PasteMsg{Content: "a\nb"})
+		screen.Press(save())
+
+		want := linesOf(9_999) + "a\nb"
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
 	})
 
 	t.Run("inserts a paste of 10,000 lines into Content", func(t *testing.T) {
@@ -598,7 +649,7 @@ func TestSession_paste(t *testing.T) {
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
 
-		want := outcome.NoticeShown{Text: "Pasted text is over 10,000 lines"}
+		want := outcome.NoticeShown{Text: "Paste would make Content longer than 10,000 lines"}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 }

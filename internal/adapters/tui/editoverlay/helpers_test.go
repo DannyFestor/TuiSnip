@@ -59,6 +59,10 @@ func shiftTab() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 }
 
+func shiftUp() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
+}
+
 func save() tea.KeyPressMsg {
 	return keypress.Ctrl('s')
 }

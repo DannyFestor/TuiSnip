@@ -25,7 +25,7 @@ const (
 	fieldRows       = 3
 	tabCharacter    = "\t"
 	lineBreak       = "\n"
-	maxPastedLines  = 10_000
+	maxContentLines = 10_000
 	entryKeysJoiner = " or "
 	entrySuffix     = " to edit"
 )
@@ -177,11 +177,17 @@ func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
 	switch {
 	case strings.Contains(msg.Content, tabCharacter):
 		return f, requestRefusePasteWithTabs, nil
-	case strings.Count(msg.Content, lineBreak) >= maxPastedLines:
-		return f, requestRefuseLongPaste, nil
+	case f.linesAfterPaste(msg.Content) > maxContentLines:
+		return f, requestRefuseOverlongPaste, nil
 	}
 
 	return f.typed(msg)
+}
+
+func (f form) linesAfterPaste(pasted string) int {
+	replacedLineBreaks := strings.Count(f.content.SelectedText(), lineBreak)
+
+	return f.content.LineCount() - replacedLineBreaks + strings.Count(pasted, lineBreak)
 }
 
 func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {

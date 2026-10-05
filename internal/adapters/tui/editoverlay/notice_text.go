@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	pasteHasTabs = "Pasted text contains tabs"
-	pasteTooLong = "Pasted text is over 10,000 lines"
+	pasteHasTabs          = "Pasted text contains tabs"
+	pasteOverflowsContent = "Paste would make Content longer than 10,000 lines"
 )
 
 func refusedPasteText(refusal, externalEditorKey string) string {

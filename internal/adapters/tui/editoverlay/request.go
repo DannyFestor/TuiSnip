@@ -7,5 +7,5 @@ const (
 	requestSave
 	requestCancel
 	requestRefusePasteWithTabs
-	requestRefuseLongPaste
+	requestRefuseOverlongPaste
 )

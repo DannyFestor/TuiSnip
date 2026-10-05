@@ -98,8 +98,8 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.cancelled()
 	case requestRefusePasteWithTabs:
 		return s.pasteRefused(pasteHasTabs)
-	case requestRefuseLongPaste:
-		return s.pasteRefused(pasteTooLong)
+	case requestRefuseOverlongPaste:
+		return s.pasteRefused(pasteOverflowsContent)
 	case requestNothing:
 	}
 

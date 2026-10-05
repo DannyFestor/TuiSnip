@@ -42,6 +42,15 @@ func TestList_View(t *testing.T) {
 		assert.Equal(t, []string{"filter: zzz", "", noMatches}, visibleLines(list))
 	})
 
+	t.Run("scrolls a long filter to keep its end and the cursor in the box", func(t *testing.T) {
+		t.Parallel()
+
+		list := resized(opened(t, choicesOf("Go")), look.Size{Width: 20, Height: 4})
+		list = typed(t, list, "abcdefghijklmnop")
+
+		assert.Equal(t, "filter: fghijklmnop", visibleLines(list)[0])
+	})
+
 	t.Run("shows only the rows that fit and scrolls to the cursor", func(t *testing.T) {
 		t.Parallel()
 
@@ -162,6 +171,16 @@ func TestList_WithCursorOn(t *testing.T) {
 		_, result := press(t, list, enter())
 
 		assert.Equal(t, picked(2), result)
+	})
+
+	t.Run("puts the cursor back on the first choice", func(t *testing.T) {
+		t.Parallel()
+
+		list := pressed(t, opened(t, choicesOf("Go", "Bash")), down()).WithCursorOn("Go")
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picked(0), result)
 	})
 
 	t.Run("leaves the cursor where it is for a choice not shown", func(t *testing.T) {

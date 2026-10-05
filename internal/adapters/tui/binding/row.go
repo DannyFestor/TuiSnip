@@ -17,6 +17,8 @@ const (
 	labelCancel         = "cancel"
 	labelField          = "field"
 	labelLeave          = "leave"
+	labelIndent         = "indent"
+	labelDedent         = "dedent"
 	labelMove           = "move"
 	labelReveal         = "reveal"
 	labelOpen           = "open"
@@ -53,6 +55,8 @@ func Rows() []Row {
 		Row{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeContent, Name: Save, Label: labelSave},
 		Row{Scope: ScopeContent, Name: Leave, Label: labelLeave},
+		Row{Scope: ScopeContent, Name: Indent, Label: labelIndent},
+		Row{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
 		Row{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeSearch, Name: Down, Label: labelMove},
 		Row{Scope: ScopeSearch, Name: Up, Label: unlabelled},

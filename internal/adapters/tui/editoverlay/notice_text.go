@@ -8,14 +8,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-const pasteHasTabs = "Pasted text contains tabs"
+const (
+	pasteHasTabs          = "Pasted text contains tabs"
+	pasteOverflowsContent = "Paste would make Content longer than 10,000 lines"
+)
 
-func pasteHasTabsText(externalEditorKey string) string {
+func refusedPasteText(refusal, externalEditorKey string) string {
 	if externalEditorKey == "" {
-		return pasteHasTabs
+		return refusal
 	}
 
-	return pasteHasTabs + "; use " + externalEditorKey + " to edit in $EDITOR"
+	return refusal + "; use " + externalEditorKey + " to edit in $EDITOR"
 }
 
 func fieldErrorText(fieldErr domain.FieldError) string {

@@ -36,6 +36,8 @@ const (
 	PrevField    = "prev_field"
 	OpenField    = "open_field"
 	Leave        = "leave"
+	Indent       = "indent"
+	Dedent       = "dedent"
 	Accept       = "accept"
 	Yes          = "yes"
 	No           = "no"

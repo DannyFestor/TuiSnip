@@ -6,5 +6,6 @@ const (
 	requestNothing request = iota
 	requestSave
 	requestCancel
-	requestRefusePaste
+	requestRefusePasteWithTabs
+	requestRefuseOverlongPaste
 )

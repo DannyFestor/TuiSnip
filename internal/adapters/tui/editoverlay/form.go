@@ -23,6 +23,9 @@ const (
 	fieldLabelWidth = 12
 	fieldRows       = 3
 	tabCharacter    = "\t"
+	lineBreak       = "\n"
+	carriageReturn  = "\r"
+	maxContentLines = 10_000
 	entryKeysJoiner = " or "
 	entrySuffix     = " to edit"
 )
@@ -164,6 +167,16 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case f.keys.content.Matches(msg, binding.Leave):
 		return f.leftContent(), requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Indent):
+		f.content = indentedLine(f.content)
+
+		return f, requestNothing, nil
+	case f.keys.content.Matches(msg, binding.Dedent):
+		var cmd tea.Cmd
+
+		f.content, cmd = dedentedLine(f.content)
+
+		return f, requestNothing, cmd
 	case f.leavesContentUpward(msg):
 		return f.steppedBack()
 	}
@@ -176,11 +189,27 @@ func (f form) leavesContentUpward(msg tea.KeyPressMsg) bool {
 }
 
 func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
-	if f.inContent && strings.Contains(msg.Content, tabCharacter) {
-		return f, requestRefusePaste, nil
+	if !f.inContent {
+		return f.typed(msg)
+	}
+
+	switch {
+	case strings.Contains(msg.Content, tabCharacter):
+		return f, requestRefusePasteWithTabs, nil
+	case f.linesAfterPaste(msg.Content) > maxContentLines:
+		return f, requestRefuseOverlongPaste, nil
 	}
 
 	return f.typed(msg)
+}
+
+func (f form) linesAfterPaste(pasted string) int {
+	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
+}
+
+// The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.
+func lineBreaksOnInsert(text string) int {
+	return strings.Count(text, lineBreak) + strings.Count(text, carriageReturn)
 }
 
 func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {

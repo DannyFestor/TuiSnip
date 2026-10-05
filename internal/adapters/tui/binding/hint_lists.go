@@ -55,7 +55,7 @@ func nonPaneHintList(scope Scope) []labelledRef {
 	case ScopeEditor:
 		return withRowLabels(refsIn(scope, Save, Cancel, NextField)...)
 	case ScopeContent:
-		return withRowLabels(refsIn(scope, Save, Leave)...)
+		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent)...)
 	case ScopeSearch:
 		return withRowLabels(refsIn(scope, Down, Accept, Copy, Cancel)...)
 	case ScopeNameInput:

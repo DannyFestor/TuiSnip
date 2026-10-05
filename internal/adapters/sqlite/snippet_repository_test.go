@@ -135,6 +135,22 @@ func TestSnippetRepository_Update(t *testing.T) {
 		assert.Equal(t, edited, got)
 	})
 
+	t.Run("keeps the Tags the Snippet carries", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, newTagRepository(t, database), ids, "go")
+		stored := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+
+		require.NoError(t, repository.Update(t.Context(), editedSnippet(t, stored, "go"), stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{golang}, got.Tags())
+	})
+
 	t.Run("refuses a save over a Snippet changed since it was loaded", func(t *testing.T) {
 		t.Parallel()
 

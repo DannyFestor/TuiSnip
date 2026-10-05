@@ -8,9 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -59,6 +61,27 @@ func TestEditKeepsContentWithTabsByteForByte(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, tabbed, findStored(t, app, created.ID()).FirstFragment().Content().String())
+}
+
+func TestEditKeepsTheSnippetsTags(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	ids := testkit.NewSequentialIDs()
+	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
+	tagged := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+
+	_, err := app.Update.Run(t.Context(), editOf(tagged, "go edited", "package main\n"))
+
+	require.NoError(t, err)
+	listed, err := app.SnippetsWithTag.Run(t.Context(), browse.SnippetsWithTagInput{
+		TagID: golang.ID(),
+		Order: domain.SortOrderTitle,
+	})
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, "go edited", listed[0].Title().String())
+	assert.Equal(t, []domain.Tag{golang}, listed[0].Tags())
 }
 
 func editOf(loaded domain.Snippet, title, content string) snippet.UpdateInput {

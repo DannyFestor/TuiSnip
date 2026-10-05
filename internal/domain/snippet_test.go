@@ -224,6 +224,7 @@ func TestSnippet_Edit(t *testing.T) {
 		Title:     "curl",
 		FolderID:  domain.FolderID(uuid.MustParse(storedID)),
 		Fragment:  testkit.FragmentSpec{Content: "curl", CreatedAt: created},
+		Tags:      []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "http"})},
 		CreatedAt: created,
 	})
 
@@ -243,7 +244,7 @@ func TestSnippet_Edit(t *testing.T) {
 		assert.Equal(t, "curl", stored.Title().String(), "the original is untouched")
 	})
 
-	t.Run("keeps the ID, Folder, Fragment and creation time", func(t *testing.T) {
+	t.Run("keeps the ID, Folder, Fragment, Tags and creation time", func(t *testing.T) {
 		t.Parallel()
 
 		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, mustContent(t, "curl"), later)
@@ -251,6 +252,7 @@ func TestSnippet_Edit(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, stored.ID(), edited.ID())
 		assert.Equal(t, stored.FolderID(), edited.FolderID())
+		assert.Equal(t, stored.Tags(), edited.Tags())
 		assert.Equal(t, stored.FirstFragment().ID(), edited.FirstFragment().ID())
 		assert.Equal(t, created, edited.CreatedAt())
 		assert.Equal(t, created, edited.FirstFragment().UpdatedAt(), "unchanged content keeps its time")

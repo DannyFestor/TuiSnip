@@ -33,7 +33,15 @@ func (n TagName) String() string {
 }
 
 func (n TagName) Key() string {
-	return strings.Map(smallestOfFoldOrbit, n.value)
+	return foldedKey(n.value)
+}
+
+func TagNameKey(raw string) string {
+	return foldedKey(strings.TrimSpace(raw))
+}
+
+func foldedKey(text string) string {
+	return strings.Map(smallestOfFoldOrbit, text)
 }
 
 func smallestOfFoldOrbit(r rune) rune {

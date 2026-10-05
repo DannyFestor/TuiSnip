@@ -46,6 +46,10 @@ func (f Field) View() string {
 	return f.input.View()
 }
 
+func (f Field) Typed() string {
+	return f.input.Value()
+}
+
 func (f Field) WithWidth(width int) Field {
 	f.input.SetWidth(max(1, width-input.CursorWidth))
 	f.input.SetCursor(f.input.Position())

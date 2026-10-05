@@ -17,6 +17,12 @@ packages:
       RenameRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
+  github.com/DannyFestor/TuiSnip/internal/app/tag:
+    interfaces:
+      Inserter: {}
+      RenameRepository: {}
+      PreviewDeleteRepository: {}
+      Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -43,6 +49,10 @@ packages:
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
+      TagCreator: {}
+      TagRenamer: {}
+      TagDeletePreviewer: {}
+      TagDeleter: {}
       SortOrderSaver: {}
       CollapsedFoldersSaver: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:

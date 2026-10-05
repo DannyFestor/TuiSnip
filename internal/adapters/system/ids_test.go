@@ -23,6 +23,7 @@ func TestIDs_New(t *testing.T) {
 		ids.NewSnippetID().String(),
 		ids.NewFragmentID().String(),
 		ids.NewFolderID().String(),
+		ids.NewTagID().String(),
 	}
 
 	for _, id := range generated {

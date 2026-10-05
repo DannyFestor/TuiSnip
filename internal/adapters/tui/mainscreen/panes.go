@@ -49,7 +49,7 @@ func (p panes) withOrderLabel(label string) panes {
 }
 
 func (p panes) naming() bool {
-	return p.folders.Naming()
+	return p.folders.Naming() || p.tags.Naming()
 }
 
 func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
@@ -108,6 +108,12 @@ func (p panes) withTree(tree browse.Tree) (panes, []outcome.Outcome) {
 
 func (p panes) withTags(tags []browse.TagCount) panes {
 	p.tags = p.tags.WithTags(tags)
+
+	return p
+}
+
+func (p panes) withTagCursorOn(id domain.TagID) panes {
+	p.tags = p.tags.WithCursorOn(id)
 
 	return p
 }

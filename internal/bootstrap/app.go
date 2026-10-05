@@ -23,6 +23,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 )
 
 type App struct {
@@ -39,6 +40,10 @@ type App struct {
 	RenameFolder        *folder.Rename
 	PreviewDeleteFolder *folder.PreviewDelete
 	DeleteFolder        *folder.Delete
+	CreateTag           *tag.Create
+	RenameTag           *tag.Rename
+	PreviewDeleteTag    *tag.PreviewDelete
+	DeleteTag           *tag.Delete
 	SnippetRepository   *sqlite.SnippetRepository
 	FolderRepository    *sqlite.FolderRepository
 	TagRepository       *sqlite.TagRepository
@@ -146,6 +151,10 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		FolderRenamer:         app.RenameFolder,
 		FolderDeletePreviewer: app.PreviewDeleteFolder,
 		FolderDeleter:         app.DeleteFolder,
+		TagCreator:            app.CreateTag,
+		TagRenamer:            app.RenameTag,
+		TagDeletePreviewer:    app.PreviewDeleteTag,
+		TagDeleter:            app.DeleteTag,
 		SortOrderSaver:        opened.remembered,
 		CollapsedFoldersSaver: opened.remembered,
 		Settings:              SettingsFrom(cfg, time.Local, rememberedIn(opened.remembered)),
@@ -197,19 +206,15 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	capture, captureErr := snippet.NewCapture(clipboard.NewNative(clipboardOptions))
 	update, updateErr := snippet.NewUpdate(repos.snippets, system.NewClock())
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
-	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
-	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
-	tagList, tagListErr := browse.NewTagList(repos.tags, repos.snippets)
-	snippetsWithTag, withTagErr := browse.NewSnippetsWithTag(repos.snippets)
+	browsing, browseErr := newBrowseActions(repos)
 	createFolder, createFolderErr := folder.NewCreate(repos.folders, system.NewIDs(), system.NewClock())
 	renameFolder, renameFolderErr := folder.NewRename(repos.folders, system.NewClock())
 	previewDeleteFolder, previewDeleteFolderErr := folder.NewPreviewDelete(repos.folders)
 	deleteFolder, deleteFolderErr := folder.NewDelete(repos.folders)
+	tags, tagsErr := newTagActions(repos.tags)
 
-	err = errors.Join(
-		createErr, captureErr, updateErr, queryErr, listErr, treeErr, tagListErr, withTagErr,
-		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr,
-	)
+	err = errors.Join(createErr, captureErr, updateErr, queryErr, browseErr, tagsErr,
+		createFolderErr, renameFolderErr, previewDeleteFolderErr, deleteFolderErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
@@ -220,14 +225,18 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		Update:              update,
 		Copy:                copyAction,
 		Query:               query,
-		SnippetsInFolder:    snippetsInFolder,
-		FolderTree:          folderTree,
-		TagList:             tagList,
-		SnippetsWithTag:     snippetsWithTag,
+		SnippetsInFolder:    browsing.snippetsInFolder,
+		FolderTree:          browsing.folderTree,
+		TagList:             browsing.tagList,
+		SnippetsWithTag:     browsing.snippetsWithTag,
 		CreateFolder:        createFolder,
 		RenameFolder:        renameFolder,
 		PreviewDeleteFolder: previewDeleteFolder,
 		DeleteFolder:        deleteFolder,
+		CreateTag:           tags.create,
+		RenameTag:           tags.rename,
+		PreviewDeleteTag:    tags.previewDelete,
+		DeleteTag:           tags.delete,
 		SnippetRepository:   repos.snippets,
 		FolderRepository:    repos.folders,
 		TagRepository:       repos.tags,

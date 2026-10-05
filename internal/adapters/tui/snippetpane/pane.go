@@ -90,12 +90,13 @@ func (p Pane) FullHelp() [][]key.Binding {
 }
 
 func (p Pane) Showing(snippet domain.Snippet) Pane {
-	if p.shown && p.snippet.ID() == snippet.ID() && p.snippet.UpdatedAt().Equal(snippet.UpdatedAt()) {
-		return p
-	}
-
 	next := p
 	next.snippet = snippet
+
+	if p.shown && p.snippet.ID() == snippet.ID() && p.snippet.UpdatedAt().Equal(snippet.UpdatedAt()) {
+		return next
+	}
+
 	next.shown = true
 
 	return next.rendered()

@@ -16,6 +16,10 @@ type Deps struct {
 	FolderRenamer         FolderRenamer
 	FolderDeletePreviewer FolderDeletePreviewer
 	FolderDeleter         FolderDeleter
+	TagCreator            TagCreator
+	TagRenamer            TagRenamer
+	TagDeletePreviewer    TagDeletePreviewer
+	TagDeleter            TagDeleter
 	SortOrderSaver        SortOrderSaver
 	CollapsedFoldersSaver CollapsedFoldersSaver
 	Settings              Settings

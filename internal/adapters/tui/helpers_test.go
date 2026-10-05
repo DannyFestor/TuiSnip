@@ -61,6 +61,10 @@ type actions struct {
 	folderRenamer         tui.FolderRenamer
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
+	tagCreator            tui.TagCreator
+	tagRenamer            tui.TagRenamer
+	tagDeletePreviewer    tui.TagDeletePreviewer
+	tagDeleter            tui.TagDeleter
 	sortOrderSaver        tui.SortOrderSaver
 	collapsedFoldersSaver tui.CollapsedFoldersSaver
 }
@@ -148,7 +152,14 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.folderDeletePreviewer,
 			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
 		),
-		FolderDeleter:  orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
+		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
+		TagCreator:    orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
+		TagRenamer:    orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
+		TagDeletePreviewer: orMock(
+			with.tagDeletePreviewer,
+			func() tui.TagDeletePreviewer { return NewMockTagDeletePreviewer(t) },
+		),
+		TagDeleter:     orMock(with.tagDeleter, func() tui.TagDeleter { return NewMockTagDeleter(t) }),
 		SortOrderSaver: orMock(with.sortOrderSaver, func() tui.SortOrderSaver { return NewMockSortOrderSaver(t) }),
 		CollapsedFoldersSaver: orMock(
 			with.collapsedFoldersSaver,

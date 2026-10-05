@@ -33,6 +33,14 @@ type folderTreeChangedMsg struct {
 
 type folderRenamedMsg struct{}
 
+type tagCreatedMsg struct {
+	id domain.TagID
+}
+
+type tagsChangedMsg struct {
+	selecting domain.TagID
+}
+
 type operationFailedMsg struct {
 	operation string
 	err       error

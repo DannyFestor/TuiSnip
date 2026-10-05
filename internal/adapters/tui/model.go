@@ -19,6 +19,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -34,6 +35,10 @@ const (
 	operationRenameFolder         = "rename folder"
 	operationPreviewDelete        = "preview folder delete"
 	operationDeleteFolder         = "delete folder"
+	operationCreateTag            = "create tag"
+	operationRenameTag            = "rename tag"
+	operationPreviewTagDelete     = "preview tag delete"
+	operationDeleteTag            = "delete tag"
 	operationSaveSortOrder        = "save sort order"
 	operationCycleSortOrder       = "cycle sort order"
 	operationShowSortOrder        = "show sort order"
@@ -56,6 +61,10 @@ type Model struct {
 	folderRenamer         FolderRenamer
 	folderDeletePreviewer FolderDeletePreviewer
 	folderDeleter         FolderDeleter
+	tagCreator            TagCreator
+	tagRenamer            TagRenamer
+	tagDeletePreviewer    TagDeletePreviewer
+	tagDeleter            TagDeleter
 	sortOrderSaver        SortOrderSaver
 	collapsedFoldersSaver CollapsedFoldersSaver
 	collapsedFoldersGate  *savegate.Gate
@@ -118,6 +127,10 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		folderRenamer:         deps.FolderRenamer,
 		folderDeletePreviewer: deps.FolderDeletePreviewer,
 		folderDeleter:         deps.FolderDeleter,
+		tagCreator:            deps.TagCreator,
+		tagRenamer:            deps.TagRenamer,
+		tagDeletePreviewer:    deps.TagDeletePreviewer,
+		tagDeleter:            deps.TagDeleter,
 		sortOrderSaver:        deps.SortOrderSaver,
 		collapsedFoldersSaver: deps.CollapsedFoldersSaver,
 		collapsedFoldersGate:  &savegate.Gate{},
@@ -145,6 +158,10 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
 		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
 		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
+		domain.RequireDependency("tagCreator", deps.TagCreator),
+		domain.RequireDependency("tagRenamer", deps.TagRenamer),
+		domain.RequireDependency("tagDeletePreviewer", deps.TagDeletePreviewer),
+		domain.RequireDependency("tagDeleter", deps.TagDeleter),
 		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
 		domain.RequireDependency("collapsedFoldersSaver", deps.CollapsedFoldersSaver),
 		requirePointer("logger", deps.Logger),
@@ -169,12 +186,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.restyledOn(msg)
 	case tea.WindowSizeMsg, tea.PasteMsg,
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
-		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed, mainscreen.TagsLoaded:
+		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed, mainscreen.TagsLoaded,
+		mainscreen.TagCreated, mainscreen.TagsChanged, mainscreen.TagDeletePreviewed:
 		return m.overlaysUpdatedSharingTree(msg)
-	case folderTreeChangedMsg:
-		return m, tea.Batch(m.loadTreeSelecting(msg.selecting), m.loadTags())
-	case folderRenamedMsg:
-		return m, m.loadTree()
+	case folderTreeChangedMsg, folderRenamedMsg, tagCreatedMsg, tagsChangedMsg:
+		return m, m.reloadAfter(msg)
 	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
 		return m.failedWith(msg)
 	case copyFinishedMsg:
@@ -231,14 +247,35 @@ func (m Model) listTree(loaded func(tree browse.Tree) tea.Msg) tea.Cmd {
 	}
 }
 
+func (m Model) reloadAfter(msg tea.Msg) tea.Cmd {
+	switch msg := msg.(type) {
+	case folderTreeChangedMsg:
+		return tea.Batch(m.loadTreeSelecting(msg.selecting), m.loadTags())
+	case folderRenamedMsg:
+		return m.loadTree()
+	case tagCreatedMsg:
+		return m.listTags(func(tags []browse.TagCount) tea.Msg { return mainscreen.TagCreated{Tags: tags, ID: msg.id} })
+	case tagsChangedMsg:
+		return m.listTags(func(tags []browse.TagCount) tea.Msg {
+			return mainscreen.TagsChanged{Tags: tags, Selecting: msg.selecting}
+		})
+	default:
+		return nil
+	}
+}
+
 func (m Model) loadTags() tea.Cmd {
+	return m.listTags(func(tags []browse.TagCount) tea.Msg { return mainscreen.TagsLoaded{Tags: tags} })
+}
+
+func (m Model) listTags(loaded func(tags []browse.TagCount) tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		tags, err := m.tagLister.Run(m.ctx, browse.TagListInput{})
 		if err != nil {
 			return operationFailedMsg{operation: operationTags, err: err}
 		}
 
-		return mainscreen.TagsLoaded{Tags: tags}
+		return loaded(tags)
 	}
 }
 
@@ -373,7 +410,7 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		outcome.CaptureAsked:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
-		outcome.TagSelected, outcome.SortCycleAsked:
+		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
@@ -382,6 +419,9 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.FolderCreateRequested, outcome.FolderRenameRequested,
 		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested:
 		return m, m.runFolderAction(reported)
+	case outcome.TagCreateRequested, outcome.TagRenameRequested,
+		outcome.TagDeleteAsked, outcome.TagDeleteRequested:
+		return m, m.runTagAction(reported)
 	case outcome.CollapsedFoldersChanged:
 		return m, m.saveCollapsedFolders(reported.IDs)
 	case outcome.DiscardConfirmed:
@@ -415,6 +455,8 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.loadSnippets(browseselection.InFolder(reported.ID), domain.SnippetID{})
 	case outcome.TagSelected:
 		return m, m.loadSnippets(browseselection.WithTag(reported.ID), domain.SnippetID{})
+	case outcome.TagsChanged:
+		return m, m.loadSnippets(reported.Selection, reported.Selecting)
 	case outcome.SortCycleAsked:
 		return m.sortCycled(reported)
 	default:
@@ -471,6 +513,65 @@ func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 		return m.deleteFolder(reported.Input, reported.ParentID)
 	default:
 		return nil
+	}
+}
+
+func (m Model) runTagAction(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.TagCreateRequested:
+		return m.createTag(reported.Input)
+	case outcome.TagRenameRequested:
+		return m.renameTag(reported.Input)
+	case outcome.TagDeleteAsked:
+		return m.previewTagDelete(tag.PreviewDeleteInput{TagID: reported.ID})
+	case outcome.TagDeleteRequested:
+		return m.deleteTag(reported.Input)
+	default:
+		return nil
+	}
+}
+
+func (m Model) createTag(in tag.CreateInput) tea.Cmd {
+	return func() tea.Msg {
+		created, err := m.tagCreator.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationCreateTag, err: err}
+		}
+
+		return tagCreatedMsg{id: created.ID()}
+	}
+}
+
+func (m Model) renameTag(in tag.RenameInput) tea.Cmd {
+	return func() tea.Msg {
+		survivor, err := m.tagRenamer.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationRenameTag, err: err}
+		}
+
+		return tagsChangedMsg{selecting: survivor.ID()}
+	}
+}
+
+func (m Model) previewTagDelete(in tag.PreviewDeleteInput) tea.Cmd {
+	return func() tea.Msg {
+		preview, err := m.tagDeletePreviewer.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationPreviewTagDelete, err: err}
+		}
+
+		return mainscreen.TagDeletePreviewed{Preview: preview}
+	}
+}
+
+func (m Model) deleteTag(in tag.DeleteInput) tea.Cmd {
+	return func() tea.Msg {
+		err := m.tagDeleter.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationDeleteTag, err: err}
+		}
+
+		return tagsChangedMsg{selecting: domain.TagID{}}
 	}
 }
 

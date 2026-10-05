@@ -343,7 +343,7 @@ func TestClaudeAdapter_PostEdit(t *testing.T) {
 		assert.Empty(t, box.stubCalls(t))
 	})
 
-	t.Run("formats the file and vets its package", func(t *testing.T) {
+	t.Run("formats the file, then vets and lints its package", func(t *testing.T) {
 		t.Parallel()
 		box := newSandbox(t)
 		box.write(t, "pkg/clip/clip.go", goFile)
@@ -351,24 +351,26 @@ func TestClaudeAdapter_PostEdit(t *testing.T) {
 		got := box.adapter(t, "claude", "post-edit", "post-edit-go.json")
 
 		assert.Equal(t, exitPass, got.code, got.stderr)
-		assert.Equal(
-			t,
-			[]string{"golangci-lint fmt pkg/clip/clip.go", "go vet -tags feature,e2e ./pkg/clip"},
-			box.stubCalls(t),
-		)
+		assert.Equal(t, []string{
+			"golangci-lint fmt pkg/clip/clip.go",
+			"go vet -tags feature,e2e ./pkg/clip",
+			"golangci-lint run --allow-serial-runners ./pkg/clip",
+		}, box.stubCalls(t))
 	})
 
-	t.Run("reports vet findings to the agent", func(t *testing.T) {
-		t.Parallel()
-		box := newSandbox(t)
-		box.write(t, "pkg/clip/clip.go", goFile)
-		box.failStub("go vet")
+	for _, step := range []string{"go vet", "golangci-lint run"} {
+		t.Run("reports "+step+" findings to the agent", func(t *testing.T) {
+			t.Parallel()
+			box := newSandbox(t)
+			box.write(t, "pkg/clip/clip.go", goFile)
+			box.failStub(step)
 
-		got := box.adapter(t, "claude", "post-edit", "post-edit-go.json")
+			got := box.adapter(t, "claude", "post-edit", "post-edit-go.json")
 
-		assert.Equal(t, exitDeny, got.code)
-		assert.Contains(t, got.stderr, "go vet failed")
-	})
+			assert.Equal(t, exitDeny, got.code)
+			assert.Contains(t, got.stderr, step+" failed")
+		})
+	}
 }
 
 func TestClaudeAdapter_Stop(t *testing.T) {

@@ -35,7 +35,7 @@ func New(keys binding.Keys, styles look.Styles) (Session, tea.Cmd) {
 	blank, cmd := newForm(
 		formKeysOf(keys),
 		entered{title: "", description: "", content: ""},
-		readOnlyContent{held: false, highlighted: ""},
+		editableContent(),
 	)
 
 	return newSession(keys, styles, blank, newSnippet{}), cmd
@@ -212,6 +212,7 @@ func (s Session) resized(screen look.Size) Session {
 
 func (s Session) restyled(styles look.Styles) Session {
 	s.styles = styles
+	s.form = s.form.restyled(styles.CodeStyle)
 
 	return s
 }

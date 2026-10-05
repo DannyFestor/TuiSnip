@@ -74,6 +74,15 @@ The guards keep agents from making mistakes, but they aren't a security boundary
 
 Rejected: Claude Code permission rules alongside the hooks (a second copy of the path rules), and OpenCode's plugin `permission.ask` hook (legacy v1 API, and it only overrides a check that already happens).
 
+### Shell pitfalls
+
+Each of these has cost an agent a retry:
+
+- Quote globs and URLs that contain `?`, such as `--include='*.go'`. zsh fails on a glob that matches nothing.
+- macOS has no `timeout`.
+- `tee` test output to a file, then grep the file. Rerunning the suite to grep it a second way repeats the whole run.
+- Redirect to absolute paths. `guard-command.sh` can't resolve a relative redirect after `cd`, even into `/tmp`.
+
 ## CI and release
 
 GitHub Actions runs every check the hooks run, plus the ones too slow for them. Each job calls a Makefile target, so a failing job can be reproduced locally with the same command.

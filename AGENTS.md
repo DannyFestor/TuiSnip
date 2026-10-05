@@ -2,6 +2,10 @@
 
 Before writing or reviewing Go, read the matching standard. The index in `docs/standards/README.md` says which one applies.
 
+## Workflow
+
+From the first action, follow the workflow `docs/toolchain.md` enforces: edit files with the edit tool, branch before the first commit, and give each PR a Conventional Commit title. It also lists the shell pitfalls.
+
 ## Agent skills
 
 ### Issue tracker

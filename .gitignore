@@ -1,4 +1,4 @@
 .scratch/
 bin/
-mutation-report.json
+mutation-report*.json
 dist/

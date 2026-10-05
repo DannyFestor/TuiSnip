@@ -2,9 +2,7 @@ package scripts_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,19 +41,14 @@ func TestMutablePackages(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			script, err := filepath.Abs("mutable-packages.sh")
-			require.NoError(t, err)
+			got := scriptCall{
+				script: "mutable-packages.sh",
+				dir:    module,
+				stdin:  tt.packages,
+				env:    []string{"MUTATION_TAGS=feature"},
+			}.run(t)
 
-			cmd := exec.CommandContext(t.Context(), script) //nolint:gosec // G204: the script under test
-			cmd.Dir = module
-			cmd.Stdin = strings.NewReader(tt.packages)
-
-			cmd.Env = append(os.Environ(), "MUTATION_TAGS=feature")
-
-			got, err := cmd.Output()
-
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, string(got))
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -64,13 +57,19 @@ func newModule(t *testing.T, files map[string]string) string {
 	t.Helper()
 
 	module := t.TempDir()
-	files["go.mod"] = "module example.com/m\n\ngo 1.27\n"
+	writeModuleFile(t, module, "go.mod", "module example.com/m\n\ngo 1.27\n")
 
 	for path, content := range files {
-		full := filepath.Join(module, path)
-		require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o750))
-		require.NoError(t, os.WriteFile(full, []byte(content), 0o600))
+		writeModuleFile(t, module, path, content)
 	}
 
 	return module
+}
+
+func writeModuleFile(t *testing.T, module, path, content string) {
+	t.Helper()
+
+	full := filepath.Join(module, path)
+	require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o750))
+	require.NoError(t, os.WriteFile(full, []byte(content), 0o600))
 }

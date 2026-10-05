@@ -1,12 +1,9 @@
 package scripts_test
 
 import (
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOutermostPackages(t *testing.T) {
@@ -43,13 +40,9 @@ func TestOutermostPackages(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := exec.CommandContext(t.Context(), "./outermost-packages.sh")
-			cmd.Stdin = strings.NewReader(tt.packages)
+			got := scriptCall{script: "outermost-packages.sh", stdin: tt.packages}.run(t)
 
-			got, err := cmd.Output()
-
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, string(got))
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -3,6 +3,7 @@ package editoverlay_test
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -611,6 +612,61 @@ func TestSession_paste(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
 	})
 
+	t.Run("counts each carriage return as a line break", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name   string
+			pasted string
+		}{
+			{name: "carriage return and line feed endings", pasted: linesJoinedBy(5_001, "\r\n")},
+			{name: "lone carriage return endings", pasted: linesJoinedBy(10_001, "\r")},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				t.Parallel()
+
+				screen := editing(t)
+
+				screen.Press(enterContent()...)
+				screen.Send(tea.PasteMsg{Content: test.pasted})
+
+				want := outcome.NoticeShown{
+					Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
+				}
+				assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+			})
+		}
+	})
+
+	t.Run("inserts a carriage return and line feed paste that makes Content exactly 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesOf(2)})
+		screen.Send(tea.PasteMsg{Content: linesJoinedBy(5_000, "\r\n")})
+		screen.Press(save())
+
+		want := linesOf(2) + linesJoinedBy(5_000, "\n\n")
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
+	})
+
+	t.Run("inserts a lone carriage return paste that makes Content exactly 10,000 lines", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: linesJoinedBy(10_000, "\r")})
+		screen.Press(save())
+
+		want := linesOf(10_000)
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
+	})
+
 	t.Run("counts the selection a paste replaces", func(t *testing.T) {
 		t.Parallel()
 
@@ -742,5 +798,9 @@ func TestSession_indent(t *testing.T) {
 }
 
 func linesOf(count int) string {
-	return strings.TrimSuffix(strings.Repeat("line\n", count), "\n")
+	return linesJoinedBy(count, "\n")
+}
+
+func linesJoinedBy(count int, separator string) string {
+	return strings.Join(slices.Repeat([]string{"line"}, count), separator)
 }

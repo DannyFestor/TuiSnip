@@ -25,6 +25,7 @@ const (
 	fieldRows       = 3
 	tabCharacter    = "\t"
 	lineBreak       = "\n"
+	carriageReturn  = "\r"
 	maxContentLines = 10_000
 	entryKeysJoiner = " or "
 	entrySuffix     = " to edit"
@@ -185,9 +186,12 @@ func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
 }
 
 func (f form) linesAfterPaste(pasted string) int {
-	replacedLineBreaks := strings.Count(f.content.SelectedText(), lineBreak)
+	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
+}
 
-	return f.content.LineCount() - replacedLineBreaks + strings.Count(pasted, lineBreak)
+// The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.
+func lineBreaksOnInsert(text string) int {
+	return strings.Count(text, lineBreak) + strings.Count(text, carriageReturn)
 }
 
 func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {

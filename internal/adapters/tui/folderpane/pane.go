@@ -20,6 +20,8 @@ type Pane struct {
 	nameInputKeys binding.Keys
 	global        binding.Set
 	keys          binding.Set
+	tree          browse.Tree
+	collapsed     collapsedSet
 	rows          []row
 	cursor        move.Cursor
 	box           look.Size
@@ -27,17 +29,19 @@ type Pane struct {
 	field         nameinput.Field
 }
 
-func New(keys binding.Keys) Pane {
+func New(keys binding.Keys, collapsed []domain.FolderID) Pane {
 	return Pane{
 		nameInputKeys: keys,
 		global:        keys.For(binding.ScopeGlobal),
 		keys:          keys.For(binding.ScopeFolders),
-		rows:          rowsOf(browse.Tree{RootSnippetCount: 0, Folders: nil}),
+		tree:          browse.Tree{RootSnippetCount: 0, Folders: nil},
+		collapsed:     collapsedSetOf(collapsed),
+		rows:          nil,
 		cursor:        move.Cursor{},
 		box:           look.Size{Width: 0, Height: 0},
 		naming:        nil,
 		field:         nameinput.Field{},
-	}
+	}.withRows()
 }
 
 func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
@@ -84,20 +88,30 @@ func (p Pane) Naming() bool {
 	return p.naming != nil
 }
 
-func (p Pane) WithTree(tree browse.Tree) Pane {
+func (p Pane) WithTree(tree browse.Tree) (Pane, []outcome.Outcome) {
+	present := p.collapsed.within(tree)
+
 	next := p
-	next.rows = rowsOf(tree)
+	next.tree = tree
+	next.collapsed = collapsedSetOf(present)
+	next = next.withRows().withCursor(p.cursor.Index()).cursorOn(p.Selected()).withFieldSized()
 
-	return next.withCursor(p.cursor.Index()).WithCursorOn(p.Selected()).withFieldSized()
-}
-
-func (p Pane) WithCursorOn(id domain.FolderID) Pane {
-	index := slices.IndexFunc(p.rows, func(candidate row) bool { return candidate.folderID == id })
-	if index < 0 {
-		return p
+	if len(present) == len(p.collapsed) {
+		return next, nil
 	}
 
-	return p.withCursor(index)
+	return next, collapsedChanged(present)
+}
+
+func (p Pane) WithCursorOn(id domain.FolderID) (Pane, []outcome.Outcome) {
+	hiding := p.collapsed.hiding(p.tree, id)
+	if len(hiding) == 0 {
+		return p.cursorOn(id), nil
+	}
+
+	expanded, outcomes := p.withCollapsed(p.collapsed.without(hiding...))
+
+	return expanded.cursorOn(id), outcomes
 }
 
 func (p Pane) Selected() domain.FolderID {
@@ -107,14 +121,57 @@ func (p Pane) Selected() domain.FolderID {
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch {
 	case p.keys.Matches(msg, binding.NewFolder):
-		return p.startedNaming(newFolder{parentID: p.Selected()}, "")
+		return p.newFolderStarted()
 	case p.keys.Matches(msg, binding.Rename) && !p.Selected().IsNil():
 		return p.startedNaming(renamedFolder{folderID: p.Selected()}, p.selectedRow().name)
 	case p.keys.Matches(msg, binding.Delete) && !p.Selected().IsNil():
 		return p, []outcome.Outcome{outcome.FolderDeleteAsked{ID: p.Selected()}}, nil
+	case p.keys.Matches(msg, binding.Collapse) && p.selectedRow().collapsible:
+		next, outcomes := p.withCollapsed(p.collapsed.toggled(p.Selected()))
+
+		return next, outcomes, nil
 	}
 
 	return p.moved(msg)
+}
+
+// A Folder created inside a collapsed one would be hidden, and the cursor could not land on it.
+func (p Pane) newFolderStarted() (Pane, []outcome.Outcome, tea.Cmd) {
+	parent := newFolder{parentID: p.Selected()}
+	if !p.collapsed.has(parent.parentID) {
+		return p.startedNaming(parent, "")
+	}
+
+	expanded, outcomes := p.withCollapsed(p.collapsed.without(parent.parentID))
+	next, _, cmd := expanded.startedNaming(parent, "")
+
+	return next, outcomes, cmd
+}
+
+func (p Pane) withCollapsed(collapsed collapsedSet) (Pane, []outcome.Outcome) {
+	next := p
+	next.collapsed = collapsed
+
+	return next.withRows().cursorOn(p.Selected()), collapsedChanged(collapsed.within(p.tree))
+}
+
+func collapsedChanged(ids []domain.FolderID) []outcome.Outcome {
+	return []outcome.Outcome{outcome.CollapsedFoldersChanged{IDs: ids}}
+}
+
+func (p Pane) withRows() Pane {
+	p.rows = rowsOf(p.tree, p.collapsed)
+
+	return p
+}
+
+func (p Pane) cursorOn(id domain.FolderID) Pane {
+	index := slices.IndexFunc(p.rows, func(candidate row) bool { return candidate.folderID == id })
+	if index < 0 {
+		return p
+	}
+
+	return p.withCursor(index)
 }
 
 func (p Pane) moved(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {

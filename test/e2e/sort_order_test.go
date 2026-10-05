@@ -3,12 +3,9 @@
 package e2e_test
 
 import (
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -23,11 +20,7 @@ func TestSortOrderSurvivesRestart(t *testing.T) {
 
 	screen.press(keypress.Typed("3s")...)
 	screen.waitForFrame("3 Root · by last updated")
-	require.Eventually(t, func() bool {
-		written, err := os.ReadFile(home.Paths.StateFile)
-
-		return err == nil && strings.Contains(string(written), `sort = "updated"`)
-	}, waitTimeout, pollInterval)
+	waitForState(t, home, `sort = "updated"`)
 
 	restarted := open(t, home.Start(t, testapp.RecordingTool))
 

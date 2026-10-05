@@ -25,7 +25,7 @@ func TestModel_sortOrder(t *testing.T) {
 		lister := NewMockFolderSnippetsLister(t)
 		listingInOrder(lister, domain.FolderID{}, domain.SortOrderCreated, sampleSnippets(t)...)
 		settings := testsettings.Default(t)
-		settings.SortOrder = domain.SortOrderCreated
+		settings.Remembered.SortOrder = domain.SortOrderCreated
 
 		screen := start(t, modelWithSettings(t, sorting(t, lister, nil), settings), wideWidth, wideHeight)
 
@@ -114,7 +114,7 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 		t.Parallel()
 
 		settings := testsettings.Default(t)
-		settings.SortOrder = domain.SortOrder("language")
+		settings.Remembered.SortOrder = domain.SortOrder("language")
 
 		_, err := tui.New(t.Context(), tui.Deps{
 			Lister:                NewMockFolderSnippetsLister(t),
@@ -127,6 +127,7 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			FolderDeletePreviewer: NewMockFolderDeletePreviewer(t),
 			FolderDeleter:         NewMockFolderDeleter(t),
 			SortOrderSaver:        NewMockSortOrderSaver(t),
+			CollapsedFoldersSaver: NewMockCollapsedFoldersSaver(t),
 			Settings:              settings,
 			Logger:                slog.New(slog.DiscardHandler),
 		})

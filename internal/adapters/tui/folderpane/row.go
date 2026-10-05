@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	rootPrefix     = "◆ "
-	rootName       = "Root"
-	expandedMarker = "▾ "
-	leafMarker     = "  "
-	indentPerLevel = "  "
+	rootPrefix      = "◆ "
+	rootName        = "Root"
+	expandedMarker  = "▾ "
+	collapsedMarker = "▸ "
+	leafMarker      = "  "
+	indentPerLevel  = "  "
 )
 
 type row struct {
@@ -22,6 +23,7 @@ type row struct {
 	name         string
 	childIndent  string
 	snippetCount int
+	collapsible  bool
 }
 
 type line struct {
@@ -29,39 +31,48 @@ type line struct {
 	meta string
 }
 
-func rowsOf(tree browse.Tree) []row {
+func rowsOf(tree browse.Tree, collapsed collapsedSet) []row {
 	rows := []row{{
 		folderID:     domain.FolderID{},
 		prefix:       rootPrefix,
 		name:         rootName,
 		childIndent:  "",
 		snippetCount: tree.RootSnippetCount,
+		collapsible:  false,
 	}}
 
-	return appendNodes(rows, tree.Folders, 0)
+	return appendNodes(rows, tree.Folders, 0, collapsed)
 }
 
-func appendNodes(rows []row, nodes []browse.FolderNode, depth int) []row {
+func appendNodes(rows []row, nodes []browse.FolderNode, depth int, collapsed collapsedSet) []row {
 	indent := strings.Repeat(indentPerLevel, depth)
 
 	for index := range nodes {
 		node := &nodes[index]
+		isCollapsed := collapsed.has(node.Folder.ID())
 		rows = append(rows, row{
 			folderID:     node.Folder.ID(),
-			prefix:       indent + markerOf(node),
+			prefix:       indent + markerOf(node, isCollapsed),
 			name:         node.Folder.Name().String(),
 			childIndent:  indent + indentPerLevel,
 			snippetCount: node.SnippetCount,
+			collapsible:  len(node.Children) > 0,
 		})
-		rows = appendNodes(rows, node.Children, depth+1)
+
+		if !isCollapsed {
+			rows = appendNodes(rows, node.Children, depth+1, collapsed)
+		}
 	}
 
 	return rows
 }
 
-func markerOf(node *browse.FolderNode) string {
-	if len(node.Children) == 0 {
+func markerOf(node *browse.FolderNode, isCollapsed bool) string {
+	switch {
+	case len(node.Children) == 0:
 		return leafMarker
+	case isCollapsed:
+		return collapsedMarker
 	}
 
 	return expandedMarker

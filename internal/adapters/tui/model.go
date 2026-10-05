@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/savegate"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
@@ -21,18 +22,19 @@ import (
 )
 
 const (
-	operationList           = "list snippets"
-	operationTree           = "list folders"
-	operationCopy           = "copy"
-	operationSave           = "save snippet"
-	operationSearch         = "search"
-	operationCreateFolder   = "create folder"
-	operationRenameFolder   = "rename folder"
-	operationPreviewDelete  = "preview folder delete"
-	operationDeleteFolder   = "delete folder"
-	operationSaveSortOrder  = "save sort order"
-	operationCycleSortOrder = "cycle sort order"
-	operationShowSortOrder  = "show sort order"
+	operationList                 = "list snippets"
+	operationTree                 = "list folders"
+	operationCopy                 = "copy"
+	operationSave                 = "save snippet"
+	operationSearch               = "search"
+	operationCreateFolder         = "create folder"
+	operationRenameFolder         = "rename folder"
+	operationPreviewDelete        = "preview folder delete"
+	operationDeleteFolder         = "delete folder"
+	operationSaveSortOrder        = "save sort order"
+	operationCycleSortOrder       = "cycle sort order"
+	operationShowSortOrder        = "show sort order"
+	operationSaveCollapsedFolders = "save collapsed folders"
 )
 
 type Model struct {
@@ -48,6 +50,8 @@ type Model struct {
 	folderDeletePreviewer FolderDeletePreviewer
 	folderDeleter         FolderDeleter
 	sortOrderSaver        SortOrderSaver
+	collapsedFoldersSaver CollapsedFoldersSaver
+	collapsedFoldersGate  *savegate.Gate
 	sortOrder             domain.SortOrder
 	logger                *slog.Logger
 	forcedQuitKey         string
@@ -74,20 +78,7 @@ func NewQuittingAfterCopy(ctx context.Context, deps Deps) (Model, error) {
 }
 
 func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Model, error) {
-	err := errors.Join(
-		domain.RequireDependency("lister", deps.Lister),
-		domain.RequireDependency("treeLister", deps.TreeLister),
-		domain.RequireDependency("copier", deps.Copier),
-		domain.RequireDependency("creator", deps.Creator),
-		domain.RequireDependency("searcher", deps.Searcher),
-		domain.RequireDependency("folderCreator", deps.FolderCreator),
-		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
-		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
-		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
-		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
-		requirePointer("logger", deps.Logger),
-		requirePointer("location", deps.Settings.Location),
-	)
+	err := missingDependencies(deps)
 	if err != nil {
 		return Model{}, err
 	}
@@ -96,7 +87,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		deps.Settings.Keys,
 		look.NewStyles(),
 		deps.Settings.Location,
-		deps.Settings.SortOrder,
+		deps.Settings.Remembered,
 	)
 	if err != nil {
 		return Model{}, fmt.Errorf("main screen: %w", err)
@@ -116,12 +107,32 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		folderDeletePreviewer: deps.FolderDeletePreviewer,
 		folderDeleter:         deps.FolderDeleter,
 		sortOrderSaver:        deps.SortOrderSaver,
-		sortOrder:             deps.Settings.SortOrder,
+		collapsedFoldersSaver: deps.CollapsedFoldersSaver,
+		collapsedFoldersGate:  &savegate.Gate{},
+		sortOrder:             deps.Settings.Remembered.SortOrder,
 		logger:                deps.Logger,
 		forcedQuitKey:         deps.Settings.ForcedQuitKey,
 		afterCopy:             afterCopy,
 		overlays:              overlays,
 	}, nil
+}
+
+func missingDependencies(deps Deps) error {
+	return errors.Join(
+		domain.RequireDependency("lister", deps.Lister),
+		domain.RequireDependency("treeLister", deps.TreeLister),
+		domain.RequireDependency("copier", deps.Copier),
+		domain.RequireDependency("creator", deps.Creator),
+		domain.RequireDependency("searcher", deps.Searcher),
+		domain.RequireDependency("folderCreator", deps.FolderCreator),
+		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
+		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
+		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
+		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
+		domain.RequireDependency("collapsedFoldersSaver", deps.CollapsedFoldersSaver),
+		requirePointer("logger", deps.Logger),
+		requirePointer("location", deps.Settings.Location),
+	)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -209,10 +220,26 @@ func (m Model) sortCycled(asked outcome.SortCycleAsked) (Model, tea.Cmd) {
 func (m Model) saveSortOrder() tea.Cmd {
 	order := m.sortOrder
 
+	return remembering(operationSaveSortOrder, func() error {
+		return m.sortOrderSaver.SaveSortOrder(m.ctx, order)
+	})
+}
+
+func (m Model) saveCollapsedFolders(ids []domain.FolderID) tea.Cmd {
+	ticket := m.collapsedFoldersGate.Ticket()
+
+	return remembering(operationSaveCollapsedFolders, func() error {
+		return m.collapsedFoldersGate.Save(ticket, func() error {
+			return m.collapsedFoldersSaver.SaveCollapsedFolders(m.ctx, ids)
+		})
+	})
+}
+
+func remembering(operation string, save func() error) tea.Cmd {
 	return func() tea.Msg {
-		err := m.sortOrderSaver.SaveSortOrder(m.ctx, order)
+		err := save()
 		if err != nil {
-			return operationFailedMsg{operation: operationSaveSortOrder, err: err}
+			return operationFailedMsg{operation: operation, err: err}
 		}
 
 		return nil
@@ -282,21 +309,19 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
-	case outcome.SaveRequested:
-		return m, m.createSnippet(reported.Input)
+	case outcome.SaveRequested, outcome.SearchTyped, outcome.CopyRequested:
+		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetRevealed, outcome.FolderSelected, outcome.SortCycleAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
-	case outcome.SearchTyped:
-		return m, m.querySnippets(reported.Text)
-	case outcome.CopyRequested:
-		return m, m.copySnippet(reported.ID)
 	case outcome.FolderCreateRequested, outcome.FolderRenameRequested,
 		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested:
 		return m, m.runFolderAction(reported)
+	case outcome.CollapsedFoldersChanged:
+		return m, m.saveCollapsedFolders(reported.IDs)
 	case outcome.DiscardConfirmed:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
@@ -336,6 +361,19 @@ func (m Model) createSnippet(in snippet.CreateInput) tea.Cmd {
 		created, err := m.creator.Run(m.ctx, in)
 
 		return editoverlay.SaveFinished{Snippet: created, Err: err}
+	}
+}
+
+func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.SaveRequested:
+		return m.createSnippet(reported.Input)
+	case outcome.SearchTyped:
+		return m.querySnippets(reported.Text)
+	case outcome.CopyRequested:
+		return m.copySnippet(reported.ID)
+	default:
+		return nil
 	}
 }
 

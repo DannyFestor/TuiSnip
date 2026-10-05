@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -33,8 +34,8 @@ type Screen struct {
 	status          string
 }
 
-func New(keys binding.Keys, styles look.Styles, location *time.Location, order domain.SortOrder) (Screen, error) {
-	label, err := orderLabel(order)
+func New(keys binding.Keys, styles look.Styles, location *time.Location, remembered Remembered) (Screen, error) {
+	label, err := orderLabel(remembered.SortOrder)
 	if err != nil {
 		return Screen{}, fmt.Errorf("mainscreen.New: %w", err)
 	}
@@ -48,7 +49,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, order d
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
-		panes:           newPanes(keys, styles, location, label),
+		panes:           newPanes(keys, styles, location, remembered.CollapsedFolders).withOrderLabel(label),
 		status:          "",
 	}, nil
 }
@@ -64,7 +65,7 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 	case tea.BackgroundColorMsg:
 		return outcome.Stay(s.withPanes(s.panes.withBackground(msg)))
 	case TreeLoaded:
-		return outcome.Stay(s.withPanes(s.panes.withTree(msg.Tree)))
+		return s.treeLoaded(msg.Tree)
 	case TreeChanged:
 		return s.treeChanged(msg)
 	case FolderDeletePreviewed:
@@ -81,9 +82,13 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	switch received := received.(type) {
 	case outcome.SnippetRevealed:
-		return outcome.Stay(s.revealing(received.FolderID)).Passing(received)
+		next, expanded := s.revealing(received.FolderID)
+
+		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	case outcome.SnippetSaved:
-		return outcome.Stay(s.selectingFolder(received.FolderID)).Passing(received)
+		next, expanded := s.selectingFolder(received.FolderID)
+
+		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -142,10 +147,20 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
-	next := s.withPanes(s.panes.withTree(msg.Tree)).selectingFolder(msg.Selecting)
+func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
+	next, pruned := s.panes.withTree(tree)
 
-	return outcome.Stay(next).Passing(outcome.FolderSelected{ID: msg.Selecting})
+	return outcome.Stay(s.withPanes(next)).Passing(pruned...)
+}
+
+func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
+	withTree, pruned := s.panes.withTree(msg.Tree)
+	next, expanded := s.withPanes(withTree).selectingFolder(msg.Selecting)
+
+	return outcome.Stay(next).
+		Passing(pruned...).
+		Passing(expanded...).
+		Passing(outcome.FolderSelected{ID: msg.Selecting})
 }
 
 func (s Screen) snippetsLoaded(loaded SnippetsLoaded) outcome.Step {
@@ -197,19 +212,22 @@ func (s Screen) focusedOn(target pane) Screen {
 	return next.arranged()
 }
 
-func (s Screen) revealing(folderID domain.FolderID) Screen {
+func (s Screen) revealing(folderID domain.FolderID) (Screen, []outcome.Outcome) {
 	next := s
 	next.focus = paneSnippet
 
 	return next.selectingFolder(folderID)
 }
 
-func (s Screen) selectingFolder(folderID domain.FolderID) Screen {
+func (s Screen) selectingFolder(folderID domain.FolderID) (Screen, []outcome.Outcome) {
 	next := s
-	next.panes = s.panes.selectingFolder(folderID)
 	next.selectionHolder = paneFolders
 
-	return next.arranged()
+	var expanded []outcome.Outcome
+
+	next.panes, expanded = s.panes.selectingFolder(folderID)
+
+	return next.arranged(), expanded
 }
 
 func (s Screen) resized(box look.Size) Screen {

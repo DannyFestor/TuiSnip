@@ -12,8 +12,10 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
 func TestSettingsFrom(t *testing.T) {
@@ -24,7 +26,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "[bindings.snippet_list]\ncopy = [\"shift+ctrl+y\", \"Y\"]\n")
 
-		keys := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys
+		keys := bootstrap.SettingsFrom(cfg, time.UTC, nothingRemembered()).Keys
 
 		assert.Equal(t, []string{"ctrl+shift+y", "Y"}, keys[binding.ScopeSnippetList][binding.Copy])
 	})
@@ -34,7 +36,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "")
 
-		keys := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys
+		keys := bootstrap.SettingsFrom(cfg, time.UTC, nothingRemembered()).Keys
 
 		for scope, bindings := range cfg.Bindings {
 			assert.Len(t, keys[binding.Scope(scope.String())], len(bindings), "%s", scope)
@@ -46,7 +48,7 @@ func TestSettingsFrom(t *testing.T) {
 
 		cfg := loadConfig(t, "[bindings.confirm]\nno = []\n")
 
-		no, ok := bootstrap.SettingsFrom(cfg, time.UTC, domain.SortOrderTitle).Keys[binding.ScopeConfirm][binding.No]
+		no, ok := bootstrap.SettingsFrom(cfg, time.UTC, nothingRemembered()).Keys[binding.ScopeConfirm][binding.No]
 
 		assert.True(t, ok)
 		assert.Empty(t, no)
@@ -58,7 +60,7 @@ func TestSettingsFrom(t *testing.T) {
 		assert.Equal(
 			t,
 			"ctrl+c",
-			bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, domain.SortOrderTitle).ForcedQuitKey,
+			bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, nothingRemembered()).ForcedQuitKey,
 		)
 	})
 
@@ -67,16 +69,25 @@ func TestSettingsFrom(t *testing.T) {
 
 		tokyo := time.FixedZone("JST", 9*60*60)
 
-		assert.Same(t, tokyo, bootstrap.SettingsFrom(loadConfig(t, ""), tokyo, domain.SortOrderTitle).Location)
+		assert.Same(t, tokyo, bootstrap.SettingsFrom(loadConfig(t, ""), tokyo, nothingRemembered()).Location)
 	})
 
-	t.Run("passes the remembered sort order through", func(t *testing.T) {
+	t.Run("passes the remembered sort order and collapsed Folders through", func(t *testing.T) {
 		t.Parallel()
 
-		settings := bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, domain.SortOrderCreated)
+		remembered := mainscreen.Remembered{
+			SortOrder:        domain.SortOrderCreated,
+			CollapsedFolders: []domain.FolderID{testkit.NewSequentialIDs().NewFolderID()},
+		}
 
-		assert.Equal(t, domain.SortOrderCreated, settings.SortOrder)
+		settings := bootstrap.SettingsFrom(loadConfig(t, ""), time.UTC, remembered)
+
+		assert.Equal(t, remembered, settings.Remembered)
 	})
+}
+
+func nothingRemembered() mainscreen.Remembered {
+	return mainscreen.Remembered{SortOrder: domain.SortOrderTitle, CollapsedFolders: nil}
 }
 
 func loadConfig(t *testing.T, contents string) config.Config {

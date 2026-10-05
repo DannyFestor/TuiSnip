@@ -3,6 +3,7 @@
 package e2e_test
 
 import (
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -11,9 +12,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/teatest/v2"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
 const (
@@ -27,6 +30,22 @@ type session struct {
 	t       *testing.T
 	program *teatest.TestModel
 	frame   *lastFrame
+}
+
+func waitForState(t *testing.T, home *testapp.Home, text string) string {
+	t.Helper()
+
+	var written []byte
+
+	require.Eventually(t, func() bool {
+		var err error
+
+		written, err = os.ReadFile(home.Paths.StateFile)
+
+		return err == nil && strings.Contains(string(written), text)
+	}, waitTimeout, pollInterval)
+
+	return string(written)
 }
 
 func open(t *testing.T, app *bootstrap.App) *session {

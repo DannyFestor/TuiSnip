@@ -758,6 +758,22 @@ func TestScreen_Received(t *testing.T) {
 		assert.Equal(t, 26, lineIndexOf(screen, tagPaneTitle), "Folders, holding the Browse selection, is tall")
 	})
 
+	t.Run("expands the collapsed Folders hiding a revealed Snippet's Folder", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		screen.Press(keypress.Typed("jj ")...)
+
+		revealed := outcome.SnippetRevealed{ID: filedIn(t, sample.Tests.ID()).ID(), FolderID: sample.Tests.ID()}
+		screen.Offer(revealed)
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.CollapsedFoldersChanged{IDs: []domain.FolderID{}},
+			revealed,
+		}, screen.Outcomes()[len(screen.Outcomes())-2:])
+		assert.Contains(t, screen.Screen(), "3 Root / go / testing")
+	})
+
 	t.Run("makes a saved Snippet's Folder the Browse selection and passes it on", func(t *testing.T) {
 		t.Parallel()
 
@@ -788,13 +804,18 @@ func TestScreen_FullHelp(t *testing.T) {
 
 	screen := newScreen(t, look.NewStyles(), domain.SortOrderTitle)
 
-	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys).FullHelp(), screen.FullHelp())
+	assert.Equal(t, folderpane.New(testsettings.Default(t).Keys, nil).FullHelp(), screen.FullHelp())
 }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	_, err := mainscreen.New(testsettings.Default(t).Keys, look.NewStyles(), time.UTC, domain.SortOrder("language"))
+	_, err := mainscreen.New(
+		testsettings.Default(t).Keys,
+		look.NewStyles(),
+		time.UTC,
+		mainscreen.Remembered{SortOrder: domain.SortOrder("language"), CollapsedFolders: nil},
+	)
 
 	require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
 	assert.ErrorContains(t, err, "mainscreen.New: ")

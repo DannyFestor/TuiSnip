@@ -71,7 +71,7 @@ func TestCreateThenRenameFolder(t *testing.T) {
 	screen.waitForFrame("3 Root / go / errors-wrapping")
 }
 
-func seedNestedFolders(t *testing.T, app *bootstrap.App) {
+func seedNestedFolders(t *testing.T, app *bootstrap.App) domain.Folder {
 	t.Helper()
 
 	ids := testkit.NewSequentialIDs()
@@ -81,6 +81,8 @@ func seedNestedFolders(t *testing.T, app *bootstrap.App) {
 	testapp.SeedFolder(t, app, tests)
 	testapp.SeedSnippet(t, app, titledSnippet(t, ids, rootTitle, domain.FolderID{}))
 	testapp.SeedSnippet(t, app, titledSnippet(t, ids, filedTitle, tests.ID()))
+
+	return golang
 }
 
 func titledSnippet(t *testing.T, ids *testkit.SequentialIDs, title string, folderID domain.FolderID) domain.Snippet {

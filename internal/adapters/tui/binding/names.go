@@ -25,6 +25,7 @@ const (
 	NewFolder    = "new_folder"
 	Rename       = "rename"
 	Delete       = "delete"
+	Collapse     = "collapse"
 	Copy         = "copy"
 	CycleSort    = "cycle_sort"
 	OpenInEditor = "open_in_editor"

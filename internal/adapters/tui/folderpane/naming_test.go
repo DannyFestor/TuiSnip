@@ -215,5 +215,5 @@ func TestPane_ShortHelpWhileNaming(t *testing.T) {
 func samplePane(t *testing.T, sample foldertree.Sample) folderpane.Pane {
 	t.Helper()
 
-	return paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTree(sample.Tree)
+	return withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
 }

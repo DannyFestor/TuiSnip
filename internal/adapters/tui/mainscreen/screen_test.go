@@ -1459,9 +1459,11 @@ func TestScreen_UpdateTagDelete(t *testing.T) {
 		screen.Send(mainscreen.TagDeletePreviewed{Preview: tag.DeletePreview{Tag: tags[1].Tag, SnippetCount: 4}})
 
 		assert.Contains(t, screen.Screen(), tagDeleteTitle)
-		assert.Contains(t, screen.Screen(), `"go"`)
-		assert.Contains(t, screen.Screen(), "4 Snippets")
-		assert.Contains(t, screen.Screen(), "[y/N]")
+		assert.Contains(
+			t,
+			screen.Screen(),
+			`Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`,
+		)
 		assert.Empty(t, screen.Outcomes())
 	})
 
@@ -1512,8 +1514,8 @@ func TestScreen_tagDeleteQuestion(t *testing.T) {
 		snippets int
 		want     string
 	}{
-		{name: "keeps a single count singular", snippets: 1, want: "1 Snippet?"},
-		{name: "pluralises larger counts", snippets: 15, want: "15 Snippets?"},
+		{name: "keeps a single count singular", snippets: 1, want: "remove it from 1 Snippet?"},
+		{name: "pluralises larger counts", snippets: 15, want: "remove it from 15 Snippets?"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

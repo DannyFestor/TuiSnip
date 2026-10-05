@@ -231,8 +231,8 @@ func TestModel_tagDelete(t *testing.T) {
 		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 		screen.press(keypress.Letter('2'), keypress.Letter('j'), keypress.Letter('d'))
 
-		assert.Contains(t, screen.screen(), `"go"`)
-		assert.Contains(t, screen.screen(), "4 Snippets")
+		assert.Contains(t, screen.screen(),
+			`Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`)
 
 		screen.press(keypress.Letter('y'))
 

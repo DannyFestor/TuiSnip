@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	tagDeleteTitle             = "Delete Tag"
-	tagDeleteFormatPlaceholder = "PLACEHOLDER, wording pending on #111: delete Tag %q from %s?"
+	tagDeleteTitle  = "Delete Tag"
+	tagDeleteFormat = "Permanently delete Tag %q and remove it from %s? This cannot be undone."
 )
 
 func tagDeleteQuestion(preview tag.DeletePreview) confirm.Question {
 	return confirm.Question{
 		Title: tagDeleteTitle,
 		Text: fmt.Sprintf(
-			tagDeleteFormatPlaceholder,
+			tagDeleteFormat,
 			preview.Tag.Name().String(),
 			counted(preview.SnippetCount, "Snippet"),
 		),

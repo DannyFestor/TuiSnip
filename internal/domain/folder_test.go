@@ -217,6 +217,32 @@ func TestFolder_Rename(t *testing.T) {
 	})
 }
 
+func TestFolder_WithDefaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC)
+	folder := testkit.Folder(t, testkit.FolderSpec{ID: folderID(), Name: "go", CreatedAt: created})
+
+	t.Run("takes the Default Language and the time", func(t *testing.T) {
+		t.Parallel()
+
+		changed, err := folder.WithDefaultLanguage(mustLanguage(t, "Go"), created.Add(time.Hour))
+
+		require.NoError(t, err)
+		assert.Equal(t, "Go", changed.DefaultLanguage().String())
+		assert.Equal(t, created.Add(time.Hour), changed.UpdatedAt())
+		assert.Equal(t, value.PlainText(), folder.DefaultLanguage(), "the original is untouched")
+	})
+
+	t.Run("rejects a time before creation", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := folder.WithDefaultLanguage(mustLanguage(t, "Go"), created.Add(-time.Hour))
+
+		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
+	})
+}
+
 func TestCompareFolders(t *testing.T) {
 	t.Parallel()
 

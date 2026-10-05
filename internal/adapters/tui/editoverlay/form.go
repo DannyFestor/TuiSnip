@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 	fieldCursor       = "› "
 	fieldIndent       = "  "
 	fieldLabelWidth   = 12
-	fieldRows         = 3
+	fieldRows         = 4
 	tabCharacter      = "\t"
 	lineBreak         = "\n"
 	carriageReturn    = "\r"
@@ -29,12 +30,16 @@ const (
 	emptyContentLines = 1
 	entryKeysJoiner   = " or "
 	entrySuffix       = " to edit"
+	pickSuffix        = " to pick"
+	pickHintOpen      = "   ("
+	pickHintClose     = ")"
 )
 
 type form struct {
 	keys        formKeys
 	title       textinput.Model
 	description textinput.Model
+	language    value.Language
 	content     textarea.Model
 	readOnly    readOnlyContent
 	original    entered
@@ -48,6 +53,7 @@ func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, t
 		keys:        keys,
 		title:       input.NewLine(""),
 		description: input.NewLine(""),
+		language:    original.language,
 		content:     input.NewContentArea(),
 		readOnly:    readOnly,
 		original:    original,
@@ -111,6 +117,13 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 	return f
 }
 
+func (f form) withLanguage(language value.Language, codeStyle string) form {
+	f.language = language
+	f.readOnly = f.readOnly.inLanguage(language, codeStyle)
+
+	return f
+}
+
 func (f form) changed() bool {
 	return f.entered() != f.original
 }
@@ -121,7 +134,12 @@ func (f form) entered() entered {
 		content = f.readOnly.content
 	}
 
-	return entered{title: f.title.Value(), description: f.description.Value(), content: content}
+	return entered{
+		title:       f.title.Value(),
+		description: f.description.Value(),
+		language:    f.language,
+		content:     content,
+	}
 }
 
 func (f form) hints() []key.Binding {
@@ -140,6 +158,7 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 	lines := []string{
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
+		f.fieldLine(styles, domain.FieldLanguage, f.languageEntry(styles)),
 		f.fieldLine(styles, domain.FieldContent, f.contentEntryHint(styles)),
 		f.contentView(),
 	}
@@ -163,6 +182,9 @@ func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case fields.Matches(msg, binding.Cancel):
 		return f, requestCancel, nil
+	case fields.Matches(msg, binding.PickLanguage),
+		f.field == domain.FieldLanguage && fields.Matches(msg, binding.OpenField):
+		return f, requestPickLanguage, nil
 	case fields.Matches(msg, binding.NextField), fields.Matches(msg, binding.OpenField):
 		return f.advanced()
 	case fields.Matches(msg, binding.PrevField):
@@ -178,6 +200,8 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case f.keys.content.Matches(msg, binding.Leave):
 		return f.leftContent(), requestNothing, nil
+	case f.keys.content.Matches(msg, binding.PickLanguage):
+		return f, requestPickLanguage, nil
 	case f.keys.content.Matches(msg, binding.Indent):
 		f.content = indentedLine(f.content)
 
@@ -329,13 +353,33 @@ func (f form) contentEntryHint(styles look.Styles) string {
 		return ""
 	}
 
-	entryKeys := binding.BoundOnly(f.keys.fields.FirstKey(binding.OpenField), f.keys.fields.FirstKey(binding.NextField))
+	entryKeys := f.firstKeysOf(binding.OpenField, binding.NextField)
 
 	if len(entryKeys) == 0 {
 		return ""
 	}
 
 	return styles.Dim.Render(strings.Join(entryKeys, entryKeysJoiner) + entrySuffix)
+}
+
+func (f form) languageEntry(styles look.Styles) string {
+	pickKeys := f.firstKeysOf(binding.OpenField, binding.PickLanguage)
+
+	if len(pickKeys) == 0 {
+		return f.language.String()
+	}
+
+	return f.language.String() +
+		styles.Dim.Render(pickHintOpen+strings.Join(pickKeys, entryKeysJoiner)+pickSuffix+pickHintClose)
+}
+
+func (f form) firstKeysOf(names ...string) []string {
+	firstKeys := make([]string, 0, len(names))
+	for _, name := range names {
+		firstKeys = append(firstKeys, f.keys.fields.FirstKey(name))
+	}
+
+	return binding.BoundOnly(firstKeys...)
 }
 
 func (f form) frameTitle() string {
@@ -347,7 +391,7 @@ func (f form) frameTitle() string {
 }
 
 func editFields() []domain.Field {
-	return []domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldContent}
+	return []domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent}
 }
 
 func fieldLabel(field domain.Field) string {

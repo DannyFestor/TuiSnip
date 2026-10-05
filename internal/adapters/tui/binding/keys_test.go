@@ -148,6 +148,46 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter save", "esc cancel"}, hintTexts(got))
 	})
 
+	t.Run("editor hints save, cancel, field and Language", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeEditor, name: binding.Save, keys: []string{"ctrl+s"}},
+			bound{scope: binding.ScopeEditor, name: binding.Cancel, keys: []string{"esc"}},
+			bound{scope: binding.ScopeEditor, name: binding.NextField, keys: []string{"down"}},
+			bound{scope: binding.ScopeEditor, name: binding.PickLanguage, keys: []string{"ctrl+g"}},
+		)
+
+		got := keys.For(binding.ScopeEditor).ShortHelp()
+
+		assert.Equal(t, []string{"ctrl+s save", "esc cancel", "down field", "ctrl+g Language"}, hintTexts(got))
+	})
+
+	t.Run("picker hints move, pick and close", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopePicker, name: binding.Down, keys: []string{"ctrl+n"}},
+			bound{scope: binding.ScopePicker, name: binding.Accept, keys: []string{"enter"}},
+			bound{scope: binding.ScopePicker, name: binding.Cancel, keys: []string{"esc"}},
+			bound{scope: binding.ScopePicker, name: binding.ShowAllLanguages, keys: []string{"ctrl+a"}},
+		)
+
+		got := keys.For(binding.ScopePicker).ShortHelp()
+
+		assert.Equal(t, []string{"ctrl+n move", "enter pick", "esc close"}, hintTexts(got))
+	})
+
+	t.Run("Folders full help lists the Default Language Binding", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(bound{scope: binding.ScopeFolders, name: binding.Language, keys: []string{"L"}})
+
+		got := keys.For(binding.ScopeFolders).FullHelp()
+
+		assert.Equal(t, [][]string{{"L Default Language"}}, columnTexts(got))
+	})
+
 	t.Run("Content hints save, leave, indent and dedent", func(t *testing.T) {
 		t.Parallel()
 

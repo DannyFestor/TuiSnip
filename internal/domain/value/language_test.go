@@ -38,6 +38,20 @@ func TestLanguage_New(t *testing.T) {
 	}
 }
 
+func TestLanguages(t *testing.T) {
+	t.Parallel()
+
+	languages := value.Languages()
+
+	assert.Contains(t, languages, value.PlainText())
+
+	for _, language := range languages {
+		parsed, err := value.NewLanguage(language.String())
+		require.NoError(t, err)
+		assert.Equal(t, language, parsed)
+	}
+}
+
 func TestLanguage_PlainText(t *testing.T) {
 	t.Parallel()
 

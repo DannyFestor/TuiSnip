@@ -61,6 +61,7 @@ type actions struct {
 	folderRenamer         tui.FolderRenamer
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
+	defaultLanguageSetter tui.FolderDefaultLanguageSetter
 	tagCreator            tui.TagCreator
 	tagRenamer            tui.TagRenamer
 	tagDeletePreviewer    tui.TagDeletePreviewer
@@ -153,8 +154,12 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
 		),
 		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
-		TagCreator:    orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
-		TagRenamer:    orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
+		FolderDefaultLanguageSetter: orMock(
+			with.defaultLanguageSetter,
+			func() tui.FolderDefaultLanguageSetter { return NewMockFolderDefaultLanguageSetter(t) },
+		),
+		TagCreator: orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
+		TagRenamer: orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
 		TagDeletePreviewer: orMock(
 			with.tagDeletePreviewer,
 			func() tui.TagDeletePreviewer { return NewMockTagDeletePreviewer(t) },

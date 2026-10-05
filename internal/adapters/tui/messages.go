@@ -31,7 +31,7 @@ type folderTreeChangedMsg struct {
 	selecting domain.FolderID
 }
 
-type folderRenamedMsg struct{}
+type folderEditedMsg struct{}
 
 type tagCreatedMsg struct {
 	id domain.TagID

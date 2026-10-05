@@ -14,7 +14,7 @@ packages:
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
-      RenameRepository: {}
+      EditRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
   github.com/DannyFestor/TuiSnip/internal/app/tag:
@@ -49,6 +49,7 @@ packages:
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
+      FolderDefaultLanguageSetter: {}
       TagCreator: {}
       TagRenamer: {}
       TagDeletePreviewer: {}

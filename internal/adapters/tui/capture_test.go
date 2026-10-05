@@ -33,7 +33,7 @@ func TestModel_capture(t *testing.T) {
 		snippets := numberedSnippets(t, 1)
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().
-			Run(mock.Anything, snippet.CreateInput{Title: "List", Content: clipboardText}).
+			Run(mock.Anything, snippet.CreateInput{Title: "List", Language: "plaintext", Content: clipboardText}).
 			Return(snippets[0], nil)
 		with := capturingActions(t, capturerReading(t, clipboardText), listerReturning(t, nil, snippets))
 		with.creator = creator
@@ -101,7 +101,7 @@ func TestModel_capture(t *testing.T) {
 		created := filedIn(t, domain.FolderID{})
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().
-			Run(mock.Anything, snippet.CreateInput{Title: filedTitle, Tags: []domain.Tag{tags[0].Tag}}).
+			Run(mock.Anything, snippet.CreateInput{Title: filedTitle, Language: "plaintext", Tags: []domain.Tag{tags[0].Tag}}).
 			Return(created, nil)
 
 		tagged := NewMockTagSnippetsLister(t)

@@ -15,6 +15,7 @@ func SettingsFrom(cfg config.Config, location *time.Location, remembered mainscr
 		Keys:          keysFrom(cfg.Bindings),
 		ForcedQuitKey: config.ForcedQuitKey().String(),
 		Theme:         themeFrom(cfg.Theme),
+		Languages:     cfg.Languages,
 		Location:      location,
 		Remembered:    remembered,
 	}

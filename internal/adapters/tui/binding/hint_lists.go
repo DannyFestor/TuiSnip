@@ -53,16 +53,18 @@ func paneOwnHintList(scope Scope) []labelledRef {
 func nonPaneHintList(scope Scope) []labelledRef {
 	switch scope {
 	case ScopeEditor:
-		return withRowLabels(refsIn(scope, Save, Cancel, NextField)...)
+		return withRowLabels(refsIn(scope, Save, Cancel, NextField, PickLanguage)...)
 	case ScopeContent:
 		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent)...)
 	case ScopeSearch:
 		return withRowLabels(refsIn(scope, Down, Accept, Copy, Cancel)...)
+	case ScopePicker:
+		return withRowLabels(refsIn(scope, Down, Accept, Cancel)...)
 	case ScopeNameInput:
 		return withRowLabels(refsIn(scope, Accept, Cancel)...)
 	case ScopeConfirm:
 		return withRowLabels(refsIn(scope, Yes, No)...)
-	case ScopeGlobal, ScopeFolders, ScopeTags, ScopeSnippetList, ScopeSnippetPane, ScopePicker:
+	case ScopeGlobal, ScopeFolders, ScopeTags, ScopeSnippetList, ScopeSnippetPane:
 	}
 
 	return nil

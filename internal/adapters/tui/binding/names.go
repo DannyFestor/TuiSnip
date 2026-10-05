@@ -28,6 +28,7 @@ const (
 	Rename       = "rename"
 	Delete       = "delete"
 	Collapse     = "collapse"
+	Language     = "language"
 	Copy         = "copy"
 	Edit         = "edit"
 	CycleSort    = "cycle_sort"
@@ -38,10 +39,13 @@ const (
 	NextField    = "next_field"
 	PrevField    = "prev_field"
 	OpenField    = "open_field"
+	PickLanguage = "pick_language"
 	Leave        = "leave"
 	Indent       = "indent"
 	Dedent       = "dedent"
 	Accept       = "accept"
 	Yes          = "yes"
 	No           = "no"
+
+	ShowAllLanguages = "show_all_languages"
 )

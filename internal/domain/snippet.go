@@ -89,14 +89,14 @@ func (s Snippet) UpdatedAt() time.Time {
 }
 
 func (s Snippet) Edit(
-	title value.Title, description value.Description, content value.Content, now time.Time,
+	title value.Title, description value.Description, language value.Language, content value.Content, now time.Time,
 ) (Snippet, error) {
 	err := requireTimestamps(s.createdAt, now)
 	if err != nil {
 		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
 	}
 
-	fragment, err := s.FirstFragment().WithContent(content, now)
+	fragment, err := s.FirstFragment().Edit(language, content, now)
 	if err != nil {
 		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
 	}

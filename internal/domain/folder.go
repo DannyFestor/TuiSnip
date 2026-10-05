@@ -89,6 +89,18 @@ func (f Folder) Rename(name value.FolderName, now time.Time) (Folder, error) {
 	return f, nil
 }
 
+func (f Folder) WithDefaultLanguage(language value.Language, now time.Time) (Folder, error) {
+	err := requireTimestamps(f.createdAt, now)
+	if err != nil {
+		return Folder{}, fmt.Errorf("domain.Folder.WithDefaultLanguage: %w", err)
+	}
+
+	f.defaultLanguage = language
+	f.updatedAt = now
+
+	return f, nil
+}
+
 func (f Folder) MoveUnder(parentID FolderID, descendantIDs []FolderID) (Folder, error) {
 	if parentID == f.id || slices.Contains(descendantIDs, parentID) {
 		return Folder{}, fmt.Errorf("domain.Folder.MoveUnder: %w", ErrFolderCycle)

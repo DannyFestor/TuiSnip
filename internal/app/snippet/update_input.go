@@ -11,5 +11,6 @@ type UpdateInput struct {
 	LoadedUpdatedAt time.Time
 	Title           string
 	Description     string
+	Language        string
 	Content         string
 }

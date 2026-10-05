@@ -12,6 +12,10 @@ const (
 	labelRename         = "rename"
 	labelDelete         = "delete"
 	labelCollapse       = "collapse"
+	labelDefaultLang    = "Default Language"
+	labelLanguage       = "Language"
+	labelAllLanguages   = "all Languages"
+	labelPick           = "pick"
 	labelCopy           = "Copy"
 	labelEdit           = "edit"
 	labelSort           = "sort"
@@ -61,6 +65,7 @@ func Rows() []Row {
 		Row{Scope: ScopeFolders, Name: Rename, Label: labelRename},
 		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
+		Row{Scope: ScopeFolders, Name: Language, Label: labelDefaultLang},
 		Row{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
 		Row{Scope: ScopeTags, Name: Rename, Label: labelRename},
 		Row{Scope: ScopeTags, Name: Delete, Label: labelDelete},
@@ -75,17 +80,24 @@ func Rows() []Row {
 		Row{Scope: ScopeEditor, Name: NextField, Label: labelField},
 		Row{Scope: ScopeEditor, Name: PrevField, Label: unlabelled},
 		Row{Scope: ScopeEditor, Name: OpenField, Label: unlabelled},
+		Row{Scope: ScopeEditor, Name: PickLanguage, Label: labelLanguage},
 		Row{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeContent, Name: Save, Label: labelSave},
 		Row{Scope: ScopeContent, Name: Leave, Label: labelLeave},
 		Row{Scope: ScopeContent, Name: Indent, Label: labelIndent},
 		Row{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
+		Row{Scope: ScopeContent, Name: PickLanguage, Label: labelLanguage},
 		Row{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeSearch, Name: Down, Label: labelMove},
 		Row{Scope: ScopeSearch, Name: Up, Label: unlabelled},
 		Row{Scope: ScopeSearch, Name: Accept, Label: labelReveal},
 		Row{Scope: ScopeSearch, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSearch, Name: Cancel, Label: labelClose},
+		Row{Scope: ScopePicker, Name: Down, Label: labelMove},
+		Row{Scope: ScopePicker, Name: Up, Label: unlabelled},
+		Row{Scope: ScopePicker, Name: Accept, Label: labelPick},
+		Row{Scope: ScopePicker, Name: Cancel, Label: labelClose},
+		Row{Scope: ScopePicker, Name: ShowAllLanguages, Label: labelAllLanguages},
 		Row{Scope: ScopeNameInput, Name: Accept, Label: labelSave},
 		Row{Scope: ScopeNameInput, Name: Cancel, Label: labelCancel},
 		Row{Scope: ScopeConfirm, Name: Yes, Label: labelYes},

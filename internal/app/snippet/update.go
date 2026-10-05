@@ -26,7 +26,7 @@ func NewUpdate(repo UpdateRepository, clock Clock) (*Update, error) {
 }
 
 func (u *Update) Run(ctx context.Context, input UpdateInput) (domain.Snippet, error) {
-	parsed, err := parseFields(input.Title, input.Description, input.Content)
+	parsed, err := parseFields(input.Title, input.Description, input.Language, input.Content)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Update: %w", err)
 	}
@@ -36,7 +36,7 @@ func (u *Update) Run(ctx context.Context, input UpdateInput) (domain.Snippet, er
 		return domain.Snippet{}, fmt.Errorf("snippet.Update: %w", err)
 	}
 
-	edited, err := stored.Edit(parsed.title, parsed.description, parsed.content, u.clock.Now())
+	edited, err := stored.Edit(parsed.title, parsed.description, parsed.language, parsed.content, u.clock.Now())
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Update: %w", err)
 	}

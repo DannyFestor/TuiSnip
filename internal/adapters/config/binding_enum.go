@@ -67,6 +67,8 @@ const (
 	BindingMove Binding = "move"
 	// BindingCollapse is a Binding of type collapse.
 	BindingCollapse Binding = "collapse"
+	// BindingLanguage is a Binding of type language.
+	BindingLanguage Binding = "language"
 	// BindingCopy is a Binding of type copy.
 	BindingCopy Binding = "copy"
 	// BindingEdit is a Binding of type edit.
@@ -140,6 +142,7 @@ var _BindingNames = []string{
 	string(BindingDelete),
 	string(BindingMove),
 	string(BindingCollapse),
+	string(BindingLanguage),
 	string(BindingCopy),
 	string(BindingEdit),
 	string(BindingOpenInEditor),
@@ -210,6 +213,7 @@ var _BindingValue = map[string]Binding{
 	"delete":             BindingDelete,
 	"move":               BindingMove,
 	"collapse":           BindingCollapse,
+	"language":           BindingLanguage,
 	"copy":               BindingCopy,
 	"edit":               BindingEdit,
 	"open_in_editor":     BindingOpenInEditor,

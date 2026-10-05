@@ -64,6 +64,23 @@ func TestUpdate_Run(t *testing.T) {
 		assert.Equal(t, createdAt(), updated.UpdatedAt())
 	})
 
+	t.Run("saves a new Language", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "curl")
+		repo := NewMockUpdateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		repo.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		input := updateInput(stored, "curl", "", "curl")
+		input.Language = "Bash"
+
+		updated, err := newUpdate(t, repo).Run(t.Context(), input)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Bash", updated.FirstFragment().Language().String())
+	})
+
 	t.Run("keeps content with tabs byte for byte", func(t *testing.T) {
 		t.Parallel()
 
@@ -85,14 +102,18 @@ func TestUpdate_Run(t *testing.T) {
 
 		stored := storedSnippet(t, "")
 
-		_, err := newUpdate(t, NewMockUpdateRepository(t)).Run(t.Context(), updateInput(
+		input := updateInput(
 			stored, " ", strings.Repeat("d", maxDescriptionRunes+1), strings.Repeat("c", maxContentBytes+1),
-		))
+		)
+		input.Language = "golang"
+
+		_, err := newUpdate(t, NewMockUpdateRepository(t)).Run(t.Context(), input)
 
 		require.ErrorIs(t, err, value.ErrBlankTitle)
+		require.ErrorIs(t, err, value.ErrUnknownLanguage)
 		assert.Equal(
 			t,
-			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldContent},
+			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent},
 			fieldsOf(domain.FieldErrors(err)),
 		)
 	})
@@ -152,6 +173,7 @@ func updateInput(stored domain.Snippet, title, description, content string) snip
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     description,
+		Language:        stored.FirstFragment().Language().String(),
 		Content:         content,
 	}
 }

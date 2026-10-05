@@ -47,16 +47,17 @@ func (f Fragment) UpdatedAt() time.Time {
 	return f.updatedAt
 }
 
-func (f Fragment) WithContent(content value.Content, now time.Time) (Fragment, error) {
+func (f Fragment) Edit(language value.Language, content value.Content, now time.Time) (Fragment, error) {
 	err := requireTimestamps(f.createdAt, now)
 	if err != nil {
-		return Fragment{}, fmt.Errorf("domain.Fragment.WithContent: %w", err)
+		return Fragment{}, fmt.Errorf("domain.Fragment.Edit: %w", err)
 	}
 
-	if content == f.content {
+	if language == f.language && content == f.content {
 		return f, nil
 	}
 
+	f.language = language
 	f.content = content
 	f.updatedAt = now
 

@@ -30,6 +30,8 @@ const (
 	listHint         = "y Copy · e edit · n new · s sort · z zoom · / search · ? help"
 	helpHint         = "? help"
 	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
+	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+l Language"
+	folderHints      = "enter open · N new Folder · r rename · d delete · z zoom · / search · ? help"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"
 	filedTitle       = "Table test skeleton"
@@ -79,12 +81,11 @@ func opened(t *testing.T, screen look.Size, styles look.Styles, order domain.Sor
 func newScreen(t *testing.T, styles look.Styles, order domain.SortOrder) mainscreen.Screen {
 	t.Helper()
 
-	screen, err := mainscreen.New(
-		testsettings.Default(t).Keys,
-		styles,
-		time.UTC,
-		mainscreen.Remembered{SortOrder: order, CollapsedFolders: nil},
-	)
+	screen, err := mainscreen.New(testsettings.Default(t).Keys, styles, mainscreen.Options{
+		Location:   time.UTC,
+		Remembered: mainscreen.Remembered{SortOrder: order, CollapsedFolders: nil},
+		Languages:  nil,
+	})
 	require.NoError(t, err)
 
 	return screen

@@ -1,6 +1,6 @@
 package folder
 
-type RenameRepository interface {
+type EditRepository interface {
 	Finder
 	Updater
 }

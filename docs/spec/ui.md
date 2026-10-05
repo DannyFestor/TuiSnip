@@ -64,7 +64,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 
 | Pane | Bindings |
 |---|---|
-| Folders | `N` new Folder inside the selected one (at the Root when the Root is selected), typed in place on a new row below the cursor · `r` rename in place · `d` delete · `m` move · `space` collapse |
+| Folders | `N` new Folder inside the selected one (at the Root when the Root is selected), typed in place on a new row below the cursor · `r` rename in place · `d` delete · `m` move · `space` collapse · `L` Default Language |
 | Tags | `N` new Tag, typed in place; it exists with a count of 0 until a Snippet carries it · `r` rename in place · `d` delete |
 | Snippet list | `y` Copy · `e` edit · `E` external editor · `m` move · `c` duplicate · `d` delete · `s` cycle sort |
 | Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap |
@@ -73,6 +73,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - A new Tag is typed on a row placed where the name will sort among the Tags, in the order the Tags Pane lists them. The row moves as the name is typed, and an empty name sorts first. The new Tag becomes the Browse selection once it is created. A name that already exists, compared case-insensitively, is refused with "Tag go already exists", which names the existing Tag with its own spelling, not the typed one. A comma is refused with "Tag name contains a comma", and a blank name with "Tag name is blank". A refused name stays in the row to be fixed.
 - Renaming a Tag onto another Tag's name merges the two. The other Tag survives with the typed spelling, every Snippet that carried either Tag carries it once, and the cursor moves onto it.
 - Deleting a Tag no Snippet carries happens at once. Otherwise a confirmation titled "Delete Tag" asks first, default No: `Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`. A count of one reads "1 Snippet". After a delete the cursor keeps its row. When the deleted Tag held the Browse selection, the Tag now under the cursor takes it, or the Folders take it back when no Tag is left.
+- `L` opens the Language picker, titled "Default Language of" and the Folder's name, on the Default Language of the Folder under the cursor. The picked Language becomes that Folder's Default Language for the Snippets created in it from then on. Snippets already in it keep their Language. `L` does nothing on the Root, which is always `plaintext`.
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
   - A Tag: the Snippet goes to the Root and already carries the Tag, so it shows up in the list being looked at.
@@ -135,7 +136,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 
 The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
 
-- **Content that contains a tab** shows highlighted and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
+- **Content that contains a tab** shows highlighted in the Language on the Language row, which a picked Language changes, and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
 - **The tab key in editable content** indents the cursor's line with four spaces. That is visible, so nothing is silently changed.
 - **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
 - **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.
@@ -167,7 +168,9 @@ A TuiSnip-owned editor component that keeps tabs and highlights while editing is
 
 The Language picker, the Folder picker, and the Tag editor share one shape: a filter line on top and a list below, moved with the same keys as the Search popup. `enter` picks and closes, except in the Tag editor, where it toggles. `esc` closes.
 
-- The **Language picker** shows the curated `languages` list when config sets one, and `ctrl+a` switches to every Language and back.
+Typing filters the list, ignoring case: the entries that start with the filter come first, then the ones that contain it, each in list order.
+
+- The **Language picker** shows the curated `languages` list when config sets one, in the config's order, and `ctrl+a` switches to every Language and back, keeping the filter. Every Language is listed by name, ignoring case. The picker opens on the current Language, and says "No Language matches." when the filter matches none. From the edit overlay it is titled "Pick a Language", and the picked Language is an unsaved change.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
 - **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.

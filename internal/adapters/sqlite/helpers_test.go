@@ -192,7 +192,12 @@ func editedSnippet(t *testing.T, stored domain.Snippet, content string) domain.S
 	title, err := value.NewTitle("edited")
 	require.NoError(t, err)
 
-	edited, err := stored.Edit(title, stored.Description(), mustContent(t, content), stored.UpdatedAt().Add(time.Hour))
+	language, err := value.NewLanguage("Go")
+	require.NoError(t, err)
+
+	edited, err := stored.Edit(
+		title, stored.Description(), language, mustContent(t, content), stored.UpdatedAt().Add(time.Hour),
+	)
 	require.NoError(t, err)
 
 	return edited

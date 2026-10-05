@@ -103,6 +103,62 @@ func TestModel_folders(t *testing.T) {
 	})
 }
 
+func TestModel_folderDefaultLanguage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("sets the picked Default Language and picks again from the reloaded one", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		changed := testkit.Folder(t, testkit.FolderSpec{ID: sample.Docker.ID(), Name: "docker", DefaultLanguage: "Go"})
+		setter := NewMockFolderDefaultLanguageSetter(t)
+		setter.EXPECT().
+			Run(mock.Anything, folder.SetDefaultLanguageInput{FolderID: sample.Docker.ID(), Language: "Go"}).
+			Return(changed, nil).
+			Twice()
+
+		lister := listerOf(t)
+		listingIn(lister, sample.Docker.ID())
+		reloaded := sample.Tree
+		reloaded.Folders = append(
+			[]browse.FolderNode{{Folder: changed, SnippetCount: 0, Children: nil}},
+			reloaded.Folders[1:]...)
+		trees := treesOf(t, sample.Tree, reloaded)
+		trees.EXPECT().Run(mock.Anything, browse.FolderTreeInput{}).Return(reloaded, nil).Once()
+		screen := start(
+			t,
+			folderModel(t, folderActions{lister: lister, trees: trees, setter: setter}),
+			wideWidth,
+			wideHeight,
+		)
+		screen.press(keypress.Letter('j'), keypress.Letter('L'))
+		screen.press(keypress.Typed("go")...)
+		screen.press(keypress.Special(tea.KeyEnter))
+
+		screen.press(keypress.Letter('L'), keypress.Special(tea.KeyEnter))
+
+		assert.NotContains(t, screen.screen(), "Default Language of docker")
+	})
+
+	t.Run("reports a failed change", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		setter := NewMockFolderDefaultLanguageSetter(t)
+		setter.EXPECT().Run(mock.Anything, mock.Anything).Return(domain.Folder{}, errDatabaseLocked)
+
+		lister := listerOf(t)
+		listingIn(lister, sample.Docker.ID())
+		screen := start(t, folderModel(t, folderActions{
+			lister: lister, trees: treeOf(t, sample.Tree), setter: setter,
+		}), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('j'), keypress.Letter('L'), keypress.Special(tea.KeyEnter))
+
+		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
+	})
+}
+
 func TestModel_folderDelete(t *testing.T) {
 	t.Parallel()
 
@@ -219,6 +275,7 @@ type folderActions struct {
 	renamer   tui.FolderRenamer
 	previewer tui.FolderDeletePreviewer
 	deleter   tui.FolderDeleter
+	setter    tui.FolderDefaultLanguageSetter
 	tags      tui.TagLister
 }
 
@@ -236,6 +293,7 @@ func folderModel(t *testing.T, with folderActions) tui.Model {
 		folderRenamer:         with.renamer,
 		folderDeletePreviewer: with.previewer,
 		folderDeleter:         with.deleter,
+		defaultLanguageSetter: with.setter,
 	})
 }
 

@@ -197,6 +197,29 @@ func TestPane_WithTree(t *testing.T) {
 	})
 }
 
+func TestPane_SelectedFolder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("gives the Folder under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+
+		selected, ok := withCursorOn(samplePane(t, sample), sample.Tests.ID()).SelectedFolder()
+
+		assert.True(t, ok)
+		assert.Equal(t, sample.Tests, selected)
+	})
+
+	t.Run("gives no Folder on the Root", func(t *testing.T) {
+		t.Parallel()
+
+		_, ok := samplePane(t, foldertree.New(t)).SelectedFolder()
+
+		assert.False(t, ok)
+	})
+}
+
 func TestPane_DefaultLanguageOf(t *testing.T) {
 	t.Parallel()
 

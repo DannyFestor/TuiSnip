@@ -65,6 +65,17 @@ func TestSettingsFrom(t *testing.T) {
 		)
 	})
 
+	t.Run("passes the curated Languages through in their order", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := loadConfig(t, "languages = [\"YAML\", \"Go\"]\n")
+
+		curated := bootstrap.SettingsFrom(cfg, time.UTC, nothingRemembered()).Languages
+
+		assert.Equal(t, cfg.Languages, curated)
+		assert.Equal(t, "YAML", curated[0].String())
+	})
+
 	t.Run("passes the Location through", func(t *testing.T) {
 		t.Parallel()
 

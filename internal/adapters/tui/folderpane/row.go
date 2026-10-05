@@ -19,6 +19,7 @@ const (
 
 type row struct {
 	folderID     domain.FolderID
+	folder       domain.Folder
 	prefix       string
 	name         string
 	childIndent  string
@@ -34,6 +35,7 @@ type line struct {
 func rowsOf(tree browse.Tree, collapsed collapsedSet) []row {
 	rows := []row{{
 		folderID:     domain.FolderID{},
+		folder:       domain.Folder{},
 		prefix:       rootPrefix,
 		name:         rootName,
 		childIndent:  "",
@@ -52,6 +54,7 @@ func appendNodes(rows []row, nodes []browse.FolderNode, depth int, collapsed col
 		isCollapsed := collapsed.has(node.Folder.ID())
 		rows = append(rows, row{
 			folderID:     node.Folder.ID(),
+			folder:       node.Folder,
 			prefix:       indent + markerOf(node, isCollapsed),
 			name:         node.Folder.Name().String(),
 			childIndent:  indent + indentPerLevel,
@@ -84,7 +87,8 @@ func (r row) count() string {
 
 func linesOf(rows []row) []line {
 	lines := make([]line, 0, len(rows))
-	for _, shown := range rows {
+	for index := range rows {
+		shown := &rows[index]
 		lines = append(lines, line{text: shown.prefix + shown.name, meta: shown.count()})
 	}
 

@@ -128,7 +128,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 | Scope | Binding: default keys |
 |---|---|
 | `global` | `quit` q · `help` ? · `search` / · `zoom` z · `new_snippet` n · `capture` p · `focus_next` tab · `focus_prev` shift+tab · `focus_right` l, right · `focus_left` h, left · `focus_folders` 1 · `focus_tags` 2 · `focus_list` 3 · `focus_snippet` 4 · `open` enter · `back` esc · `down` j, down · `up` k, up · `top` g, home · `bottom` G, end · `page_down` pgdown, ctrl+d · `page_up` pgup, ctrl+u |
-| `folders` | `new_folder` N · `rename` r · `delete` d · `move` m · `collapse` space |
+| `folders` | `new_folder` N · `rename` r · `delete` d · `move` m · `collapse` space · `language` L |
 | `tags` | `new_tag` N · `rename` r · `delete` d |
 | `snippet_list` | `copy` y · `edit` e · `open_in_editor` E · `move` m · `duplicate` c · `delete` d · `cycle_sort` s |
 | `snippet_pane` | `copy` y · `edit` e · `open_in_editor` E · `wrap` w |
@@ -141,6 +141,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 
 - `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag.
 - `rename` and `delete` act on the row under the cursor in `folders` or `tags`. `move` exists only for Folders.
+- `folders.language` opens the Language picker on the Folder under the cursor and sets its Default Language. Snippets already in the Folder keep their Language. It does nothing on the Root.
 - `focus_right` and `focus_left` treat Folders and Tags as one column. `open` and `back` drill in and out. The details are in [the UI spec](ui.md#keyboard-navigation).
 - `up`, `down`, `top`, `bottom`, `page_up`, and `page_down` move the cursor in Folders, Tags, and the Snippet list, and scroll the Snippet pane.
 - `editor.open_field` moves on from a text field, opens the Tag editor or the Language picker on those fields, and enters the textarea on Content.

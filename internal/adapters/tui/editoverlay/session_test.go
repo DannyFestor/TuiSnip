@@ -137,7 +137,7 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen := editing(t)
 
-		assert.Equal(t, "ctrl+s save · esc cancel · down field", screen.Hints())
+		assert.Equal(t, "ctrl+s save · esc cancel · down field · ctrl+l Language", screen.Hints())
 	})
 
 	t.Run("shows the content Bindings inside Content", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestSession_save(t *testing.T) {
 		screen.Press(keypress.Typed("Prune")...)
 		screen.Press(keypress.Special(tea.KeyTab))
 		screen.Press(keypress.Typed("Reclaim")...)
-		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("docker")...)
 		screen.Press(keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("prune")...)
@@ -195,6 +195,7 @@ func TestSession_save(t *testing.T) {
 		opened, _ := editoverlay.New(
 			testsettings.Default(t).Keys,
 			look.NewStyles(look.SchemeDark),
+			nil,
 			editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}, Language: value.PlainText()},
 		)
 		screen := overlaytest.Open(t, screenSize(), opened)
@@ -206,6 +207,7 @@ func TestSession_save(t *testing.T) {
 		created := snippet.CreateInput{
 			Title:       "x",
 			Description: "",
+			Language:    value.PlainText().String(),
 			Content:     "",
 			FolderID:    domain.FolderID{},
 			Tags:        []domain.Tag{tag},
@@ -216,22 +218,19 @@ func TestSession_save(t *testing.T) {
 		}, screen.Outcomes())
 	})
 
-	t.Run("up on the first line of Content returns to Description", func(t *testing.T) {
+	t.Run("up on the first line of Content returns to Language", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
 
-		screen.Press(
-			keypress.Special(tea.KeyDown),
-			keypress.Special(tea.KeyDown),
-			keypress.Special(tea.KeyDown),
-		)
+		screen.Press(enterContent()...)
 		screen.Press(keypress.Typed("body")...)
 		screen.Press(keypress.Special(tea.KeyUp))
 		screen.Press(keypress.Typed("more")...)
 		screen.Press(save())
 
-		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "more", "body")}}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "body")}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "› Language")
 		assert.Contains(t, screen.Screen(), contentEntryHint)
 	})
 
@@ -269,11 +268,8 @@ func TestSession_save(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(
-			keypress.Special(tea.KeyDown),
-			keypress.Special(tea.KeyDown),
-			keypress.Special(tea.KeyDown),
-		)
+		screen.Press(toContent()...)
+		screen.Press(keypress.Special(tea.KeyDown))
 		screen.Press(keypress.Typed("body")...)
 		screen.Press(save())
 
@@ -285,7 +281,7 @@ func TestSession_save(t *testing.T) {
 
 		screen := editing(t)
 
-		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(toContent()...)
 		screen.Press(keypress.Typed("lost")...)
 		screen.Press(save())
 
@@ -839,6 +835,171 @@ func TestSession_indent(t *testing.T) {
 		screen.Press(keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "x  a")}}, screen.Outcomes())
+	})
+}
+
+func TestSession_language(t *testing.T) {
+	t.Parallel()
+
+	t.Run("starts a new Snippet in plain text and names the keys that pick", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		assert.Contains(t, screen.Screen(), "  Language    plaintext   (enter or ctrl+l to pick)")
+	})
+
+	t.Run("starts a new Snippet in the Destination's Language with nothing unsaved", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingIn(t, destinationIn(t, "Go"))
+
+		assert.Contains(t, screen.Screen(), "  Language    Go   (enter or ctrl+l to pick)")
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+
+		screen.Press(save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Go", "")}}, screen.Outcomes())
+	})
+
+	t.Run("saves a new Snippet in a picked Language instead of the Destination's", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingIn(t, destinationIn(t, "Go"))
+
+		screen.Press(pickLanguage())
+		screen.Press(keypress.Typed("bash")...)
+		screen.Press(keypress.Special(tea.KeyEnter), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Bash", "")}}, screen.Outcomes())
+	})
+
+	t.Run("names only the bound pick key", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeEditor][binding.OpenField] = []string{}
+		screen := editingWith(t, keys)
+
+		assert.Contains(t, screen.Screen(), "plaintext   (ctrl+l to pick)")
+	})
+
+	t.Run("names no pick key when none is bound", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeEditor][binding.OpenField] = []string{}
+		keys[binding.ScopeEditor][binding.PickLanguage] = []string{}
+		screen := editingWith(t, keys)
+
+		assert.NotContains(t, screen.Screen(), "to pick")
+	})
+
+	t.Run("enter on Language opens the Language picker", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(toLanguage()...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Contains(t, screen.Screen(), languagePickerTitle)
+		assert.Equal(t, pickerHints, screen.Hints())
+	})
+
+	t.Run("down on Language moves on to Content", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(toContent()...)
+
+		assert.Contains(t, screen.Screen(), "› Content")
+		assert.NotContains(t, screen.Screen(), languagePickerTitle)
+	})
+
+	t.Run("pick_language opens the Language picker from Title", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(pickLanguage())
+
+		assert.Contains(t, screen.Screen(), languagePickerTitle)
+	})
+
+	t.Run("pick_language opens the Language picker from inside Content", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Press(pickLanguage())
+
+		assert.Contains(t, screen.Screen(), languagePickerTitle)
+	})
+
+	t.Run("opens the Language picker with the configured key", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		keys[binding.ScopeEditor][binding.PickLanguage] = []string{"ctrl+g"}
+		screen := editingWith(t, keys)
+
+		screen.Press(keypress.Ctrl('g'))
+
+		assert.Contains(t, screen.Screen(), languagePickerTitle)
+	})
+
+	t.Run("a picked Language is an unsaved change that the save carries", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(pickLanguage())
+		screen.Press(keypress.Typed("bash")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Contains(t, screen.Screen(), unsavedTitle)
+		assert.Contains(t, screen.Screen(), "Language    Bash")
+
+		screen.Press(save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Bash", "")}}, screen.Outcomes())
+	})
+
+	t.Run("closing the Language picker keeps the Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(pickLanguage(), keypress.Special(tea.KeyEscape))
+
+		assert.True(t, screen.IsOpen())
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+		assert.NotContains(t, screen.Screen(), languagePickerTitle)
+	})
+
+	t.Run("keeps typing into Content after a pick from inside it", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Letter('a'), pickLanguage(), keypress.Special(tea.KeyEnter), keypress.Letter('b'))
+		screen.Press(save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "ab")}}, screen.Outcomes())
+	})
+
+	t.Run("offers only the curated Languages", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingOffering(t, []value.Language{language(t, "YAML"), language(t, "Go")})
+
+		screen.Press(pickLanguage(), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Go", "")}}, screen.Outcomes())
 	})
 }
 

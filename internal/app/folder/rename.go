@@ -9,11 +9,11 @@ import (
 )
 
 type Rename struct {
-	repo  RenameRepository
+	repo  EditRepository
 	clock Clock
 }
 
-func NewRename(repo RenameRepository, clock Clock) (*Rename, error) {
+func NewRename(repo EditRepository, clock Clock) (*Rename, error) {
 	err := errors.Join(
 		domain.RequireDependency("repo", repo),
 		domain.RequireDependency("clock", clock),

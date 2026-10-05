@@ -2,7 +2,6 @@ package mainscreen
 
 import (
 	"fmt"
-	"time"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -13,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/helpoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
@@ -20,14 +20,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 type Screen struct {
 	keys            binding.Keys
 	global          binding.Set
+	folderKeys      binding.Set
 	listKeys        binding.Set
 	paneKeys        binding.Set
 	styles          look.Styles
+	curated         []value.Language
 	box             look.Size
 	layout          layout
 	focus           pane
@@ -37,8 +40,8 @@ type Screen struct {
 	status          string
 }
 
-func New(keys binding.Keys, styles look.Styles, location *time.Location, remembered Remembered) (Screen, error) {
-	label, err := orderLabel(remembered.SortOrder)
+func New(keys binding.Keys, styles look.Styles, options Options) (Screen, error) {
+	label, err := orderLabel(options.Remembered.SortOrder)
 	if err != nil {
 		return Screen{}, fmt.Errorf("mainscreen.New: %w", err)
 	}
@@ -46,16 +49,19 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location, remembe
 	return Screen{
 		keys:            keys,
 		global:          keys.For(binding.ScopeGlobal),
+		folderKeys:      keys.For(binding.ScopeFolders),
 		listKeys:        keys.For(binding.ScopeSnippetList),
 		paneKeys:        keys.For(binding.ScopeSnippetPane),
 		styles:          styles,
+		curated:         options.Languages,
 		box:             look.Size{Width: 0, Height: 0},
 		layout:          arrange(look.Size{Width: 0, Height: 0}, paneFolders, paneFolders),
 		focus:           paneFolders,
 		selectionHolder: paneFolders,
 		zoomed:          false,
-		panes:           newPanes(keys, styles, location, remembered.CollapsedFolders).withOrderLabel(label),
-		status:          "",
+		panes: newPanes(keys, styles, options.Location, options.Remembered.CollapsedFolders).
+			withOrderLabel(label),
+		status: "",
 	}, nil
 }
 
@@ -149,11 +155,24 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return s.opening(editoverlay.Editing(
 			s.keys,
 			s.styles,
+			s.curated,
 			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
 		))
 	}
 
+	if filed, ok := s.defaultLanguageAsked(msg); ok {
+		return s.opening(languagepicker.New(s.keys, s.styles, defaultLanguageOffer(filed, s.curated)))
+	}
+
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) defaultLanguageAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {
+	if s.focus != paneFolders || !s.folderKeys.Matches(msg, binding.Language) {
+		return domain.Folder{}, false
+	}
+
+	return s.panes.folders.SelectedFolder()
 }
 
 func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
@@ -163,7 +182,7 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	case s.global.Matches(msg, binding.Help):
 		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp())), true
 	case s.global.Matches(msg, binding.NewSnippet):
-		return s.opening(editoverlay.New(s.keys, s.styles, s.destination())), true
+		return s.opening(editoverlay.New(s.keys, s.styles, s.curated, s.destination())), true
 	case s.global.Matches(msg, binding.Capture):
 		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
@@ -316,7 +335,9 @@ func (s Screen) captured(content string) outcome.Step {
 		return outcome.Stay(s.withStatus(refusal))
 	}
 
-	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.destination(), content))
+	captured := editoverlay.Captured{Destination: s.destination(), Content: content}
+
+	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.curated, captured))
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {

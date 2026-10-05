@@ -46,17 +46,19 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Folder is deleted
-      editoverlay/           the edit overlay: the form, the save it asks for, and its confirmations
+      editoverlay/           the edit overlay: the form, the Language picker it opens, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
       helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
+      languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick
       look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
+      picker/                the shape the pickers share: a filter line over a list of text choices, moved and picked with the picker Scope
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet

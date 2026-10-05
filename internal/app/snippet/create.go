@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 type Create struct {
@@ -30,7 +29,7 @@ func NewCreate(inserter Inserter, ids IDGenerator, clock Clock) (*Create, error)
 }
 
 func (c *Create) Run(ctx context.Context, input CreateInput) (domain.Snippet, error) {
-	parsed, err := parseFields(input.Title, input.Description, input.Content)
+	parsed, err := parseFields(input.Title, input.Description, input.Language, input.Content)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
@@ -49,7 +48,7 @@ func (c *Create) Run(ctx context.Context, input CreateInput) (domain.Snippet, er
 }
 
 func (c *Create) filed(parsed fields, input CreateInput, now time.Time) (domain.Snippet, error) {
-	fragment, err := domain.NewFragment(c.ids.NewFragmentID(), value.PlainText(), parsed.content, now, now)
+	fragment, err := domain.NewFragment(c.ids.NewFragmentID(), parsed.language, parsed.content, now, now)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("new fragment: %w", err)
 	}

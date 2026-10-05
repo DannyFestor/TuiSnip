@@ -67,6 +67,9 @@ rename = ["r"]
 delete = ["d"]
 move = ["m"]
 collapse = ["space"]
+# Picks the Default Language new Snippets in the Folder get. Snippets already
+# in it keep their Language.
+language = ["L"]
 
 [bindings.tags]
 new_tag = ["N"]

@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
@@ -142,6 +143,57 @@ func TestEditing_save(t *testing.T) {
 		reported := outcome.SnippetReloaded{ID: stored.ID(), Selection: browsed()}
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(reported))
 		assert.False(t, screen.IsOpen())
+	})
+}
+
+func TestEditing_language(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shows the Fragment's Language", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, storedSnippet(t, "echo hi"))
+
+		assert.Contains(t, screen.Screen(), "  Language    Go   (enter or ctrl+l to pick)")
+	})
+
+	t.Run("saves a picked Language", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "echo hi")
+		screen := editingStored(t, stored)
+
+		screen.Press(pickLanguage())
+		screen.Press(keypress.Typed("bash")...)
+		screen.Press(keypress.Special(tea.KeyEnter), save())
+
+		want := updateInput(stored, "Prune", "echo hi")
+		want.Language = "Bash"
+		assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
+	})
+
+	t.Run("keeps a Language the curated list leaves out", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "echo hi")
+		screen := editingStoredOffering(t, []value.Language{language(t, "YAML")}, stored)
+
+		screen.Press(keypress.Letter('!'), save())
+
+		want := updateInput(stored, "Prune!", "echo hi")
+		assert.Equal(t, "Go", want.Language)
+		assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
+		assert.Contains(t, screen.Screen(), "Language    Go")
+	})
+
+	t.Run("picking the same Language leaves nothing unsaved", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, storedSnippet(t, "echo hi"))
+
+		screen.Press(pickLanguage(), keypress.Special(tea.KeyEnter))
+
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
 	})
 }
 
@@ -347,6 +399,7 @@ func updateInput(stored domain.Snippet, title, content string) snippet.UpdateInp
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     stored.Description().String(),
+		Language:        stored.FirstFragment().Language().String(),
 		Content:         content,
 	}
 }

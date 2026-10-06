@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
@@ -75,6 +76,30 @@ func TestSession_tags(t *testing.T) {
 		assert.Contains(t, screen.Screen(), tagEditorFilter)
 		assert.Regexp(t, `docker +2`, screen.Screen())
 		assert.Equal(t, tagEditorHints, screen.Hints())
+	})
+
+	t.Run("lists the Tags that arrive while the Tag editor is open, keeping the chosen ones", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "echo hi").Retagged([]domain.Tag{docker})
+		screen := editingStoredWithOptions(t, editoverlay.Options{Languages: nil, Tags: nil}, stored)
+
+		screen.Press(editTags())
+		screen.Send(arrived.Tags{Tags: listed.Tags})
+
+		assert.Regexp(t, `✓ docker +2`, screen.Screen())
+		assert.Regexp(t, `  oneliner +1`, screen.Screen())
+	})
+
+	t.Run("offers the Tags that arrived before the Tag editor opened", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingWithOptions(t, editoverlay.Options{Languages: nil, Tags: nil}, destination())
+
+		screen.Send(arrived.Tags{Tags: listed.Tags})
+		screen.Press(editTags())
+
+		assert.Regexp(t, `oneliner +1`, screen.Screen())
 	})
 
 	t.Run("down on Tags moves on to Language", func(t *testing.T) {

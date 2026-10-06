@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -58,6 +59,8 @@ func (e Editor) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(e.resized(msg.Box))
 	case look.Restyled:
 		return outcome.Stay(e.restyled(msg.Styles))
+	case arrived.Tags:
+		return outcome.Stay(e.withListed(msg.Tags))
 	}
 
 	return e.listUpdated(msg)
@@ -112,6 +115,13 @@ func (e Editor) toggled(picked row) outcome.Step {
 	next.list = next.list.WithCursorOn(picked.landing())
 
 	return outcome.Stay(next)
+}
+
+func (e Editor) withListed(listed []browse.TagCount) Editor {
+	next := e
+	next.listed = listed
+
+	return next.relisted()
 }
 
 func (e Editor) relisted() Editor {

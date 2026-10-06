@@ -4,11 +4,14 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/picker"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 const (
@@ -23,24 +26,21 @@ type Picker struct {
 	destinations []destination
 	list         picker.List
 	outer        look.Size
+	steered      bool
 }
 
 func New(keys binding.Keys, styles look.Styles, offer Offer) (Picker, tea.Cmd) {
-	destinations := destinationsIn(offer.Tree, offer.Moving)
-	list, cmd := picker.New(
-		keys,
-		picker.Labels{Prompt: filterPrompt, NoMatches: noMatches},
-		choicesOf(destinations, folderpath.New(offer.Tree)),
-	)
-
-	return Picker{
+	list, cmd := picker.New(keys, picker.Labels{Prompt: filterPrompt, NoMatches: noMatches}, nil)
+	opened := Picker{
 		styles:       styles,
 		offer:        offer,
-		destinations: destinations,
-		list: list.WithGreyedOut(refusedIndexes(destinations)...).
-			WithCursorOnChoice(indexOf(destinations, offer.Current)),
-		outer: look.Size{Width: 0, Height: 0},
-	}, cmd
+		destinations: nil,
+		list:         list,
+		outer:        look.Size{Width: 0, Height: 0},
+		steered:      false,
+	}
+
+	return opened.withTree(offer.Tree), cmd
 }
 
 func (p Picker) Update(msg tea.Msg) outcome.Step {
@@ -49,6 +49,10 @@ func (p Picker) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.resized(msg.Box))
 	case look.Restyled:
 		return outcome.Stay(p.restyled(msg.Styles))
+	case arrived.Tree:
+		return outcome.Stay(p.withTree(msg.Tree))
+	case tea.KeyPressMsg:
+		return p.steeredBy(msg)
 	}
 
 	return p.listUpdated(msg)
@@ -64,6 +68,40 @@ func (p Picker) ShortHelp() []key.Binding {
 
 func (p Picker) FullHelp() [][]key.Binding {
 	return p.list.FullHelp()
+}
+
+func (p Picker) withTree(tree browse.Tree) Picker {
+	landing, lands := p.landing()
+	next := p
+	next.destinations = destinationsIn(tree, p.offer.Moving)
+	next.list = p.list.WithChoices(choicesOf(next.destinations, folderpath.New(tree))).
+		WithGreyedOut(refusedIndexes(next.destinations)...)
+
+	if lands {
+		next.list = next.list.WithCursorOnChoice(indexOf(next.destinations, landing))
+	}
+
+	return next
+}
+
+func (p Picker) landing() (domain.FolderID, bool) {
+	if !p.steered {
+		return p.offer.Current, true
+	}
+
+	index, ok := p.list.HighlightedIndex()
+	if !ok {
+		return domain.FolderID{}, false
+	}
+
+	return p.destinations[index].folderID, true
+}
+
+func (p Picker) steeredBy(msg tea.KeyPressMsg) outcome.Step {
+	next := p
+	next.steered = true
+
+	return next.listUpdated(msg)
 }
 
 func (p Picker) listUpdated(msg tea.Msg) outcome.Step {

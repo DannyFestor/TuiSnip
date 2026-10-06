@@ -8,6 +8,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -23,9 +24,15 @@ const (
 func picking(t *testing.T, sample foldertree.Sample, current, moving domain.FolderID) *overlaytest.Driver {
 	t.Helper()
 
+	return pickingIn(t, sample.Tree, current, moving)
+}
+
+func pickingIn(t *testing.T, tree browse.Tree, current, moving domain.FolderID) *overlaytest.Driver {
+	t.Helper()
+
 	opened, _ := folderpicker.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), folderpicker.Offer{
 		Title:   pickerTitle,
-		Tree:    sample.Tree,
+		Tree:    tree,
 		Current: current,
 		Moving:  moving,
 		Picked:  func(picked domain.FolderID) outcome.Outcome { return pickedOutcome(picked) },

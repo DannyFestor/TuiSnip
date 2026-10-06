@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
@@ -144,6 +145,33 @@ func TestModel_moveSnippet(t *testing.T) {
 			assert.Contains(t, screen.screen(), "Root / docker · Bash")
 		},
 	)
+
+	t.Run("moves to a Folder that loads while the Folder picker is open", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		snippets := sampleSnippets(t)
+		mover := NewMockSnippetMover(t)
+		mover.EXPECT().Run(mock.Anything, snippet.MoveInput{SnippetID: snippets[0].ID(), FolderID: sample.Docker.ID()}).
+			Return(domain.Snippet{}, errDatabaseLocked)
+
+		with := actions{
+			lister:     listerOf(t, snippets...),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   NewMockSnippetSearcher(t),
+			mover:      mover,
+		}
+		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('3'), keypress.Letter('m'))
+		screen.press(keypress.Typed("docker")...)
+		screen.send(mainscreen.TreeLoaded{Tree: sample.Tree})
+		screen.press(keypress.Special(tea.KeyEnter))
+
+		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
+	})
 
 	t.Run("reports a failed move", func(t *testing.T) {
 		t.Parallel()

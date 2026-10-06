@@ -29,6 +29,7 @@ func TestToggleAndCreateTagsInTheTagEditor(t *testing.T) {
 	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle, Tags: []domain.Tag{golang}})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
+	screen.waitForFrame("# docker")
 
 	screen.press(keypress.Letter('3'), keypress.Letter('e'), keypress.Ctrl('t'))
 	screen.waitForFrame(tagEditorFilter)

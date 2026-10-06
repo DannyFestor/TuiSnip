@@ -77,6 +77,8 @@ func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 
 	app, err := h.Open(t, tool)
 	require.NoError(t, err)
+	// Registered before Close so it runs after it, once the app has written its last line.
+	h.logOnFailure(t)
 	t.Cleanup(func() { require.NoError(t, app.Close()) })
 
 	return app

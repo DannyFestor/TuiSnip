@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/helpoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -170,7 +171,28 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return s.opening(languagepicker.New(s.keys, s.styles, defaultLanguageOffer(filed, s.curated)))
 	}
 
+	if offer, ok := s.moveAsked(msg); ok {
+		return s.opening(folderpicker.New(s.keys, s.styles, offer))
+	}
+
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) moveAsked(msg tea.KeyPressMsg) (folderpicker.Offer, bool) {
+	tree := s.panes.folders.Tree()
+
+	switch {
+	case s.focus == paneFolders && s.folderKeys.Matches(msg, binding.Move):
+		moving, ok := s.panes.folders.SelectedFolder()
+
+		return folderMoveOffer(moving, tree), ok
+	case s.focus == paneList && s.listKeys.Matches(msg, binding.Move):
+		moving, ok := s.panes.list.Selected()
+
+		return snippetMoveOffer(moving, tree), ok
+	}
+
+	return folderpicker.Offer{}, false
 }
 
 func (s Screen) defaultLanguageAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {

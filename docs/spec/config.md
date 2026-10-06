@@ -140,7 +140,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 | `confirm` | `yes` y · `no` n, esc, enter |
 
 - `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag.
-- `rename` acts on the row under the cursor in `folders` or `tags`, and `delete` on the row under the cursor in `folders`, `tags`, or `snippet_list`. `move` exists only for Folders.
+- `rename` acts on the row under the cursor in `folders` or `tags`, and `delete` on the row under the cursor in `folders`, `tags`, or `snippet_list`. `move` opens the Folder picker for the row under the cursor in `folders` or `snippet_list`, and does nothing on the Root. Tags don't move.
 - `snippet_list.duplicate` copies the Snippet under the cursor into the same Folder.
 - `folders.language` opens the Language picker on the Folder under the cursor and sets its Default Language. Snippets already in the Folder keep their Language. It does nothing on the Root.
 - `focus_right` and `focus_left` treat Folders and Tags as one column. `open` and `back` drill in and out. The details are in [the UI spec](ui.md#keyboard-navigation).

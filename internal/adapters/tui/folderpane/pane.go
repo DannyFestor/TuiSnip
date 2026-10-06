@@ -122,6 +122,10 @@ func (p Pane) SelectedFolder() (domain.Folder, bool) {
 	return p.selectedRow().folder, !p.Selected().IsNil()
 }
 
+func (p Pane) Tree() browse.Tree {
+	return p.tree
+}
+
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch {
 	case p.keys.Matches(msg, binding.NewFolder):

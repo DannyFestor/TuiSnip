@@ -26,6 +26,7 @@ const (
 	NewFolder    = "new_folder"
 	NewTag       = "new_tag"
 	Rename       = "rename"
+	Move         = "move"
 	Delete       = "delete"
 	Collapse     = "collapse"
 	Language     = "language"

@@ -3,6 +3,7 @@ package binding
 const (
 	labelEmptyListNewSnippet = "new Snippet"
 	labelEmptyListSearch     = "Search"
+	labelToggleOrCreate      = "toggle / create"
 )
 
 type rowRef struct {
@@ -56,7 +57,7 @@ func paneOwnHintList(scope Scope) []labelledRef {
 func nonPaneHintList(scope Scope) []labelledRef {
 	switch scope {
 	case ScopeEditor:
-		return withRowLabels(refsIn(scope, Save, Cancel, NextField, PickLanguage, OpenInEditor)...)
+		return withRowLabels(refsIn(scope, Save, Cancel, NextField, EditTags, PickLanguage, OpenInEditor)...)
 	case ScopeContent:
 		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent, OpenInEditor)...)
 	case ScopeSearch:
@@ -80,6 +81,14 @@ func emptyListHintList() []labelledRef {
 		{row: rowRef{scope: ScopeGlobal, name: Search}, label: labelEmptyListSearch},
 		{row: rowRef{scope: ScopeFolders, name: NewFolder}, label: labelNewFolder},
 		{row: rowRef{scope: ScopeGlobal, name: Help}, label: labelHelp},
+	}
+}
+
+func tagEditorHintList() []labelledRef {
+	return []labelledRef{
+		{row: rowRef{scope: ScopePicker, name: Down}, label: labelMove},
+		{row: rowRef{scope: ScopePicker, name: Accept}, label: labelToggleOrCreate},
+		{row: rowRef{scope: ScopePicker, name: Cancel}, label: labelClose},
 	}
 }
 

@@ -114,7 +114,7 @@ func TestSession_View(t *testing.T) {
 		keys[binding.ScopeEditor][binding.NextField] = []string{}
 		screen := editingWith(t, keys)
 
-		assert.NotContains(t, screen.Screen(), "to edit")
+		assert.NotRegexp(t, `Content .*to edit`, screen.Screen())
 	})
 
 	t.Run("draws in the new Styles", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen := editing(t)
 
-		want := "ctrl+s save · esc cancel · down field · ctrl+l Language · ctrl+e external editor"
+		want := "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor"
 		assert.Equal(t, want, screen.Hints())
 	})
 
@@ -164,7 +164,8 @@ func TestSession_save(t *testing.T) {
 		screen.Press(keypress.Typed("Prune")...)
 		screen.Press(keypress.Special(tea.KeyTab))
 		screen.Press(keypress.Typed("Reclaim")...)
-		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("docker")...)
 		screen.Press(keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("prune")...)
@@ -197,7 +198,7 @@ func TestSession_save(t *testing.T) {
 		opened, _ := editoverlay.New(
 			testsettings.Default(t).Keys,
 			look.NewStyles(look.SchemeDark),
-			nil,
+			editoverlay.Options{},
 			editoverlay.Destination{Selection: selection, Tags: []domain.Tag{tag}, Language: value.PlainText()},
 		)
 		screen := overlaytest.Open(t, screenSize(), opened)
@@ -213,6 +214,7 @@ func TestSession_save(t *testing.T) {
 			Content:     "",
 			FolderID:    domain.FolderID{},
 			Tags:        []domain.Tag{tag},
+			NewTags:     nil,
 		}
 		assert.Equal(t, []outcome.Outcome{
 			outcome.SaveRequested{Input: created},

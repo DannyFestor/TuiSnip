@@ -30,7 +30,7 @@ const (
 	listHint         = "y Copy · e edit · E external editor · n new · c duplicate · d delete · s sort · z zoom · / search · ? help"
 	helpHint         = "? help"
 	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
-	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+l Language · ctrl+e external editor"
+	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor"
 	folderHints      = "enter open · N new Folder · r rename · d delete · z zoom · / search · ? help"
 	firstDescription = "Stop accepting, drain, exit"
 	secondTitle      = "Prune everything"

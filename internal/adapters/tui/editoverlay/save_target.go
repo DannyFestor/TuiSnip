@@ -26,7 +26,8 @@ func (n newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Ste
 		Language:    values.language.String(),
 		Content:     values.content,
 		FolderID:    n.destination.folderID(),
-		Tags:        n.destination.Tags,
+		Tags:        values.tags.Stored(),
+		NewTags:     values.newTagNames(),
 	}})
 }
 
@@ -52,6 +53,8 @@ func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.
 		Description:     values.description,
 		Language:        values.language.String(),
 		Content:         values.content,
+		Tags:            values.tags.Stored(),
+		NewTags:         values.newTagNames(),
 	}})
 }
 

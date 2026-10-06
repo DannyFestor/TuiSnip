@@ -73,6 +73,34 @@ func TestModel_editOverlay(t *testing.T) {
 		assert.Contains(t, screen.screen(), editOverlayTitle)
 	})
 
+	t.Run("saves the Tags toggled and created in the Tag editor", func(t *testing.T) {
+		t.Parallel()
+
+		tags := sampleTagCounts(t)
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
+			Title: "Prune", Language: "plaintext", Tags: []domain.Tag{tags[1].Tag}, NewTags: []string{"api"},
+		}).Return(domain.Snippet{}, errDatabaseLocked)
+		with := actions{
+			lister:     listerOf(t),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    creator,
+			searcher:   NewMockSnippetSearcher(t),
+			tagLister:  tagsOf(t, tags...),
+		}
+		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('n'))
+		screen.press(keypress.Typed("Prune")...)
+		screen.press(keypress.Ctrl('t'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
+		screen.press(keypress.Typed("api")...)
+		screen.press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape), keypress.Ctrl('s'))
+
+		assert.Contains(t, screen.screen(), "#api #go")
+		assert.Contains(t, screen.screen(), genericFailure)
+	})
+
 	t.Run("updates the selected Snippet and shows the change", func(t *testing.T) {
 		t.Parallel()
 

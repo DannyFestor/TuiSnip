@@ -57,7 +57,7 @@ func editingWith(t *testing.T, keys binding.Keys) *overlaytest.Driver {
 func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(keys, styles, nil, destination())
+	opened, _ := editoverlay.New(keys, styles, editoverlay.Options{}, destination())
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -65,7 +65,9 @@ func editingStyled(t *testing.T, keys binding.Keys, styles look.Styles) *overlay
 func editingIn(t *testing.T, filedIn editoverlay.Destination) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), nil, filedIn)
+	opened, _ := editoverlay.New(
+		testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), editoverlay.Options{}, filedIn,
+	)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -82,9 +84,15 @@ func destinationIn(t *testing.T, languageName string) editoverlay.Destination {
 func editingOffering(t *testing.T, curated []value.Language) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := editoverlay.New(
-		testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), curated, destination(),
-	)
+	return editingWithOptions(t, editoverlay.Options{Languages: curated, Tags: nil}, destination())
+}
+
+func editingWithOptions(
+	t *testing.T, options editoverlay.Options, filedIn editoverlay.Destination,
+) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := editoverlay.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), options, filedIn)
 
 	return overlaytest.Open(t, screenSize(), opened)
 }
@@ -92,10 +100,16 @@ func editingOffering(t *testing.T, curated []value.Language) *overlaytest.Driver
 func editingStoredOffering(t *testing.T, curated []value.Language, stored domain.Snippet) *overlaytest.Driver {
 	t.Helper()
 
+	return editingStoredWithOptions(t, editoverlay.Options{Languages: curated, Tags: nil}, stored)
+}
+
+func editingStoredWithOptions(t *testing.T, options editoverlay.Options, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
 	opened, _ := editoverlay.Editing(
 		testsettings.Default(t).Keys,
 		look.NewStyles(look.SchemeDark),
-		curated,
+		options,
 		editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
 	)
 
@@ -114,7 +128,7 @@ func capturingIn(t *testing.T, filedIn editoverlay.Destination, captured string)
 	opened, _ := editoverlay.Capturing(
 		testsettings.Default(t).Keys,
 		look.NewStyles(look.SchemeDark),
-		nil,
+		editoverlay.Options{},
 		editoverlay.Captured{Destination: filedIn, Content: captured},
 	)
 
@@ -154,7 +168,7 @@ func editingStoredStyled(
 	t.Helper()
 
 	opened, _ := editoverlay.Editing(
-		keys, styles, nil, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+		keys, styles, editoverlay.Options{}, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
 	)
 
 	return overlaytest.Open(t, screenSize(), opened)
@@ -188,11 +202,19 @@ func toContent() []tea.KeyPressMsg {
 }
 
 func toLanguage() []tea.KeyPressMsg {
+	return append(toTags(), keypress.Special(tea.KeyDown))
+}
+
+func toTags() []tea.KeyPressMsg {
 	return []tea.KeyPressMsg{keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown)}
 }
 
 func pickLanguage() tea.KeyPressMsg {
 	return keypress.Ctrl('l')
+}
+
+func editTags() tea.KeyPressMsg {
+	return keypress.Ctrl('t')
 }
 
 func language(t *testing.T, name string) value.Language {
@@ -244,5 +266,6 @@ func inputIn(title, description, language, content string) snippet.CreateInput {
 		Content:     content,
 		FolderID:    destinationFolderID(),
 		Tags:        nil,
+		NewTags:     nil,
 	}
 }

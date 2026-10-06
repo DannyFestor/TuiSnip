@@ -47,9 +47,6 @@ type App struct {
 	RenameTag                *tag.Rename
 	PreviewDeleteTag         *tag.PreviewDelete
 	DeleteTag                *tag.Delete
-	SnippetRepository        *sqlite.SnippetRepository
-	FolderRepository         *sqlite.FolderRepository
-	TagRepository            *sqlite.TagRepository
 	model                    tui.Model
 	database                 *sqlite.Database
 	log                      *logging.Log
@@ -241,9 +238,6 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		RenameTag:                tags.rename,
 		PreviewDeleteTag:         tags.previewDelete,
 		DeleteTag:                tags.delete,
-		SnippetRepository:        repos.snippets,
-		FolderRepository:         repos.folders,
-		TagRepository:            repos.tags,
 		model:                    tui.Model{},
 		database:                 nil,
 		log:                      nil,

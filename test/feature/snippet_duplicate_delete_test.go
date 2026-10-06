@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -19,22 +21,21 @@ func TestDuplicateMatchesTheOriginalInEveryFieldButIDsAndTimestamps(t *testing.T
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	scripts := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "scripts"})
-	shell := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
-	original := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{
+	scripts := testapp.SeedFolder(t, app, folder.CreateInput{Name: "scripts"})
+	shell := testapp.SeedTag(t, app, tag.CreateInput{Name: "shell"})
+	original := testapp.SeedSnippet(t, app, snippet.CreateInput{
 		Title:       "Prune everything",
 		Description: "Reclaim disk space",
+		Language:    "Bash",
+		Content:     "docker system prune\n",
 		FolderID:    scripts.ID(),
-		Fragment:    testkit.FragmentSpec{Language: "Bash", Content: "docker system prune\n"},
 		Tags:        []domain.Tag{shell},
 	})
 
 	duplicate, err := app.Duplicate.Run(t.Context(), snippet.DuplicateInput{SnippetID: original.ID()})
 	require.NoError(t, err)
 
-	stored, err := app.SnippetRepository.Find(t.Context(), duplicate.ID())
-	require.NoError(t, err)
+	stored := testapp.StoredSnippet(t, app, duplicate.ID())
 	assert.NotEqual(t, original.ID(), stored.ID())
 	assert.NotEqual(t, original.FirstFragment().ID(), stored.FirstFragment().ID())
 	assert.NotEqual(t, original.CreatedAt(), stored.CreatedAt())
@@ -44,27 +45,23 @@ func TestDuplicateMatchesTheOriginalInEveryFieldButIDsAndTimestamps(t *testing.T
 	assert.Equal(t, original.Tags(), stored.Tags())
 	assert.Equal(t, original.FirstFragment().Language(), stored.FirstFragment().Language())
 	assert.Equal(t, original.FirstFragment().Content(), stored.FirstFragment().Content())
-
-	kept, err := app.SnippetRepository.Find(t.Context(), original.ID())
-	require.NoError(t, err)
-	assert.Equal(t, original, kept)
+	assert.Equal(t, original, testapp.StoredSnippet(t, app, original.ID()))
 }
 
 func TestDeletingASnippetLeavesItsTagsInPlace(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	shared := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	only := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "testing"})
-	deleted := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "deleted", Tags: []domain.Tag{shared, only}})
-	kept := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "kept", Tags: []domain.Tag{shared}})
+	shared := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	only := testapp.SeedTag(t, app, tag.CreateInput{Name: "testing"})
+	deleted := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "deleted", Tags: []domain.Tag{shared, only}})
+	kept := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "kept", Tags: []domain.Tag{shared}})
 
 	err := app.Delete.Run(t.Context(), snippet.DeleteInput{SnippetID: deleted.ID()})
 	require.NoError(t, err)
 
-	_, err = app.SnippetRepository.Find(t.Context(), deleted.ID())
-	require.ErrorIs(t, err, domain.ErrNotFound)
+	_, stored := testapp.FindSnippet(t, app, deleted.ID())
+	assert.False(t, stored)
 	assert.Equal(t, []domain.Snippet{kept}, listAtRoot(t, app))
 	assert.Equal(t, []browse.TagCount{
 		{Tag: shared, SnippetCount: 1},

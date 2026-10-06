@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -37,7 +38,7 @@ func TestCreatingATagWhoseNameExistsIgnoringCaseIsRefused(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	existing := seededTag(t, app, testkit.TagSpec{ID: testkit.NewSequentialIDs().NewTagID(), Name: "go"})
+	existing := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
 
 	_, err := app.CreateTag.Run(t.Context(), tag.CreateInput{Name: "Go"})
 
@@ -49,11 +50,10 @@ func TestRenamingATagOntoAnotherMergesThemLeavingEachSnippetWithTheSurvivorOnce(
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	merged := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "golang"})
-	both := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, merged}})
-	onlyMerged := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{merged}})
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	merged := testapp.SeedTag(t, app, tag.CreateInput{Name: "golang"})
+	both := testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang, merged}})
+	onlyMerged := testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{merged}})
 
 	survivor, err := app.RenameTag.Run(t.Context(), tag.RenameInput{TagID: merged.ID(), Name: "Go"})
 
@@ -67,9 +67,7 @@ func TestRenamingATagOntoAnotherMergesThemLeavingEachSnippetWithTheSurvivorOnce(
 	assert.Equal(t, 2, listed[0].SnippetCount)
 
 	for _, carrier := range []domain.Snippet{both, onlyMerged} {
-		stored, findErr := app.SnippetRepository.Find(t.Context(), carrier.ID())
-		require.NoError(t, findErr)
-		assert.Equal(t, []domain.TagID{survivor.ID()}, tagIDsOf(stored))
+		assert.Equal(t, []domain.TagID{survivor.ID()}, tagIDsOf(testapp.StoredSnippet(t, app, carrier.ID())))
 	}
 }
 
@@ -86,11 +84,10 @@ func TestTagDeletedFromEverySnippetAfterPreviewCountsThem(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	docker := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "docker"})
-	carrier := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
-	seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	docker := testapp.SeedTag(t, app, tag.CreateInput{Name: "docker"})
+	carrier := testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang, docker}})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang}})
 
 	preview, err := app.PreviewDeleteTag.Run(t.Context(), tag.PreviewDeleteInput{TagID: golang.ID()})
 	require.NoError(t, err)
@@ -99,9 +96,7 @@ func TestTagDeletedFromEverySnippetAfterPreviewCountsThem(t *testing.T) {
 	require.NoError(t, app.DeleteTag.Run(t.Context(), tag.DeleteInput{TagID: golang.ID()}))
 
 	assert.Equal(t, []browse.TagCount{{Tag: docker, SnippetCount: 1}}, listedTags(t, app))
-	stored, err := app.SnippetRepository.Find(t.Context(), carrier.ID())
-	require.NoError(t, err)
-	assert.Equal(t, []domain.Tag{docker}, stored.Tags())
+	assert.Equal(t, []domain.Tag{docker}, testapp.StoredSnippet(t, app, carrier.ID()).Tags())
 }
 
 func listedTags(t *testing.T, app *bootstrap.App) []browse.TagCount {
@@ -113,32 +108,15 @@ func listedTags(t *testing.T, app *bootstrap.App) []browse.TagCount {
 	return listed
 }
 
-func TestTagNamesDifferingOnlyInCaseAreOneTagKeepingTheFirstSpelling(t *testing.T) {
-	t.Parallel()
-
-	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	first := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "Go"})
-
-	err := app.TagRepository.Insert(t.Context(), testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"}))
-
-	require.ErrorIs(t, err, domain.ErrTagNameTaken)
-
-	listed, err := app.TagList.Run(t.Context(), browse.TagListInput{})
-	require.NoError(t, err)
-	assert.Equal(t, []browse.TagCount{{Tag: first, SnippetCount: 0}}, listed)
-}
-
 func TestTagListCountsTheSnippetsCarryingEachTag(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	docker := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "docker"})
-	unused := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "unused"})
-	seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
-	seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	docker := testapp.SeedTag(t, app, tag.CreateInput{Name: "docker"})
+	unused := testapp.SeedTag(t, app, tag.CreateInput{Name: "unused"})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang, docker}})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang}})
 
 	listed, err := app.TagList.Run(t.Context(), browse.TagListInput{})
 
@@ -154,14 +132,13 @@ func TestSelectingATagListsEverySnippetCarryingItAcrossFolders(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	folder := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "scripts"})
-	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	atRoot := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "at the Root", Tags: []domain.Tag{golang}})
-	filed := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{
-		Title: "filed", FolderID: folder.ID(), Tags: []domain.Tag{golang},
+	scripts := testapp.SeedFolder(t, app, folder.CreateInput{Name: "scripts"})
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	atRoot := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "at the Root", Tags: []domain.Tag{golang}})
+	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{
+		Title: "filed", FolderID: scripts.ID(), Tags: []domain.Tag{golang},
 	})
-	seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "untagged", FolderID: folder.ID()})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "untagged", FolderID: scripts.ID()})
 
 	listed, err := app.SnippetsWithTag.Run(
 		t.Context(),
@@ -176,10 +153,9 @@ func TestSearchFindsASnippetByATagAlone(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	kubernetes := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "kubernetes"})
-	tagged := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "notes", Tags: []domain.Tag{kubernetes}})
-	seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Title: "other"})
+	kubernetes := testapp.SeedTag(t, app, tag.CreateInput{Name: "kubernetes"})
+	tagged := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "notes", Tags: []domain.Tag{kubernetes}})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "other"})
 
 	hits, err := app.Query.Run(t.Context(), search.QueryInput{Text: "kubernetes"})
 

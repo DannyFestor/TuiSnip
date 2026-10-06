@@ -8,8 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -25,7 +24,7 @@ func TestDuplicateAndDeleteSnippets(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	testapp.SeedSnippet(t, app, titledSnippet(t, testkit.NewSequentialIDs(), rootTitle, domain.FolderID{}))
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
 

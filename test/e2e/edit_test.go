@@ -11,7 +11,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -26,14 +25,7 @@ func TestEditSnippetKeepsTabbedContent(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	stored := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    rootTitle,
-		FolderID: domain.FolderID{},
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go", Content: tabbedContent},
-	})
-	testapp.SeedSnippet(t, app, stored)
+	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle, Language: "Go", Content: tabbedContent})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
 
@@ -44,8 +36,7 @@ func TestEditSnippetKeepsTabbedContent(t *testing.T) {
 	screen.waitForFrame(listHintsShown)
 	screen.waitForFrame(rootTitle + " edited")
 
-	saved, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
+	saved := testapp.StoredSnippet(t, app, stored.ID())
 	assert.Equal(t, rootTitle+" edited", saved.Title().String())
 	assert.Equal(t, tabbedContent, saved.FirstFragment().Content().String())
 	assert.True(t, saved.UpdatedAt().After(stored.UpdatedAt()))
@@ -55,14 +46,7 @@ func TestEditOverChangedSnippetThenReload(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	stored := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    rootTitle,
-		FolderID: domain.FolderID{},
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Content: "echo hi\n"},
-	})
-	testapp.SeedSnippet(t, app, stored)
+	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle, Content: "echo hi\n"})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
 
@@ -76,9 +60,7 @@ func TestEditOverChangedSnippetThenReload(t *testing.T) {
 	screen.waitForFrame(listHintsShown)
 	screen.waitForFrame(rootTitle + " elsewhere")
 
-	kept, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
-	assert.Equal(t, rootTitle+" elsewhere", kept.Title().String())
+	assert.Equal(t, rootTitle+" elsewhere", testapp.StoredSnippet(t, app, stored.ID()).Title().String())
 }
 
 func changeElsewhere(t *testing.T, app *bootstrap.App, loaded domain.Snippet, title string) {

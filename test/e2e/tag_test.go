@@ -8,8 +8,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -18,17 +19,10 @@ func TestCreateMergeAndDeleteTags(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	merged := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "golang"})
-	testapp.SeedTag(t, app, golang)
-	testapp.SeedTag(t, app, merged)
-	testapp.SeedSnippet(t, app, snippetWithIDs(t, ids, testkit.SnippetSpec{
-		Title: "Client", Tags: []domain.Tag{golang, merged},
-	}))
-	testapp.SeedSnippet(t, app, snippetWithIDs(t, ids, testkit.SnippetSpec{
-		Title: "Pods", Tags: []domain.Tag{merged},
-	}))
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	merged := testapp.SeedTag(t, app, tag.CreateInput{Name: "golang"})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "Client", Tags: []domain.Tag{golang, merged}})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "Pods", Tags: []domain.Tag{merged}})
 	screen := open(t, app)
 	screen.waitForFrame("# golang")
 

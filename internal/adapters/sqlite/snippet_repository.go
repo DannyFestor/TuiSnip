@@ -54,6 +54,17 @@ func (r *SnippetRepository) Delete(ctx context.Context, id domain.SnippetID) err
 	return nil
 }
 
+func (r *SnippetRepository) Move(ctx context.Context, snippet domain.Snippet) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		return moveSnippet(ctx, queries, snippet)
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.SnippetRepository.Move: %w", err)
+	}
+
+	return nil
+}
+
 func (r *SnippetRepository) Find(ctx context.Context, id domain.SnippetID) (domain.Snippet, error) {
 	snippet, err := r.loadOne(ctx, snippetByID(id))
 	if err != nil {
@@ -155,6 +166,19 @@ func deleteSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.Snip
 	}
 
 	if deleted == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
+func moveSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
+	moved, err := queries.MoveSnippet(ctx, moveSnippetParams(snippet))
+	if err != nil {
+		return fmt.Errorf("move snippet: %w", err)
+	}
+
+	if moved == 0 {
 		return domain.ErrNotFound
 	}
 

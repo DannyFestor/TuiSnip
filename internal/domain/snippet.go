@@ -123,6 +123,12 @@ func (s Snippet) Duplicate(id SnippetID, fragmentID FragmentID, now time.Time) (
 	return duplicate, nil
 }
 
+func (s Snippet) MoveTo(folderID FolderID) Snippet {
+	s.folderID = folderID
+
+	return s
+}
+
 func requireOneFragment(fragments []Fragment) error {
 	if len(fragments) != fragmentsPerSnippet {
 		return ErrNotOneFragment

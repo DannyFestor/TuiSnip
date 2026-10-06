@@ -17,6 +17,13 @@ func insertFolderParams(folder domain.Folder) sqlcgen.InsertFolderParams {
 	}
 }
 
+func moveFolderParams(folder domain.Folder) sqlcgen.MoveFolderParams {
+	return sqlcgen.MoveFolderParams{
+		ParentID: folderColumn(folder.ParentID()),
+		ID:       columnID(folder.ID()),
+	}
+}
+
 func updateFolderParams(folder domain.Folder) sqlcgen.UpdateFolderParams {
 	return sqlcgen.UpdateFolderParams{
 		Name:            folder.Name().String(),

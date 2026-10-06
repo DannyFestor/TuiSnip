@@ -364,6 +364,25 @@ func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltyp
 	return items, nil
 }
 
+const moveSnippet = `-- name: MoveSnippet :execrows
+UPDATE snippets
+SET folder_id = ?
+WHERE id = ?
+`
+
+type MoveSnippetParams struct {
+	FolderID *sqltype.ID
+	ID       sqltype.ID
+}
+
+func (q *Queries) MoveSnippet(ctx context.Context, arg MoveSnippetParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, moveSnippet, arg.FolderID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateSnippet = `-- name: UpdateSnippet :execrows
 UPDATE snippets
 SET title = ?1, description = ?2, updated_at = ?3

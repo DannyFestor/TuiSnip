@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -76,6 +77,35 @@ func (r *FolderRepository) Delete(ctx context.Context, id domain.FolderID) error
 	})
 	if err != nil {
 		return fmt.Errorf("sqlite.FolderRepository.Delete: %w", err)
+	}
+
+	return nil
+}
+
+func (r *FolderRepository) ListDescendantIDs(ctx context.Context, id domain.FolderID) ([]domain.FolderID, error) {
+	rows, err := readRows(ctx, r.db, func(queries *sqlcgen.Queries, ctx context.Context) ([]sqltype.ID, error) {
+		return queries.ListDescendantFolderIDs(ctx, folderColumn(id))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("sqlite.FolderRepository.ListDescendantIDs: %w", err)
+	}
+
+	return folderIDsOf(rows), nil
+}
+
+// Another instance can change the tree between the Action's cycle check and this write,
+// so the check runs again on the tree the transaction sees.
+func (r *FolderRepository) Move(ctx context.Context, folder domain.Folder) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		cycleErr := requireNoCycle(ctx, queries, folder)
+		if cycleErr != nil {
+			return cycleErr
+		}
+
+		return moveFolder(ctx, queries, folder)
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.FolderRepository.Move: %w", err)
 	}
 
 	return nil
@@ -155,4 +185,35 @@ func (r *FolderRepository) rebuild(
 	}
 
 	return folder, err
+}
+
+func requireNoCycle(ctx context.Context, queries *sqlcgen.Queries, folder domain.Folder) error {
+	if folder.AtRoot() {
+		return nil
+	}
+
+	descendants, err := queries.ListDescendantFolderIDs(ctx, folderColumn(folder.ID()))
+	if err != nil {
+		return fmt.Errorf("list descendant folders: %w", err)
+	}
+
+	_, err = folder.MoveUnder(folder.ParentID(), folderIDsOf(descendants))
+	if err != nil {
+		return fmt.Errorf("check folder cycle: %w", err)
+	}
+
+	return nil
+}
+
+func moveFolder(ctx context.Context, queries *sqlcgen.Queries, folder domain.Folder) error {
+	moved, err := queries.MoveFolder(ctx, moveFolderParams(folder))
+	if err != nil {
+		return fmt.Errorf("move folder: %w", err)
+	}
+
+	if moved == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }

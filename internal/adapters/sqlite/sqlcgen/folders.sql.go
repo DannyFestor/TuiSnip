@@ -102,6 +102,38 @@ func (q *Queries) InsertFolder(ctx context.Context, arg InsertFolderParams) erro
 	return err
 }
 
+const listDescendantFolderIDs = `-- name: ListDescendantFolderIDs :many
+WITH RECURSIVE subtree (id) AS (
+    SELECT folders.id FROM folders WHERE folders.parent_id = ?1
+    UNION
+    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+)
+SELECT subtree.id FROM subtree
+`
+
+func (q *Queries) ListDescendantFolderIDs(ctx context.Context, id *sqltype.ID) ([]sqltype.ID, error) {
+	rows, err := q.db.QueryContext(ctx, listDescendantFolderIDs, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []sqltype.ID{}
+	for rows.Next() {
+		var id sqltype.ID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFolders = `-- name: ListFolders :many
 SELECT id, parent_id, name, default_language, created_at, updated_at
 FROM folders
@@ -135,6 +167,25 @@ func (q *Queries) ListFolders(ctx context.Context) ([]Folder, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const moveFolder = `-- name: MoveFolder :execrows
+UPDATE folders
+SET parent_id = ?
+WHERE id = ?
+`
+
+type MoveFolderParams struct {
+	ParentID *sqltype.ID
+	ID       sqltype.ID
+}
+
+func (q *Queries) MoveFolder(ctx context.Context, arg MoveFolderParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, moveFolder, arg.ParentID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateFolder = `-- name: UpdateFolder :execrows

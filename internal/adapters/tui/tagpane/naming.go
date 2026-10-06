@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagrefusal"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -15,10 +15,8 @@ import (
 )
 
 const (
-	newTagCount   = "0"
-	blankNameText = "Tag name is blank"
-	commaNameText = "Tag name contains a comma"
-	takenFormat   = "Tag %s already exists"
+	newTagCount = "0"
+	takenFormat = "Tag %s already exists"
 )
 
 type naming interface {
@@ -135,12 +133,5 @@ func refusalText(err error) string {
 		return fmt.Sprintf(takenFormat, taken.existing.String())
 	}
 
-	switch {
-	case errors.Is(err, value.ErrBlankTagName):
-		return blankNameText
-	case errors.Is(err, value.ErrTagNameHasComma):
-		return commaNameText
-	}
-
-	return look.FailureText
+	return tagrefusal.Text(err)
 }

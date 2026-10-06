@@ -41,6 +41,7 @@ const (
 	PrevField    = "prev_field"
 	OpenField    = "open_field"
 	PickLanguage = "pick_language"
+	EditTags     = "edit_tags"
 	Leave        = "leave"
 	Indent       = "indent"
 	Dedent       = "dedent"

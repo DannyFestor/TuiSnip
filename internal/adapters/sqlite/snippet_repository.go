@@ -145,7 +145,7 @@ func updateSnippet(
 		}
 	}
 
-	return nil
+	return relinkTags(ctx, queries, snippet)
 }
 
 func deleteSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID) error {
@@ -186,7 +186,27 @@ func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain
 		}
 	}
 
+	return linkTags(ctx, queries, snippet)
+}
+
+func relinkTags(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
+	err := queries.DeleteSnippetTags(ctx, columnID(snippet.ID()))
+	if err != nil {
+		return fmt.Errorf("delete snippet tags: %w", err)
+	}
+
+	return linkTags(ctx, queries, snippet)
+}
+
+// A Snippet carries the Tags the user created while editing it, and they are
+// stored with it so that a cancelled edit leaves none behind.
+func linkTags(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
 	for _, tag := range snippet.Tags() {
+		err := nameClashAsTaken(queries.InsertTagUnlessStored(ctx, insertTagUnlessStoredParams(tag)))
+		if err != nil {
+			return err
+		}
+
 		err = queries.InsertSnippetTag(ctx, insertSnippetTagParams(snippet.ID(), tag))
 		if err != nil {
 			return fmt.Errorf("insert snippet tag: %w", err)

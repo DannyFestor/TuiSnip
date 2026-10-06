@@ -16,6 +16,10 @@ func insertTagParams(tag domain.Tag) sqlcgen.InsertTagParams {
 	}
 }
 
+func insertTagUnlessStoredParams(tag domain.Tag) sqlcgen.InsertTagUnlessStoredParams {
+	return sqlcgen.InsertTagUnlessStoredParams(insertTagParams(tag))
+}
+
 func updateTagParams(tag domain.Tag) sqlcgen.UpdateTagParams {
 	return sqlcgen.UpdateTagParams{
 		Name:      tag.Name().String(),

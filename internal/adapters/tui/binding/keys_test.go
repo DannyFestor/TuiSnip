@@ -148,19 +148,33 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"enter save", "esc cancel"}, hintTexts(got))
 	})
 
-	t.Run("editor hints save, cancel, field and Language", func(t *testing.T) {
+	t.Run("editor hints save, cancel, field, Tags and Language", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
 			bound{scope: binding.ScopeEditor, name: binding.Save, keys: []string{"ctrl+s"}},
 			bound{scope: binding.ScopeEditor, name: binding.Cancel, keys: []string{"esc"}},
 			bound{scope: binding.ScopeEditor, name: binding.NextField, keys: []string{"down"}},
+			bound{scope: binding.ScopeEditor, name: binding.EditTags, keys: []string{"ctrl+y"}},
 			bound{scope: binding.ScopeEditor, name: binding.PickLanguage, keys: []string{"ctrl+g"}},
 		)
 
 		got := keys.For(binding.ScopeEditor).ShortHelp()
 
-		assert.Equal(t, []string{"ctrl+s save", "esc cancel", "down field", "ctrl+g Language"}, hintTexts(got))
+		assert.Equal(
+			t,
+			[]string{"ctrl+s save", "esc cancel", "down field", "ctrl+y Tags", "ctrl+g Language"},
+			hintTexts(got),
+		)
+	})
+
+	t.Run("Content matches edit_tags and lists it in full help", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(bound{scope: binding.ScopeContent, name: binding.EditTags, keys: []string{"ctrl+y"}})
+
+		assert.True(t, keys.For(binding.ScopeContent).Matches(keypress.Ctrl('y'), binding.EditTags))
+		assert.Equal(t, [][]string{{"ctrl+y Tags"}}, columnTexts(keys.For(binding.ScopeContent).FullHelp()))
 	})
 
 	t.Run("picker hints move, pick and close", func(t *testing.T) {
@@ -336,6 +350,21 @@ func TestKeys_HelpOverlayHints(t *testing.T) {
 	got := keys.HelpOverlayHints()
 
 	assert.Equal(t, []string{"f1 close", "backspace close"}, hintTexts(got))
+}
+
+func TestKeys_TagEditorHints(t *testing.T) {
+	t.Parallel()
+
+	keys := keysWith(
+		bound{scope: binding.ScopePicker, name: binding.Down, keys: []string{"ctrl+n"}},
+		bound{scope: binding.ScopePicker, name: binding.Accept, keys: []string{"ctrl+o"}},
+		bound{scope: binding.ScopePicker, name: binding.Cancel, keys: []string{"esc"}},
+		bound{scope: binding.ScopePicker, name: binding.ShowAllLanguages, keys: []string{"ctrl+a"}},
+	)
+
+	got := keys.TagEditorHints()
+
+	assert.Equal(t, []string{"ctrl+n move", "ctrl+o toggle / create", "esc close"}, hintTexts(got))
 }
 
 func TestAlwaysShown(t *testing.T) {

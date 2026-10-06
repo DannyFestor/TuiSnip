@@ -41,6 +41,13 @@ func TestFrame(t *testing.T) {
 			outer: look.Size{Width: 8, Height: 2},
 			want:  []string{"╭ Sni… ╮", "╰──────╯"},
 		},
+		{
+			name:  "draws an unbroken top border without a title",
+			title: "",
+			body:  "",
+			outer: look.Size{Width: 8, Height: 2},
+			want:  []string{"╭──────╮", "╰──────╯"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

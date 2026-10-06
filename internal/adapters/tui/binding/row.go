@@ -59,40 +59,10 @@ type Row struct {
 }
 
 func Rows() []Row {
-	rows := globalRows()
+	rows := append(globalRows(), paneRows()...)
+	rows = append(rows, editOverlayRows()...)
 
 	return append(rows,
-		Row{Scope: ScopeFolders, Name: NewFolder, Label: labelNewFolder},
-		Row{Scope: ScopeFolders, Name: Rename, Label: labelRename},
-		Row{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
-		Row{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
-		Row{Scope: ScopeFolders, Name: Language, Label: labelDefaultLang},
-		Row{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
-		Row{Scope: ScopeTags, Name: Rename, Label: labelRename},
-		Row{Scope: ScopeTags, Name: Delete, Label: labelDelete},
-		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
-		Row{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
-		Row{Scope: ScopeSnippetList, Name: OpenInEditor, Label: labelExternalEditor},
-		Row{Scope: ScopeSnippetList, Name: Duplicate, Label: labelDuplicate},
-		Row{Scope: ScopeSnippetList, Name: Delete, Label: labelDelete},
-		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
-		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
-		Row{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
-		Row{Scope: ScopeSnippetPane, Name: OpenInEditor, Label: labelExternalEditor},
-		Row{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
-		Row{Scope: ScopeEditor, Name: Save, Label: labelSave},
-		Row{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
-		Row{Scope: ScopeEditor, Name: NextField, Label: labelField},
-		Row{Scope: ScopeEditor, Name: PrevField, Label: unlabelled},
-		Row{Scope: ScopeEditor, Name: OpenField, Label: unlabelled},
-		Row{Scope: ScopeEditor, Name: PickLanguage, Label: labelLanguage},
-		Row{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
-		Row{Scope: ScopeContent, Name: Save, Label: labelSave},
-		Row{Scope: ScopeContent, Name: Leave, Label: labelLeave},
-		Row{Scope: ScopeContent, Name: Indent, Label: labelIndent},
-		Row{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
-		Row{Scope: ScopeContent, Name: PickLanguage, Label: labelLanguage},
-		Row{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
 		Row{Scope: ScopeSearch, Name: Down, Label: labelMove},
 		Row{Scope: ScopeSearch, Name: Up, Label: unlabelled},
 		Row{Scope: ScopeSearch, Name: Accept, Label: labelReveal},
@@ -108,6 +78,49 @@ func Rows() []Row {
 		Row{Scope: ScopeConfirm, Name: Yes, Label: labelYes},
 		Row{Scope: ScopeConfirm, Name: No, Label: labelNo},
 	)
+}
+
+func paneRows() []Row {
+	return []Row{
+		{Scope: ScopeFolders, Name: NewFolder, Label: labelNewFolder},
+		{Scope: ScopeFolders, Name: Rename, Label: labelRename},
+		{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
+		{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
+		{Scope: ScopeFolders, Name: Language, Label: labelDefaultLang},
+		{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
+		{Scope: ScopeTags, Name: Rename, Label: labelRename},
+		{Scope: ScopeTags, Name: Delete, Label: labelDelete},
+		{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
+		{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
+		{Scope: ScopeSnippetList, Name: OpenInEditor, Label: labelExternalEditor},
+		{Scope: ScopeSnippetList, Name: Duplicate, Label: labelDuplicate},
+		{Scope: ScopeSnippetList, Name: Delete, Label: labelDelete},
+		{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
+		{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
+		{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
+		{Scope: ScopeSnippetPane, Name: OpenInEditor, Label: labelExternalEditor},
+		{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
+	}
+}
+
+func editOverlayRows() []Row {
+	return []Row{
+		{Scope: ScopeEditor, Name: Save, Label: labelSave},
+		{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
+		{Scope: ScopeEditor, Name: NextField, Label: labelField},
+		{Scope: ScopeEditor, Name: PrevField, Label: unlabelled},
+		{Scope: ScopeEditor, Name: OpenField, Label: unlabelled},
+		{Scope: ScopeEditor, Name: EditTags, Label: labelTags},
+		{Scope: ScopeEditor, Name: PickLanguage, Label: labelLanguage},
+		{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
+		{Scope: ScopeContent, Name: Save, Label: labelSave},
+		{Scope: ScopeContent, Name: Leave, Label: labelLeave},
+		{Scope: ScopeContent, Name: Indent, Label: labelIndent},
+		{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
+		{Scope: ScopeContent, Name: EditTags, Label: labelTags},
+		{Scope: ScopeContent, Name: PickLanguage, Label: labelLanguage},
+		{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
+	}
 }
 
 func globalRows() []Row {

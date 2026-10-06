@@ -157,7 +157,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return s.opening(editoverlay.Editing(
 			s.keys,
 			s.styles,
-			s.curated,
+			s.overlayOptions(),
 			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
 		))
 	}
@@ -188,7 +188,7 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	case s.global.Matches(msg, binding.Help):
 		return outcome.Stay(s).Opening(helpoverlay.New(s.keys, s.styles, s.FullHelp())), true
 	case s.global.Matches(msg, binding.NewSnippet):
-		return s.opening(editoverlay.New(s.keys, s.styles, s.curated, s.destination())), true
+		return s.opening(editoverlay.New(s.keys, s.styles, s.overlayOptions(), s.destination())), true
 	case s.global.Matches(msg, binding.Capture):
 		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
@@ -229,7 +229,7 @@ func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsk
 }
 
 func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
-	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.curated, editoverlay.ExternallyEdited{
+	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.overlayOptions(), editoverlay.ExternallyEdited{
 		Browsed: editoverlay.BrowsedSnippet{Snippet: edited.Asked.Snippet, Selection: edited.Asked.Selection},
 		Content: edited.Content,
 	}))
@@ -262,6 +262,10 @@ func (s Screen) selection() browseselection.Selection {
 
 func (s Screen) destination() editoverlay.Destination {
 	return s.panes.destination(s.selection())
+}
+
+func (s Screen) overlayOptions() editoverlay.Options {
+	return editoverlay.Options{Languages: s.curated, Tags: s.panes.tags.Tags()}
 }
 
 func selected(selection browseselection.Selection) []outcome.Outcome {
@@ -361,7 +365,7 @@ func (s Screen) captured(content string) outcome.Step {
 
 	captured := editoverlay.Captured{Destination: s.destination(), Content: content}
 
-	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.curated, captured))
+	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.overlayOptions(), captured))
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {

@@ -34,6 +34,17 @@ func TestList_View(t *testing.T) {
 		assert.Contains(t, visibleLines(list), "docker"+strings.Repeat(" ", boxWidth-len("docker")-1)+"3")
 	})
 
+	t.Run("shows each choice's mark before its text", func(t *testing.T) {
+		t.Parallel()
+
+		list := opened(t, []picker.Choice{
+			{Mark: "✓ ", Text: "docker", Meta: "", Trailing: false},
+			{Mark: "  ", Text: "go", Meta: "", Trailing: false},
+		})
+
+		assert.Equal(t, []string{"filter:", "", "✓ docker", "  go"}, visibleLines(list))
+	})
+
 	t.Run("shows the no-match text when the filter matches nothing", func(t *testing.T) {
 		t.Parallel()
 
@@ -88,6 +99,26 @@ func TestList_Update(t *testing.T) {
 		list := typed(t, opened(t, choicesOf("Algol", "Bash", "go", "Go Template")), "GO")
 
 		assert.Equal(t, []string{"filter: GO", "", "go", "Go Template", "Algol"}, visibleLines(list))
+	})
+
+	t.Run("filters ignoring the space around the filter", func(t *testing.T) {
+		t.Parallel()
+
+		list := typed(t, opened(t, choicesOf("Bash", "Go")), " go ")
+
+		assert.Equal(t, []string{"filter:  go", "", "Go"}, visibleLines(list))
+	})
+
+	t.Run("lists a trailing choice after the matches whatever the filter", func(t *testing.T) {
+		t.Parallel()
+
+		create := picker.Choice{Mark: "+ ", Text: "create", Meta: "", Trailing: true}
+		list := typed(t, opened(t, append([]picker.Choice{create}, choicesOf("Go", "Bash")...)), "zzz")
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, []string{"filter: zzz", "", "+ create"}, visibleLines(list))
+		assert.Equal(t, picked(0), result)
 	})
 
 	t.Run("picks by the index in the full list after filtering", func(t *testing.T) {
@@ -211,7 +242,7 @@ func TestList_Highlighted(t *testing.T) {
 		highlighted, ok := pressed(t, opened(t, choicesOf("Go", "Bash")), down()).Highlighted()
 
 		assert.True(t, ok)
-		assert.Equal(t, picker.Choice{Text: "Bash", Meta: ""}, highlighted)
+		assert.Equal(t, picker.Choice{Mark: "", Text: "Bash", Meta: "", Trailing: false}, highlighted)
 	})
 
 	t.Run("names nothing when the filter matches nothing", func(t *testing.T) {
@@ -221,6 +252,14 @@ func TestList_Highlighted(t *testing.T) {
 
 		assert.False(t, ok)
 	})
+}
+
+func TestList_Filter(t *testing.T) {
+	t.Parallel()
+
+	list := typed(t, opened(t, choicesOf("Go")), " te ")
+
+	assert.Equal(t, " te ", list.Filter())
 }
 
 func TestList_ShortHelp(t *testing.T) {

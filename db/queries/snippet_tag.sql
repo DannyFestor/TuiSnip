@@ -2,6 +2,10 @@
 INSERT INTO snippet_tag (snippet_id, tag_id)
 VALUES (?, ?);
 
+-- name: DeleteSnippetTags :exec
+DELETE FROM snippet_tag
+WHERE snippet_id = ?;
+
 -- name: CountSnippetsByTag :many
 SELECT tag_id, COUNT(*) AS snippet_count
 FROM snippet_tag

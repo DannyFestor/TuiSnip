@@ -152,7 +152,7 @@ func compareIgnoringCase(a, b value.Language) int {
 func choicesOf(languages []value.Language) []picker.Choice {
 	choices := make([]picker.Choice, 0, len(languages))
 	for _, language := range languages {
-		choices = append(choices, picker.Choice{Text: language.String(), Meta: ""})
+		choices = append(choices, picker.Choice{Mark: "", Text: language.String(), Meta: "", Trailing: false})
 	}
 
 	return choices

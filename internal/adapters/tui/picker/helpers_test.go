@@ -40,7 +40,7 @@ func resized(list picker.List, box look.Size) picker.List {
 func choicesOf(texts ...string) []picker.Choice {
 	choices := make([]picker.Choice, 0, len(texts))
 	for _, text := range texts {
-		choices = append(choices, picker.Choice{Text: text, Meta: ""})
+		choices = append(choices, picker.Choice{Mark: "", Text: text, Meta: "", Trailing: false})
 	}
 
 	return choices

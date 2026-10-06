@@ -42,10 +42,18 @@ func Row(text, meta string, width int) string {
 }
 
 func topBorder(style FrameStyle, title string, innerWidth int) string {
-	label := " " + ansi.Truncate(title, max(0, innerWidth-titlePadding), Ellipsis) + " "
+	label := titleLabel(title, innerWidth)
 	fill := max(0, innerWidth-ansi.StringWidth(label))
 
 	return style.Border.Render("╭") + style.Title.Render(label) + style.Border.Render(strings.Repeat("─", fill)+"╮")
+}
+
+func titleLabel(title string, innerWidth int) string {
+	if title == "" {
+		return ""
+	}
+
+	return " " + ansi.Truncate(title, max(0, innerWidth-titlePadding), Ellipsis) + " "
 }
 
 func fitLines(body string, inner Size) []string {

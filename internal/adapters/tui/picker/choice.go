@@ -1,6 +1,8 @@
 package picker
 
 type Choice struct {
-	Text string
-	Meta string
+	Mark     string
+	Text     string
+	Meta     string
+	Trailing bool
 }

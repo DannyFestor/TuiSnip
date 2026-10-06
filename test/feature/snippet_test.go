@@ -11,6 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -52,6 +53,38 @@ func TestCreateWithBlankTitleSavesNothing(t *testing.T) {
 	require.Len(t, fieldErrors, 1)
 	assert.Equal(t, domain.FieldTitle, fieldErrors[0].Field)
 	assert.Empty(t, listAtRoot(t, app))
+}
+
+func TestCreatedSnippetCreatesTheNewTagsItCarries(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+
+	created := create(t, app, snippet.CreateInput{
+		Title: "tagged", Language: plainText, Tags: []domain.Tag{golang}, NewTags: []string{" api "},
+	})
+
+	carried := testapp.StoredSnippet(t, app, created.ID()).Tags()
+	require.Len(t, carried, 2)
+	assert.Equal(t, "api", carried[0].Name().String())
+	assert.Equal(t, golang, carried[1])
+	assert.Equal(t, map[string]int{"api": 1, "go": 1}, tagCounts(t, app))
+}
+
+func TestCreateWithANewTagNamedLikeAnotherIgnoringCaseSavesNothing(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+	testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+
+	_, err := app.Create.Run(t.Context(), snippet.CreateInput{
+		Title: "refused", Language: plainText, NewTags: []string{"api", "Go"},
+	})
+
+	require.ErrorIs(t, err, domain.ErrTagNameTaken)
+	assert.Empty(t, listAtRoot(t, app))
+	assert.Equal(t, map[string]int{"go": 0}, tagCounts(t, app))
 }
 
 func TestSnippetsSurviveRestart(t *testing.T) {

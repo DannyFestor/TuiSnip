@@ -17,7 +17,7 @@ type snippetActions struct {
 
 func newSnippetActions(snippets *sqlite.SnippetRepository) (snippetActions, error) {
 	create, createErr := snippet.NewCreate(snippets, system.NewIDs(), system.NewClock())
-	update, updateErr := snippet.NewUpdate(snippets, system.NewClock())
+	update, updateErr := snippet.NewUpdate(snippets, system.NewIDs(), system.NewClock())
 	duplicate, duplicateErr := snippet.NewDuplicate(snippets, system.NewIDs(), system.NewClock())
 	remove, removeErr := snippet.NewDelete(snippets)
 

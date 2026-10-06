@@ -3,10 +3,10 @@
 │  doc╭ Editing • ───────────────────────────────────────────────────────────────────────────────────────────────╮     │
 │▾ go │› Title       Prune everything                                                                            │     │
 │    t│  Description                                                                                             │     │
-│     │  Language    plaintext   (enter or ctrl+l to pick)                                                       │─────│
-│     │  Content     enter or down to edit                                                                       │{    │
+│     │  Tags           (enter or ctrl+t to edit)                                                                │─────│
+│     │  Language    plaintext   (enter or ctrl+l to pick)                                                       │{    │
+│     │  Content     enter or down to edit                                                                       │     │
 │     │ 1                                                                                                        │     │
-│     │                                                                                                          │     │
 │     │                                                                                                          │     │
 │     │                                                                                                          │     │
 │     │                                                                                                          │     │
@@ -37,4 +37,4 @@
 │     │                                                                                                          │     │
 │     ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯     │
 ╰────────────────────────────────╯╰──────────────────────────────────╯╰────────────────────────────────────────────────╯
-                                        ctrl+s save · esc cancel · down field · ctrl+l Language · ctrl+e external editor
+                          ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor

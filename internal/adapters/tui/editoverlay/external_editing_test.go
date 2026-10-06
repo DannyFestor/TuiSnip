@@ -168,7 +168,7 @@ func TestEditedExternally(t *testing.T) {
 	opened, _ := editoverlay.EditedExternally(
 		testsettings.Default(t).Keys,
 		look.NewStyles(look.SchemeDark),
-		nil,
+		editoverlay.Options{},
 		editoverlay.ExternallyEdited{
 			Browsed: editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
 			Content: externallyEditedContent,

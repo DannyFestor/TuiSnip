@@ -162,16 +162,17 @@ A TuiSnip-owned editor component that keeps tabs and highlights while editing is
 ╰──────────────────────────────────────────╯
 ```
 
-- Every Tag is listed with its Snippet count, and ✓ marks the Tags this Snippet carries.
+- The top line names the Tags this Snippet carries, in the Tags Pane's order. Every Tag is listed with its Snippet count, and ✓ marks the Tags this Snippet carries. "No Tags yet." shows until a Tag exists.
 - Typing filters the list. When the typed name matches no Tag exactly, compared case-insensitively, a `+ create "…"` row closes the list.
-- `enter` toggles the highlighted Tag, or creates and adds the typed name on the create row. Names are trimmed, and a comma is refused.
-- `esc` closes the Tag editor and keeps the toggles as unsaved changes in the edit overlay, and `ctrl+s` saves them with the rest.
+- `enter` toggles the highlighted Tag, or creates and adds the typed name on the create row. Names are trimmed, and a comma is refused with "Tag name contains a comma" on the status line.
+- A created Tag is listed with `new` in place of its count. Toggled off, it stays listed until the Tag editor closes.
+- `esc` closes the Tag editor and keeps the toggles as unsaved changes in the edit overlay, and `ctrl+s` saves them with the rest. A created Tag is stored with the Snippet in the same save, so cancelling the edit overlay leaves no Tag behind.
 
 ## Other overlays
 
 The Language picker, the Folder picker, and the Tag editor share one shape: a filter line on top and a list below, moved with the same keys as the Search popup. `enter` picks and closes, except in the Tag editor, where it toggles. `esc` closes.
 
-Typing filters the list, ignoring case: the entries that start with the filter come first, then the ones that contain it, each in list order.
+Typing filters the list, ignoring case and the space around the filter: the entries that start with the filter come first, then the ones that contain it, each in list order.
 
 - The **Language picker** shows the curated `languages` list when config sets one, in the config's order, and `ctrl+a` switches to every Language and back, keeping the filter. Every Language is listed by name, ignoring case. The picker opens on the current Language, and says "No Language matches." when the filter matches none. From the edit overlay it is titled "Pick a Language", and the picked Language is an unsaved change.
 - The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
@@ -244,10 +245,11 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
 | `snippet_list` | Copy · edit · external editor · new · duplicate · delete · sort · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · zoom · search · help |
-| `editor` | save · cancel · field · Language · external editor |
+| `editor` | save · cancel · field · Tags · Language · external editor |
 | `content` | save · leave · indent · dedent · external editor |
 | `search` | move · reveal · Copy · close |
 | `picker` | move · pick · close |
+| `picker`, in the Tag editor | move · toggle / create · close |
 | `name_input` | save · cancel |
 | `confirm` | yes · no |
 | help (no Scope) | close · close, naming the first `help` key and the first `back` key: `? close · esc close` by default |

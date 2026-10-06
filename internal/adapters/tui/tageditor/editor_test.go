@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
@@ -203,6 +204,36 @@ func TestEditor_Update(t *testing.T) {
 		screen := editing(t, tags.listed(), chosen)
 
 		assert.True(t, edited(t, screen).Equal(chosen))
+	})
+
+	t.Run("matches the typed filter against Tags that arrive while open", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t, nil, tagchoice.Of(nil))
+
+		screen.Press(keypress.Typed("yam")...)
+		screen.Send(arrived.Tags{Tags: tags.listed()})
+		screen.Press(enter())
+
+		assert.Equal(t, []domain.Tag{tags.yaml}, edited(t, screen).Stored())
+	})
+
+	t.Run("keeps the chosen and created Tags when Tags arrive while open", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t, nil, tagchoice.Of([]domain.Tag{tags.docker}))
+
+		screen.Press(keypress.Typed("api")...)
+		screen.Press(enter())
+		screen.Send(arrived.Tags{Tags: tags.listed()})
+
+		assert.Contains(t, screen.Screen(), "filter or new Tag: api")
+		assert.Regexp(t, `✓ api +new`, screen.Screen())
+
+		chosen := edited(t, screen)
+
+		assert.Equal(t, []domain.Tag{tags.docker}, chosen.Stored())
+		assert.Equal(t, []value.TagName{tagName(t, "api")}, chosen.Created())
 	})
 
 	t.Run("filters on pasted text", func(t *testing.T) {

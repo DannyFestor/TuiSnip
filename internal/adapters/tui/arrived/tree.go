@@ -1,7 +1,7 @@
-package searchpopup
+package arrived
 
 import "github.com/DannyFestor/TuiSnip/internal/app/browse"
 
-type TreeLoaded struct {
+type Tree struct {
 	Tree browse.Tree
 }

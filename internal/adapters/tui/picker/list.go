@@ -95,11 +95,20 @@ func (l List) Filter() string {
 }
 
 func (l List) Highlighted() (Choice, bool) {
-	if len(l.shown) == 0 {
+	index, ok := l.HighlightedIndex()
+	if !ok {
 		return Choice{Mark: "", Text: "", Meta: "", Trailing: false}, false
 	}
 
-	return l.choices[l.shown[l.cursor.Index()]], true
+	return l.choices[index], true
+}
+
+func (l List) HighlightedIndex() (int, bool) {
+	if len(l.shown) == 0 {
+		return 0, false
+	}
+
+	return l.shown[l.cursor.Index()], true
 }
 
 func (l List) pressed(msg tea.KeyPressMsg) (List, Result, tea.Cmd) {

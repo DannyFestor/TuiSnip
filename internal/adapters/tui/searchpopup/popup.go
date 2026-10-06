@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
@@ -76,7 +77,7 @@ func (p Popup) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.restyled(msg))
 	case HitsFound:
 		return outcome.Stay(p.withHits(msg.Text, msg.Hits))
-	case TreeLoaded:
+	case arrived.Tree:
 		return outcome.Stay(p.withPaths(folderpath.New(msg.Tree)))
 	}
 

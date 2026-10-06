@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -223,7 +224,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
 		mainscreen.TreeChanged, mainscreen.FolderDeletePreviewed, mainscreen.TagsLoaded,
 		mainscreen.TagCreated, mainscreen.TagsChanged, mainscreen.TagDeletePreviewed:
-		return m.overlaysUpdatedSharingTree(msg)
+		return m.overlaysUpdatedSharingArrivals(msg)
 	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg, snippetsChangedMsg:
 		return m, m.reloadAfter(msg)
 	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
@@ -390,32 +391,28 @@ func (m Model) pressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	return m.overlaysUpdated(msg)
 }
 
-func (m Model) overlaysUpdatedSharingTree(msg tea.Msg) (Model, tea.Cmd) {
-	tree, ok := arrivedTree(msg)
-	if !ok {
-		return m.overlaysUpdated(msg)
-	}
-
-	return m.treeArrived(msg, tree)
-}
-
-func arrivedTree(msg tea.Msg) (browse.Tree, bool) {
+func (m Model) overlaysUpdatedSharingArrivals(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case mainscreen.TreeLoaded:
-		return msg.Tree, true
+		return m.sharingArrival(msg, arrived.Tree{Tree: msg.Tree})
 	case mainscreen.TreeChanged:
-		return msg.Tree, true
+		return m.sharingArrival(msg, arrived.Tree{Tree: msg.Tree})
+	case mainscreen.TagsLoaded:
+		return m.sharingArrival(msg, arrived.Tags{Tags: msg.Tags})
+	case mainscreen.TagCreated:
+		return m.sharingArrival(msg, arrived.Tags{Tags: msg.Tags})
+	case mainscreen.TagsChanged:
+		return m.sharingArrival(msg, arrived.Tags{Tags: msg.Tags})
 	}
 
-	return browse.Tree{}, false
+	return m.overlaysUpdated(msg)
 }
 
-// The Search popup can't import mainscreen, so it hears about the tree through its own message.
-func (m Model) treeArrived(msg tea.Msg, tree browse.Tree) (Model, tea.Cmd) {
+func (m Model) sharingArrival(msg, arrival tea.Msg) (Model, tea.Cmd) {
 	screenUpdated, screenCmd := m.overlaysUpdated(msg)
-	popupUpdated, popupCmd := screenUpdated.overlaysUpdated(searchpopup.TreeLoaded{Tree: tree})
+	overlaysUpdated, overlaysCmd := screenUpdated.overlaysUpdated(arrival)
 
-	return popupUpdated, tea.Batch(screenCmd, popupCmd)
+	return overlaysUpdated, tea.Batch(screenCmd, overlaysCmd)
 }
 
 func (m Model) overlaysUpdated(msg tea.Msg) (Model, tea.Cmd) {

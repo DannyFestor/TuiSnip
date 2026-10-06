@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
@@ -14,6 +15,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tageditor"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -113,6 +115,8 @@ func (s Session) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.restyled(msg.Styles))
 	case SaveFinished:
 		return s.saved(msg)
+	case arrived.Tags:
+		return outcome.Stay(s.withTags(msg.Tags))
 	}
 
 	return outcome.Stay(s)
@@ -297,6 +301,13 @@ func (s Session) resized(screen look.Size) Session {
 	s.form = s.form.resized(s.outer)
 
 	return s
+}
+
+func (s Session) withTags(tags []browse.TagCount) Session {
+	next := s
+	next.options.Tags = tags
+
+	return next
 }
 
 func (s Session) restyled(styles look.Styles) Session {

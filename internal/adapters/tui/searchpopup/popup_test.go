@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -52,7 +53,7 @@ func TestPopup_View(t *testing.T) {
 		screen, sample := searchingBeforeTreeLoads(t)
 		require.Contains(t, screen.Screen(), "Root / … · plaintext")
 
-		screen.Send(searchpopup.TreeLoaded{Tree: sample.Tree})
+		screen.Send(arrived.Tree{Tree: sample.Tree})
 
 		assert.Regexp(t, `Table test skeleton +go / testing`, screen.Screen())
 		assert.Contains(t, screen.Screen(), "Root / go / testing · plaintext")

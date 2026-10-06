@@ -23,6 +23,7 @@ func TestMovedSnippetLeavesTheListAndKeepsItsLanguage(t *testing.T) {
 	moving := seededSnippetIn(t, app, domain.FolderID{}, "Bash")
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
+	screen.waitForFrame("docker")
 
 	screen.press(keypress.Letter('3'), keypress.Letter('m'))
 	screen.waitForFrame("Move " + rootTitle + " to")

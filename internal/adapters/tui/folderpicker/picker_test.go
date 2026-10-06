@@ -6,7 +6,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -119,6 +121,61 @@ func TestPicker_Update(t *testing.T) {
 
 		assert.Empty(t, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("matches the typed filter against a Tree that arrives while open", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		screen := pickingIn(t, browse.Tree{}, domain.FolderID{}, domain.FolderID{})
+
+		screen.Press(keypress.Typed("docker")...)
+		screen.Send(arrived.Tree{Tree: sample.Tree})
+		screen.Press(enter())
+
+		assert.Equal(t, []outcome.Outcome{pickedOutcome(sample.Docker.ID())}, screen.Outcomes())
+	})
+
+	t.Run("refuses the moving Folder's subtree in a Tree that arrives while open", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+
+		for _, refused := range []string{"go", "go / testing"} {
+			screen := pickingIn(t, browse.Tree{}, domain.FolderID{}, sample.Go.ID())
+
+			screen.Send(arrived.Tree{Tree: sample.Tree})
+			screen.Press(keypress.Typed(refused)...)
+			screen.Press(enter())
+
+			assert.Empty(t, screen.Outcomes(), refused)
+			assert.True(t, screen.IsOpen(), refused)
+		}
+	})
+
+	t.Run("lands on the current Folder once its Tree arrives", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		screen := pickingIn(t, browse.Tree{}, sample.Go.ID(), domain.FolderID{})
+
+		screen.Send(arrived.Tree{Tree: sample.Tree})
+		screen.Press(enter())
+
+		assert.Equal(t, []outcome.Outcome{pickedOutcome(sample.Go.ID())}, screen.Outcomes())
+	})
+
+	t.Run("keeps the Folder the user moved to when the Tree arrives again", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		screen := picking(t, sample, domain.FolderID{}, domain.FolderID{})
+
+		screen.Press(down())
+		screen.Send(arrived.Tree{Tree: sample.Tree})
+		screen.Press(enter())
+
+		assert.Equal(t, []outcome.Outcome{pickedOutcome(sample.Docker.ID())}, screen.Outcomes())
 	})
 
 	t.Run("stays open when nothing matches the filter", func(t *testing.T) {

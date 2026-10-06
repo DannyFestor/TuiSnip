@@ -331,6 +331,27 @@ func TestList_Highlighted(t *testing.T) {
 	})
 }
 
+func TestList_HighlightedIndex(t *testing.T) {
+	t.Parallel()
+
+	t.Run("gives the index in the full list of the choice under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		index, ok := typed(t, opened(t, choicesOf("Go", "Bash", "Batch")), "bat").HighlightedIndex()
+
+		assert.True(t, ok)
+		assert.Equal(t, 2, index)
+	})
+
+	t.Run("gives nothing when the filter matches nothing", func(t *testing.T) {
+		t.Parallel()
+
+		_, ok := typed(t, opened(t, choicesOf("Go")), "zzz").HighlightedIndex()
+
+		assert.False(t, ok)
+	})
+}
+
 func TestList_Filter(t *testing.T) {
 	t.Parallel()
 

@@ -102,11 +102,13 @@ func TestModel_editOverlay(t *testing.T) {
 		assert.Contains(t, screen.screen(), genericFailure)
 	})
 
-	t.Run("lists the Tags that load while the Tag editor is open", func(t *testing.T) {
+	t.Run("lists the Tags that load while the Tag editor is open, keeping the chosen ones", func(t *testing.T) {
 		t.Parallel()
 
+		tags := sampleTagCounts(t)
+		stored := sampleSnippets(t)[0].Retagged([]domain.Tag{tags[1].Tag})
 		with := actions{
-			lister:     listerOf(t),
+			lister:     listerOf(t, stored),
 			treeLister: treeOf(t, emptyTree()),
 			copier:     NewMockSnippetCopier(t),
 			creator:    NewMockSnippetCreator(t),
@@ -115,10 +117,11 @@ func TestModel_editOverlay(t *testing.T) {
 		}
 		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 
-		screen.press(keypress.Letter('n'), keypress.Ctrl('t'))
-		screen.send(mainscreen.TagsLoaded{Tags: sampleTagCounts(t)})
+		screen.press(keypress.Letter('3'), keypress.Letter('e'), keypress.Ctrl('t'))
+		screen.send(mainscreen.TagsLoaded{Tags: tags})
 
-		assert.Regexp(t, `docker +3`, screen.screen())
+		assert.Regexp(t, `  docker +3`, screen.screen())
+		assert.Regexp(t, `✓ go +4`, screen.screen())
 	})
 
 	t.Run("updates the selected Snippet and shows the change", func(t *testing.T) {

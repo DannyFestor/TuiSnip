@@ -43,6 +43,7 @@ internal/
     system/                  Clock and IDGenerator
     logging/                 opens the log file, builds the *slog.Logger
     tui/                     Bubble Tea program: Model and the wiring between components
+      arrived/               the Folder tree and the Tag list as they arrive, so an open Overlay can catch up without importing the main screen
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Folder, Tag, or Snippet is deleted

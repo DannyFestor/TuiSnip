@@ -10,9 +10,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
-	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -68,7 +67,7 @@ func TestEditKeepsContentWithTabsByteForByte(t *testing.T) {
 	_, err := app.Update.Run(t.Context(), editOf(created, "go return", tabbed))
 
 	require.NoError(t, err)
-	assert.Equal(t, tabbed, findStored(t, app, created.ID()).FirstFragment().Content().String())
+	assert.Equal(t, tabbed, testapp.StoredSnippet(t, app, created.ID()).FirstFragment().Content().String())
 }
 
 func TestEditChangesTheLanguage(t *testing.T) {
@@ -82,7 +81,7 @@ func TestEditChangesTheLanguage(t *testing.T) {
 	_, err := app.Update.Run(t.Context(), edit)
 
 	require.NoError(t, err)
-	assert.Equal(t, "Go", findStored(t, app, created.ID()).FirstFragment().Language().String())
+	assert.Equal(t, "Go", testapp.StoredSnippet(t, app, created.ID()).FirstFragment().Language().String())
 }
 
 func TestEditKeepsALanguageTheConfigNoLongerOffers(t *testing.T) {
@@ -96,16 +95,15 @@ func TestEditKeepsALanguageTheConfigNoLongerOffers(t *testing.T) {
 	_, err := app.Update.Run(t.Context(), editOf(created, "go edited", "go"))
 
 	require.NoError(t, err)
-	assert.Equal(t, "Go", findStored(t, app, created.ID()).FirstFragment().Language().String())
+	assert.Equal(t, "Go", testapp.StoredSnippet(t, app, created.ID()).FirstFragment().Language().String())
 }
 
 func TestEditKeepsTheSnippetsTags(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
-	tagged := seededTaggedSnippet(t, app, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
+	tagged := testapp.SeedSnippet(t, app, snippet.CreateInput{Tags: []domain.Tag{golang}})
 
 	_, err := app.Update.Run(t.Context(), editOf(tagged, "go edited", "package main\n"))
 
@@ -129,13 +127,4 @@ func editOf(loaded domain.Snippet, title, content string) snippet.UpdateInput {
 		Language:        loaded.FirstFragment().Language().String(),
 		Content:         content,
 	}
-}
-
-func findStored(t *testing.T, app *bootstrap.App, id domain.SnippetID) domain.Snippet {
-	t.Helper()
-
-	found, err := app.SnippetRepository.Find(t.Context(), id)
-	require.NoError(t, err)
-
-	return found
 }

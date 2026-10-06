@@ -9,9 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -70,10 +71,9 @@ func TestCaptureRefusals(t *testing.T) {
 func TestCreateFilesSnippetInFolderCarryingTag(t *testing.T) {
 	t.Parallel()
 
-	ids := testkit.NewSequentialIDs()
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	docker := seededFolder(t, app, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "docker"})
-	oneliner := seededTag(t, app, testkit.TagSpec{ID: ids.NewTagID(), Name: "oneliner"})
+	docker := testapp.SeedFolder(t, app, folder.CreateInput{Name: "docker"})
+	oneliner := testapp.SeedTag(t, app, tag.CreateInput{Name: "oneliner"})
 
 	created := create(t, app, snippet.CreateInput{
 		Title: "prune", Description: "", Language: plainText, Content: "docker system prune\n",

@@ -6,11 +6,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -35,8 +34,7 @@ func TestExternalEditThenSave(t *testing.T) {
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame(listHintsShown)
 
-	saved, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
+	saved := testapp.StoredSnippet(t, app, stored.ID())
 	assert.Equal(t, editedCommand, saved.FirstFragment().Content().String())
 }
 
@@ -52,8 +50,7 @@ func TestExternalEditFromEditOverlayKeepsTabs(t *testing.T) {
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame(listHintsShown)
 
-	saved, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
+	saved := testapp.StoredSnippet(t, app, stored.ID())
 	assert.Equal(t, tabbedContent, saved.FirstFragment().Content().String())
 }
 
@@ -69,8 +66,7 @@ func TestFailingExternalEditorDiscardsChanges(t *testing.T) {
 
 	assert.NotContains(t, screen.frame.get(), "Editing")
 
-	kept, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
+	kept := testapp.StoredSnippet(t, app, stored.ID())
 	assert.Equal(t, storedCommand, kept.FirstFragment().Content().String())
 }
 
@@ -81,14 +77,11 @@ func startWithEditor(t *testing.T, editor testapp.Editor) (*bootstrap.App, domai
 	home.UseEditor(t, editor)
 	app := home.Start(t, testapp.RecordingTool)
 
-	ids := testkit.NewSequentialIDs()
-	stored := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
+	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{
 		Title:    rootTitle,
-		FolderID: domain.FolderID{},
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Bash", Content: storedCommand},
+		Language: "Bash",
+		Content:  storedCommand,
 	})
-	testapp.SeedSnippet(t, app, stored)
 
 	return app, stored
 }

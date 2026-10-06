@@ -12,9 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -40,9 +41,7 @@ func TestPickLanguageForEditedSnippet(t *testing.T) {
 	screen.press(keypress.Special(tea.KeyEnter), keypress.Ctrl('s'))
 	screen.waitForFrame("Root · Bash")
 
-	saved, err := app.SnippetRepository.Find(t.Context(), stored.ID())
-	require.NoError(t, err)
-	assert.Equal(t, "Bash", saved.FirstFragment().Language().String())
+	assert.Equal(t, "Bash", testapp.StoredSnippet(t, app, stored.ID()).FirstFragment().Language().String())
 }
 
 func TestCuratedLanguagesRevealEveryLanguage(t *testing.T) {
@@ -69,8 +68,7 @@ func TestFolderDefaultLanguageLeavesItsSnippetsAlone(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	golang := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "go"})
-	testapp.SeedFolder(t, app, golang)
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
 	filed := seededSnippetIn(t, app, golang.ID(), "Bash")
 	screen := open(t, app)
 	screen.waitForFrame("go")
@@ -81,13 +79,10 @@ func TestFolderDefaultLanguageLeavesItsSnippetsAlone(t *testing.T) {
 	screen.press(keypress.Special(tea.KeyEnter))
 
 	require.Eventually(t, func() bool {
-		stored, err := app.FolderRepository.Find(t.Context(), golang.ID())
-
-		return err == nil && stored.DefaultLanguage().String() == "Go"
+		return testapp.StoredFolder(t, app, golang.ID()).DefaultLanguage().String() == "Go"
 	}, waitTimeout, pollInterval)
 
-	kept, err := app.SnippetRepository.Find(t.Context(), filed.ID())
-	require.NoError(t, err)
+	kept := testapp.StoredSnippet(t, app, filed.ID())
 	assert.Equal(t, "Bash", kept.FirstFragment().Language().String())
 	assert.Equal(t, filed.UpdatedAt(), kept.UpdatedAt())
 }
@@ -96,8 +91,7 @@ func TestNewSnippetStartsInFolderDefaultLanguage(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	golang := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "go"})
-	testapp.SeedFolder(t, app, golang)
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
 	screen := open(t, app)
 	screen.waitForFrame("go")
 
@@ -147,13 +141,10 @@ func (s *session) openNewSnippetShowing(text string) {
 func seededSnippetIn(t *testing.T, app *bootstrap.App, folderID domain.FolderID, language string) domain.Snippet {
 	t.Helper()
 
-	ids := testkit.NewSequentialIDs()
-	stored := snippetWithIDs(t, ids, testkit.SnippetSpec{
+	return testapp.SeedSnippet(t, app, snippet.CreateInput{
 		Title:    rootTitle,
+		Language: language,
+		Content:  "echo hi\n",
 		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{Language: language, Content: "echo hi\n"},
 	})
-	testapp.SeedSnippet(t, app, stored)
-
-	return stored
 }

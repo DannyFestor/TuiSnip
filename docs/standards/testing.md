@@ -83,7 +83,7 @@ func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 }
 ```
 
-A test builder that more than one test file in a package uses lives in that package's `helpers_test.go`: `insertSnippet` in `sqlite`, `browsingModel` and `filedIn` in `tui`, `opened` and `browsing` in `mainscreen`, `seededFolder` and `seededSnippet` in `test/feature`. A builder only one file uses stays in that file. A fake with its own type keeps its own file, such as `fakeTools` in clipboard's `fake_tools_test.go`.
+A test builder that more than one test file in a package uses lives in that package's `helpers_test.go`: `insertSnippet` in `sqlite`, `browsingModel` and `filedIn` in `tui`, `opened` and `browsing` in `mainscreen`, `create` in `test/feature`, `seedNestedFolders` in `test/e2e`. A builder both tiers use lives in `test/testapp`. A builder only one file uses stays in that file. A fake with its own type keeps its own file, such as `fakeTools` in clipboard's `fake_tools_test.go`.
 
 ### export_test.go
 
@@ -135,6 +135,7 @@ Set only the fields the test is about. A test that states every field hides whic
 - Build the app with `test/testapp`, which the e2e tier shares: `testapp.Start(t, testapp.RecordingTool)`, or `testapp.NewHome(t)` when the test writes a `config.toml` or blocks a directory first. Each test gets its own HOME in `t.TempDir()`, so parallel tests share nothing and run with production's paths and pragmas. Why not `:memory:`: [database](database.md#tests).
 - The clipboard is faked at the OS boundary, not at the Copy capability. `bootstrap.Options` takes `Environ`, `LookPath`, and `GOOS`. The harness passes `darwin` and a `LookPath` that resolves `pbcopy` to a script that records its stdin (`RecordingTool`), exits 1 (`FailingTool`), or isn't there (`NoTool`). The real backend switch and the clipboard adapter run on every OS.
 - Drive and check behaviour **only through Actions**. Create a Snippet with `snippet.Create`, then read it back with `browse.SnippetsInFolder`. Raw SQL would tie the tier to the schema, and this tier exists to test behaviour.
+- Seed with `testapp.SeedFolder`, `testapp.SeedTag`, and `testapp.SeedSnippet`. Each runs the Create Action and returns the entity as a browse Action reads it back, so it compares equal to what later reads return. Read one entity back with `testapp.StoredFolder`, `testapp.StoredTag`, `testapp.StoredSnippet`, or `testapp.FindSnippet` when it may be gone. `bootstrap.App` exposes only Actions, so there is no way around them.
 
 ## TUI unit tests
 

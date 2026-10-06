@@ -1,5 +1,6 @@
 package binding
 
+//nolint:dupl // a table of labels that dupl matches against the Binding name table in names.go; no logic repeats.
 const (
 	labelQuit           = "quit"
 	labelHelp           = "help"
@@ -85,6 +86,7 @@ func paneRows() []Row {
 		{Scope: ScopeFolders, Name: NewFolder, Label: labelNewFolder},
 		{Scope: ScopeFolders, Name: Rename, Label: labelRename},
 		{Scope: ScopeFolders, Name: Delete, Label: labelDelete},
+		{Scope: ScopeFolders, Name: Move, Label: labelMove},
 		{Scope: ScopeFolders, Name: Collapse, Label: labelCollapse},
 		{Scope: ScopeFolders, Name: Language, Label: labelDefaultLang},
 		{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
@@ -93,6 +95,7 @@ func paneRows() []Row {
 		{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
 		{Scope: ScopeSnippetList, Name: OpenInEditor, Label: labelExternalEditor},
+		{Scope: ScopeSnippetList, Name: Move, Label: labelMove},
 		{Scope: ScopeSnippetList, Name: Duplicate, Label: labelDuplicate},
 		{Scope: ScopeSnippetList, Name: Delete, Label: labelDelete},
 		{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},

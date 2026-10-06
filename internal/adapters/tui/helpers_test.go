@@ -60,12 +60,14 @@ type actions struct {
 	updater               tui.SnippetUpdater
 	duplicator            tui.SnippetDuplicator
 	deleter               tui.SnippetDeleter
+	mover                 tui.SnippetMover
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
 	folderRenamer         tui.FolderRenamer
 	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
 	defaultLanguageSetter tui.FolderDefaultLanguageSetter
+	folderMover           tui.FolderMover
 	tagCreator            tui.TagCreator
 	tagRenamer            tui.TagRenamer
 	tagDeletePreviewer    tui.TagDeletePreviewer
@@ -153,6 +155,7 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
 		Duplicator:    orMock(with.duplicator, func() tui.SnippetDuplicator { return NewMockSnippetDuplicator(t) }),
 		Deleter:       orMock(with.deleter, func() tui.SnippetDeleter { return NewMockSnippetDeleter(t) }),
+		Mover:         orMock(with.mover, func() tui.SnippetMover { return NewMockSnippetMover(t) }),
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),
@@ -165,8 +168,9 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			with.defaultLanguageSetter,
 			func() tui.FolderDefaultLanguageSetter { return NewMockFolderDefaultLanguageSetter(t) },
 		),
-		TagCreator: orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
-		TagRenamer: orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
+		FolderMover: orMock(with.folderMover, func() tui.FolderMover { return NewMockFolderMover(t) }),
+		TagCreator:  orMock(with.tagCreator, func() tui.TagCreator { return NewMockTagCreator(t) }),
+		TagRenamer:  orMock(with.tagRenamer, func() tui.TagRenamer { return NewMockTagRenamer(t) }),
 		TagDeletePreviewer: orMock(
 			with.tagDeletePreviewer,
 			func() tui.TagDeletePreviewer { return NewMockTagDeletePreviewer(t) },

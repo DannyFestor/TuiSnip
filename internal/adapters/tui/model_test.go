@@ -54,7 +54,7 @@ func TestNew(t *testing.T) {
 
 			for _, name := range []string{
 				"lister", "treeLister", "tagLister", "tagSnippetsLister", "copier", "creator", "capturer", "updater", "duplicator",
-				"deleter", "searcher", "sortOrderSaver", "logger", "location",
+				"deleter", "mover", "searcher", "folderMover", "sortOrderSaver", "logger", "location",
 			} {
 				assert.ErrorContains(t, err, name)
 			}

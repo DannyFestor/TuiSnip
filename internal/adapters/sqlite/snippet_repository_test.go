@@ -272,6 +272,46 @@ func TestSnippetRepository_Delete(t *testing.T) {
 	})
 }
 
+func TestSnippetRepository_Move(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		to   func(fixture subtreeFixture) domain.FolderID
+	}{
+		{name: "moves the Snippet into another Folder", to: func(fixture subtreeFixture) domain.FolderID {
+			return fixture.testingID
+		}},
+		{name: "moves the Snippet to the Root", to: func(subtreeFixture) domain.FolderID { return domain.FolderID{} }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newSubtreeFixture(t)
+			moved := fixture.kept[0].MoveTo(tt.to(fixture))
+
+			require.NoError(t, fixture.snippets.Move(t.Context(), moved))
+
+			got, err := fixture.snippets.Find(t.Context(), moved.ID())
+			require.NoError(t, err)
+			assert.Equal(t, moved, got)
+		})
+	}
+
+	t.Run("reports a missing Snippet as not found", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+		missing := testkit.Snippet(t, testkit.SnippetSpec{ID: fixture.snippetIDs.NewSnippetID()})
+
+		err := fixture.snippets.Move(t.Context(), missing)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorContains(t, err, "sqlite.SnippetRepository.Move")
+	})
+}
+
 func TestSnippetRepository_corruptRow(t *testing.T) {
 	t.Parallel()
 

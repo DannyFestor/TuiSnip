@@ -336,6 +336,37 @@ func TestSnippet_Duplicate(t *testing.T) {
 	})
 }
 
+func TestSnippet_MoveTo(t *testing.T) {
+	t.Parallel()
+
+	stored := testkit.Snippet(t, testkit.SnippetSpec{
+		ID:        snippetID(),
+		FolderID:  parentID(),
+		Fragment:  testkit.FragmentSpec{Language: "Bash"},
+		UpdatedAt: time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
+	})
+
+	tests := []struct {
+		name     string
+		folderID domain.FolderID
+	}{
+		{name: "moves into a Folder", folderID: folderID()},
+		{name: "moves to the Root", folderID: domain.FolderID{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			moved := stored.MoveTo(tt.folderID)
+
+			assert.Equal(t, tt.folderID, moved.FolderID())
+			assert.Equal(t, stored.FirstFragment(), moved.FirstFragment(), "the Fragment keeps its Language")
+			assert.Equal(t, stored.UpdatedAt(), moved.UpdatedAt())
+			assert.Equal(t, parentID(), stored.FolderID(), "the original is untouched")
+		})
+	}
+}
+
 func snippetID() domain.SnippetID {
 	return domain.SnippetID(uuid.MustParse(storedID))
 }

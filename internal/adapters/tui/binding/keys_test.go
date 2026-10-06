@@ -202,6 +202,18 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, [][]string{{"L Default Language"}}, columnTexts(got))
 	})
 
+	for _, scope := range []binding.Scope{binding.ScopeFolders, binding.ScopeSnippetList} {
+		t.Run(string(scope)+" full help lists the move Binding", func(t *testing.T) {
+			t.Parallel()
+
+			keys := keysWith(bound{scope: scope, name: binding.Move, keys: []string{"m"}})
+
+			got := keys.For(scope).FullHelp()
+
+			assert.Equal(t, [][]string{{"m move"}}, columnTexts(got))
+		})
+	}
+
 	t.Run("Content hints save, leave, indent and dedent", func(t *testing.T) {
 		t.Parallel()
 

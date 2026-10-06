@@ -49,6 +49,7 @@ internal/
       editoverlay/           the edit overlay: the form, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
+      folderpicker/          the Folder picker: the Root and every Folder by path, a moving Folder's subtree greyed out, and the outcome its opener builds for the pick
       helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
       languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick

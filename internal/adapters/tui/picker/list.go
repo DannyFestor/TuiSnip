@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -17,13 +18,14 @@ import (
 const filterRows = 2
 
 type List struct {
-	keys    binding.Set
-	labels  Labels
-	filter  textinput.Model
-	choices []Choice
-	shown   []int
-	cursor  move.Cursor
-	box     look.Size
+	keys      binding.Set
+	labels    Labels
+	filter    textinput.Model
+	choices   []Choice
+	greyedOut []int
+	shown     []int
+	cursor    move.Cursor
+	box       look.Size
 }
 
 func New(keys binding.Keys, labels Labels, choices []Choice) (List, tea.Cmd) {
@@ -31,13 +33,14 @@ func New(keys binding.Keys, labels Labels, choices []Choice) (List, tea.Cmd) {
 	cmd := filter.Focus()
 
 	list := List{
-		keys:    keys.For(binding.ScopePicker),
-		labels:  labels,
-		filter:  filter,
-		choices: choices,
-		shown:   nil,
-		cursor:  move.Cursor{},
-		box:     look.Size{Width: 0, Height: 0},
+		keys:      keys.For(binding.ScopePicker),
+		labels:    labels,
+		filter:    filter,
+		choices:   choices,
+		greyedOut: nil,
+		shown:     nil,
+		cursor:    move.Cursor{},
+		box:       look.Size{Width: 0, Height: 0},
 	}
 
 	return list.filtered(), cmd
@@ -73,13 +76,18 @@ func (l List) WithChoices(choices []Choice) List {
 	return next.filtered()
 }
 
-func (l List) WithCursorOn(text string) List {
-	at := slices.IndexFunc(l.shown, func(index int) bool { return l.choices[index].Text == text })
-	if at < 0 {
-		return l
-	}
+func (l List) WithGreyedOut(indexes ...int) List {
+	l.greyedOut = indexes
 
-	return l.withCursor(at)
+	return l
+}
+
+func (l List) WithCursorOn(text string) List {
+	return l.cursorOnShown(slices.IndexFunc(l.shown, func(index int) bool { return l.choices[index].Text == text }))
+}
+
+func (l List) WithCursorOnChoice(index int) List {
+	return l.cursorOnShown(slices.Index(l.shown, index))
 }
 
 func (l List) Filter() string {
@@ -110,11 +118,15 @@ func (l List) pressed(msg tea.KeyPressMsg) (List, Result, tea.Cmd) {
 }
 
 func (l List) picked() Result {
-	if len(l.shown) == 0 {
+	if len(l.shown) == 0 || l.greyed(l.cursor.Index()) {
 		return filtering()
 	}
 
 	return pickedAt(l.shown[l.cursor.Index()])
+}
+
+func (l List) greyed(shownAt int) bool {
+	return slices.Contains(l.greyedOut, l.shown[shownAt])
 }
 
 func (l List) typed(msg tea.Msg) (List, Result, tea.Cmd) {
@@ -143,6 +155,14 @@ func (l List) moved(direction move.Direction) List {
 	return l
 }
 
+func (l List) cursorOnShown(at int) List {
+	if at < 0 {
+		return l
+	}
+
+	return l.withCursor(at)
+}
+
 func (l List) withCursor(index int) List {
 	l.cursor = l.cursor.At(index, len(l.shown), l.rowsHeight())
 
@@ -169,6 +189,23 @@ func (l List) rows(styles look.Styles) string {
 	return l.cursor.VisibleRows(len(l.shown), l.rowsHeight(), func(at int) string {
 		choice := l.choices[l.shown[at]]
 
-		return look.Row(choice.Mark+choice.Text, choice.Meta, l.box.Width)
-	}, styles.Focused.CursorOn)
+		return l.rowStyle(at, styles).Render(look.Row(choice.Mark+choice.Text, choice.Meta, l.box.Width))
+	}, func(line string) string { return l.cursorStyle(styles).Render(line) })
+}
+
+// The cursor style wraps the cursor's row, so that row stays unstyled until then.
+func (l List) rowStyle(at int, styles look.Styles) lipgloss.Style {
+	if at != l.cursor.Index() && l.greyed(at) {
+		return styles.Dim
+	}
+
+	return styles.Plain
+}
+
+func (l List) cursorStyle(styles look.Styles) lipgloss.Style {
+	if l.greyed(l.cursor.Index()) {
+		return styles.Focused.Cursor.Foreground(styles.Dim.GetForeground())
+	}
+
+	return styles.Focused.Cursor
 }

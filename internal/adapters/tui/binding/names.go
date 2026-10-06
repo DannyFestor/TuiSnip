@@ -1,5 +1,6 @@
 package binding
 
+//nolint:dupl // a table of Binding names that dupl matches against the label table in row.go; no logic repeats.
 const (
 	Quit         = "quit"
 	Help         = "help"
@@ -26,6 +27,7 @@ const (
 	NewFolder    = "new_folder"
 	NewTag       = "new_tag"
 	Rename       = "rename"
+	Move         = "move"
 	Delete       = "delete"
 	Collapse     = "collapse"
 	Language     = "language"

@@ -10,10 +10,10 @@
 │                        ││     │q              quit                 y Copy           │                                │
 │                        ││     │?              help                 e edit           │                                │
 │                        ││     │/              search               E external editor│                                │
-│                        ││     │z              zoom                 c duplicate      │                                │
-│                        ││     │n              new                  d delete         │                                │
-│                        ││     │p              Capture              s sort           │                                │
-│                        ││     │tab            next Pane                             │                                │
+│                        ││     │z              zoom                 m move           │                                │
+│                        ││     │n              new                  c duplicate      │                                │
+│                        ││     │p              Capture              d delete         │                                │
+│                        ││     │tab            next Pane            s sort           │                                │
 │                        ││     │shift+tab      previous Pane                         │                                │
 │                        ││     │l, right       Pane to the right                     │                                │
 │                        ││     │h, left        Pane to the left                      │                                │

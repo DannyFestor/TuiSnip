@@ -14,6 +14,7 @@ type folderActions struct {
 	previewDelete      *folder.PreviewDelete
 	remove             *folder.Delete
 	setDefaultLanguage *folder.SetDefaultLanguage
+	move               *folder.Move
 }
 
 func newFolderActions(folders *sqlite.FolderRepository) (folderActions, error) {
@@ -22,6 +23,7 @@ func newFolderActions(folders *sqlite.FolderRepository) (folderActions, error) {
 	previewDelete, previewDeleteErr := folder.NewPreviewDelete(folders)
 	remove, removeErr := folder.NewDelete(folders)
 	setDefaultLanguage, setDefaultLanguageErr := folder.NewSetDefaultLanguage(folders, system.NewClock())
+	move, moveErr := folder.NewMove(folders)
 
 	return folderActions{
 		create:             create,
@@ -29,5 +31,6 @@ func newFolderActions(folders *sqlite.FolderRepository) (folderActions, error) {
 		previewDelete:      previewDelete,
 		remove:             remove,
 		setDefaultLanguage: setDefaultLanguage,
-	}, errors.Join(createErr, renameErr, previewDeleteErr, removeErr, setDefaultLanguageErr)
+		move:               move,
+	}, errors.Join(createErr, renameErr, previewDeleteErr, removeErr, setDefaultLanguageErr, moveErr)
 }

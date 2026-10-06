@@ -19,6 +19,13 @@ func insertSnippetParams(snippet domain.Snippet) sqlcgen.InsertSnippetParams {
 	}
 }
 
+func moveSnippetParams(snippet domain.Snippet) sqlcgen.MoveSnippetParams {
+	return sqlcgen.MoveSnippetParams{
+		FolderID: folderColumn(snippet.FolderID()),
+		ID:       columnID(snippet.ID()),
+	}
+}
+
 func updateSnippetParams(snippet domain.Snippet, loadedUpdatedAt time.Time) sqlcgen.UpdateSnippetParams {
 	return sqlcgen.UpdateSnippetParams{
 		Title:           snippet.Title().String(),

@@ -24,6 +24,7 @@ type subtreeFixture struct {
 	snippetIDs *testkit.SequentialIDs
 	goID       domain.FolderID
 	testingID  domain.FolderID
+	mocksID    domain.FolderID
 	dockerID   domain.FolderID
 	kept       []domain.Snippet
 }
@@ -278,6 +279,105 @@ func TestFolderRepository_Delete(t *testing.T) {
 	})
 }
 
+func TestFolderRepository_ListDescendantIDs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("lists the subfolders at every depth", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+
+		got, err := fixture.folders.ListDescendantIDs(t.Context(), fixture.goID)
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.FolderID{fixture.testingID, fixture.mocksID}, got)
+	})
+
+	t.Run("lists nothing under a Folder without children", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+
+		got, err := fixture.folders.ListDescendantIDs(t.Context(), fixture.dockerID)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
+func TestFolderRepository_Move(t *testing.T) {
+	t.Parallel()
+
+	t.Run("moves the Folder and its subtree under another Folder", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+		moved := movedUnder(t, fixture.find(t, fixture.testingID), fixture.dockerID)
+
+		require.NoError(t, fixture.folders.Move(t.Context(), moved))
+
+		assert.Equal(t, moved, fixture.find(t, fixture.testingID))
+		assert.Equal(t, fixture.testingID, fixture.find(t, fixture.mocksID).ParentID())
+		count, err := fixture.folders.CountSnippetsInSubtree(t.Context(), fixture.dockerID)
+		require.NoError(t, err)
+		assert.Equal(t, 4, count)
+	})
+
+	t.Run("moves the Folder to the Root", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+		moved := fixture.find(t, fixture.testingID).MoveToRoot()
+
+		require.NoError(t, fixture.folders.Move(t.Context(), moved))
+
+		assert.True(t, fixture.find(t, fixture.testingID).AtRoot())
+	})
+
+	t.Run("refuses a move into the Folder's own subtree the caller did not see", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newSubtreeFixture(t)
+		moved := movedUnder(t, fixture.find(t, fixture.goID), fixture.mocksID)
+
+		err := fixture.folders.Move(t.Context(), moved)
+
+		require.ErrorIs(t, err, domain.ErrFolderCycle)
+		require.ErrorContains(t, err, "sqlite.FolderRepository.Move")
+		assert.True(t, fixture.find(t, fixture.goID).AtRoot())
+	})
+
+	t.Run("reports a missing Folder as not found", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newFolderRepository(t, openDatabase(t, newDatabasePath(t)), slog.New(slog.DiscardHandler))
+		missing := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID()})
+
+		err := repository.Move(t.Context(), missing)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorContains(t, err, "sqlite.FolderRepository.Move")
+	})
+}
+
+func (f subtreeFixture) find(t *testing.T, id domain.FolderID) domain.Folder {
+	t.Helper()
+
+	found, err := f.folders.Find(t.Context(), id)
+	require.NoError(t, err)
+
+	return found
+}
+
+func movedUnder(t *testing.T, folder domain.Folder, parentID domain.FolderID) domain.Folder {
+	t.Helper()
+
+	moved, err := folder.MoveUnder(parentID, nil)
+	require.NoError(t, err)
+
+	return moved
+}
+
 func folderName(t *testing.T, raw string) value.FolderName {
 	t.Helper()
 
@@ -336,6 +436,7 @@ func newSubtreeFixture(t *testing.T) subtreeFixture {
 		snippetIDs: snippetIDs,
 		goID:       goFolder.ID(),
 		testingID:  testingFolder.ID(),
+		mocksID:    mocksFolder.ID(),
 		dockerID:   dockerFolder.ID(),
 		kept:       kept,
 	}

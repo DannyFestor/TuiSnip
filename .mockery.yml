@@ -13,12 +13,14 @@ packages:
       UpdateRepository: {}
       DuplicateRepository: {}
       Deleter: {}
+      MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
       EditRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
+      MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/tag:
     interfaces:
       Inserter: {}
@@ -48,12 +50,14 @@ packages:
       SnippetUpdater: {}
       SnippetDuplicator: {}
       SnippetDeleter: {}
+      SnippetMover: {}
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
       FolderDefaultLanguageSetter: {}
+      FolderMover: {}
       TagCreator: {}
       TagRenamer: {}
       TagDeletePreviewer: {}

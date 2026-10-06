@@ -225,6 +225,83 @@ func TestList_WithCursorOn(t *testing.T) {
 	})
 }
 
+func TestList_WithCursorOnChoice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("puts the cursor on the choice at the index, even when another has the same text", func(t *testing.T) {
+		t.Parallel()
+
+		list := opened(t, choicesOf("docs", "Go", "docs")).WithCursorOnChoice(2)
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picked(2), result)
+	})
+
+	t.Run("leaves the cursor where it is for a choice the filter hides", func(t *testing.T) {
+		t.Parallel()
+
+		list := pressed(t, typed(t, opened(t, choicesOf("Bash", "Basic", "Go")), "bas"), down()).WithCursorOnChoice(2)
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picked(1), result)
+	})
+}
+
+func TestList_WithGreyedOut(t *testing.T) {
+	t.Parallel()
+
+	t.Run("picks nothing on a greyed-out choice", func(t *testing.T) {
+		t.Parallel()
+
+		list := pressed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), down())
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picker.Filtering, result.Ending)
+	})
+
+	t.Run("still picks the choices that are not greyed out", func(t *testing.T) {
+		t.Parallel()
+
+		list := opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1)
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picked(0), result)
+	})
+
+	t.Run("greys out by the index in the full list after filtering", func(t *testing.T) {
+		t.Parallel()
+
+		list := typed(t, opened(t, choicesOf("Go", "Bash", "Basic")).WithGreyedOut(1), "bas")
+
+		_, result := press(t, list, enter())
+
+		assert.Equal(t, picker.Filtering, result.Ending)
+	})
+
+	t.Run("dims a greyed-out choice", func(t *testing.T) {
+		t.Parallel()
+
+		styles := look.NewStyles(look.SchemeDark)
+		list := opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1)
+
+		assert.Contains(t, list.View(styles), styles.Dim.Render(look.Row("Bash", "", boxWidth)))
+	})
+
+	t.Run("dims a greyed-out choice under the cursor", func(t *testing.T) {
+		t.Parallel()
+
+		styles := look.NewStyles(look.SchemeDark)
+		list := pressed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), down())
+		dimmedCursor := styles.Focused.Cursor.Foreground(styles.Dim.GetForeground())
+
+		assert.Contains(t, list.View(styles), dimmedCursor.Render(look.Row("Bash", "", boxWidth)))
+	})
+}
+
 func TestList_WithChoices(t *testing.T) {
 	t.Parallel()
 

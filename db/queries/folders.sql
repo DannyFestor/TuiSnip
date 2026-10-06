@@ -35,3 +35,16 @@ WHERE id = ?;
 UPDATE folders
 SET name = ?, default_language = ?, updated_at = ?
 WHERE id = ?;
+
+-- name: ListDescendantFolderIDs :many
+WITH RECURSIVE subtree (id) AS (
+    SELECT folders.id FROM folders WHERE folders.parent_id = sqlc.arg(id)
+    UNION
+    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+)
+SELECT subtree.id FROM subtree;
+
+-- name: MoveFolder :execrows
+UPDATE folders
+SET parent_id = ?
+WHERE id = ?;

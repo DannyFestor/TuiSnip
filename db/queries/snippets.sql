@@ -63,3 +63,8 @@ WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(loaded_updated_at);
 -- name: DeleteSnippet :execrows
 DELETE FROM snippets
 WHERE id = ?;
+
+-- name: MoveSnippet :execrows
+UPDATE snippets
+SET folder_id = ?
+WHERE id = ?;

@@ -32,12 +32,14 @@ const (
 	operationSave                 = "save snippet"
 	operationDuplicate            = "duplicate snippet"
 	operationDeleteSnippet        = "delete snippet"
+	operationMoveSnippet          = "move snippet"
 	operationSearch               = "search"
 	operationCreateFolder         = "create folder"
 	operationRenameFolder         = "rename folder"
 	operationPreviewDelete        = "preview folder delete"
 	operationDeleteFolder         = "delete folder"
 	operationSetDefaultLanguage   = "set folder default language"
+	operationMoveFolder           = "move folder"
 	operationCreateTag            = "create tag"
 	operationRenameTag            = "rename tag"
 	operationPreviewTagDelete     = "preview tag delete"
@@ -62,12 +64,14 @@ type Model struct {
 	updater               SnippetUpdater
 	duplicator            SnippetDuplicator
 	deleter               SnippetDeleter
+	mover                 SnippetMover
 	searcher              SnippetSearcher
 	folderCreator         FolderCreator
 	folderRenamer         FolderRenamer
 	folderDeletePreviewer FolderDeletePreviewer
 	folderDeleter         FolderDeleter
 	defaultLanguageSetter FolderDefaultLanguageSetter
+	folderMover           FolderMover
 	tagCreator            TagCreator
 	tagRenamer            TagRenamer
 	tagDeletePreviewer    TagDeletePreviewer
@@ -128,12 +132,14 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		updater:               deps.Updater,
 		duplicator:            deps.Duplicator,
 		deleter:               deps.Deleter,
+		mover:                 deps.Mover,
 		searcher:              deps.Searcher,
 		folderCreator:         deps.FolderCreator,
 		folderRenamer:         deps.FolderRenamer,
 		folderDeletePreviewer: deps.FolderDeletePreviewer,
 		folderDeleter:         deps.FolderDeleter,
 		defaultLanguageSetter: deps.FolderDefaultLanguageSetter,
+		folderMover:           deps.FolderMover,
 		tagCreator:            deps.TagCreator,
 		tagRenamer:            deps.TagRenamer,
 		tagDeletePreviewer:    deps.TagDeletePreviewer,
@@ -177,12 +183,14 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("updater", deps.Updater),
 		domain.RequireDependency("duplicator", deps.Duplicator),
 		domain.RequireDependency("deleter", deps.Deleter),
+		domain.RequireDependency("mover", deps.Mover),
 		domain.RequireDependency("searcher", deps.Searcher),
 		domain.RequireDependency("folderCreator", deps.FolderCreator),
 		domain.RequireDependency("folderRenamer", deps.FolderRenamer),
 		domain.RequireDependency("folderDeletePreviewer", deps.FolderDeletePreviewer),
 		domain.RequireDependency("folderDeleter", deps.FolderDeleter),
 		domain.RequireDependency("folderDefaultLanguageSetter", deps.FolderDefaultLanguageSetter),
+		domain.RequireDependency("folderMover", deps.FolderMover),
 		domain.RequireDependency("tagCreator", deps.TagCreator),
 		domain.RequireDependency("tagRenamer", deps.TagRenamer),
 		domain.RequireDependency("tagDeletePreviewer", deps.TagDeletePreviewer),
@@ -438,7 +446,8 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
-		outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested:
+		outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested,
+		outcome.SnippetMoveRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
 		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked:
@@ -448,7 +457,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.NoticeShown:
 		return m.shown(reported.Text)
 	case outcome.FolderCreateRequested, outcome.FolderRenameRequested,
-		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested, outcome.DefaultLanguageRequested:
+		outcome.FolderDeleteAsked, outcome.FolderDeleteRequested, outcome.DefaultLanguageRequested,
+		outcome.FolderMoveRequested:
 		return m, m.runFolderAction(reported)
 	case outcome.TagCreateRequested, outcome.TagRenameRequested,
 		outcome.TagDeleteAsked, outcome.TagDeleteRequested:
@@ -529,10 +539,19 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.captureSnippet()
 	case outcome.ExternalEditAsked:
 		return m.editExternally(reported)
+	default:
+		return m.runSnippetListChange(reported)
+	}
+}
+
+func (m Model) runSnippetListChange(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
 	case outcome.SnippetDuplicateRequested:
 		return m.duplicateSnippet(reported.Input, reported.Selection)
 	case outcome.SnippetDeleteRequested:
 		return m.deleteSnippet(reported.Input, reported.Selection, reported.Selecting)
+	case outcome.SnippetMoveRequested:
+		return m.moveSnippet(reported.Input, reported.Selection, reported.Selecting)
 	default:
 		return nil
 	}
@@ -562,6 +581,19 @@ func (m Model) deleteSnippet(
 	}
 }
 
+func (m Model) moveSnippet(
+	in snippet.MoveInput, selection browseselection.Selection, selecting domain.SnippetID,
+) tea.Cmd {
+	return func() tea.Msg {
+		_, err := m.mover.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationMoveSnippet, err: err}
+		}
+
+		return snippetsChangedMsg{selection: selection, selecting: selecting}
+	}
+}
+
 func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 	switch reported := reported.(type) {
 	case outcome.FolderCreateRequested:
@@ -574,6 +606,8 @@ func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 		return m.deleteFolder(reported.Input, reported.ParentID)
 	case outcome.DefaultLanguageRequested:
 		return m.setFolderDefaultLanguage(reported.Input)
+	case outcome.FolderMoveRequested:
+		return m.moveFolder(reported.Input)
 	default:
 		return nil
 	}
@@ -668,6 +702,17 @@ func (m Model) deleteFolder(in folder.DeleteInput, parentID domain.FolderID) tea
 		}
 
 		return folderTreeChangedMsg{selecting: parentID}
+	}
+}
+
+func (m Model) moveFolder(in folder.MoveInput) tea.Cmd {
+	return func() tea.Msg {
+		moved, err := m.folderMover.Run(m.ctx, in)
+		if err != nil {
+			return operationFailedMsg{operation: operationMoveFolder, err: err}
+		}
+
+		return folderTreeChangedMsg{selecting: moved.ID()}
 	}
 }
 

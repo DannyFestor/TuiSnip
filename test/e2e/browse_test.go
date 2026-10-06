@@ -7,8 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
@@ -50,16 +52,10 @@ func TestBrowseByTagAcrossFolders(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	ids := testkit.NewSequentialIDs()
-	golang := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go"})
-	kubernetes := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "kubernetes"})
-	testapp.SeedFolder(t, app, golang)
-	testapp.SeedTag(t, app, kubernetes)
-	carrying := []domain.Tag{kubernetes}
-	testapp.SeedSnippet(t, app, snippetWithIDs(t, ids, testkit.SnippetSpec{Title: "Pods at the Root", Tags: carrying}))
-	testapp.SeedSnippet(t, app, snippetWithIDs(t, ids, testkit.SnippetSpec{
-		Title: "Client in go", FolderID: golang.ID(), Tags: carrying,
-	}))
+	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
+	carrying := []domain.Tag{testapp.SeedTag(t, app, tag.CreateInput{Name: "kubernetes"})}
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "Pods at the Root", Tags: carrying})
+	testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "Client in go", FolderID: golang.ID(), Tags: carrying})
 	screen := open(t, app)
 	screen.waitForFrame("# kubernetes")
 

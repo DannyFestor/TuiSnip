@@ -58,7 +58,7 @@ jobs:
           systemd-run --user --scope --quiet -p MemoryMax=1G true && echo "MON user scope works" || echo "MON user scope fails"
           sudo systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)" -p MemoryMax=1G true && echo "MON sudo scope works" || echo "MON sudo scope fails"
           sudo --preserve-env env "PATH=$PATH" systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)" \
-            -p MemoryMax=12G -p MemorySwapMax=0 make test-mutation
+            -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=continue make test-mutation
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

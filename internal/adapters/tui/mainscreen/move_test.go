@@ -7,10 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -110,22 +113,41 @@ func TestScreen_moveSnippet(t *testing.T) {
 		assert.Equal(t, pickerHints, screen.Hints())
 	})
 
-	t.Run("asks to move the Snippet into the picked Folder", func(t *testing.T) {
+	t.Run("asks to move the Snippet into the picked Folder, the Snippet below taking its row", func(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
-		moving := sampleSnippets(t)[0]
+		snippets := sampleSnippets(t)
 
 		screen.Press(keypress.Letter('3'), keypress.Letter('m'))
 		screen.Press(keypress.Typed("docker")...)
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input: snippet.MoveInput{SnippetID: moving.ID(), FolderID: sample.Docker.ID()},
+			Input:     snippet.MoveInput{SnippetID: snippets[0].ID(), FolderID: sample.Docker.ID()},
+			Selection: browseselection.InFolder(domain.FolderID{}),
+			Selecting: snippets[1].ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 
-	t.Run("opens on the Snippet's Folder", func(t *testing.T) {
+	t.Run("the Snippet above takes the row when the last row moves", func(t *testing.T) {
+		t.Parallel()
+
+		screen, sample := browsing(t)
+		snippets := sampleSnippets(t)
+
+		screen.Press(keypress.Letter('3'), keypress.Letter('j'), keypress.Letter('m'))
+		screen.Press(keypress.Typed("docker")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, outcome.SnippetMoveRequested{
+			Input:     snippet.MoveInput{SnippetID: snippets[1].ID(), FolderID: sample.Docker.ID()},
+			Selection: browseselection.InFolder(domain.FolderID{}),
+			Selecting: snippets[0].ID(),
+		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
+	})
+
+	t.Run("opens on the Snippet's Folder, and keeps the cursor on a Snippet that stays there", func(t *testing.T) {
 		t.Parallel()
 
 		screen, _ := browsing(t)
@@ -134,7 +156,36 @@ func TestScreen_moveSnippet(t *testing.T) {
 		screen.Press(keypress.Letter('3'), keypress.Letter('m'), keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input: snippet.MoveInput{SnippetID: moving.ID(), FolderID: domain.FolderID{}},
+			Input:     snippet.MoveInput{SnippetID: moving.ID(), FolderID: domain.FolderID{}},
+			Selection: browseselection.InFolder(domain.FolderID{}),
+			Selecting: moving.ID(),
+		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
+	})
+
+	t.Run("keeps the cursor on the moved Snippet when a Tag is the Browse selection", func(t *testing.T) {
+		t.Parallel()
+
+		screen, tags := browsingTags(t)
+		sample := foldertree.New(t)
+		moving := sampleSnippets(t)[0]
+
+		screen.Send(mainscreen.TreeLoaded{Tree: sample.Tree})
+		screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter))
+		screen.Send(mainscreen.SnippetsLoaded{
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+			Snippets:  sampleSnippets(t),
+			Selecting: domain.SnippetID{},
+			Order:     domain.SortOrderTitle,
+		})
+
+		screen.Press(keypress.Letter('m'))
+		screen.Press(keypress.Typed("docker")...)
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		assert.Equal(t, outcome.SnippetMoveRequested{
+			Input:     snippet.MoveInput{SnippetID: moving.ID(), FolderID: sample.Docker.ID()},
+			Selection: browseselection.WithTag(tags[0].Tag.ID()),
+			Selecting: moving.ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 

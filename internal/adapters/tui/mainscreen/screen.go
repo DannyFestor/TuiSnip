@@ -187,12 +187,19 @@ func (s Screen) moveAsked(msg tea.KeyPressMsg) (folderpicker.Offer, bool) {
 
 		return folderMoveOffer(moving, tree), ok
 	case s.focus == paneList && s.listKeys.Matches(msg, binding.Move):
-		moving, ok := s.panes.list.Selected()
+		pending, ok := s.snippetMoveAsked()
 
-		return snippetMoveOffer(moving, tree), ok
+		return snippetMoveOffer(pending, tree), ok
 	}
 
 	return folderpicker.Offer{}, false
+}
+
+func (s Screen) snippetMoveAsked() (snippetMove, bool) {
+	moving, ok := s.panes.list.Selected()
+	successor, _ := s.panes.list.Successor()
+
+	return snippetMove{moving: moving, successor: successor, selection: s.selection()}, ok
 }
 
 func (s Screen) defaultLanguageAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {

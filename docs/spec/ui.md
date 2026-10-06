@@ -19,7 +19,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 │# go                4││                           ││   6 │     case err := <-errc:          │
 │# unused            0││                           ││   7 │         return err               │
 ╰─────────────────────╯╰───────────────────────────╯╰────────────────────────────────────────╯
- Copied y Copy · e edit · E external editor · n new · c duplicate · d delete · s sort · ? help
+ Copied y Copy · e edit · E external editor · n new · m move · c duplicate · d delete · ? help
 ```
 
 - The main screen has four Panes, numbered left to right: **1 Folders** above **2 Tags** in the left column, then **3 Snippet list**, then **4 Snippet pane**. Each Pane's title carries its number.
@@ -75,6 +75,9 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - Deleting a Tag no Snippet carries happens at once. Otherwise a confirmation titled "Delete Tag" asks first, default No: `Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`. A count of one reads "1 Snippet". After a delete the cursor keeps its row. When the deleted Tag held the Browse selection, the Tag now under the cursor takes it, or the Folders take it back when no Tag is left.
 - `c` in the Snippet list copies the Snippet under the cursor into the same Folder, with the same Title, Description, Tags, Fragment content, and Language, and the cursor moves onto the copy.
 - `d` in the Snippet list asks first with a confirmation titled "Delete Snippet", default No: `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`. The deletion is permanent, and the Tags the Snippet carried stay. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
+- `m` in Folders or the Snippet list opens the [Folder picker](#other-overlays) for the row under the cursor.
+  - A moved Folder keeps the cursor and the Browse selection in its new place, and its new parent expands if it was collapsed. When a Tag held the Browse selection, the Folders take it back.
+  - A moved Snippet leaves the Browse selection as it is. When the Snippet leaves the listed Folder or the Root, the cursor keeps its row as after a delete. When it is still listed, as under a Tag, the cursor stays on it and only its Folder path changes.
 - `L` opens the Language picker, titled "Default Language of" and the Folder's name, on the Default Language of the Folder under the cursor. The picked Language becomes that Folder's Default Language for the Snippets created in it from then on. Snippets already in it keep their Language. `L` does nothing on the Root, which is always `plaintext`.
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
@@ -174,7 +177,7 @@ The Language picker, the Folder picker, and the Tag editor share one shape: a fi
 Typing filters the list, ignoring case: the entries that start with the filter come first, then the ones that contain it, each in list order.
 
 - The **Language picker** shows the curated `languages` list when config sets one, in the config's order, and `ctrl+a` switches to every Language and back, keeping the filter. Every Language is listed by name, ignoring case. The picker opens on the current Language, and says "No Language matches." when the filter matches none. From the edit overlay it is titled "Pick a Language", and the picked Language is an unsaved change.
-- The **Folder picker** includes the Root and greys out a moving Folder's own subtree.
+- The **Folder picker** is titled "Move", the Snippet's title or the Folder's name, and "to". It lists the Root and every Folder by its path, and opens on the Folder the Snippet or Folder is in. It greys out a moving Folder's own subtree, which `enter` doesn't pick.
 - **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
 
@@ -240,9 +243,9 @@ The right end of the status line lists the focused Scope's main Bindings with th
 
 | Scope | Hint |
 |---|---|
-| `folders` | open · new Folder · rename · delete · zoom · search · help |
+| `folders` | open · new Folder · rename · delete · move · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
-| `snippet_list` | Copy · edit · external editor · new · duplicate · delete · sort · zoom · search · help |
+| `snippet_list` | Copy · edit · external editor · new · move · duplicate · delete · sort · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · zoom · search · help |
 | `editor` | save · cancel · field · Language · external editor |
 | `content` | save · leave · indent · dedent · external editor |

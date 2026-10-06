@@ -50,12 +50,14 @@ packages:
       SnippetUpdater: {}
       SnippetDuplicator: {}
       SnippetDeleter: {}
+      SnippetMover: {}
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}
       FolderDeletePreviewer: {}
       FolderDeleter: {}
       FolderDefaultLanguageSetter: {}
+      FolderMover: {}
       TagCreator: {}
       TagRenamer: {}
       TagDeletePreviewer: {}

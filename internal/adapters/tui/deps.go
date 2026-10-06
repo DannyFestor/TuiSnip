@@ -13,12 +13,14 @@ type Deps struct {
 	Updater                     SnippetUpdater
 	Duplicator                  SnippetDuplicator
 	Deleter                     SnippetDeleter
+	Mover                       SnippetMover
 	Searcher                    SnippetSearcher
 	FolderCreator               FolderCreator
 	FolderRenamer               FolderRenamer
 	FolderDeletePreviewer       FolderDeletePreviewer
 	FolderDeleter               FolderDeleter
 	FolderDefaultLanguageSetter FolderDefaultLanguageSetter
+	FolderMover                 FolderMover
 	TagCreator                  TagCreator
 	TagRenamer                  TagRenamer
 	TagDeletePreviewer          TagDeletePreviewer

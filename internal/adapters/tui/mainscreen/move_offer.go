@@ -5,7 +5,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
-	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -26,14 +25,14 @@ func folderMoveOffer(moving domain.Folder, tree browse.Tree) folderpicker.Offer 
 	}
 }
 
-func snippetMoveOffer(moving domain.Snippet, tree browse.Tree) folderpicker.Offer {
+func snippetMoveOffer(pending snippetMove, tree browse.Tree) folderpicker.Offer {
 	return folderpicker.Offer{
-		Title:   moveTitle(moving.Title().String()),
+		Title:   moveTitle(pending.moving.Title().String()),
 		Tree:    tree,
-		Current: moving.FolderID(),
+		Current: pending.moving.FolderID(),
 		Moving:  domain.FolderID{},
 		Picked: func(picked domain.FolderID) outcome.Outcome {
-			return outcome.SnippetMoveRequested{Input: snippet.MoveInput{SnippetID: moving.ID(), FolderID: picked}}
+			return pending.requested(picked)
 		},
 	}
 }

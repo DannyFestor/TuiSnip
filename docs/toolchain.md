@@ -91,10 +91,13 @@ GitHub Actions runs every check the hooks run, plus the ones too slow for them. 
 |---|---|---|
 | `ci.yml` | every PR, every push to `main` | `lint` (golangci-lint and `fmt --diff`), `arch-lint`, `test` (unit, feature, e2e), `build (<os>, <arch>)` for darwin/linux × amd64/arm64, `govulncheck`, `generated` (`make generate` drift and `make fix-check`), `shellcheck` |
 | `pr-title.yml` | PR opened, edited, or updated | `pr-title`: `cog verify` on the title |
-| `weekly.yml` | Mondays at 03:00 UTC, and by hand | `fuzz` (5 minutes per target), `property-deep`, `mutation`. Report only, never required. |
+| `weekly.yml` | Mondays at 03:00 UTC, and by hand | `fuzz` (5 minutes per target), `property-deep`. Report only, never required. |
+| `mutation.yml` | by hand only | `mutation`: `make test-mutation`, uploads `mutation-report`. Report only, never required. |
 | `release.yml` | `v*` tags | goreleaser |
 
 The deep tests run weekly, not nightly. Daily runs would mostly search code that hasn't changed, and the cached Go build cache keeps the fuzz corpus from one run to the next.
+
+Mutation testing runs only by hand. A full run takes about 50 minutes, and the report is worth that only when someone reads it. The job runs gremlins in a systemd scope capped at 12 GB with `OOMPolicy=continue`. A mutant that reverses a loop counter can allocate without bound, and without the cap it exhausted the runner's memory and GitHub shut the runner down. With the cap, the kernel kills only that test process, and gremlins counts the mutant as killed. A second shutdown signal makes gremlins 0.6.0 panic with `send on closed channel` ([gremlins#283](https://github.com/go-gremlins/gremlins/pull/283)).
 
 `.github/actions/setup` installs the tools from `mise.toml` with `jdx/mise-action` and caches the Go build and module caches per job. The mise version is pinned there, because Dependabot can't update it and an unpinned mise changes under CI without a commit.
 

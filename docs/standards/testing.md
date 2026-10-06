@@ -97,7 +97,7 @@ Test every behaviour a ticket or standard decided, and every branch that chooses
 
 Coverage is reported and has no threshold. A branch that shows red is fine when it is pass-through, and a gap when it is a decision. Reviewers find decision gaps by reading the code and the coverage report.
 
-Mutation testing runs in the weekly CI job. Surviving mutants show up in its `mutation-report` artifact, and a mutant that lives on a decision branch needs a test. A mutation run is never required before a PR. It takes long and can use enough CPU and memory to freeze a dev machine. Running it locally is optional:
+Mutation testing runs in the `Mutation` CI workflow, started by hand. Surviving mutants show up in its `mutation-report` artifact, and a mutant that lives on a decision branch needs a test. A mutation run is never required before a PR. It takes long and can use enough CPU and memory to freeze a dev machine. Running it locally is optional:
 
 - `make test-mutation-changed` mutation-tests the packages changed since `origin/main`, uncommitted changes included. It skips a package whose parent's run already covers it, and does nothing when no Go code changed. Each package gets its own `mutation-report-<package>.json`.
 - `make test-mutation PKG=./internal/adapters/sqlite` runs one package.

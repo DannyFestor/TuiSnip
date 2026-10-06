@@ -1,0 +1,27 @@
+name: Mutation
+
+# By hand only: a full run takes about 50 minutes, and its report is worth that only when someone reads it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      # A mutant that reverses a loop counter allocates without bound and exhausts the runner's memory,
+      # which shuts the runner down mid-run. The cgroup cap lets the kernel kill only that test process,
+      # which gremlins counts as a killed mutant. OOMPolicy=continue keeps systemd from stopping gremlins too.
+      - run: |
+          sudo --preserve-env env "PATH=$PATH" systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)" \
+            -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=continue make test-mutation
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-report
+          path: mutation-report.json

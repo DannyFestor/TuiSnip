@@ -276,6 +276,50 @@ func TestSnippet_Edit(t *testing.T) {
 	})
 }
 
+func TestSnippet_Duplicate(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+	later := created.Add(time.Hour)
+	ids := testkit.NewSequentialIDs()
+	duplicateID, duplicateFragmentID := ids.NewSnippetID(), ids.NewFragmentID()
+	stored := testkit.Snippet(t, testkit.SnippetSpec{
+		ID:          snippetID(),
+		Title:       "curl",
+		Description: "POST",
+		FolderID:    domain.FolderID(uuid.MustParse(folderUUID)),
+		Fragment:    testkit.FragmentSpec{Language: "Bash", Content: "curl -d @b.json", CreatedAt: created},
+		Tags:        []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "http"})},
+		CreatedAt:   created,
+	})
+
+	t.Run("keeps every field but the ids and times", func(t *testing.T) {
+		t.Parallel()
+
+		duplicate, err := stored.Duplicate(duplicateID, duplicateFragmentID, later)
+
+		require.NoError(t, err)
+		assert.Equal(t, duplicateID, duplicate.ID())
+		assert.Equal(t, stored.Title(), duplicate.Title())
+		assert.Equal(t, stored.Description(), duplicate.Description())
+		assert.Equal(t, stored.FolderID(), duplicate.FolderID())
+		assert.Equal(t, stored.Tags(), duplicate.Tags())
+		assert.Equal(t, later, duplicate.CreatedAt())
+		assert.Equal(t, later, duplicate.UpdatedAt())
+		assert.Equal(t, duplicateFragmentID, duplicate.FirstFragment().ID())
+		assert.Equal(t, stored.FirstFragment().Language(), duplicate.FirstFragment().Language())
+		assert.Equal(t, stored.FirstFragment().Content(), duplicate.FirstFragment().Content())
+	})
+
+	t.Run("rejects nil ids", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := stored.Duplicate(domain.SnippetID{}, domain.FragmentID{}, later)
+
+		require.ErrorIs(t, err, domain.ErrNilID)
+	})
+}
+
 func snippetID() domain.SnippetID {
 	return domain.SnippetID(uuid.MustParse(storedID))
 }

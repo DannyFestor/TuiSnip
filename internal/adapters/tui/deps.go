@@ -11,6 +11,8 @@ type Deps struct {
 	Creator                     SnippetCreator
 	Capturer                    SnippetCapturer
 	Updater                     SnippetUpdater
+	Duplicator                  SnippetDuplicator
+	Deleter                     SnippetDeleter
 	Searcher                    SnippetSearcher
 	FolderCreator               FolderCreator
 	FolderRenamer               FolderRenamer

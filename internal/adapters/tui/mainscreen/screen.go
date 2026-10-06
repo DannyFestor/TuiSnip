@@ -147,8 +147,8 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if s.focus == paneList && s.listKeys.Matches(msg, binding.CycleSort) {
-		return outcome.Stay(s).Passing(s.panes.sortCycleAsked(s.selection()))
+	if step, ok := s.listPressed(msg); ok {
+		return step
 	}
 
 	if stored, ok := s.editAsked(msg); ok {

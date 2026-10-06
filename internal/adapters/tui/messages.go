@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -39,6 +40,11 @@ type tagCreatedMsg struct {
 
 type tagsChangedMsg struct {
 	selecting domain.TagID
+}
+
+type snippetsChangedMsg struct {
+	selection browseselection.Selection
+	selecting domain.SnippetID
 }
 
 type operationFailedMsg struct {

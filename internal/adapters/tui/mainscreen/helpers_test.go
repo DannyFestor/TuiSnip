@@ -27,7 +27,7 @@ const (
 	snippetListTitle = "3 Root · by title"
 	snippetPaneTitle = "4 Snippet"
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
-	listHint         = "y Copy · e edit · n new · s sort · z zoom · / search · ? help"
+	listHint         = "y Copy · e edit · n new · c duplicate · d delete · s sort · z zoom · / search · ? help"
 	helpHint         = "? help"
 	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
 	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+l Language"

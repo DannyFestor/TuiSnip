@@ -47,6 +47,15 @@ func (f Fragment) UpdatedAt() time.Time {
 	return f.updatedAt
 }
 
+func (f Fragment) Duplicate(id FragmentID, now time.Time) (Fragment, error) {
+	duplicate, err := NewFragment(id, f.language, f.content, now, now)
+	if err != nil {
+		return Fragment{}, fmt.Errorf("domain.Fragment.Duplicate: %w", err)
+	}
+
+	return duplicate, nil
+}
+
 func (f Fragment) Edit(language value.Language, content value.Content, now time.Time) (Fragment, error) {
 	err := requireTimestamps(f.createdAt, now)
 	if err != nil {

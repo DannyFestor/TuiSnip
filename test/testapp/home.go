@@ -62,6 +62,8 @@ func (h *Home) Start(t *testing.T, tool ClipboardTool) *bootstrap.App {
 
 	app, err := h.Open(t, tool)
 	require.NoError(t, err)
+	// Registered before Close so it runs after it, once the app has written its last line.
+	h.logOnFailure(t)
 	t.Cleanup(func() { require.NoError(t, app.Close()) })
 
 	return app
@@ -127,6 +129,16 @@ func (h *Home) Log(t *testing.T) string {
 	require.NoError(t, err)
 
 	return string(data)
+}
+
+func (h *Home) logOnFailure(t *testing.T) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("app log:\n%s", h.Log(t))
+		}
+	})
 }
 
 func (h *Home) installed(t *testing.T, tool ClipboardTool) func(string) (string, error) {

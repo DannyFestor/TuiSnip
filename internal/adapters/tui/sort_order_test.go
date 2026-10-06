@@ -125,6 +125,8 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			Creator:                     NewMockSnippetCreator(t),
 			Capturer:                    NewMockSnippetCapturer(t),
 			Updater:                     NewMockSnippetUpdater(t),
+			Duplicator:                  NewMockSnippetDuplicator(t),
+			Deleter:                     NewMockSnippetDeleter(t),
 			Searcher:                    NewMockSnippetSearcher(t),
 			FolderCreator:               NewMockFolderCreator(t),
 			FolderRenamer:               NewMockFolderRenamer(t),

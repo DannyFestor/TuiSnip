@@ -179,6 +179,37 @@ func TestSnippetRepository_Update(t *testing.T) {
 	})
 }
 
+func TestSnippetRepository_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("removes the Snippet and its Fragment and keeps its Tags", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTagFixture(t)
+		golang := insertTag(t, fixture.tags, fixture.ids, "go")
+		deleted := fixture.insertSnippetWith(t, golang)
+		kept := fixture.insertSnippetWith(t)
+
+		require.NoError(t, fixture.snippets.Delete(t.Context(), deleted.ID()))
+
+		listed, err := fixture.snippets.List(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Snippet{kept}, listed)
+		assert.Equal(t, []domain.Tag{golang}, listedTags(t, fixture.tags))
+	})
+
+	t.Run("reports a missing Snippet as not found", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTagFixture(t)
+
+		err := fixture.snippets.Delete(t.Context(), fixture.ids.NewSnippetID())
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorContains(t, err, "sqlite.SnippetRepository.Delete")
+	})
+}
+
 func TestSnippetRepository_corruptRow(t *testing.T) {
 	t.Parallel()
 

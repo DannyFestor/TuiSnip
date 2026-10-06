@@ -59,3 +59,7 @@ GROUP BY folder_id;
 UPDATE snippets
 SET title = sqlc.arg(title), description = sqlc.arg(description), updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(loaded_updated_at);
+
+-- name: DeleteSnippet :execrows
+DELETE FROM snippets
+WHERE id = ?;

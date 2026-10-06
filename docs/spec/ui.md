@@ -19,7 +19,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 │# go                4││                           ││   6 │     case err := <-errc:          │
 │# unused            0││                           ││   7 │         return err               │
 ╰─────────────────────╯╰───────────────────────────╯╰────────────────────────────────────────╯
- Copied                                         y copy · e edit · n new · s sort · z zoom · / search · ? help
+ Copied y Copy · e edit · E external editor · n new · c duplicate · d delete · s sort · ? help
 ```
 
 - The main screen has four Panes, numbered left to right: **1 Folders** above **2 Tags** in the left column, then **3 Snippet list**, then **4 Snippet pane**. Each Pane's title carries its number.
@@ -73,6 +73,8 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - A new Tag is typed on a row placed where the name will sort among the Tags, in the order the Tags Pane lists them. The row moves as the name is typed, and an empty name sorts first. The new Tag becomes the Browse selection once it is created. A name that already exists, compared case-insensitively, is refused with "Tag go already exists", which names the existing Tag with its own spelling, not the typed one. A comma is refused with "Tag name contains a comma", and a blank name with "Tag name is blank". A refused name stays in the row to be fixed.
 - Renaming a Tag onto another Tag's name merges the two. The other Tag survives with the typed spelling, every Snippet that carried either Tag carries it once, and the cursor moves onto it.
 - Deleting a Tag no Snippet carries happens at once. Otherwise a confirmation titled "Delete Tag" asks first, default No: `Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`. A count of one reads "1 Snippet". After a delete the cursor keeps its row. When the deleted Tag held the Browse selection, the Tag now under the cursor takes it, or the Folders take it back when no Tag is left.
+- `c` in the Snippet list copies the Snippet under the cursor into the same Folder, with the same Title, Description, Tags, Fragment content, and Language, and the cursor moves onto the copy.
+- `d` in the Snippet list asks first with a confirmation titled "Delete Snippet", default No: `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`. The deletion is permanent, and the Tags the Snippet carried stay. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
 - `L` opens the Language picker, titled "Default Language of" and the Folder's name, on the Default Language of the Folder under the cursor. The picked Language becomes that Folder's Default Language for the Snippets created in it from then on. Snippets already in it keep their Language. `L` does nothing on the Root, which is always `plaintext`.
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
@@ -240,7 +242,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 |---|---|
 | `folders` | open · new Folder · rename · delete · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
-| `snippet_list` | Copy · edit · external editor · new · sort · zoom · search · help |
+| `snippet_list` | Copy · edit · external editor · new · duplicate · delete · sort · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · zoom · search · help |
 | `editor` | save · cancel · field · Language · external editor |
 | `content` | save · leave · indent · dedent · external editor |

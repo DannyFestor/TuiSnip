@@ -279,6 +279,50 @@ func TestList_WithCursorOn(t *testing.T) {
 	})
 }
 
+func TestList_Successor(t *testing.T) {
+	t.Parallel()
+
+	found := []struct {
+		name string
+		key  rune
+		want string
+	}{
+		{name: "is the Snippet below the cursor", key: 'j', want: "Snippet 3"},
+		{name: "is the Snippet above the cursor on the last row", key: 'G', want: "Snippet 2"},
+	}
+
+	for _, tt := range found {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			list := pressed(t, listOf(t, numberedSnippets(t, 3)), keypress.Letter(tt.key))
+
+			successor, ok := list.Successor()
+
+			assert.True(t, ok)
+			assert.Equal(t, tt.want, successor.Title().String())
+		})
+	}
+
+	none := []struct {
+		name  string
+		count int
+	}{
+		{name: "is none for the only Snippet", count: 1},
+		{name: "is none in an empty list", count: 0},
+	}
+
+	for _, tt := range none {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, ok := listOf(t, numberedSnippets(t, tt.count)).Successor()
+
+			assert.False(t, ok)
+		})
+	}
+}
+
 func TestList_Moved(t *testing.T) {
 	t.Parallel()
 

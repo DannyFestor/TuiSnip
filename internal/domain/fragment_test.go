@@ -127,6 +127,39 @@ func TestFragment_Edit(t *testing.T) {
 	})
 }
 
+func TestFragment_Duplicate(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
+	later := created.Add(time.Hour)
+	duplicateID := testkit.NewSequentialIDs().NewFragmentID()
+	fragment := testkit.Fragment(
+		t,
+		testkit.FragmentSpec{ID: fragmentID(), Language: "Bash", Content: "ls", CreatedAt: created},
+	)
+
+	t.Run("keeps the Language and content under the new id and time", func(t *testing.T) {
+		t.Parallel()
+
+		duplicate, err := fragment.Duplicate(duplicateID, later)
+
+		require.NoError(t, err)
+		assert.Equal(t, duplicateID, duplicate.ID())
+		assert.Equal(t, fragment.Language(), duplicate.Language())
+		assert.Equal(t, fragment.Content(), duplicate.Content())
+		assert.Equal(t, later, duplicate.CreatedAt())
+		assert.Equal(t, later, duplicate.UpdatedAt())
+	})
+
+	t.Run("rejects the nil id", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := fragment.Duplicate(domain.FragmentID{}, later)
+
+		require.ErrorIs(t, err, domain.ErrNilID)
+	})
+}
+
 func fragmentID() domain.FragmentID {
 	return domain.FragmentID(uuid.MustParse(storedID))
 }

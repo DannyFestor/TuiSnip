@@ -582,23 +582,28 @@ func TestScreen_statusLine(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Press(keypress.Letter('4'))
+		screen.Press(keypress.Letter('1'))
 
-		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(snippetPaneHint))})
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(folderHints))})
 
-		assert.True(t, strings.HasSuffix(statusLine(screen), " "+snippetPaneHint))
+		assert.True(t, strings.HasSuffix(statusLine(screen), " "+folderHints))
 	})
 
 	t.Run("drops hints from the right but keeps help", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Press(keypress.Letter('4'))
+		screen.Press(keypress.Letter('1'))
 
-		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(snippetPaneHint) - 1)})
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(folderHints) - 1)})
 
-		want := " y Copy · e edit · E external editor · w wrap · z zoom · " + helpHint
-		assert.True(t, strings.HasSuffix(statusLine(screen), want))
+		assert.True(
+			t,
+			strings.HasSuffix(
+				statusLine(screen),
+				" enter open · N new Folder · r rename · d delete · z zoom · "+helpHint,
+			),
+		)
 	})
 
 	t.Run("keeps only help when nothing else fits", func(t *testing.T) {

@@ -109,6 +109,20 @@ func (s Snippet) Edit(
 	return s, nil
 }
 
+func (s Snippet) Duplicate(id SnippetID, fragmentID FragmentID, now time.Time) (Snippet, error) {
+	fragment, err := s.FirstFragment().Duplicate(fragmentID, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Duplicate: %w", err)
+	}
+
+	duplicate, err := NewSnippet(id, s.title, s.description, s.folderID, []Fragment{fragment}, s.tags, now, now)
+	if err != nil {
+		return Snippet{}, fmt.Errorf("domain.Snippet.Duplicate: %w", err)
+	}
+
+	return duplicate, nil
+}
+
 func requireOneFragment(fragments []Fragment) error {
 	if len(fragments) != fragmentsPerSnippet {
 		return ErrNotOneFragment

@@ -58,6 +58,8 @@ type actions struct {
 	creator               tui.SnippetCreator
 	capturer              tui.SnippetCapturer
 	updater               tui.SnippetUpdater
+	duplicator            tui.SnippetDuplicator
+	deleter               tui.SnippetDeleter
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
 	folderRenamer         tui.FolderRenamer
@@ -149,6 +151,8 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		Creator:       with.creator,
 		Capturer:      orMock(with.capturer, func() tui.SnippetCapturer { return NewMockSnippetCapturer(t) }),
 		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
+		Duplicator:    orMock(with.duplicator, func() tui.SnippetDuplicator { return NewMockSnippetDuplicator(t) }),
+		Deleter:       orMock(with.deleter, func() tui.SnippetDeleter { return NewMockSnippetDeleter(t) }),
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),

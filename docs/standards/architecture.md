@@ -45,7 +45,7 @@ internal/
     tui/                     Bubble Tea program: Model and the wiring between components
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
-      confirm/               the [y/N] confirmation opened before work is thrown away or a Folder is deleted
+      confirm/               the [y/N] confirmation opened before work is thrown away or a Folder, Tag, or Snippet is deleted
       editoverlay/           the edit overlay: the form, the Language picker it opens, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
@@ -53,7 +53,7 @@ internal/
       input/                 the text inputs components embed, with clipboard access turned off
       languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick
       look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
-      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line
+      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to duplicate and delete the selected Snippet
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
@@ -61,7 +61,7 @@ internal/
       picker/                the shape the pickers share: a filter line over a list of text choices, moved and picked with the picker Scope
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
-      snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet
+      snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet, the Snippet that takes the cursor's row after a delete
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
   bootstrap/                 composition root

@@ -18,6 +18,7 @@ const (
 	labelPick           = "pick"
 	labelCopy           = "Copy"
 	labelEdit           = "edit"
+	labelDuplicate      = "duplicate"
 	labelSort           = "sort"
 	labelWrap           = "wrap"
 	labelExternalEditor = "external editor"
@@ -72,6 +73,8 @@ func Rows() []Row {
 		Row{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
 		Row{Scope: ScopeSnippetList, Name: OpenInEditor, Label: labelExternalEditor},
+		Row{Scope: ScopeSnippetList, Name: Duplicate, Label: labelDuplicate},
+		Row{Scope: ScopeSnippetList, Name: Delete, Label: labelDelete},
 		Row{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		Row{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		Row{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},

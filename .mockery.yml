@@ -60,6 +60,7 @@ packages:
       TagDeleter: {}
       SortOrderSaver: {}
       CollapsedFoldersSaver: {}
+      ExternalEditor: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay:
     interfaces:
       Overlay: {}

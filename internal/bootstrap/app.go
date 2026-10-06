@@ -160,6 +160,8 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		TagDeleter:                  app.DeleteTag,
 		SortOrderSaver:              opened.remembered,
 		CollapsedFoldersSaver:       opened.remembered,
+		ExternalEditor:              newExternalEditor(cfg, options, logger),
+		EditedContentHandler:        tui.IntoEditOverlay{},
 		Settings:                    SettingsFrom(cfg, time.Local, rememberedIn(opened.remembered)),
 		Logger:                      logger,
 	})

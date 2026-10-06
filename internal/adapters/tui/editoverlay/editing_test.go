@@ -227,6 +227,43 @@ func TestEditing_readOnlyContent(t *testing.T) {
 	}
 }
 
+func TestEditing_overlongContent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("opens stored content over 10,000 lines read-only and saves it byte for byte", func(t *testing.T) {
+		t.Parallel()
+
+		overlong := linesOf(10_001)
+		stored := storedSnippet(t, overlong)
+		screen := editingStored(t, stored)
+
+		assert.Contains(t, screen.Screen(), overlongReadOnlyNotice)
+
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Typed("lost")...)
+		screen.Press(save())
+
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", overlong)}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+	})
+
+	t.Run("opens stored content of exactly 10,000 lines editable", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, linesOf(10_000))
+		screen := editingStored(t, stored)
+
+		assert.NotContains(t, screen.Screen(), overlongReadOnlyNotice)
+
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Typed("!")...)
+		screen.Press(save())
+
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", linesOf(10_000)+"!")}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+	})
+}
+
 func TestEditing_editableContent(t *testing.T) {
 	t.Parallel()
 

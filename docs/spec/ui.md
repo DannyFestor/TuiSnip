@@ -19,7 +19,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 │# go                4││                           ││   6 │     case err := <-errc:          │
 │# unused            0││                           ││   7 │         return err               │
 ╰─────────────────────╯╰───────────────────────────╯╰────────────────────────────────────────╯
- Copied y Copy · e edit · n new · c duplicate · d delete · s sort · z zoom · / search · ? help
+ Copied y Copy · e edit · E external editor · n new · c duplicate · d delete · s sort · ? help
 ```
 
 - The main screen has four Panes, numbered left to right: **1 Folders** above **2 Tags** in the left column, then **3 Snippet list**, then **4 Snippet pane**. Each Pane's title carries its number.
@@ -133,6 +133,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
   - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
   - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
 - `ctrl+e` opens the Fragment in the external editor from any field.
+- **Content over 10,000 lines** is read-only, like [Content with tabs](#content-with-tabs), because the textarea would cut it at 10,000 lines. That covers a stored Snippet opened with `e`, and externally edited content, which lands as an unsaved change. Lines are counted the way a paste into empty Content is, so exactly 10,000 lines stay editable. The Content field says "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Longer than 10,000 lines: read-only here". Content that also has a tab gets the tabs notice. Saving keeps the content byte for byte. When the external editor returns it with 10,000 lines or fewer and no tab, it is editable again.
 
 ### Content with tabs
 
@@ -241,10 +242,10 @@ The right end of the status line lists the focused Scope's main Bindings with th
 |---|---|
 | `folders` | open · new Folder · rename · delete · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
-| `snippet_list` | Copy · edit · new · duplicate · delete · sort · zoom · search · help |
-| `snippet_pane` | Copy · edit · wrap · zoom · search · help |
-| `editor` | save · cancel · field · Language |
-| `content` | save · leave · indent · dedent |
+| `snippet_list` | Copy · edit · external editor · new · duplicate · delete · sort · zoom · search · help |
+| `snippet_pane` | Copy · edit · external editor · wrap · zoom · search · help |
+| `editor` | save · cancel · field · Language · external editor |
+| `content` | save · leave · indent · dedent · external editor |
 | `search` | move · reveal · Copy · close |
 | `picker` | move · pick · close |
 | `name_input` | save · cancel |

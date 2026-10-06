@@ -39,13 +39,14 @@ func paneOwnHintList(scope Scope) []labelledRef {
 		return withRowLabels(
 			rowRef{scope: scope, name: Copy},
 			rowRef{scope: scope, name: Edit},
+			rowRef{scope: scope, name: OpenInEditor},
 			rowRef{scope: ScopeGlobal, name: NewSnippet},
 			rowRef{scope: scope, name: Duplicate},
 			rowRef{scope: scope, name: Delete},
 			rowRef{scope: scope, name: CycleSort},
 		)
 	case ScopeSnippetPane:
-		return withRowLabels(refsIn(scope, Copy, Edit, Wrap)...)
+		return withRowLabels(refsIn(scope, Copy, Edit, OpenInEditor, Wrap)...)
 	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
 	}
 
@@ -55,9 +56,9 @@ func paneOwnHintList(scope Scope) []labelledRef {
 func nonPaneHintList(scope Scope) []labelledRef {
 	switch scope {
 	case ScopeEditor:
-		return withRowLabels(refsIn(scope, Save, Cancel, NextField, PickLanguage)...)
+		return withRowLabels(refsIn(scope, Save, Cancel, NextField, PickLanguage, OpenInEditor)...)
 	case ScopeContent:
-		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent)...)
+		return withRowLabels(refsIn(scope, Save, Leave, Indent, Dedent, OpenInEditor)...)
 	case ScopeSearch:
 		return withRowLabels(refsIn(scope, Down, Accept, Copy, Cancel)...)
 	case ScopePicker:

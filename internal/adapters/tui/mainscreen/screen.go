@@ -94,6 +94,8 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 		next, expanded := s.revealing(received.FolderID)
 
 		return outcome.Stay(next).Passing(expanded...).Passing(received)
+	case outcome.ContentEdited:
+		return s.externallyEdited(received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -151,13 +153,17 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if stored, ok := s.editAsked(msg); ok {
+	if stored, ok := s.selectedFor(msg, binding.Edit); ok {
 		return s.opening(editoverlay.Editing(
 			s.keys,
 			s.styles,
 			s.curated,
 			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
 		))
+	}
+
+	if stored, ok := s.selectedFor(msg, binding.OpenInEditor); ok {
+		return outcome.Stay(s).Passing(s.externalEditAsked(stored))
 	}
 
 	if filed, ok := s.defaultLanguageAsked(msg); ok {
@@ -200,15 +206,33 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	return outcome.Stay(s), false
 }
 
-func (s Screen) editAsked(msg tea.KeyPressMsg) (domain.Snippet, bool) {
+func (s Screen) selectedFor(msg tea.KeyPressMsg, name string) (domain.Snippet, bool) {
 	switch {
-	case s.focus == paneList && s.listKeys.Matches(msg, binding.Edit):
+	case s.focus == paneList && s.listKeys.Matches(msg, name):
 		return s.panes.list.Selected()
-	case s.focus == paneSnippet && s.paneKeys.Matches(msg, binding.Edit):
+	case s.focus == paneSnippet && s.paneKeys.Matches(msg, name):
 		return s.panes.preview.Shown()
 	}
 
 	return domain.Snippet{}, false
+}
+
+func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsked {
+	fragment := stored.FirstFragment()
+
+	return outcome.ExternalEditAsked{
+		Content:   fragment.Content().String(),
+		Language:  fragment.Language(),
+		Snippet:   stored,
+		Selection: s.selection(),
+	}
+}
+
+func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
+	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.curated, editoverlay.ExternallyEdited{
+		Browsed: editoverlay.BrowsedSnippet{Snippet: edited.Asked.Snippet, Selection: edited.Asked.Selection},
+		Content: edited.Content,
+	}))
 }
 
 func (s Screen) opened() outcome.Step {

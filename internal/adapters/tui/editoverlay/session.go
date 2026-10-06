@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -68,11 +69,19 @@ func Editing(
 		language:    fragment.Language(),
 		content:     fragment.Content().String(),
 	}
-	readOnly := readOnlyIfTabbed(original.content, fragment.Language(), styles.CodeStyle)
+	readOnly := readOnlyIfUneditable(original.content, fragment.Language(), styles.CodeStyle)
 	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, curated, filled).aimedAt(target), cmd
+}
+
+func EditedExternally(
+	keys binding.Keys, styles look.Styles, curated []value.Language, edited ExternallyEdited,
+) (Session, tea.Cmd) {
+	opened, cmd := Editing(keys, styles, curated, edited.Browsed)
+
+	return opened.withExternalContent(edited.Content), cmd
 }
 
 func newSession(keys binding.Keys, styles look.Styles, curated []value.Language, opened form) Session {
@@ -117,6 +126,8 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 		next.form = s.form.withLanguage(received.Language, s.styles.CodeStyle)
 
 		return outcome.Stay(next)
+	case outcome.ContentEdited:
+		return outcome.Stay(s.withExternalContent(received.Content))
 	case outcome.QuitAsked:
 		if s.form.changed() {
 			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
@@ -164,10 +175,27 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.pasteRefused(pasteHasTabs)
 	case requestRefuseOverlongPaste:
 		return s.pasteRefused(pasteOverflowsContent)
+	case requestExternalEditor:
+		return s.externalEditAsked()
 	case requestNothing:
 	}
 
 	return outcome.Stay(s)
+}
+
+func (s Session) externalEditAsked() outcome.Step {
+	return outcome.Stay(s).Passing(outcome.ExternalEditAsked{
+		Content:   s.form.entered().content,
+		Language:  s.form.language,
+		Snippet:   domain.Snippet{},
+		Selection: browseselection.Selection{},
+	})
+}
+
+func (s Session) withExternalContent(content string) Session {
+	s.form = s.form.withExternalContent(content, s.styles.CodeStyle)
+
+	return s
 }
 
 func (s Session) aimedAt(target saveTarget) Session {

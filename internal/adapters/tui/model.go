@@ -46,6 +46,7 @@ const (
 	operationCycleSortOrder       = "cycle sort order"
 	operationShowSortOrder        = "show sort order"
 	operationSaveCollapsedFolders = "save collapsed folders"
+	operationExternalEdit         = "edit in external editor"
 )
 
 type Model struct {
@@ -74,6 +75,8 @@ type Model struct {
 	sortOrderSaver        SortOrderSaver
 	collapsedFoldersSaver CollapsedFoldersSaver
 	collapsedFoldersGate  *savegate.Gate
+	externalEditor        ExternalEditor
+	editedContentHandler  EditedContentHandler
 	sortOrder             domain.SortOrder
 	logger                *slog.Logger
 	forcedQuitKey         string
@@ -138,6 +141,8 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		sortOrderSaver:        deps.SortOrderSaver,
 		collapsedFoldersSaver: deps.CollapsedFoldersSaver,
 		collapsedFoldersGate:  &savegate.Gate{},
+		externalEditor:        deps.ExternalEditor,
+		editedContentHandler:  deps.EditedContentHandler,
 		sortOrder:             deps.Settings.Remembered.SortOrder,
 		logger:                deps.Logger,
 		forcedQuitKey:         deps.Settings.ForcedQuitKey,
@@ -184,6 +189,8 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("tagDeleter", deps.TagDeleter),
 		domain.RequireDependency("sortOrderSaver", deps.SortOrderSaver),
 		domain.RequireDependency("collapsedFoldersSaver", deps.CollapsedFoldersSaver),
+		domain.RequireDependency("externalEditor", deps.ExternalEditor),
+		domain.RequireDependency("editedContentHandler", deps.EditedContentHandler),
 		requirePointer("logger", deps.Logger),
 		requirePointer("location", deps.Settings.Location),
 	)
@@ -217,6 +224,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.copyFinished(msg)
 	case captureFinishedMsg:
 		return m.captureFinished(msg)
+	case externalEditFinishedMsg:
+		return m.externalEditFinished(msg)
 	}
 
 	return m, nil
@@ -429,7 +438,7 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
-		outcome.CaptureAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested:
+		outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
 		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked:
@@ -446,7 +455,7 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.runTagAction(reported)
 	case outcome.CollapsedFoldersChanged:
 		return m, m.saveCollapsedFolders(reported.IDs)
-	case outcome.DiscardConfirmed, outcome.LanguagePicked:
+	case outcome.DiscardConfirmed, outcome.LanguagePicked, outcome.ContentEdited:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
 	}
@@ -518,6 +527,8 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.copySnippet(reported.ID)
 	case outcome.CaptureAsked:
 		return m.captureSnippet()
+	case outcome.ExternalEditAsked:
+		return m.editExternally(reported)
 	case outcome.SnippetDuplicateRequested:
 		return m.duplicateSnippet(reported.Input, reported.Selection)
 	case outcome.SnippetDeleteRequested:

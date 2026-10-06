@@ -203,6 +203,32 @@ func TestKeys_For(t *testing.T) {
 		assert.Equal(t, []string{"ctrl+s save", "esc leave", "ctrl+] indent", "ctrl+[ dedent"}, hintTexts(got))
 	})
 
+	externalEditorHints := []struct {
+		scope binding.Scope
+		after string
+		want  []string
+	}{
+		{scope: binding.ScopeSnippetList, after: binding.Edit, want: []string{"e edit", "E external editor"}},
+		{scope: binding.ScopeSnippetPane, after: binding.Edit, want: []string{"e edit", "E external editor"}},
+		{scope: binding.ScopeEditor, after: binding.PickLanguage, want: []string{"e Language", "E external editor"}},
+		{scope: binding.ScopeContent, after: binding.Dedent, want: []string{"e dedent", "E external editor"}},
+	}
+
+	for _, tt := range externalEditorHints {
+		t.Run("hints the external editor after "+tt.after+" in "+string(tt.scope), func(t *testing.T) {
+			t.Parallel()
+
+			keys := keysWith(
+				bound{scope: tt.scope, name: binding.OpenInEditor, keys: []string{"E"}},
+				bound{scope: tt.scope, name: tt.after, keys: []string{"e"}},
+			)
+
+			got := keys.For(tt.scope).ShortHelp()
+
+			assert.Equal(t, tt.want, hintTexts(got))
+		})
+	}
+
 	t.Run("disables a hint whose Binding has no keys", func(t *testing.T) {
 		t.Parallel()
 

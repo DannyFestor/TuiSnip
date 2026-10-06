@@ -15,7 +15,6 @@ excludeFiles:
 vendors:
   tui-framework:   { in: [ charm.land/**, github.com/charmbracelet/x/ansi ] }
   highlighting:    { in: [ github.com/alecthomas/chroma/v2, github.com/alecthomas/chroma/v2/** ] }
-  editor-launcher: { in: [ github.com/charmbracelet/x/editor ] }
   sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }
   migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
   assertions:      { in: [ github.com/stretchr/testify/** ] }
@@ -80,9 +79,7 @@ deps:
     mayDependOn: [ state, atomicfile ]
     canUse: [ toml ]
   atomicfile:  { mayDependOn: [ atomicfile ] }
-  editor:
-    mayDependOn: [ editor ]
-    canUse: [ editor-launcher ]
+  editor:      { mayDependOn: [ editor ] }
   memsearch:
     mayDependOn: [ memsearch ]
     canUse: [ fuzzy-matcher ]

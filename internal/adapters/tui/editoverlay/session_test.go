@@ -137,7 +137,8 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen := editing(t)
 
-		assert.Equal(t, "ctrl+s save · esc cancel · down field · ctrl+l Language", screen.Hints())
+		want := "ctrl+s save · esc cancel · down field · ctrl+l Language · ctrl+e external editor"
+		assert.Equal(t, want, screen.Hints())
 	})
 
 	t.Run("shows the content Bindings inside Content", func(t *testing.T) {
@@ -147,7 +148,8 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen.Press(enterContent()...)
 
-		assert.Equal(t, "ctrl+s save · esc leave · tab indent · shift+tab dedent", screen.Hints())
+		want := "ctrl+s save · esc leave · tab indent · shift+tab dedent · ctrl+e external editor"
+		assert.Equal(t, want, screen.Hints())
 	})
 }
 

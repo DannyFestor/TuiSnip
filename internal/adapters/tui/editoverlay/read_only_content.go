@@ -7,27 +7,64 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-const readOnlyNotice = "Contains tabs: read-only here"
+const (
+	tabbedNotice   = "Contains tabs: read-only here"
+	overlongNotice = "Longer than 10,000 lines: read-only here"
+)
+
+type uneditableCheck func(content string) (notice string)
 
 type readOnlyContent struct {
-	held        bool
+	notice      string
 	content     string
 	language    value.Language
 	highlighted string
 }
 
 func editableContent() readOnlyContent {
-	return readOnlyContent{held: false, content: "", language: value.Language{}, highlighted: ""}
+	return readOnlyContent{notice: "", content: "", language: value.Language{}, highlighted: ""}
 }
 
 func readOnlyIfTabbed(content string, language value.Language, codeStyle string) readOnlyContent {
-	if !strings.Contains(content, tabCharacter) {
-		return editableContent()
+	return readOnlyIf(content, language, codeStyle, noticeIfTabbed)
+}
+
+func readOnlyIfUneditable(content string, language value.Language, codeStyle string) readOnlyContent {
+	return readOnlyIf(content, language, codeStyle, noticeIfTabbed, noticeIfOverlong)
+}
+
+func readOnlyIf(
+	content string, language value.Language, codeStyle string, checks ...uneditableCheck,
+) readOnlyContent {
+	for _, check := range checks {
+		if notice := check(content); notice != "" {
+			held := readOnlyContent{notice: notice, content: content, language: language, highlighted: ""}
+
+			return held.highlightedIn(codeStyle)
+		}
 	}
 
-	held := readOnlyContent{held: true, content: content, language: language, highlighted: ""}
+	return editableContent()
+}
 
-	return held.highlightedIn(codeStyle)
+func noticeIfTabbed(content string) string {
+	if strings.Contains(content, tabCharacter) {
+		return tabbedNotice
+	}
+
+	return ""
+}
+
+func noticeIfOverlong(content string) string {
+	if overflowsEmptyContent(content) {
+		return overlongNotice
+	}
+
+	return ""
+}
+
+func (r readOnlyContent) held() bool {
+	return r.notice != ""
 }
 
 func (r readOnlyContent) inLanguage(language value.Language, codeStyle string) readOnlyContent {
@@ -38,7 +75,7 @@ func (r readOnlyContent) inLanguage(language value.Language, codeStyle string) r
 }
 
 func (r readOnlyContent) highlightedIn(codeStyle string) readOnlyContent {
-	if !r.held {
+	if !r.held() {
 		return r
 	}
 
@@ -47,10 +84,10 @@ func (r readOnlyContent) highlightedIn(codeStyle string) readOnlyContent {
 	return r
 }
 
-func readOnlyText(externalEditorKey string) string {
+func (r readOnlyContent) text(externalEditorKey string) string {
 	if externalEditorKey == "" {
-		return readOnlyNotice
+		return r.notice
 	}
 
-	return readOnlyNotice + ", edit with " + externalEditorKey + " ($EDITOR)"
+	return r.notice + ", edit with " + externalEditorKey + " ($EDITOR)"
 }

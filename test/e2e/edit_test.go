@@ -18,7 +18,7 @@ import (
 const (
 	tabbedContent  = "if x {\n\treturn\n}\n"
 	readOnlyNotice = "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)"
-	listHintsShown = "y Copy · e edit · n new"
+	listHintsShown = "y Copy · e edit · E external editor · n new"
 )
 
 func TestEditSnippetKeepsTabbedContent(t *testing.T) {

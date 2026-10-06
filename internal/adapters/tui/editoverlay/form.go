@@ -68,7 +68,7 @@ func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, t
 }
 
 func (f form) withContent(content string) form {
-	if !f.readOnly.held {
+	if !f.readOnly.held() {
 		f.content.SetValue(content)
 	}
 
@@ -77,9 +77,9 @@ func (f form) withContent(content string) form {
 
 func (f form) withExternalContent(content, codeStyle string) form {
 	next := f
-	next.readOnly = readOnlyIfTabbed(content, f.language, codeStyle)
+	next.readOnly = readOnlyIfUneditable(content, f.language, codeStyle)
 
-	if next.readOnly.held {
+	if next.readOnly.held() {
 		next = next.leftContent()
 	}
 
@@ -141,7 +141,7 @@ func (f form) changed() bool {
 
 func (f form) entered() entered {
 	content := f.content.Value()
-	if f.readOnly.held {
+	if f.readOnly.held() {
 		content = f.readOnly.content
 	}
 
@@ -178,7 +178,7 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 }
 
 func (f form) contentView() string {
-	if f.readOnly.held {
+	if f.readOnly.held() {
 		return f.readOnly.highlighted
 	}
 
@@ -286,7 +286,7 @@ func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
 
 func (f form) advanced() (form, request, tea.Cmd) {
 	if f.field == domain.FieldContent {
-		if f.readOnly.held {
+		if f.readOnly.held() {
 			return f, requestNothing, nil
 		}
 
@@ -360,8 +360,8 @@ func (f form) fieldLine(styles look.Styles, field domain.Field, entered string) 
 }
 
 func (f form) contentEntryHint(styles look.Styles) string {
-	if f.readOnly.held {
-		return styles.Dim.Render(readOnlyText(f.externalEditorKey()))
+	if f.readOnly.held() {
+		return styles.Dim.Render(f.readOnly.text(f.externalEditorKey()))
 	}
 
 	if f.inContent {

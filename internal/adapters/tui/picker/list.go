@@ -90,9 +90,13 @@ func (l List) WithCursorOnChoice(index int) List {
 	return l.cursorOnShown(slices.Index(l.shown, index))
 }
 
+func (l List) Filter() string {
+	return l.filter.Value()
+}
+
 func (l List) Highlighted() (Choice, bool) {
 	if len(l.shown) == 0 {
-		return Choice{Text: "", Meta: ""}, false
+		return Choice{Mark: "", Text: "", Meta: "", Trailing: false}, false
 	}
 
 	return l.choices[l.shown[l.cursor.Index()]], true
@@ -185,7 +189,7 @@ func (l List) rows(styles look.Styles) string {
 	return l.cursor.VisibleRows(len(l.shown), l.rowsHeight(), func(at int) string {
 		choice := l.choices[l.shown[at]]
 
-		return l.rowStyle(at, styles).Render(look.Row(choice.Text, choice.Meta, l.box.Width))
+		return l.rowStyle(at, styles).Render(look.Row(choice.Mark+choice.Text, choice.Meta, l.box.Width))
 	}, func(line string) string { return l.cursorStyle(styles).Render(line) })
 }
 

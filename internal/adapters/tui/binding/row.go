@@ -1,5 +1,6 @@
 package binding
 
+//nolint:dupl // a table of labels that dupl matches against the Binding name table in names.go; no logic repeats.
 const (
 	labelQuit           = "quit"
 	labelHelp           = "help"
@@ -59,7 +60,25 @@ type Row struct {
 }
 
 func Rows() []Row {
-	return append(append(globalRows(), paneRows()...), overlayRows()...)
+	rows := append(globalRows(), paneRows()...)
+	rows = append(rows, editOverlayRows()...)
+
+	return append(rows,
+		Row{Scope: ScopeSearch, Name: Down, Label: labelMove},
+		Row{Scope: ScopeSearch, Name: Up, Label: unlabelled},
+		Row{Scope: ScopeSearch, Name: Accept, Label: labelReveal},
+		Row{Scope: ScopeSearch, Name: Copy, Label: labelCopy},
+		Row{Scope: ScopeSearch, Name: Cancel, Label: labelClose},
+		Row{Scope: ScopePicker, Name: Down, Label: labelMove},
+		Row{Scope: ScopePicker, Name: Up, Label: unlabelled},
+		Row{Scope: ScopePicker, Name: Accept, Label: labelPick},
+		Row{Scope: ScopePicker, Name: Cancel, Label: labelClose},
+		Row{Scope: ScopePicker, Name: ShowAllLanguages, Label: labelAllLanguages},
+		Row{Scope: ScopeNameInput, Name: Accept, Label: labelSave},
+		Row{Scope: ScopeNameInput, Name: Cancel, Label: labelCancel},
+		Row{Scope: ScopeConfirm, Name: Yes, Label: labelYes},
+		Row{Scope: ScopeConfirm, Name: No, Label: labelNo},
+	)
 }
 
 func paneRows() []Row {
@@ -87,35 +106,23 @@ func paneRows() []Row {
 	}
 }
 
-func overlayRows() []Row {
+func editOverlayRows() []Row {
 	return []Row{
 		{Scope: ScopeEditor, Name: Save, Label: labelSave},
 		{Scope: ScopeEditor, Name: Cancel, Label: labelCancel},
 		{Scope: ScopeEditor, Name: NextField, Label: labelField},
 		{Scope: ScopeEditor, Name: PrevField, Label: unlabelled},
 		{Scope: ScopeEditor, Name: OpenField, Label: unlabelled},
+		{Scope: ScopeEditor, Name: EditTags, Label: labelTags},
 		{Scope: ScopeEditor, Name: PickLanguage, Label: labelLanguage},
 		{Scope: ScopeEditor, Name: OpenInEditor, Label: labelExternalEditor},
 		{Scope: ScopeContent, Name: Save, Label: labelSave},
 		{Scope: ScopeContent, Name: Leave, Label: labelLeave},
 		{Scope: ScopeContent, Name: Indent, Label: labelIndent},
 		{Scope: ScopeContent, Name: Dedent, Label: labelDedent},
+		{Scope: ScopeContent, Name: EditTags, Label: labelTags},
 		{Scope: ScopeContent, Name: PickLanguage, Label: labelLanguage},
 		{Scope: ScopeContent, Name: OpenInEditor, Label: labelExternalEditor},
-		{Scope: ScopeSearch, Name: Down, Label: labelMove},
-		{Scope: ScopeSearch, Name: Up, Label: unlabelled},
-		{Scope: ScopeSearch, Name: Accept, Label: labelReveal},
-		{Scope: ScopeSearch, Name: Copy, Label: labelCopy},
-		{Scope: ScopeSearch, Name: Cancel, Label: labelClose},
-		{Scope: ScopePicker, Name: Down, Label: labelMove},
-		{Scope: ScopePicker, Name: Up, Label: unlabelled},
-		{Scope: ScopePicker, Name: Accept, Label: labelPick},
-		{Scope: ScopePicker, Name: Cancel, Label: labelClose},
-		{Scope: ScopePicker, Name: ShowAllLanguages, Label: labelAllLanguages},
-		{Scope: ScopeNameInput, Name: Accept, Label: labelSave},
-		{Scope: ScopeNameInput, Name: Cancel, Label: labelCancel},
-		{Scope: ScopeConfirm, Name: Yes, Label: labelYes},
-		{Scope: ScopeConfirm, Name: No, Label: labelNo},
 	}
 }
 

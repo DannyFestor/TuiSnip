@@ -34,6 +34,10 @@ func (k Keys) HelpOverlayHints() []key.Binding {
 	return k.resolvedHints(helpOverlayHintList())
 }
 
+func (k Keys) TagEditorHints() []key.Binding {
+	return k.resolvedHints(tagEditorHintList())
+}
+
 func (k Keys) listed(ref rowRef, label string) key.Binding {
 	listed := k.resolved(ref, label)
 	if listed.Enabled() {

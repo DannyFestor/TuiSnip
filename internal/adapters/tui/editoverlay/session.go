@@ -12,6 +12,8 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tageditor"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -29,7 +31,7 @@ const (
 
 type Session struct {
 	keys    binding.Keys
-	curated []value.Language
+	options Options
 	form    form
 	target  saveTarget
 	styles  look.Styles
@@ -37,35 +39,36 @@ type Session struct {
 	saving  bool
 }
 
-func New(
-	keys binding.Keys, styles look.Styles, curated []value.Language, destination Destination,
-) (Session, tea.Cmd) {
-	return Capturing(keys, styles, curated, Captured{Destination: destination, Content: ""})
+func New(keys binding.Keys, styles look.Styles, options Options, destination Destination) (Session, tea.Cmd) {
+	return Capturing(keys, styles, options, Captured{Destination: destination, Content: ""})
 }
 
-func Capturing(
-	keys binding.Keys, styles look.Styles, curated []value.Language, captured Captured,
-) (Session, tea.Cmd) {
+func Capturing(keys binding.Keys, styles look.Styles, options Options, captured Captured) (Session, tea.Cmd) {
 	destination := captured.Destination
 	readOnly := readOnlyIfTabbed(captured.Content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(
 		formKeysOf(keys),
-		entered{title: "", description: "", language: destination.Language, content: ""},
+		entered{
+			title:       "",
+			description: "",
+			tags:        tagchoice.Of(destination.Tags),
+			language:    destination.Language,
+			content:     "",
+		},
 		readOnly,
 	)
 	opened := blank.withContent(captured.Content)
 
-	return newSession(keys, styles, curated, opened).aimedAt(newSnippet{destination: destination}), cmd
+	return newSession(keys, styles, options, opened).aimedAt(newSnippet{destination: destination}), cmd
 }
 
-func Editing(
-	keys binding.Keys, styles look.Styles, curated []value.Language, browsed BrowsedSnippet,
-) (Session, tea.Cmd) {
+func Editing(keys binding.Keys, styles look.Styles, options Options, browsed BrowsedSnippet) (Session, tea.Cmd) {
 	stored := browsed.Snippet
 	fragment := stored.FirstFragment()
 	original := entered{
 		title:       stored.Title().String(),
 		description: stored.Description().String(),
+		tags:        tagchoice.Of(stored.Tags()),
 		language:    fragment.Language(),
 		content:     fragment.Content().String(),
 	}
@@ -73,21 +76,21 @@ func Editing(
 	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
-	return newSession(keys, styles, curated, filled).aimedAt(target), cmd
+	return newSession(keys, styles, options, filled).aimedAt(target), cmd
 }
 
 func EditedExternally(
-	keys binding.Keys, styles look.Styles, curated []value.Language, edited ExternallyEdited,
+	keys binding.Keys, styles look.Styles, options Options, edited ExternallyEdited,
 ) (Session, tea.Cmd) {
-	opened, cmd := Editing(keys, styles, curated, edited.Browsed)
+	opened, cmd := Editing(keys, styles, options, edited.Browsed)
 
 	return opened.withExternalContent(edited.Content), cmd
 }
 
-func newSession(keys binding.Keys, styles look.Styles, curated []value.Language, opened form) Session {
+func newSession(keys binding.Keys, styles look.Styles, options Options, opened form) Session {
 	return Session{
 		keys:    keys,
-		curated: curated,
+		options: options,
 		form:    opened,
 		target:  nil,
 		styles:  styles,
@@ -124,6 +127,11 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 	case outcome.LanguagePicked:
 		next := s
 		next.form = s.form.withLanguage(received.Language, s.styles.CodeStyle)
+
+		return outcome.Stay(next)
+	case outcome.TagsEdited:
+		next := s
+		next.form = s.form.withTags(received.Chosen)
 
 		return outcome.Stay(next)
 	case outcome.ContentEdited:
@@ -169,6 +177,8 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.saveStarted()
 	case requestCancel:
 		return s.cancelled()
+	case requestEditTags:
+		return s.editingTags()
 	case requestPickLanguage:
 		return s.pickingLanguage()
 	case requestRefusePasteWithTabs:
@@ -204,10 +214,16 @@ func (s Session) aimedAt(target saveTarget) Session {
 	return s
 }
 
+func (s Session) editingTags() outcome.Step {
+	editor, cmd := tageditor.New(s.keys, s.styles, tageditor.Offer{Listed: s.options.Tags, Chosen: s.form.tags})
+
+	return outcome.Stay(s).Opening(editor).Running(cmd)
+}
+
 func (s Session) pickingLanguage() outcome.Step {
 	picker, cmd := languagepicker.New(s.keys, s.styles, languagepicker.Offer{
 		Title:   languagePickerTitle,
-		Curated: s.curated,
+		Curated: s.options.Languages,
 		Current: s.form.language,
 		Picked:  func(picked value.Language) outcome.Outcome { return outcome.LanguagePicked{Language: picked} },
 	})

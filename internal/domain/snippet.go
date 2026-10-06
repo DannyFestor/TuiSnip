@@ -109,6 +109,12 @@ func (s Snippet) Edit(
 	return s, nil
 }
 
+func (s Snippet) Retagged(tags []Tag) Snippet {
+	s.tags = slices.SortedFunc(slices.Values(tags), CompareTags)
+
+	return s
+}
+
 func (s Snippet) Duplicate(id SnippetID, fragmentID FragmentID, now time.Time) (Snippet, error) {
 	fragment, err := s.FirstFragment().Duplicate(fragmentID, now)
 	if err != nil {

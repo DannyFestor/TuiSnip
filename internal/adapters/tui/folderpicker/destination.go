@@ -36,7 +36,10 @@ func appendDestinations(
 func choicesOf(destinations []destination, paths folderpath.Paths) []picker.Choice {
 	choices := make([]picker.Choice, 0, len(destinations))
 	for _, listed := range destinations {
-		choices = append(choices, picker.Choice{Text: paths.Short(listed.folderID), Meta: ""})
+		choices = append(
+			choices,
+			picker.Choice{Mark: "", Text: paths.Short(listed.folderID), Meta: "", Trailing: false},
+		)
 	}
 
 	return choices

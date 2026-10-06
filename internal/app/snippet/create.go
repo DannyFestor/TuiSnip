@@ -29,7 +29,7 @@ func NewCreate(inserter Inserter, ids IDGenerator, clock Clock) (*Create, error)
 }
 
 func (c *Create) Run(ctx context.Context, input CreateInput) (domain.Snippet, error) {
-	parsed, err := parseFields(input.Title, input.Description, input.Language, input.Content)
+	parsed, err := parseFields(input.raw())
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Create: %w", err)
 	}
@@ -53,13 +53,18 @@ func (c *Create) filed(parsed fields, input CreateInput, now time.Time) (domain.
 		return domain.Snippet{}, fmt.Errorf("new fragment: %w", err)
 	}
 
+	tags, err := parsed.tagsBeside(input.Tags, c.ids, now)
+	if err != nil {
+		return domain.Snippet{}, err
+	}
+
 	snippet, err := domain.NewSnippet(
 		c.ids.NewSnippetID(),
 		parsed.title,
 		parsed.description,
 		input.FolderID,
 		[]domain.Fragment{fragment},
-		input.Tags,
+		tags,
 		now,
 		now,
 	)

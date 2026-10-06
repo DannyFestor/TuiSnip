@@ -3,6 +3,7 @@ package tui_test
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/exp/golden"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
@@ -34,6 +35,16 @@ func TestEditOverlayLayout(t *testing.T) {
 	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
 	screen.press(keypress.Letter('n'))
 	screen.press(keypress.Typed("Prune everything")...)
+
+	golden.RequireEqual(t, []byte(screen.screen()))
+}
+
+func TestTagEditorLayout(t *testing.T) {
+	t.Parallel()
+
+	screen := start(t, layoutModel(t, listerOf(t, sampleSnippets(t)...)), wideWidth, wideHeight)
+	screen.press(keypress.Letter('n'), keypress.Ctrl('t'), keypress.Special(tea.KeyEnter))
+	screen.press(keypress.Typed("o")...)
 
 	golden.RequireEqual(t, []byte(screen.screen()))
 }

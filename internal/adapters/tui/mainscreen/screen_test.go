@@ -1483,7 +1483,7 @@ func TestScreen_help(t *testing.T) {
 		screen := showing(t, wide())
 
 		screen.Press(keypress.Letter('n'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
-		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Letter('?'), keypress.Ctrl('s'))
 
 		assert.NotContains(t, screen.Screen(), "╭ Help ")

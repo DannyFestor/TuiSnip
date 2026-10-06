@@ -67,6 +67,31 @@ func (q *Queries) InsertTag(ctx context.Context, arg InsertTagParams) error {
 	return err
 }
 
+const insertTagUnlessStored = `-- name: InsertTagUnlessStored :exec
+INSERT INTO tags (id, name, name_key, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (id) DO NOTHING
+`
+
+type InsertTagUnlessStoredParams struct {
+	ID        sqltype.ID
+	Name      string
+	NameKey   string
+	CreatedAt sqltype.Timestamp
+	UpdatedAt sqltype.Timestamp
+}
+
+func (q *Queries) InsertTagUnlessStored(ctx context.Context, arg InsertTagUnlessStoredParams) error {
+	_, err := q.db.ExecContext(ctx, insertTagUnlessStored,
+		arg.ID,
+		arg.Name,
+		arg.NameKey,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const listOtherTagsWithNameKey = `-- name: ListOtherTagsWithNameKey :many
 SELECT id, name, name_key, created_at, updated_at
 FROM tags

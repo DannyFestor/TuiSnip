@@ -97,6 +97,10 @@ func (p Pane) Naming() bool {
 	return p.naming != nil
 }
 
+func (p Pane) Tags() []browse.TagCount {
+	return slices.Clone(p.tags)
+}
+
 func (p Pane) WithTags(tags []browse.TagCount) Pane {
 	selected, _ := p.Selected()
 

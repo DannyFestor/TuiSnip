@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -22,7 +23,9 @@ const (
 	fieldCursor       = "› "
 	fieldIndent       = "  "
 	fieldLabelWidth   = 12
-	fieldRows         = 4
+	fieldRows         = 5
+	tagPrefix         = "#"
+	tagSeparator      = " "
 	tabCharacter      = "\t"
 	lineBreak         = "\n"
 	carriageReturn    = "\r"
@@ -31,14 +34,15 @@ const (
 	entryKeysJoiner   = " or "
 	entrySuffix       = " to edit"
 	pickSuffix        = " to pick"
-	pickHintOpen      = "   ("
-	pickHintClose     = ")"
+	keysHintOpen      = "   ("
+	keysHintClose     = ")"
 )
 
 type form struct {
 	keys        formKeys
 	title       textinput.Model
 	description textinput.Model
+	tags        tagchoice.Chosen
 	language    value.Language
 	content     textarea.Model
 	readOnly    readOnlyContent
@@ -53,6 +57,7 @@ func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, t
 		keys:        keys,
 		title:       input.NewLine(""),
 		description: input.NewLine(""),
+		tags:        original.tags,
 		language:    original.language,
 		content:     input.NewContentArea(),
 		readOnly:    readOnly,
@@ -135,8 +140,14 @@ func (f form) withLanguage(language value.Language, codeStyle string) form {
 	return f
 }
 
+func (f form) withTags(chosen tagchoice.Chosen) form {
+	f.tags = chosen
+
+	return f
+}
+
 func (f form) changed() bool {
-	return f.entered() != f.original
+	return !f.entered().equal(f.original)
 }
 
 func (f form) entered() entered {
@@ -148,6 +159,7 @@ func (f form) entered() entered {
 	return entered{
 		title:       f.title.Value(),
 		description: f.description.Value(),
+		tags:        f.tags,
 		language:    f.language,
 		content:     content,
 	}
@@ -169,6 +181,7 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 	lines := []string{
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
+		f.fieldLine(styles, domain.FieldTagName, f.tagsEntry(styles)),
 		f.fieldLine(styles, domain.FieldLanguage, f.languageEntry(styles)),
 		f.fieldLine(styles, domain.FieldContent, f.contentEntryHint(styles)),
 		f.contentView(),
@@ -195,6 +208,9 @@ func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestCancel, nil
 	case fields.Matches(msg, binding.OpenInEditor):
 		return f, requestExternalEditor, nil
+	case fields.Matches(msg, binding.EditTags),
+		f.field == domain.FieldTagName && fields.Matches(msg, binding.OpenField):
+		return f, requestEditTags, nil
 	case fields.Matches(msg, binding.PickLanguage),
 		f.field == domain.FieldLanguage && fields.Matches(msg, binding.OpenField):
 		return f, requestPickLanguage, nil
@@ -213,6 +229,8 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 		return f, requestSave, nil
 	case f.keys.content.Matches(msg, binding.Leave):
 		return f.leftContent(), requestNothing, nil
+	case f.keys.content.Matches(msg, binding.EditTags):
+		return f, requestEditTags, nil
 	case f.keys.content.Matches(msg, binding.PickLanguage):
 		return f, requestPickLanguage, nil
 	case f.keys.content.Matches(msg, binding.OpenInEditor):
@@ -377,15 +395,27 @@ func (f form) contentEntryHint(styles look.Styles) string {
 	return styles.Dim.Render(strings.Join(entryKeys, entryKeysJoiner) + entrySuffix)
 }
 
-func (f form) languageEntry(styles look.Styles) string {
-	pickKeys := f.firstKeysOf(binding.OpenField, binding.PickLanguage)
-
-	if len(pickKeys) == 0 {
-		return f.language.String()
+func (f form) tagsEntry(styles look.Styles) string {
+	names := f.tags.Names()
+	for index, name := range names {
+		names[index] = tagPrefix + name
 	}
 
-	return f.language.String() +
-		styles.Dim.Render(pickHintOpen+strings.Join(pickKeys, entryKeysJoiner)+pickSuffix+pickHintClose)
+	return f.withKeysHint(styles, strings.Join(names, tagSeparator), entrySuffix, binding.EditTags)
+}
+
+func (f form) languageEntry(styles look.Styles) string {
+	return f.withKeysHint(styles, f.language.String(), pickSuffix, binding.PickLanguage)
+}
+
+func (f form) withKeysHint(styles look.Styles, shown, suffix, opener string) string {
+	openKeys := f.firstKeysOf(binding.OpenField, opener)
+
+	if len(openKeys) == 0 {
+		return shown
+	}
+
+	return shown + styles.Dim.Render(keysHintOpen+strings.Join(openKeys, entryKeysJoiner)+suffix+keysHintClose)
 }
 
 func (f form) firstKeysOf(names ...string) []string {
@@ -406,7 +436,9 @@ func (f form) frameTitle() string {
 }
 
 func editFields() []domain.Field {
-	return []domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent}
+	return []domain.Field{
+		domain.FieldTitle, domain.FieldDescription, domain.FieldTagName, domain.FieldLanguage, domain.FieldContent,
+	}
 }
 
 func fieldLabel(field domain.Field) string {
@@ -419,7 +451,9 @@ func fieldLabel(field domain.Field) string {
 		return "Content"
 	case domain.FieldLanguage:
 		return "Language"
-	case domain.FieldFolderName, domain.FieldTagName:
+	case domain.FieldTagName:
+		return "Tags"
+	case domain.FieldFolderName:
 	}
 
 	return field.String()

@@ -31,7 +31,7 @@ const (
 		"z zoom · / search · ? help"
 	helpHint         = "? help"
 	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
-	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+l Language · ctrl+e external editor"
+	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor"
 	folderHints      = "enter open · N new Folder · r rename · d delete · m move · z zoom · / search · ? help"
 	tagHints         = "enter open · N new Tag · r rename · d delete · z zoom · / search · ? help"
 	firstDescription = "Stop accepting, drain, exit"

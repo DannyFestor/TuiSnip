@@ -1,5 +1,6 @@
 package binding
 
+//nolint:dupl // a table of Binding names that dupl matches against the label table in row.go; no logic repeats.
 const (
 	Quit         = "quit"
 	Help         = "help"
@@ -42,6 +43,7 @@ const (
 	PrevField    = "prev_field"
 	OpenField    = "open_field"
 	PickLanguage = "pick_language"
+	EditTags     = "edit_tags"
 	Leave        = "leave"
 	Indent       = "indent"
 	Dedent       = "dedent"

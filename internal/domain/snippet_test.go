@@ -206,6 +206,22 @@ func TestSnippet_Tags(t *testing.T) {
 	})
 }
 
+func TestSnippet_Retagged(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	http := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "http"})
+	shell := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+	docker := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Docker"})
+	stored := testkit.Snippet(t, testkit.SnippetSpec{Tags: []domain.Tag{http}})
+
+	retagged := stored.Retagged([]domain.Tag{shell, docker})
+
+	assert.Equal(t, []domain.Tag{docker, shell}, retagged.Tags(), "listed by name ignoring case")
+	assert.Equal(t, []domain.Tag{http}, stored.Tags(), "the original is untouched")
+	assert.Equal(t, stored.UpdatedAt(), retagged.UpdatedAt())
+}
+
 func TestSnippet_FirstFragment(t *testing.T) {
 	t.Parallel()
 

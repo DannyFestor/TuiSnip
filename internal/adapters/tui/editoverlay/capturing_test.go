@@ -129,6 +129,7 @@ func TestCapturing_save(t *testing.T) {
 				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyDown),
+				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyEnter),
 				keypress.Special(tea.KeyTab),
 				tea.PasteMsg{Content: "pasted"},

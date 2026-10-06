@@ -46,7 +46,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Folder, Tag, or Snippet is deleted
-      editoverlay/           the edit overlay: the form, the Language picker it opens, the save it asks for, and its confirmations
+      editoverlay/           the edit overlay: the form, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
       folderpicker/          the Folder picker: the Root and every Folder by path, a moving Folder's subtree greyed out, and the outcome its opener builds for the pick
@@ -59,12 +59,15 @@ internal/
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
-      picker/                the shape the pickers share: a filter line over a list of text choices, moved and picked with the picker Scope
+      picker/                the shape the pickers share: a filter line over a list of text choices, each with an optional mark, and a trailing choice the filter never hides, moved and picked with the picker Scope
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet, the Snippet that takes the cursor's row after a delete
       snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
+      tagchoice/             the Tags a Snippet carries while the edit overlay is open: stored Tags and the names of Tags to create on save
+      tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
+      tagrefusal/            how a Tag name that breaks a name rule is refused, shared by the Tag pane and the Tag editor
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

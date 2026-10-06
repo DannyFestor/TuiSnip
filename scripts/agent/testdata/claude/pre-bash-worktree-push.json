@@ -1,0 +1,13 @@
+{
+  "session_id": "4f6c2a9e-1d3b-4c8e-9a7f-2b5d8e0c1a36",
+  "transcript_path": "/Users/dev/.claude/projects/-repo/4f6c2a9e-1d3b-4c8e-9a7f-2b5d8e0c1a36.jsonl",
+  "cwd": "{{REPO}}/.claude/worktrees/wt",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git push",
+    "description": "Push the branch"
+  },
+  "tool_use_id": "toolu_01Hq8Zk3VdXb2mN7pLr4sT9w"
+}

@@ -131,20 +131,27 @@ check_tee() {
 	done
 }
 
-# A relative path resolves against the working directory, as it does for the command.
-is_inside_repo() {
-	local root path
+is_under() {
+	local path="$1"
+	local dir="$2"
 
-	root="$(repo_root 2>/dev/null)" || return 1
+	[[ "$path" == "$dir" || "$path" == "$dir/"* ]]
+}
+
+# A relative path resolves against the working directory, as it does for the command. The git
+# dir belongs to no checkout, but a write there can still replace the git hooks.
+is_inside_clone() {
+	local path
+
 	path="$(canonical_path "$1")"
-	[[ "$path" == "$root" || "$path" == "$root/"* ]]
+	checkout_root "$path" >/dev/null || is_under "$path" "$(clone_git_dir)"
 }
 
 check_write_destination() {
 	local program="$1"
 	local destination="$2"
 
-	if is_allowed_write_target "$destination" || ! is_inside_repo "$destination"; then
+	if is_allowed_write_target "$destination" || ! is_inside_clone "$destination"; then
 		return
 	fi
 	deny "$program must not write into the repo: $USE_EDIT_TOOLS."
@@ -597,6 +604,13 @@ check_git_option_value() {
 	fi
 }
 
+# A directory that doesn't exist yet leaves the command where it is, so it is judged there.
+enter_directory() {
+	if [[ -d "$1" ]]; then
+		cd "$1"
+	fi
+}
+
 check_git() {
 	check_hook_bypass_flag "$@"
 	while (($# > 0)); do
@@ -605,7 +619,11 @@ check_git() {
 			check_git_option_value "${2:-}"
 			shift 2 || shift
 			;;
-		-C | --git-dir | --work-tree | --namespace) shift 2 || shift ;;
+		-C)
+			enter_directory "${2:-}"
+			shift 2 || shift
+			;;
+		--git-dir | --work-tree | --namespace) shift 2 || shift ;;
 		-*) shift ;;
 		*)
 			check_git_subcommand "$@"
@@ -620,11 +638,23 @@ check_program() {
 	shift
 
 	case "$program" in
-	git) check_git "$@" ;;
+	# The subshell keeps a git -C directory from moving the commands after it.
+	git) (check_git "$@") || exit "$?" ;;
 	sed | perl) check_in_place_edit "$program" "$@" ;;
 	awk | gawk) check_awk "$@" ;;
 	tee) check_tee "$@" ;;
 	esac
+}
+
+# The commands after a cd run where it took them, which can be a linked worktree (#149).
+follow_cd() {
+	local -a words=("$@")
+	local i
+
+	i="$(program_index "$@")"
+	if [[ -n "$i" && "${words[i]}" == cd ]]; then
+		enter_directory "$(last_operand "${words[@]:i+1}")"
+	fi
 }
 
 check_command() {
@@ -639,6 +669,7 @@ check_command() {
 		check_program "$(basename -- "${words[i]}")" "${words[@]:i+1}"
 	done
 	check_copy_programs ${words[@]+"${words[@]}"}
+	follow_cd ${words[@]+"${words[@]}"}
 }
 
 uses_interpreter() {

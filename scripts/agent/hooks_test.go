@@ -20,7 +20,8 @@ const (
 	exitDeny = 2
 	exitAsk  = 3
 
-	repoPlaceholder = "{{REPO}}"
+	repoPlaceholder     = "{{REPO}}"
+	worktreePlaceholder = "{{WT}}"
 	// The stubs log every call here and fail the call whose "<tool> <first arg>" starts
 	// with STUB_FAIL.
 	stubScript = `#!/bin/sh
@@ -34,6 +35,7 @@ fi
 	goFile          = "package clip\n"
 	maxBlocks       = 3
 	worktreeDir     = ".claude/worktrees/wt"
+	worktreeBranch  = "agent"
 
 	commentSession  = "session-1"
 	commentedPath   = "internal/domain/folder.go"
@@ -146,10 +148,10 @@ func (s *sandbox) write(t *testing.T, path, content string) {
 	writeFile(t, full, content, 0o644)
 }
 
-func (s *sandbox) addWorktree(t *testing.T, dir, branch string) {
+func (s *sandbox) addWorktree(t *testing.T, dir string) {
 	t.Helper()
 
-	s.git(t, "worktree", "add", "--quiet", "-b", branch, dir)
+	s.git(t, "worktree", "add", "--quiet", "-b", worktreeBranch, dir)
 }
 
 func (s *sandbox) failStub(call string) {
@@ -343,6 +345,17 @@ func TestClaudeAdapter_PreBash(t *testing.T) {
 			assert.Contains(t, got.stderr, tt.wantStderr)
 		})
 	}
+
+	t.Run("passes a bare push from a linked worktree on a branch", func(t *testing.T) {
+		t.Parallel()
+		box := newSandbox(t)
+		box.git(t, "switch", "--quiet", "main")
+		box.addWorktree(t, filepath.Join(box.repo, worktreeDir))
+
+		got := box.adapter(t, "claude", "pre-bash", "pre-bash-worktree-push.json")
+
+		assert.Equal(t, exitPass, got.code, got.stderr)
+	})
 }
 
 func TestClaudeAdapter_PostEdit(t *testing.T) {
@@ -376,7 +389,7 @@ func TestClaudeAdapter_PostEdit(t *testing.T) {
 	t.Run("checks a file in a linked worktree from that worktree", func(t *testing.T) {
 		t.Parallel()
 		box := newSandbox(t)
-		box.addWorktree(t, filepath.Join(box.repo, worktreeDir), "agent")
+		box.addWorktree(t, filepath.Join(box.repo, worktreeDir))
 		box.write(t, worktreeDir+"/pkg/clip/clip.go", goFile)
 
 		got := box.adapter(t, "claude", "post-edit", "post-edit-worktree-go.json")
@@ -777,7 +790,7 @@ func TestGuardPath(t *testing.T) {
 		t.Parallel()
 		box := newSandbox(t)
 		worktree := filepath.Join(t.TempDir(), "wt")
-		box.addWorktree(t, worktree, "agent")
+		box.addWorktree(t, worktree)
 
 		got := box.run(t, "", "guard-path.sh", filepath.Join(worktree, "go.sum"))
 
@@ -979,6 +992,25 @@ func TestGuardCommand(t *testing.T) {
 		assert.Equal(t, exitDeny, got.code)
 	})
 
+	t.Run("denies writes into the clone after cd out of it", func(t *testing.T) {
+		t.Parallel()
+
+		for _, target := range []string{"main.go", ".git/hooks/pre-push"} {
+			t.Run(target, func(t *testing.T) {
+				t.Parallel()
+				box := newSandbox(t)
+				outside := t.TempDir()
+				// An absolute path into the sandbox lies under /tmp or $TMPDIR, where writes are allowed.
+				relative, err := filepath.Rel(outside, filepath.Join(box.repo, target))
+				require.NoError(t, err)
+
+				got := box.run(t, "cd "+outside+" && cp /tmp/a.go "+relative, "guard-command.sh")
+
+				assert.Equal(t, exitDeny, got.code, got.stderr)
+			})
+		}
+	})
+
 	t.Run("judges a bare push by the checkout it runs in", func(t *testing.T) {
 		t.Parallel()
 
@@ -1014,9 +1046,10 @@ func TestGuardCommand(t *testing.T) {
 				box := newSandbox(t)
 				box.git(t, "switch", "--quiet", "main")
 				worktree := filepath.Join(t.TempDir(), "wt")
-				box.addWorktree(t, worktree, "agent")
+				box.addWorktree(t, worktree)
 
-				command := strings.NewReplacer("{{WT}}", worktree, repoPlaceholder, box.repo).Replace(tt.command)
+				command := strings.NewReplacer(worktreePlaceholder, worktree, repoPlaceholder, box.repo).
+					Replace(tt.command)
 				if tt.inWorktree {
 					box = box.in(worktree)
 				}

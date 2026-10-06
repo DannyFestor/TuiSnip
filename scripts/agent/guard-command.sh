@@ -131,20 +131,27 @@ check_tee() {
 	done
 }
 
-# A relative path resolves against the working directory, as it does for the command.
-is_inside_repo() {
-	local root path
+is_under() {
+	local path="$1"
+	local dir="$2"
 
-	root="$(repo_root 2>/dev/null)" || return 1
+	[[ "$path" == "$dir" || "$path" == "$dir/"* ]]
+}
+
+# A relative path resolves against the working directory, as it does for the command. The git
+# dir belongs to no checkout, but a write there can still replace the git hooks.
+is_inside_clone() {
+	local path
+
 	path="$(canonical_path "$1")"
-	[[ "$path" == "$root" || "$path" == "$root/"* ]]
+	checkout_root "$path" >/dev/null || is_under "$path" "$(clone_git_dir)"
 }
 
 check_write_destination() {
 	local program="$1"
 	local destination="$2"
 
-	if is_allowed_write_target "$destination" || ! is_inside_repo "$destination"; then
+	if is_allowed_write_target "$destination" || ! is_inside_clone "$destination"; then
 		return
 	fi
 	deny "$program must not write into the repo: $USE_EDIT_TOOLS."
@@ -639,8 +646,7 @@ check_program() {
 	esac
 }
 
-# The hook's working directory can be the main checkout while the command cds into a linked
-# worktree, so the guard moves with it and judges the commands after it where they run.
+# The commands after a cd run where it took them, which can be a linked worktree (#149).
 follow_cd() {
 	local -a words=("$@")
 	local i

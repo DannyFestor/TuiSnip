@@ -8,7 +8,9 @@ readonly EXIT_ASK=3
 
 AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SCRIPTS_DIR="$(dirname "$AGENT_DIR")"
-readonly AGENT_DIR SCRIPTS_DIR
+# guard-command.sh follows the cds in a command, so the clone is fixed where the script starts.
+START_DIR="$PWD"
+readonly AGENT_DIR SCRIPTS_DIR START_DIR
 
 repo_root() {
 	git rev-parse --show-toplevel
@@ -18,6 +20,10 @@ common_git_dir() {
 	local dir="$1"
 
 	(cd "$dir" && cd "$(git rev-parse --git-common-dir)" && pwd -P)
+}
+
+clone_git_dir() {
+	common_git_dir "$START_DIR"
 }
 
 # The state directory sits in the common git dir so every worktree of a clone shares it.
@@ -37,13 +43,13 @@ existing_ancestor() {
 	echo "$dir"
 }
 
-# The hook's working directory can be the main checkout while the agent edits a linked
-# worktree, so the root comes from the path. Fails when no checkout of this clone holds it.
+# The hook's working directory can be the main checkout while the agent works in a linked
+# worktree (#149), so the root comes from the path.
 checkout_root() {
 	local dir
 
 	dir="$(existing_ancestor "$1")"
-	if [[ "$(common_git_dir "$dir" 2>/dev/null)" != "$(common_git_dir .)" ]]; then
+	if [[ "$(common_git_dir "$dir" 2>/dev/null)" != "$(clone_git_dir)" ]]; then
 		return 1
 	fi
 	git -C "$dir" rev-parse --show-toplevel 2>/dev/null

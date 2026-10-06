@@ -1,0 +1,47 @@
+package folderpicker_test
+
+import (
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpicker"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
+)
+
+const (
+	pickerTitle = "Move to"
+	noMatches   = "No Folder matches."
+)
+
+func picking(t *testing.T, sample foldertree.Sample, current, moving domain.FolderID) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := folderpicker.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), folderpicker.Offer{
+		Title:   pickerTitle,
+		Tree:    sample.Tree,
+		Current: current,
+		Moving:  moving,
+		Picked:  func(picked domain.FolderID) outcome.Outcome { return pickedOutcome(picked) },
+	})
+
+	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+}
+
+func pickedOutcome(picked domain.FolderID) outcome.FolderSelected {
+	return outcome.FolderSelected{ID: picked}
+}
+
+func down() tea.KeyPressMsg {
+	return keypress.Special(tea.KeyDown)
+}
+
+func enter() tea.KeyPressMsg {
+	return keypress.Special(tea.KeyEnter)
+}

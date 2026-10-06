@@ -103,6 +103,26 @@ func TestCreate_Run(t *testing.T) {
 		assert.Equal(t, []domain.Tag{tag}, created.Tags())
 	})
 
+	t.Run("creates the new Tags it carries beside the stored ones", func(t *testing.T) {
+		t.Parallel()
+
+		stored := testkit.Tag(t, testkit.TagSpec{Name: "oneliner"})
+		inserter := NewMockInserter(t)
+		inserter.EXPECT().Insert(mock.Anything, mock.AnythingOfType("domain.Snippet")).Return(nil)
+
+		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
+			Title: "prune", Language: "plaintext", Tags: []domain.Tag{stored}, NewTags: []string{" Docker "},
+		})
+
+		require.NoError(t, err)
+		require.Len(t, created.Tags(), 2)
+		docker := created.Tags()[0]
+		assert.Equal(t, "Docker", docker.Name().String())
+		assert.False(t, docker.ID().IsNil())
+		assert.Equal(t, createdAt(), docker.CreatedAt())
+		assert.Equal(t, stored, created.Tags()[1])
+	})
+
 	t.Run("reports every invalid field at once", func(t *testing.T) {
 		t.Parallel()
 
@@ -111,15 +131,23 @@ func TestCreate_Run(t *testing.T) {
 			Description: strings.Repeat("d", maxDescriptionRunes+1),
 			Language:    "golang",
 			Content:     strings.Repeat("c", maxContentBytes+1),
+			NewTags:     []string{"a,b"},
 		})
 
 		require.ErrorIs(t, err, value.ErrBlankTitle)
 		require.ErrorIs(t, err, value.ErrDescriptionTooLong)
 		require.ErrorIs(t, err, value.ErrUnknownLanguage)
 		require.ErrorIs(t, err, value.ErrContentTooLong)
+		require.ErrorIs(t, err, value.ErrTagNameHasComma)
 		assert.Equal(
 			t,
-			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent},
+			[]domain.Field{
+				domain.FieldTitle,
+				domain.FieldDescription,
+				domain.FieldLanguage,
+				domain.FieldContent,
+				domain.FieldTagName,
+			},
 			fieldsOf(domain.FieldErrors(err)),
 		)
 	})

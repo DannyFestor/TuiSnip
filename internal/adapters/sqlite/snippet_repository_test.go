@@ -103,18 +103,40 @@ func TestSnippetRepository_Insert(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("writes nothing when it carries a Tag that was never stored", func(t *testing.T) {
+	t.Run("stores the Tags it carries that were never stored", func(t *testing.T) {
 		t.Parallel()
 
-		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
 		ids := testkit.NewSequentialIDs()
-		unstored := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID()})
-		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Tags: []domain.Tag{unstored}})
+		stored := insertTag(t, tags, ids, "go")
+		unstored := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "docker"})
+		snippet := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{stored, unstored}})
 
-		require.Error(t, repository.Insert(t.Context(), snippet))
+		got, err := repository.Find(t.Context(), snippet.ID())
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{unstored, stored}, got.Tags())
+		assertTagsListed(t, tags, unstored, stored)
+	})
+
+	t.Run("writes nothing when a Tag it carries takes another Tag's name", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		stored := insertTag(t, tags, ids, "go")
+		clashing := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Go"})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Tags: []domain.Tag{clashing}})
+
+		require.ErrorIs(t, repository.Insert(t.Context(), snippet), domain.ErrTagNameTaken)
 
 		_, err := repository.Find(t.Context(), snippet.ID())
 		require.ErrorIs(t, err, domain.ErrNotFound)
+		assertTagsListed(t, tags, stored)
 	})
 }
 
@@ -149,6 +171,46 @@ func TestSnippetRepository_Update(t *testing.T) {
 		got, err := repository.Find(t.Context(), stored.ID())
 		require.NoError(t, err)
 		assert.Equal(t, []domain.Tag{golang}, got.Tags())
+	})
+
+	t.Run("replaces the Tags the Snippet carries, storing the new ones", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, tags, ids, "go")
+		shell := insertTag(t, tags, ids, "shell")
+		stored := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+		docker := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "docker"})
+		retagged := editedSnippet(t, stored, "go").Retagged([]domain.Tag{shell, docker})
+
+		require.NoError(t, repository.Update(t.Context(), retagged, stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{docker, shell}, got.Tags())
+		assertTagsListed(t, tags, docker, golang, shell)
+	})
+
+	t.Run("writes nothing when a new Tag takes another Tag's name", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, tags, ids, "go")
+		stored := insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+		clashing := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "GO"})
+		retagged := editedSnippet(t, stored, "go").Retagged([]domain.Tag{clashing})
+
+		require.ErrorIs(t, repository.Update(t.Context(), retagged, stored.UpdatedAt()), domain.ErrTagNameTaken)
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, stored, got)
 	})
 
 	t.Run("refuses a save over a Snippet changed since it was loaded", func(t *testing.T) {
@@ -624,4 +686,12 @@ func assertCorruptRowLogged(t *testing.T, logged *bytes.Buffer, level string, id
 	assert.Contains(t, logged.String(), `"level":"`+level+`"`)
 	assert.Contains(t, logged.String(), `"snippet_id":"`+id.String()+`"`)
 	assert.Contains(t, logged.String(), `"error":"`+domain.ErrCorruptRecord.Error())
+}
+
+func assertTagsListed(t *testing.T, repository *sqlite.TagRepository, want ...domain.Tag) {
+	t.Helper()
+
+	listed, err := repository.List(t.Context())
+	require.NoError(t, err)
+	assert.ElementsMatch(t, want, listed)
 }

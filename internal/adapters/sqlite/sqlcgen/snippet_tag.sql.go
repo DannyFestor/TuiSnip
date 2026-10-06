@@ -58,6 +58,16 @@ func (q *Queries) CountSnippetsWithTag(ctx context.Context, tagID sqltype.ID) (i
 	return count, err
 }
 
+const deleteSnippetTags = `-- name: DeleteSnippetTags :exec
+DELETE FROM snippet_tag
+WHERE snippet_id = ?
+`
+
+func (q *Queries) DeleteSnippetTags(ctx context.Context, snippetID sqltype.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteSnippetTags, snippetID)
+	return err
+}
+
 const insertSnippetTag = `-- name: InsertSnippetTag :exec
 INSERT INTO snippet_tag (snippet_id, tag_id)
 VALUES (?, ?)

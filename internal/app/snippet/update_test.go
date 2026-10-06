@@ -22,17 +22,18 @@ func TestNewUpdate(t *testing.T) {
 	t.Run("names every missing dependency", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := snippet.NewUpdate(nil, nil)
+		_, err := snippet.NewUpdate(nil, nil, nil)
 
 		require.ErrorIs(t, err, domain.ErrMissingDependency)
 		require.ErrorContains(t, err, "snippet.NewUpdate: repo")
+		require.ErrorContains(t, err, "ids")
 		assert.ErrorContains(t, err, "clock")
 	})
 
 	t.Run("accepts every dependency", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := snippet.NewUpdate(NewMockUpdateRepository(t), fixedClock())
+		_, err := snippet.NewUpdate(NewMockUpdateRepository(t), testkit.NewSequentialIDs(), fixedClock())
 
 		assert.NoError(t, err)
 	})
@@ -79,6 +80,30 @@ func TestUpdate_Run(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "Bash", updated.FirstFragment().Language().String())
+	})
+
+	t.Run("replaces the Tags with the stored and the new ones it carries", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		http := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "http"})
+		shell := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+		stored := storedSnippet(t, "curl").Retagged([]domain.Tag{http})
+		repo := NewMockUpdateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		repo.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		input := updateInput(stored, "curl", "", "curl")
+		input.Tags = []domain.Tag{shell}
+		input.NewTags = []string{"api"}
+
+		updated, err := newUpdate(t, repo).Run(t.Context(), input)
+
+		require.NoError(t, err)
+		require.Len(t, updated.Tags(), 2)
+		assert.Equal(t, "api", updated.Tags()[0].Name().String())
+		assert.Equal(t, createdAt(), updated.Tags()[0].CreatedAt())
+		assert.Equal(t, shell, updated.Tags()[1])
 	})
 
 	t.Run("keeps content with tabs byte for byte", func(t *testing.T) {
@@ -149,7 +174,7 @@ func TestUpdate_Run(t *testing.T) {
 func newUpdate(t *testing.T, repo snippet.UpdateRepository) *snippet.Update {
 	t.Helper()
 
-	update, err := snippet.NewUpdate(repo, fixedClock())
+	update, err := snippet.NewUpdate(repo, testkit.NewSequentialIDs(), fixedClock())
 	require.NoError(t, err)
 
 	return update
@@ -175,6 +200,8 @@ func updateInput(stored domain.Snippet, title, description, content string) snip
 		Description:     description,
 		Language:        stored.FirstFragment().Language().String(),
 		Content:         content,
+		Tags:            stored.Tags(),
+		NewTags:         nil,
 	}
 }
 

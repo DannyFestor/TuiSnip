@@ -2,6 +2,11 @@
 INSERT INTO tags (id, name, name_key, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?);
 
+-- name: InsertTagUnlessStored :exec
+INSERT INTO tags (id, name, name_key, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (id) DO NOTHING;
+
 -- name: ListTags :many
 SELECT id, name, name_key, created_at, updated_at
 FROM tags;

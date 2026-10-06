@@ -69,7 +69,7 @@ func Editing(
 		language:    fragment.Language(),
 		content:     fragment.Content().String(),
 	}
-	readOnly := readOnlyIfTabbed(original.content, fragment.Language(), styles.CodeStyle)
+	readOnly := readOnlyIfUneditable(original.content, fragment.Language(), styles.CodeStyle)
 	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 

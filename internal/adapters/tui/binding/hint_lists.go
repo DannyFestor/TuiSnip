@@ -32,7 +32,7 @@ func paneOwnHintList(scope Scope) []labelledRef {
 
 	switch scope {
 	case ScopeFolders:
-		return append([]labelledRef{open}, withRowLabels(refsIn(scope, NewFolder, Rename, Delete)...)...)
+		return append([]labelledRef{open}, withRowLabels(refsIn(scope, NewFolder, Rename, Delete, Move)...)...)
 	case ScopeTags:
 		return append([]labelledRef{open}, withRowLabels(refsIn(scope, NewTag, Rename, Delete)...)...)
 	case ScopeSnippetList:
@@ -41,6 +41,7 @@ func paneOwnHintList(scope Scope) []labelledRef {
 			rowRef{scope: scope, name: Edit},
 			rowRef{scope: scope, name: OpenInEditor},
 			rowRef{scope: ScopeGlobal, name: NewSnippet},
+			rowRef{scope: scope, name: Move},
 			rowRef{scope: scope, name: Duplicate},
 			rowRef{scope: scope, name: Delete},
 			rowRef{scope: scope, name: CycleSort},

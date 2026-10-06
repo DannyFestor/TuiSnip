@@ -582,26 +582,26 @@ func TestScreen_statusLine(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Press(keypress.Letter('1'))
+		screen.Press(keypress.Letter('2'))
 
-		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(folderHints))})
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(tagHints))})
 
-		assert.True(t, strings.HasSuffix(statusLine(screen), " "+folderHints))
+		assert.True(t, strings.HasSuffix(statusLine(screen), " "+tagHints))
 	})
 
 	t.Run("drops hints from the right but keeps help", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, minimum(), sampleSnippets(t)...)
-		screen.Press(keypress.Letter('1'))
+		screen.Press(keypress.Letter('2'))
 
-		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(folderHints) - 1)})
+		screen.Send(mainscreen.StatusShown{Text: statusLeaving(ansi.StringWidth(tagHints) - 1)})
 
 		assert.True(
 			t,
 			strings.HasSuffix(
 				statusLine(screen),
-				" enter open · N new Folder · r rename · d delete · z zoom · "+helpHint,
+				" enter open · N new Tag · r rename · d delete · z zoom · "+helpHint,
 			),
 		)
 	})
@@ -1700,7 +1700,7 @@ func TestScreen_UpdateTagNaming(t *testing.T) {
 
 		screen.Press(keypress.Letter('2'))
 
-		assert.Equal(t, "enter open · N new Tag · r rename · d delete · z zoom · / search · ? help", screen.Hints())
+		assert.Equal(t, tagHints, screen.Hints())
 	})
 }
 

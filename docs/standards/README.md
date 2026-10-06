@@ -42,7 +42,7 @@ A change usually matches several rows. Read every section they name. To read one
 
 Related documents:
 
-- [`CONTEXT.md`](../../CONTEXT.md): the domain terms. They are binding for identifiers, test names, and log keys.
+- [`GLOSSARY.md`](../../GLOSSARY.md): the domain terms. They are binding for identifiers, test names, and log keys.
 - [`docs/spec/`](../spec/): what the product does. [v1](../spec/v1.md), [config](../spec/config.md), [UI](../spec/ui.md).
 - [`docs/toolchain.md`](../toolchain.md): each tool and library, why it was chosen, and what was rejected.
 - [`docs/adr/`](../adr/): decisions that are hard to reverse.

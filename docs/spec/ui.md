@@ -1,6 +1,6 @@
 # Main screen and navigation
 
-How the main screen is laid out and how the keyboard and mouse move through it. Domain terms come from [`CONTEXT.md`](../../CONTEXT.md). Binding names and default keys are in [config](config.md#bindings); what the screens do is in [the v1 spec](v1.md). The throwaway prototype this was decided on lives on the `prototype/main-screen-layout` branch (variant D).
+How the main screen is laid out and how the keyboard and mouse move through it. Domain terms come from [`GLOSSARY.md`](../../GLOSSARY.md). Binding names and default keys are in [config](config.md#bindings); what the screens do is in [the v1 spec](v1.md). The throwaway prototype this was decided on lives on the `prototype/main-screen-layout` branch (variant D).
 
 ## Layout
 

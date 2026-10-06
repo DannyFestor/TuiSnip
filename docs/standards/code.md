@@ -8,7 +8,7 @@ This document holds the conventions no linter checks, and the reasons behind the
 
 ## Vocabulary
 
-[`CONTEXT.md`](../../CONTEXT.md) is binding for code. Types, Actions, fields, test names, and log keys use its terms: `Snippet`, `Fragment`, `Folder`, `Root`, `Tag`, `Capture`, `Copy`. Each entry's `_Avoid_` list names the words to leave out of identifiers.
+[`GLOSSARY.md`](../../GLOSSARY.md) is binding for code. Types, Actions, fields, test names, and log keys use its terms: `Snippet`, `Fragment`, `Folder`, `Root`, `Tag`, `Capture`, `Copy`. Each entry's `_Avoid_` list names the words to leave out of identifiers.
 
 ```go
 // ❌
@@ -19,7 +19,7 @@ type ClipItem struct{}
 func (r *Repository) SnippetsAtRoot(ctx context.Context) ([]domain.Snippet, error)
 ```
 
-The Root is spelled `Root` in code, as in `AtRoot()` and `folder.MoveToRoot`. In Go it is the zero `domain.FolderID`, never a nil pointer, and code asks `AtRoot()` rather than comparing IDs. A new concept gets its `CONTEXT.md` entry before it gets code.
+The Root is spelled `Root` in code, as in `AtRoot()` and `folder.MoveToRoot`. In Go it is the zero `domain.FolderID`, never a nil pointer, and code asks `AtRoot()` rather than comparing IDs. A new concept gets its `GLOSSARY.md` entry before it gets code.
 
 ## Files and packages
 

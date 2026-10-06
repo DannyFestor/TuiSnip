@@ -26,7 +26,7 @@ Platform tests touch state the user owns, like the system clipboard, so they onl
 | Property | ends in `Property` | `TestFolderTreeMoveProperty` |
 | Fuzz | `Fuzz<Func>` | `FuzzParseKeyBinding` |
 
-`make test-property-deep` selects property tests by the `Property` suffix. A property test without it never gets the deep run. Names use [`CONTEXT.md`](../../CONTEXT.md) terms.
+`make test-property-deep` selects property tests by the `Property` suffix. A property test without it never gets the deep run. Names use [`GLOSSARY.md`](../../GLOSSARY.md) terms.
 
 ## Structure
 

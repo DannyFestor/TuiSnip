@@ -12,7 +12,7 @@ The v0.1 milestone is a walking skeleton. In it, you create a Snippet at the Roo
 
 - The v1 specification is in [`docs/spec/v1.md`](docs/spec/v1.md).
 - The order of later work is in [`ROADMAP.md`](ROADMAP.md).
-- The domain terms are in [`CONTEXT.md`](CONTEXT.md). Examples are Snippet, Folder, Root, and Tag.
+- The domain terms are in [`GLOSSARY.md`](GLOSSARY.md). Examples are Snippet, Folder, Root, and Tag.
 
 ## Requirements
 

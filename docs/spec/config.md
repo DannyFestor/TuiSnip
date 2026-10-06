@@ -1,6 +1,6 @@
 # Configuration
 
-TuiSnip reads one hand-edited TOML file, `config.toml`, and keeps remembered UI state in a separate file it owns. This document is the reference for both. Domain terms come from [`CONTEXT.md`](../../CONTEXT.md). The default file, with a comment on every key, is [`embeds/config/default.toml`](../../embeds/config/default.toml).
+TuiSnip reads one hand-edited TOML file, `config.toml`, and keeps remembered UI state in a separate file it owns. This document is the reference for both. Domain terms come from [`GLOSSARY.md`](../../GLOSSARY.md). The default file, with a comment on every key, is [`embeds/config/default.toml`](../../embeds/config/default.toml).
 
 ## Location
 

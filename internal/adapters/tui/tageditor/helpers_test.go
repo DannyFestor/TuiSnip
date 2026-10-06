@@ -1,6 +1,7 @@
 package tageditor_test
 
 import (
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -48,13 +49,38 @@ func (s sampleTags) listed() []browse.TagCount {
 func editing(t *testing.T, listed []browse.TagCount, chosen tagchoice.Chosen) *overlaytest.Driver {
 	t.Helper()
 
+	return editingOn(t, look.Size{Width: 120, Height: 40}, listed, chosen)
+}
+
+func editingOn(
+	t *testing.T, screen look.Size, listed []browse.TagCount, chosen tagchoice.Chosen,
+) *overlaytest.Driver {
+	t.Helper()
+
 	opened, _ := tageditor.New(
 		testsettings.Default(t).Keys,
 		look.NewStyles(look.SchemeDark),
 		tageditor.Offer{Listed: listed, Chosen: chosen},
 	)
 
-	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+	return overlaytest.Open(t, screen, opened)
+}
+
+func numberedTags(t *testing.T, count int) []browse.TagCount {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+	listed := make([]browse.TagCount, 0, count)
+
+	for number := range count {
+		name := fmt.Sprintf("tag%02d", number)
+		listed = append(listed, browse.TagCount{
+			Tag:          testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: name}),
+			SnippetCount: number,
+		})
+	}
+
+	return listed
 }
 
 func edited(t *testing.T, screen *overlaytest.Driver) tagchoice.Chosen {

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -95,6 +96,21 @@ func TestEditor_View(t *testing.T) {
 		screen.Press(keypress.Typed(" api ")...)
 
 		assert.Contains(t, screen.Screen(), `+ create "api"`)
+	})
+
+	t.Run("scrolls a long list to keep the cursor in the frame below the Tags line", func(t *testing.T) {
+		t.Parallel()
+
+		const count = 20
+
+		screen := editingOn(t, look.Size{Width: 60, Height: 20}, numberedTags(t, count), tagchoice.Of(nil))
+
+		for range count - 1 {
+			screen.Press(down())
+		}
+
+		assert.Contains(t, screen.Screen(), "tag19")
+		assert.NotContains(t, screen.Screen(), "tag00")
 	})
 
 	t.Run("says when there are no Tags yet", func(t *testing.T) {

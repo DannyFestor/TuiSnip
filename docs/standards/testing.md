@@ -95,7 +95,12 @@ A package's tests are black-box (testpackage), so they see only its exported API
 
 Test every behaviour a ticket or standard decided, and every branch that chooses between outcomes: Root or Folder, roll back or commit, refuse start-up or continue, log or stay quiet. Don't test a branch that only passes an I/O error up (`if err != nil { return fmt.Errorf("…: %w", err) }` after `Commit`, `Close`, or `os.Remove`). Reaching it needs a fake that fails on cue, which this section rules out, and wrapcheck and errcheck already make sure the error is wrapped and not dropped.
 
-Coverage is reported and has no threshold. A branch that shows red is fine when it is pass-through, and a gap when it is a decision. Mutation testing (`make test-mutation`) finds the second kind: a mutant that lives on a decision branch needs a test. Before opening the PR for a ticket that adds decision logic, run `make test-mutation-changed` and add the missing tests in the same PR. It mutation-tests the packages changed since `origin/main`, uncommitted changes included, skipping a package whose parent's run already covers it, and does nothing when no Go code changed. Each package gets its own `mutation-report-<package>.json`. `make test-mutation PKG=./internal/adapters/sqlite` runs one package.
+Coverage is reported and has no threshold. A branch that shows red is fine when it is pass-through, and a gap when it is a decision. Reviewers find decision gaps by reading the code and the coverage report.
+
+Mutation testing runs in the weekly CI job. Surviving mutants show up in its `mutation-report` artifact, and a mutant that lives on a decision branch needs a test. A mutation run is never required before a PR. It takes long and can use enough CPU and memory to freeze a dev machine. Running it locally is optional:
+
+- `make test-mutation-changed` mutation-tests the packages changed since `origin/main`, uncommitted changes included. It skips a package whose parent's run already covers it, and does nothing when no Go code changed. Each package gets its own `mutation-report-<package>.json`.
+- `make test-mutation PKG=./internal/adapters/sqlite` runs one package.
 
 ### Doubles
 

@@ -1,6 +1,6 @@
 name: Mutation
 
-# By hand only: a full run takes about 50 minutes, and its report is worth that only when someone reads it.
+# By hand only, and why the memory cap exists: docs/toolchain.md, "CI and release".
 on:
   workflow_dispatch:
 
@@ -14,9 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
-      # A mutant that reverses a loop counter allocates without bound and exhausts the runner's memory,
-      # which shuts the runner down mid-run. The cgroup cap lets the kernel kill only that test process,
-      # which gremlins counts as a killed mutant. OOMPolicy=continue keeps systemd from stopping gremlins too.
+      # Creating the scope needs root. sudo resets PATH, which would drop the mise tools,
+      # so PATH is passed back in, and --uid/--gid run make as the runner user again.
       - run: |
           sudo --preserve-env env "PATH=$PATH" systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)" \
             -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=continue make test-mutation

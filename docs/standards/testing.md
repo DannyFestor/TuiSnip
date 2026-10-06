@@ -97,7 +97,7 @@ Test every behaviour a ticket or standard decided, and every branch that chooses
 
 Coverage is reported and has no threshold. A branch that shows red is fine when it is pass-through, and a gap when it is a decision. Reviewers find decision gaps by reading the code and the coverage report.
 
-Mutation testing runs in the `Mutation` CI workflow, started by hand. Surviving mutants show up in its `mutation-report` artifact, and a mutant that lives on a decision branch needs a test. A mutation run is never required before a PR. It takes long and can use enough CPU and memory to freeze a dev machine. Running it locally is optional:
+Mutation testing runs in the `Mutation` CI workflow, started by hand. Surviving mutants show up in its `mutation-report` artifact, and a mutant that lives on a decision branch needs a test. A mutation run is never required before a PR. A full run takes a long time and can use enough CPU and memory to freeze a dev machine. Running it locally is optional:
 
 - `make test-mutation-changed` mutation-tests the packages changed since `origin/main`, uncommitted changes included. It skips a package whose parent's run already covers it, and does nothing when no Go code changed. Each package gets its own `mutation-report-<package>.json`.
 - `make test-mutation PKG=./internal/adapters/sqlite` runs one package.
@@ -167,4 +167,4 @@ Both are ordinary unit tests: no tag, and their seed corpus or default 100 check
 - **Fuzz** (`testing.F`) parsers of hand-edited or foreign input: the config and keybinding loader, the Search matcher on arbitrary strings. A crasher found by the weekly job is committed to `testdata/fuzz/` as a regression seed.
 - **Property** (`pgregory.net/rapid`) rules that must hold for every sequence, such as Folder moves never creating a cycle. A property that needs SQLite goes in the feature tier.
 
-The weekly deep runs, the mutation report, and the Makefile targets are described in [the research](../research/mutation-fuzz-property-testing.md).
+The Makefile targets are described in [the research](../research/mutation-fuzz-property-testing.md). Which CI workflow runs each of them, and when, is in [the toolchain](../toolchain.md#ci-and-release).

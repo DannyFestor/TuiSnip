@@ -97,7 +97,9 @@ GitHub Actions runs every check the hooks run, plus the ones too slow for them. 
 
 The deep tests run weekly, not nightly. Daily runs would mostly search code that hasn't changed, and the cached Go build cache keeps the fuzz corpus from one run to the next.
 
-Mutation testing runs only by hand. A full run takes about 50 minutes, and the report is worth that only when someone reads it. The job runs gremlins in a systemd scope capped at 12 GB with `OOMPolicy=continue`. A mutant that reverses a loop counter can allocate without bound, and without the cap it exhausted the runner's memory and GitHub shut the runner down. With the cap, the kernel kills only that test process, and gremlins counts the mutant as killed. A second shutdown signal makes gremlins 0.6.0 panic with `send on closed channel` ([gremlins#283](https://github.com/go-gremlins/gremlins/pull/283)).
+Mutation testing runs only by hand. A full run takes about 50 minutes, and the report is worth that only when someone reads it.
+
+The `mutation` job runs `make test-mutation` in a systemd scope capped at 12 GB, with swap off. The cap exists only in CI, because it needs Linux and systemd. A mutant that reverses a loop counter can allocate without bound. Without the cap, it exhausted the runner's memory and GitHub shut the runner down. With the cap, the kernel kills only that test process, and gremlins counts the mutant as killed. `OOMPolicy=continue` keeps systemd from stopping the whole scope after that kill. Stopping it would signal gremlins, and gremlins 0.6.0 panics with `send on closed channel` when it gets a second signal while shutting down ([gremlins#283](https://github.com/go-gremlins/gremlins/pull/283)).
 
 `.github/actions/setup` installs the tools from `mise.toml` with `jdx/mise-action` and caches the Go build and module caches per job. The mise version is pinned there, because Dependabot can't update it and an unpinned mise changes under CI without a commit.
 

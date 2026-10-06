@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"testing"
 
 	"github.com/charmbracelet/x/exp/teatest/v2"
@@ -200,6 +201,13 @@ func editorReturning(t *testing.T, edited string) *MockExternalEditor {
 
 func editorRun(edited string, err error) tui.EditorRun {
 	return func(io.Reader, io.Writer, io.Writer) (string, error) {
+		// Works around an upstream race in Bubble Tea v2.0.10 (#160): a real
+		// editor blocks, which lets the suspended renderer's goroutine stop its
+		// ticker before RestoreTerminal resets it. Returning without a yield
+		// lets that stop land after the reset, and the program never repaints.
+		// The yield makes the race unlikely, not impossible.
+		runtime.Gosched()
+
 		if err != nil {
 			return "", err
 		}

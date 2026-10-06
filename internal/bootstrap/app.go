@@ -32,6 +32,7 @@ type App struct {
 	Update                   *snippet.Update
 	Duplicate                *snippet.Duplicate
 	Delete                   *snippet.Delete
+	Move                     *snippet.Move
 	Copy                     *snippet.Copy
 	Query                    *search.Query
 	SnippetsInFolder         *browse.SnippetsInFolder
@@ -43,6 +44,7 @@ type App struct {
 	PreviewDeleteFolder      *folder.PreviewDelete
 	DeleteFolder             *folder.Delete
 	SetFolderDefaultLanguage *folder.SetDefaultLanguage
+	MoveFolder               *folder.Move
 	CreateTag                *tag.Create
 	RenameTag                *tag.Rename
 	PreviewDeleteTag         *tag.PreviewDelete
@@ -225,6 +227,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		Update:                   snippets.update,
 		Duplicate:                snippets.duplicate,
 		Delete:                   snippets.remove,
+		Move:                     snippets.move,
 		Copy:                     copyAction,
 		Query:                    query,
 		SnippetsInFolder:         browsing.snippetsInFolder,
@@ -236,6 +239,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		PreviewDeleteFolder:      folders.previewDelete,
 		DeleteFolder:             folders.remove,
 		SetFolderDefaultLanguage: folders.setDefaultLanguage,
+		MoveFolder:               folders.move,
 		CreateTag:                tags.create,
 		RenameTag:                tags.rename,
 		PreviewDeleteTag:         tags.previewDelete,

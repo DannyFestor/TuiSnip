@@ -597,6 +597,13 @@ check_git_option_value() {
 	fi
 }
 
+# A directory that doesn't exist yet leaves the command where it is, so it is judged there.
+enter_directory() {
+	if [[ -d "$1" ]]; then
+		cd "$1"
+	fi
+}
+
 check_git() {
 	check_hook_bypass_flag "$@"
 	while (($# > 0)); do
@@ -605,7 +612,11 @@ check_git() {
 			check_git_option_value "${2:-}"
 			shift 2 || shift
 			;;
-		-C | --git-dir | --work-tree | --namespace) shift 2 || shift ;;
+		-C)
+			enter_directory "${2:-}"
+			shift 2 || shift
+			;;
+		--git-dir | --work-tree | --namespace) shift 2 || shift ;;
 		-*) shift ;;
 		*)
 			check_git_subcommand "$@"
@@ -620,11 +631,24 @@ check_program() {
 	shift
 
 	case "$program" in
-	git) check_git "$@" ;;
+	# The subshell keeps a git -C directory from moving the commands after it.
+	git) (check_git "$@") || exit "$?" ;;
 	sed | perl) check_in_place_edit "$program" "$@" ;;
 	awk | gawk) check_awk "$@" ;;
 	tee) check_tee "$@" ;;
 	esac
+}
+
+# The hook's working directory can be the main checkout while the command cds into a linked
+# worktree, so the guard moves with it and judges the commands after it where they run.
+follow_cd() {
+	local -a words=("$@")
+	local i
+
+	i="$(program_index "$@")"
+	if [[ -n "$i" && "${words[i]}" == cd ]]; then
+		enter_directory "$(last_operand "${words[@]:i+1}")"
+	fi
 }
 
 check_command() {
@@ -639,6 +663,7 @@ check_command() {
 		check_program "$(basename -- "${words[i]}")" "${words[@]:i+1}"
 	done
 	check_copy_programs ${words[@]+"${words[@]}"}
+	follow_cd ${words[@]+"${words[@]}"}
 }
 
 uses_interpreter() {

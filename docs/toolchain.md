@@ -68,6 +68,8 @@ Every core script exits 0 to pass, 2 to deny, 3 to ask, with the way forward on 
 
 `scripts/agent/protected-paths` is the single list of path rules. `make generate-agent-rules` turns it into OpenCode's `permission.edit` block in `opencode.json`, so OpenCode prompts for the ask tier itself, and the CI drift check catches a stale file.
 
+An agent working in a linked worktree can get hook input whose working directory is the main checkout ([#149](https://github.com/DannyFestor/TuiSnip/issues/149)). So the edit guards and `check-go-file.sh` work from the checkout that holds the edited file, as long as it belongs to the same clone. `guard-command.sh` follows a `cd` and a `git -C` in the command, so a bare `git push` is judged by the branch of the checkout it runs in. `verify-build.sh` still checks the working directory's checkout.
+
 The guards keep agents from making mistakes, but they aren't a security boundary. A command nested in `sh -c '...'` isn't inspected, and the deny on shell file writes exists so file changes go through the edit tools, where the post-edit format and vet run.
 
 `scripts/agent/hooks_test.go` pipes recorded hook input from `testdata/` through the adapters in a throwaway git repo, with `go`, `golangci-lint`, and `go-arch-lint` stubbed. It runs with the unit tests. bats was rejected so the repo keeps one test runner.

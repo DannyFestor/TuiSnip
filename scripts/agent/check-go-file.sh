@@ -38,7 +38,7 @@ main() {
 		exit "$EXIT_PASS"
 	fi
 	package_dir="./$(dirname "$relative_path")"
-	cd "$(repo_root)"
+	cd "$(checkout_root "$1")"
 	run_step "golangci-lint fmt" golangci-lint fmt "$relative_path"
 	run_step "go vet" go vet -tags "$BUILD_TAGS" "$package_dir"
 	# Parallel edits and other sessions lint at the same time; without the flag the loser

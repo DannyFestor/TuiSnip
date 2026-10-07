@@ -2,7 +2,7 @@
 
 TuiSnip uses hexagonal layering. The domain sits in the middle, Actions around it, and adapters on the outside. Dependencies only point inward. `.go-arch-lint.yml` and depguard enforce the rules below, so a violation fails CI rather than code review. The reasoning behind the shape is in [ADR 0001](../adr/0001-hexagonal-layering.md).
 
-Domain terms (Snippet, Folder, Root, Capture, Copy, ...) come from [`CONTEXT.md`](../../CONTEXT.md).
+Domain terms (Snippet, Folder, Root, Capture, Copy, ...) come from [`GLOSSARY.md`](../../GLOSSARY.md).
 
 ## Vocabulary
 
@@ -196,7 +196,7 @@ TUI tests take their keys from `test/testsettings`, which loads the embedded def
 
 ### Packages
 
-Packages under `tui/` are flat, with no grouping folders. A component's package is named after its [`CONTEXT.md`](../../CONTEXT.md) term (`snippetlist`, `searchpopup`), never a bare word that collides with another package at the call site, such as `search` with `internal/app/search`. Helpers that several components share live in packages named for what they hold (`look`, `input`, `move`), so no component imports `tui` or another component for them. Their names must not be a word `CONTEXT.md` tells you to avoid.
+Packages under `tui/` are flat, with no grouping folders. A component's package is named after its [`GLOSSARY.md`](../../GLOSSARY.md) term (`snippetlist`, `searchpopup`), never a bare word that collides with another package at the call site, such as `search` with `internal/app/search`. Helpers that several components share live in packages named for what they hold (`look`, `input`, `move`), so no component imports `tui` or another component for them. Their names must not be a word `GLOSSARY.md` tells you to avoid.
 
 ### Moving a component out of `tui`
 

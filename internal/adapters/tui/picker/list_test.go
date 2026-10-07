@@ -70,6 +70,19 @@ func TestList_View(t *testing.T) {
 
 		assert.Equal(t, []string{"filter:", "", "C", "D"}, visibleLines(list))
 	})
+
+	t.Run("draws the filter and the choices in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		list := typed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
+
+		restyled, _, _ := list.Update(look.Restyled{Styles: light})
+
+		styledFromStart := typed(t, openedStyled(t, keys, light, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
+		assert.Equal(t, styledFromStart.View(), restyled.View())
+	})
 }
 
 func TestList_Update(t *testing.T) {
@@ -300,19 +313,6 @@ func TestList_WithGreyedOut(t *testing.T) {
 
 		assert.Contains(t, list.View(), dimmedCursor.Render(look.Row("Bash", "", boxWidth)))
 	})
-}
-
-func TestList_restyled(t *testing.T) {
-	t.Parallel()
-
-	keys := testsettings.Default(t).Keys
-	light := look.NewStyles(look.SchemeLight)
-	list := typed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
-
-	restyled, _, _ := list.Update(look.Restyled{Styles: light})
-
-	built := typed(t, openedStyled(t, keys, light, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
-	assert.Equal(t, built.View(), restyled.View())
 }
 
 func TestList_WithChoices(t *testing.T) {

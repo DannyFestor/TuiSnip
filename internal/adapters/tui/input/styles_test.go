@@ -70,12 +70,12 @@ func TestAreaStyles(t *testing.T) {
 		assert.Equal(t, styles.Dim, got.Blurred.EndOfBuffer)
 	})
 
-	t.Run("marks the cursor line only while focused", func(t *testing.T) {
+	t.Run("marks the cursor line only while focused and dims it while blurred", func(t *testing.T) {
 		t.Parallel()
 
 		assert.Equal(t, styles.CurrentLine, got.Focused.CursorLine)
 		assert.Equal(t, styles.Accent, got.Focused.CursorLineNumber)
-		assert.Equal(t, styles.Plain, got.Blurred.CursorLine)
+		assert.Equal(t, styles.Dim, got.Blurred.CursorLine)
 		assert.Equal(t, styles.Dim, got.Blurred.CursorLineNumber)
 	})
 

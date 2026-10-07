@@ -35,7 +35,7 @@ func AreaStyles(styles look.Styles) textarea.Styles {
 			cursorLine:       styles.CurrentLine,
 			cursorLineNumber: styles.Accent,
 		}),
-		Blurred: areaState(styles, areaRoles{text: styles.Dim, cursorLine: styles.Plain, cursorLineNumber: styles.Dim}),
+		Blurred: areaState(styles, areaRoles{text: styles.Dim, cursorLine: styles.Dim, cursorLineNumber: styles.Dim}),
 		Cursor: textarea.CursorStyle{
 			Color:      styles.Accent.GetForeground(),
 			Shape:      tea.CursorBlock,

@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/picker"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagrefusal"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -61,6 +62,8 @@ func (e Editor) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(e.restyled(msg))
 	case arrived.Tags:
 		return outcome.Stay(e.withListed(msg.Tags))
+	case pointer.Clicked:
+		return e.listUpdated(msg.InsideFrame().Relative(pointer.Point{X: 0, Y: headerRows}))
 	}
 
 	return e.listUpdated(msg)

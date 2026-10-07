@@ -29,6 +29,7 @@ type Deps struct {
 	CollapsedFoldersSaver       CollapsedFoldersSaver
 	ExternalEditor              ExternalEditor
 	EditedContentHandler        EditedContentHandler
+	Clock                       Clock
 	Settings                    Settings
 	Logger                      *slog.Logger
 }

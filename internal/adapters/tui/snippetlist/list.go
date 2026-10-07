@@ -10,6 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -48,6 +49,10 @@ func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
 		l.styles = msg.Styles
 
 		return l, nil, nil
+	case pointer.Clicked:
+		return l.clicked(msg.At), nil, nil
+	case pointer.Wheeled:
+		return l.wheeled(msg), nil, nil
 	}
 
 	return l, nil, nil
@@ -122,6 +127,24 @@ func (l List) Snippets() []domain.Snippet {
 	return l.snippets
 }
 
+func (l List) HasRowAt(at pointer.Point) bool {
+	_, ok := l.cursor.RowAt(at.Y, len(l.snippets), l.box.Height)
+
+	return ok
+}
+
+func (l List) clicked(at pointer.Point) List {
+	l.cursor, _ = l.cursor.ClickedAt(at.Y, len(l.snippets), l.box.Height)
+
+	return l
+}
+
+func (l List) wheeled(wheel pointer.Wheeled) List {
+	l.cursor = l.cursor.Scrolled(wheel.Lines, len(l.snippets), l.box.Height)
+
+	return l
+}
+
 func (l List) pressed(msg tea.KeyPressMsg) List {
 	direction, ok := move.Pressed(l.global, msg)
 	if !ok {
@@ -141,6 +164,10 @@ func (l List) copyRequested(msg tea.KeyPressMsg) []outcome.Outcome {
 }
 
 func (l List) resized(box look.Size) List {
+	if box == l.box {
+		return l
+	}
+
 	next := l
 	next.box = box
 

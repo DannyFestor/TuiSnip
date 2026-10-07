@@ -75,6 +75,7 @@ type actions struct {
 	sortOrderSaver        tui.SortOrderSaver
 	collapsedFoldersSaver tui.CollapsedFoldersSaver
 	externalEditor        tui.ExternalEditor
+	clock                 tui.Clock
 }
 
 func emptyTree() browse.Tree {
@@ -186,6 +187,7 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			func() tui.ExternalEditor { return NewMockExternalEditor(t) },
 		),
 		EditedContentHandler: tui.IntoEditOverlay{},
+		Clock:                orMock(with.clock, func() tui.Clock { return testkit.NewManualClock(time.Time{}) }),
 		Settings:             settings,
 		Logger:               slog.New(slog.DiscardHandler),
 	})

@@ -265,12 +265,12 @@ On by default. `mouse = false` in config turns it off ([config](config.md#keys))
 |---|---|
 | Click in a Pane | focuses it |
 | Click a row | selects it, as moving the cursor there would; in Folders or Tags it becomes the Browse selection |
-| Click a Folder's `▸`/`▾` | collapses or expands it |
+| Click a Folder's `▸`/`▾` | collapses or expands it, and selects it as a click on its row would |
 | Double-click a row | same as `enter` |
 | Wheel | scrolls the Pane under the pointer without moving focus |
 | Click an item in an overlay | picks it (toggles it in the Tag editor) |
 | Click outside an overlay | same as `esc`, so a stray click only ever cancels |
-| Click a field in the edit overlay | focuses the field; the textarea cursor is not placed by clicking in v1 |
+| Click a field in the edit overlay | focuses the field; a click below the field rows enters Content. The textarea cursor is not placed by clicking in v1 |
 
 While the mouse is on, the terminal's own click-and-drag selection needs a modifier: Shift in most Linux terminals, Option in iTerm2, fn in Terminal.app. The README says so.
 

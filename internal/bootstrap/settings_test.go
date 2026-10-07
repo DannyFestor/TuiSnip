@@ -97,6 +97,26 @@ func TestSettingsFrom(t *testing.T) {
 		assert.Equal(t, remembered, settings.Remembered)
 	})
 
+	mice := []struct {
+		name   string
+		config string
+		want   bool
+	}{
+		{name: "turns the mouse on by default", config: "", want: true},
+		{name: "turns the mouse off", config: "mouse = false\n", want: false},
+	}
+	for _, tt := range mice {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(
+				t,
+				tt.want,
+				bootstrap.SettingsFrom(loadConfig(t, tt.config), time.UTC, nothingRemembered()).Mouse,
+			)
+		})
+	}
+
 	themes := []struct {
 		name   string
 		config string

@@ -58,6 +58,18 @@ set -g set-clipboard on
 
 Capture always reads the clipboard with the clipboard tool of the machine that TuiSnip runs on. OSC 52 cannot read the clipboard.
 
+## Mouse
+
+You can click to focus a Pane and select a row, double-click to open, and turn the wheel to scroll the Pane under the pointer. A click outside an Overlay closes it, as `esc` does.
+
+While TuiSnip uses the mouse, your terminal's own click-and-drag text selection needs a modifier key:
+
+- Shift in most Linux terminals
+- Option in iTerm2
+- fn in Terminal.app
+
+To give the mouse back to the terminal, set `mouse = false` in `config.toml`.
+
 ## Set up for development
 
 Do the steps in [Build from source](#build-from-source) first. Then install the git hooks:

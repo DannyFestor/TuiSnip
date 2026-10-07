@@ -14,11 +14,13 @@ import (
 	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/screencell"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
 )
 
@@ -102,6 +104,24 @@ func (s *session) press(keys ...tea.KeyPressMsg) {
 	for _, pressed := range keys {
 		s.program.Send(pressed)
 	}
+}
+
+func (s *session) click(text string) {
+	s.t.Helper()
+
+	s.clickAt(screencell.Find(s.t, s.frame.get(), text))
+}
+
+func (s *session) doubleClick(text string) {
+	s.t.Helper()
+
+	cell := screencell.Find(s.t, s.frame.get(), text)
+	s.clickAt(cell)
+	s.clickAt(cell)
+}
+
+func (s *session) clickAt(cell pointer.Point) {
+	s.program.Send(tea.MouseClickMsg{X: cell.X, Y: cell.Y, Button: tea.MouseLeft, Mod: 0})
 }
 
 type framedModel struct {

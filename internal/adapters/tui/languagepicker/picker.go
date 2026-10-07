@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/picker"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
@@ -64,6 +65,8 @@ func (p Picker) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.resized(msg.Box))
 	case look.Restyled:
 		return outcome.Stay(p.restyled(msg))
+	case pointer.Clicked:
+		return p.listUpdated(msg.InsideFrame())
 	}
 
 	return p.listUpdated(msg)

@@ -166,6 +166,7 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		CollapsedFoldersSaver:       opened.remembered,
 		ExternalEditor:              newExternalEditor(cfg, options, logger),
 		EditedContentHandler:        tui.IntoEditOverlay{},
+		Clock:                       system.NewClock(),
 		Settings:                    SettingsFrom(cfg, time.Local, rememberedIn(opened.remembered)),
 		Logger:                      logger,
 	})

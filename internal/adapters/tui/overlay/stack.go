@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 type Stack[O any] struct {
@@ -49,6 +50,10 @@ func (s Stack[O]) Update(msg tea.Msg) (Stack[O], []O, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg, tea.PasteMsg:
 		current.routeToTop(msg)
+	case pointer.Clicked:
+		current.clickOnTop(msg)
+	case pointer.Wheeled:
+		current.wheelOnTop(msg)
 	case tea.WindowSizeMsg:
 		current.screen = look.SizeOf(msg)
 		current.deliver(look.Resized{Box: current.screen})

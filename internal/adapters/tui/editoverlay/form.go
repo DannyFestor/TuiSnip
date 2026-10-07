@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -101,6 +102,10 @@ func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
 		return f.fieldPressed(msg)
 	case tea.PasteMsg:
 		return f.pasted(msg)
+	case pointer.Clicked:
+		return f.clicked(msg)
+	case pointer.ClickedOutside:
+		return f.clickedOutside()
 	}
 
 	return f, requestNothing, nil
@@ -253,6 +258,41 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 	}
 
 	return f.typed(msg)
+}
+
+func (f form) clicked(click pointer.Clicked) (form, request, tea.Cmd) {
+	line := click.InsideFrame().At.Y
+	fields := editFields()
+
+	switch {
+	case line < 0:
+		return f, requestNothing, nil
+	case line < len(fields):
+		next, cmd := f.focused(fields[line])
+
+		return next, requestNothing, cmd
+	}
+
+	return f.contentClicked()
+}
+
+func (f form) contentClicked() (form, request, tea.Cmd) {
+	onContent, _ := f.focused(domain.FieldContent)
+	if f.readOnly.held() {
+		return onContent, requestNothing, nil
+	}
+
+	next, cmd := onContent.enteredContent()
+
+	return next, requestNothing, cmd
+}
+
+func (f form) clickedOutside() (form, request, tea.Cmd) {
+	if f.inContent {
+		return f.leftContent(), requestNothing, nil
+	}
+
+	return f, requestCancel, nil
 }
 
 func (f form) leavesContentUpward(msg tea.KeyPressMsg) bool {

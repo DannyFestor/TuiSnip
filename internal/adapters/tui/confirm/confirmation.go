@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 const (
@@ -39,6 +40,8 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 		return c.pressed(msg)
 	case look.Restyled:
 		return outcome.Stay(c.restyled(msg.Styles))
+	case pointer.ClickedOutside:
+		return outcome.Close()
 	}
 
 	return outcome.Stay(c)

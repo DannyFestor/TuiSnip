@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
@@ -77,6 +78,20 @@ func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.C
 	}
 
 	return p, nil, nil
+}
+
+func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
+	switch of {
+	case paneFolders:
+		return p.folders.HasRowAt(cell)
+	case paneTags:
+		return p.tags.HasRowAt(cell)
+	case paneList:
+		return p.list.HasRowAt(cell)
+	case paneSnippet:
+	}
+
+	return false
 }
 
 func (p panes) resized(to layout) panes {

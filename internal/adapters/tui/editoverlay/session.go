@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tageditor"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
@@ -108,7 +109,7 @@ func formKeysOf(keys binding.Keys) formKeys {
 
 func (s Session) Update(msg tea.Msg) outcome.Step {
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg, tea.PasteMsg:
+	case tea.KeyPressMsg, tea.PasteMsg, pointer.Clicked, pointer.ClickedOutside:
 		return s.formUpdated(msg)
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))

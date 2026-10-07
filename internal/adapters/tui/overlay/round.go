@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 type round[O any] struct {
@@ -24,6 +25,41 @@ func (r *round[O]) routeToTop(msg tea.Msg) {
 	if top >= 0 {
 		r.apply(top, r.overlays[top].Update(msg))
 	}
+}
+
+func (r *round[O]) clickOnTop(clicked pointer.Clicked) {
+	placed, ok := r.topPlacement()
+	if !ok {
+		return
+	}
+
+	if !placed.holds(clicked.At) {
+		r.routeToTop(pointer.ClickedOutside{})
+
+		return
+	}
+
+	r.routeToTop(clicked.Relative(placed.origin))
+}
+
+func (r *round[O]) wheelOnTop(wheeled pointer.Wheeled) {
+	placed, ok := r.topPlacement()
+	if ok && placed.holds(wheeled.At) {
+		r.routeToTop(wheeled.Relative(placed.origin))
+	}
+}
+
+func (r *round[O]) topPlacement() (placement, bool) {
+	if len(r.overlays) == 0 {
+		return wholeScreen(r.screen), false
+	}
+
+	top := r.overlays[len(r.overlays)-1]
+	if _, ok := top.(Base[O]); ok {
+		return wholeScreen(r.screen), true
+	}
+
+	return centredIn(r.screen, top.View()), true
 }
 
 func (r *round[O]) deliver(msg tea.Msg) {

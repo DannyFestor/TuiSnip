@@ -13,6 +13,7 @@ type Settings struct {
 	Keys          binding.Keys
 	ForcedQuitKey string
 	Theme         look.Theme
+	Mouse         bool
 	Languages     []value.Language
 	Location      *time.Location
 	Remembered    mainscreen.Remembered

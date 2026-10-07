@@ -10,6 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tageditor"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -128,6 +129,22 @@ func TestEditor_View(t *testing.T) {
 		screen := editing(t, tags.listed(), tagchoice.Of(nil))
 
 		assert.Equal(t, "down move · enter toggle / create · esc close", screen.Hints())
+	})
+
+	t.Run("draws the filter and the Tags in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		offer := tageditor.Offer{Listed: tags.listed(), Chosen: tagchoice.Of([]domain.Tag{tags.docker})}
+		box := look.Size{Width: 120, Height: 40}
+		light := look.NewStyles(look.SchemeLight)
+		screen := editingStyled(t, look.NewStyles(look.SchemeDark), box, offer)
+		screen.Press(keypress.Typed("t")...)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := editingStyled(t, light, box, offer)
+		styledFromStart.Press(keypress.Typed("t")...)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 	})
 }
 

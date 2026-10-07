@@ -90,6 +90,7 @@ func columnsStyled(columns help.Model, styles look.Styles) help.Model {
 	columns.Styles.FullKey = styles.Bold
 	columns.Styles.FullDesc = styles.Plain
 	columns.Styles.FullSeparator = styles.Plain
+	columns.Styles.Ellipsis = styles.Dim
 
 	return columns
 }

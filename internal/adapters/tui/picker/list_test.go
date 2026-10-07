@@ -70,6 +70,19 @@ func TestList_View(t *testing.T) {
 
 		assert.Equal(t, []string{"filter:", "", "C", "D"}, visibleLines(list))
 	})
+
+	t.Run("draws the filter and the choices in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		list := typed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
+
+		restyled, _, _ := list.Update(look.Restyled{Styles: light})
+
+		styledFromStart := typed(t, openedStyled(t, keys, light, choicesOf("Go", "Bash")).WithGreyedOut(1), "a")
+		assert.Equal(t, styledFromStart.View(), restyled.View())
+	})
 }
 
 func TestList_Update(t *testing.T) {
@@ -288,7 +301,7 @@ func TestList_WithGreyedOut(t *testing.T) {
 		styles := look.NewStyles(look.SchemeDark)
 		list := opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1)
 
-		assert.Contains(t, list.View(styles), styles.Dim.Render(look.Row("Bash", "", boxWidth)))
+		assert.Contains(t, list.View(), styles.Dim.Render(look.Row("Bash", "", boxWidth)))
 	})
 
 	t.Run("dims a greyed-out choice under the cursor", func(t *testing.T) {
@@ -298,7 +311,7 @@ func TestList_WithGreyedOut(t *testing.T) {
 		list := pressed(t, opened(t, choicesOf("Go", "Bash")).WithGreyedOut(1), down())
 		dimmedCursor := styles.Focused.Cursor.Foreground(styles.Dim.GetForeground())
 
-		assert.Contains(t, list.View(styles), dimmedCursor.Render(look.Row("Bash", "", boxWidth)))
+		assert.Contains(t, list.View(), dimmedCursor.Render(look.Row("Bash", "", boxWidth)))
 	})
 }
 
@@ -381,7 +394,7 @@ func hintsOf(list picker.List) string {
 }
 
 func visibleLines(list picker.List) []string {
-	lines := strings.Split(ansi.Strip(list.View(look.NewStyles(look.SchemeDark))), "\n")
+	lines := strings.Split(ansi.Strip(list.View()), "\n")
 	for index, line := range lines {
 		lines[index] = strings.TrimRight(line, " ")
 	}

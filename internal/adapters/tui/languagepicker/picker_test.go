@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -97,6 +98,21 @@ func TestPicker_View(t *testing.T) {
 		screen := picking(t, nil, value.PlainText())
 
 		assert.Equal(t, "down move · enter pick · esc close", screen.Hints())
+	})
+
+	t.Run("draws the filter and the Languages in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := picking(t, languages(t, "YAML", "Go"), value.PlainText())
+		screen.Press(keypress.Typed("g")...)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := pickingStyled(t, keys, light, offerOf(languages(t, "YAML", "Go"), value.PlainText()))
+		styledFromStart.Press(keypress.Typed("g")...)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 	})
 }
 

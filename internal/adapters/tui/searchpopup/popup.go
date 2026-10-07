@@ -54,7 +54,7 @@ func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listin
 	popup := Popup{
 		keys:    keys.For(binding.ScopeSearch),
 		styles:  styles,
-		query:   input.NewLine(searchPrompt),
+		query:   input.NewLine(searchPrompt, styles),
 		browse:  listing.Snippets,
 		results: snippetlist.New(keys, styles, shortPathIn(listing.Paths)).WithSnippets(listing.Snippets),
 		preview: preview.WithPaths(listing.Paths),
@@ -153,6 +153,7 @@ func (p Popup) withPaths(paths folderpath.Paths) Popup {
 
 func (p Popup) restyled(msg look.Restyled) Popup {
 	p.styles = msg.Styles
+	p.query = input.RestyledLine(p.query, msg.Styles)
 	p.results, _, _ = p.results.Update(msg)
 	p.preview, _, _ = p.preview.Update(msg)
 

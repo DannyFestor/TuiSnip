@@ -190,7 +190,7 @@ func (p Pane) startedNaming(started naming, initial string) (Pane, []outcome.Out
 
 	var cmd tea.Cmd
 
-	next.field, cmd = nameinput.New(p.nameInputKeys, started.validated, initial)
+	next.field, cmd = nameinput.New(p.nameInputKeys, p.styles, started.validated, initial)
 
 	return next.withFieldSized(), nil, cmd
 }
@@ -234,6 +234,7 @@ func (p Pane) resized(box look.Size) Pane {
 
 func (p Pane) restyled(styles look.Styles) Pane {
 	p.styles = styles
+	p.field = p.field.WithStyles(styles)
 
 	return p
 }

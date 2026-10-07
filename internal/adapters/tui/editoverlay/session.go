@@ -50,6 +50,7 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 	readOnly := readOnlyIfTabbed(captured.Content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(
 		formKeysOf(keys),
+		styles,
 		entered{
 			title:       "",
 			description: "",
@@ -75,7 +76,7 @@ func Editing(keys binding.Keys, styles look.Styles, options Options, browsed Bro
 		content:     fragment.Content().String(),
 	}
 	readOnly := readOnlyIfUneditable(original.content, fragment.Language(), styles.CodeStyle)
-	filled, cmd := newForm(formKeysOf(keys), original, readOnly)
+	filled, cmd := newForm(formKeysOf(keys), styles, original, readOnly)
 	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
 
 	return newSession(keys, styles, options, filled).aimedAt(target), cmd
@@ -312,7 +313,7 @@ func (s Session) withTags(tags []browse.TagCount) Session {
 
 func (s Session) restyled(styles look.Styles) Session {
 	s.styles = styles
-	s.form = s.form.restyled(styles.CodeStyle)
+	s.form = s.form.restyled(styles)
 
 	return s
 }

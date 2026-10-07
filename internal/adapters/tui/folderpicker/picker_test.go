@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/arrived"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -32,6 +33,21 @@ func TestPicker_View(t *testing.T) {
 		screen := picking(t, foldertree.New(t), domain.FolderID{}, domain.FolderID{})
 
 		assert.Equal(t, "down move · enter pick · esc close", screen.Hints())
+	})
+
+	t.Run("draws the filter and the Folders in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		light := look.NewStyles(look.SchemeLight)
+		screen := picking(t, sample, domain.FolderID{}, domain.FolderID{})
+		screen.Press(keypress.Typed("go")...)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := pickingStyled(t, light, offerOf(sample.Tree, domain.FolderID{}, domain.FolderID{}))
+		styledFromStart.Press(keypress.Typed("go")...)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 	})
 }
 

@@ -193,6 +193,10 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 	})
 }
 
+func twoContentLines() []tea.KeyPressMsg {
+	return append(enterContent(), keypress.Letter('a'), keypress.Special(tea.KeyEnter), keypress.Letter('b'))
+}
+
 func enterContent() []tea.KeyPressMsg {
 	return append(toContent(), keypress.Special(tea.KeyEnter))
 }

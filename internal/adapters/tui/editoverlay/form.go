@@ -52,14 +52,14 @@ type form struct {
 	invalid     []domain.Field
 }
 
-func newForm(keys formKeys, original entered, readOnly readOnlyContent) (form, tea.Cmd) {
+func newForm(keys formKeys, styles look.Styles, original entered, readOnly readOnlyContent) (form, tea.Cmd) {
 	filled := form{
 		keys:        keys,
-		title:       input.NewLine(""),
-		description: input.NewLine(""),
+		title:       input.NewLine("", styles),
+		description: input.NewLine("", styles),
 		tags:        original.tags,
 		language:    original.language,
-		content:     input.NewContentArea(),
+		content:     input.NewContentArea(styles),
 		readOnly:    readOnly,
 		original:    original,
 		field:       domain.FieldTitle,
@@ -118,8 +118,11 @@ func (f form) resized(outer look.Size) form {
 	return f
 }
 
-func (f form) restyled(codeStyle string) form {
-	f.readOnly = f.readOnly.highlightedIn(codeStyle)
+func (f form) restyled(styles look.Styles) form {
+	f.title = input.RestyledLine(f.title, styles)
+	f.description = input.RestyledLine(f.description, styles)
+	f.content = input.RestyledArea(f.content, styles)
+	f.readOnly = f.readOnly.highlightedIn(styles.CodeStyle)
 
 	return f
 }

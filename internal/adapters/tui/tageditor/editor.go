@@ -39,7 +39,7 @@ type Editor struct {
 }
 
 func New(keys binding.Keys, styles look.Styles, offer Offer) (Editor, tea.Cmd) {
-	list, cmd := picker.New(keys, picker.Labels{Prompt: filterPrompt, NoMatches: noTags}, nil)
+	list, cmd := picker.New(keys, styles, picker.Labels{Prompt: filterPrompt, NoMatches: noTags}, nil)
 	opened := Editor{
 		hints:  keys.TagEditorHints(),
 		styles: styles,
@@ -58,7 +58,7 @@ func (e Editor) Update(msg tea.Msg) outcome.Step {
 	case look.Resized:
 		return outcome.Stay(e.resized(msg.Box))
 	case look.Restyled:
-		return outcome.Stay(e.restyled(msg.Styles))
+		return outcome.Stay(e.restyled(msg))
 	case arrived.Tags:
 		return outcome.Stay(e.withListed(msg.Tags))
 	}
@@ -67,7 +67,7 @@ func (e Editor) Update(msg tea.Msg) outcome.Step {
 }
 
 func (e Editor) View() string {
-	return look.Frame(e.styles.Focused, untitled, e.header()+"\n"+e.list.View(e.styles), e.outer)
+	return look.Frame(e.styles.Focused, untitled, e.header()+"\n"+e.list.View(), e.outer)
 }
 
 func (e Editor) ShortHelp() []key.Binding {
@@ -180,8 +180,9 @@ func (e Editor) resized(screen look.Size) Editor {
 	return next
 }
 
-func (e Editor) restyled(styles look.Styles) Editor {
-	e.styles = styles
+func (e Editor) restyled(msg look.Restyled) Editor {
+	e.styles = msg.Styles
+	e.list, _, _ = e.list.Update(msg)
 
 	return e
 }

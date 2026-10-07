@@ -9,6 +9,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
+	"github.com/DannyFestor/TuiSnip/test/screencell"
 )
 
 const (
@@ -44,6 +46,24 @@ func (d *Driver) Press(keys ...tea.KeyPressMsg) {
 	for _, pressed := range keys {
 		d.Send(pressed)
 	}
+}
+
+func (d *Driver) Click(text string) {
+	d.t.Helper()
+
+	d.Send(pointer.Clicked{At: d.CellOf(text), Double: false})
+}
+
+func (d *Driver) DoubleClick(text string) {
+	d.t.Helper()
+
+	d.Send(pointer.Clicked{At: d.CellOf(text), Double: true})
+}
+
+func (d *Driver) CellOf(text string) pointer.Point {
+	d.t.Helper()
+
+	return screencell.Find(d.t, d.Screen(), text)
 }
 
 func (d *Driver) Offer(offered outcome.Outcome) {

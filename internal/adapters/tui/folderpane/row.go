@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -79,6 +81,12 @@ func markerOf(node *browse.FolderNode, isCollapsed bool) string {
 	}
 
 	return expandedMarker
+}
+
+func (r row) markerHolds(x int) bool {
+	markerEnd := ansi.StringWidth(r.prefix)
+
+	return r.collapsible && x >= markerEnd-ansi.StringWidth(expandedMarker) && x < markerEnd
 }
 
 func (r row) count() string {

@@ -23,6 +23,7 @@ A change usually matches several rows. Read every section they name. To read one
 | add or change an Action | architecture: [Actions](architecture.md#actions), [Interfaces](architecture.md#interfaces). code: [Actions](code.md#actions) |
 | add or change an entity, a value object, or an input rule | code: [Domain types](code.md#domain-types) |
 | add or change a TUI component, an outcome, or a Binding | architecture: [TUI components](architecture.md#tui-components), [Interfaces](architecture.md#interfaces), and step 6 of [Adding a feature](architecture.md#adding-a-feature) for a Binding. linting: [Type switches over a sealed union are exhaustive](linting.md#type-switches-over-a-sealed-union-are-exhaustive) |
+| handle a click or the wheel | architecture: [Clicks arrive in the component's own cells](architecture.md#clicks-arrive-in-the-components-own-cells). testing: [TUI unit tests](testing.md#tui-unit-tests) |
 | return, wrap, or show an error | architecture: [Errors](architecture.md#errors). code: [Errors](code.md#errors). linting: [Errors](linting.md#errors) |
 | take or pass a context, or set a deadline | architecture: [Context](architecture.md#context). code: [Context](code.md#context) |
 | log | architecture: [Logging](architecture.md#logging). code: [Logging](code.md#logging). linting: [Logging](linting.md#logging) |

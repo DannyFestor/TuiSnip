@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/nameinput"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -62,6 +63,12 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 		}
 
 		return p.pressed(msg)
+	case pointer.Clicked:
+		if !p.Naming() {
+			return p.clicked(msg)
+		}
+	case pointer.Wheeled:
+		return p.wheeled(msg), nil, nil
 	}
 
 	return p, nil, nil
@@ -69,7 +76,11 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 
 func (p Pane) View(frame look.FrameStyle) string {
 	lines := p.lines()
-	cursor := p.cursor.At(p.highlighted(), len(lines), p.box.Height)
+	cursor := p.cursor
+
+	if p.Naming() {
+		cursor = p.cursor.At(p.highlighted(), len(lines), p.box.Height)
+	}
 
 	return cursor.VisibleRows(len(lines), p.box.Height, func(index int) string {
 		return look.Row(lines[index].text, lines[index].meta, p.box.Width)
@@ -130,6 +141,12 @@ func (p Pane) Tree() browse.Tree {
 	return p.tree
 }
 
+func (p Pane) HasRowAt(at pointer.Point) bool {
+	_, ok := p.rowAt(at)
+
+	return ok
+}
+
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch {
 	case p.keys.Matches(msg, binding.NewFolder):
@@ -145,6 +162,32 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	}
 
 	return p.moved(msg)
+}
+
+func (p Pane) clicked(click pointer.Clicked) (Pane, []outcome.Outcome, tea.Cmd) {
+	index, ok := p.rowAt(click.At)
+	if !ok {
+		return p, nil, nil
+	}
+
+	next := p.withCursor(index)
+	if click.Double || !next.selectedRow().markerHolds(click.At.X) {
+		return next, nil, nil
+	}
+
+	toggled, outcomes := next.withCollapsed(next.collapsed.toggled(next.Selected()))
+
+	return toggled, outcomes, nil
+}
+
+func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
+	p.cursor = p.cursor.Scrolled(wheel.Lines, len(p.rows), p.box.Height)
+
+	return p
+}
+
+func (p Pane) rowAt(at pointer.Point) (int, bool) {
+	return p.cursor.RowAt(at.Y, len(p.rows), p.box.Height)
 }
 
 // A Folder created inside a collapsed one would be hidden, and the cursor could not land on it.
@@ -244,6 +287,10 @@ func (p Pane) stoppedNaming() Pane {
 }
 
 func (p Pane) resized(box look.Size) Pane {
+	if box == p.box {
+		return p
+	}
+
 	next := p
 	next.box = box
 

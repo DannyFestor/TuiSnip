@@ -16,6 +16,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/languagepicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
@@ -84,6 +85,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.withStatus(msg.Text))
 	case Captured:
 		return s.captured(msg.Content)
+	case pointer.Clicked, pointer.Wheeled:
+		return s.pointed(msg)
 	}
 
 	return s.loaded(msg)
@@ -265,14 +268,94 @@ func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
 }
 
 func (s Screen) opened() outcome.Step {
-	next := s.holding(s.focus)
-	step := outcome.Stay(next.focusedOn(s.focus.drillIn(s.selectionHolder)))
+	next := s.drilledIn()
 
-	if next.selection() == s.selection() {
-		return step
+	return outcome.Stay(next).Passing(s.selectionChangeTo(next)...)
+}
+
+func (s Screen) drilledIn() Screen {
+	return s.heldBy(s.focus).focusedOn(s.focus.drillIn(s.selectionHolder))
+}
+
+func (s Screen) heldBy(holder pane) Screen {
+	if !holder.inLeftColumn() {
+		return s
 	}
 
-	return step.Passing(selected(next.selection())...)
+	return s.holding(holder)
+}
+
+func (s Screen) selectionChangeTo(next Screen) []outcome.Outcome {
+	if next.selection() == s.selection() {
+		return nil
+	}
+
+	return selected(next.selection())
+}
+
+func (s Screen) pointed(msg tea.Msg) outcome.Step {
+	switch msg := msg.(type) {
+	case pointer.Clicked:
+		return s.clicked(msg)
+	case pointer.Wheeled:
+		return s.wheeled(msg)
+	}
+
+	return outcome.Stay(s)
+}
+
+func (s Screen) clicked(click pointer.Clicked) outcome.Step {
+	target, inner, ok := s.paneUnder(click.At)
+	if !ok || s.panes.naming() {
+		return outcome.Stay(s)
+	}
+
+	onRow := s.panes.hasRowAt(target, inner)
+	updated, outcomes, cmd := s.panes.updated(target, pointer.Clicked{At: inner, Double: click.Double})
+	next := s.withPanes(updated).focusedOn(target)
+
+	if onRow {
+		next = next.rowClicked(click)
+	}
+
+	return outcome.Stay(next).Passing(outcomes...).Passing(s.selectionChangeTo(next)...).Running(cmd)
+}
+
+func (s Screen) rowClicked(click pointer.Clicked) Screen {
+	if click.Double {
+		return s.drilledIn()
+	}
+
+	return s.heldBy(s.focus)
+}
+
+func (s Screen) wheeled(wheel pointer.Wheeled) outcome.Step {
+	target, inner, ok := s.paneUnder(wheel.At)
+	if !ok {
+		return outcome.Stay(s)
+	}
+
+	updated, outcomes, cmd := s.panes.updated(target, pointer.Wheeled{At: inner, Lines: wheel.Lines})
+
+	return outcome.Stay(s.withPanes(updated)).Passing(outcomes...).Running(cmd)
+}
+
+func (s Screen) paneUnder(at pointer.Point) (pane, pointer.Point, bool) {
+	for _, shown := range s.shownPanes() {
+		if inner, ok := s.layout.innerPoint(shown, at); ok {
+			return shown, inner, true
+		}
+	}
+
+	return s.focus, pointer.Point{X: 0, Y: 0}, false
+}
+
+func (s Screen) shownPanes() []pane {
+	if s.layout.single {
+		return []pane{s.focus}
+	}
+
+	return []pane{paneFolders, paneTags, paneList, paneSnippet}
 }
 
 func (s Screen) holding(holder pane) Screen {

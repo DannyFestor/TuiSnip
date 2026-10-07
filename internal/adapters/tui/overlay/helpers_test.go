@@ -9,6 +9,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/overlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 type (
@@ -85,6 +86,18 @@ func terminal() tea.WindowSizeMsg {
 
 func wholeTerminal() look.Resized {
 	return look.Resized{Box: look.Size{Width: 80, Height: 24}}
+}
+
+func clickAt(x, y int) pointer.Clicked {
+	return pointer.Clicked{At: pointer.Point{X: x, Y: y}, Double: false}
+}
+
+func smallScreen(t *testing.T, overlays ...overlay.Overlay[string]) stack {
+	t.Helper()
+
+	sized, _, _ := stackOf(overlays...).Update(tea.WindowSizeMsg{Width: 10, Height: 3})
+
+	return sized
 }
 
 func stackOf(overlays ...overlay.Overlay[string]) stack {

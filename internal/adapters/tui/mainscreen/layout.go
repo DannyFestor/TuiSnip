@@ -2,6 +2,7 @@ package mainscreen
 
 import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 const (
@@ -82,6 +83,33 @@ func columnWidths(width int, focus pane) columns {
 	}
 
 	return columns{left: left, list: list, snippet: width - left - list}
+}
+
+func (l layout) innerPoint(p pane, at pointer.Point) (pointer.Point, bool) {
+	relative := at.Relative(l.origin(p))
+	if !relative.Within(l.of(p)) {
+		return pointer.Point{X: 0, Y: 0}, false
+	}
+
+	return relative.InsideFrame(), true
+}
+
+func (l layout) origin(p pane) pointer.Point {
+	if l.single {
+		return pointer.Point{X: 0, Y: 0}
+	}
+
+	switch p {
+	case paneTags:
+		return pointer.Point{X: 0, Y: l.folders.Height}
+	case paneList:
+		return pointer.Point{X: l.folders.Width, Y: 0}
+	case paneSnippet:
+		return pointer.Point{X: l.folders.Width + l.list.Width, Y: 0}
+	case paneFolders:
+	}
+
+	return pointer.Point{X: 0, Y: 0}
 }
 
 func (l layout) of(p pane) look.Size {

@@ -10,6 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/picker"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -53,6 +54,8 @@ func (p Picker) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.withTree(msg.Tree))
 	case tea.KeyPressMsg:
 		return p.steeredBy(msg)
+	case pointer.Clicked:
+		return p.listUpdated(msg.InsideFrame())
 	}
 
 	return p.listUpdated(msg)

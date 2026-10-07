@@ -15,6 +15,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -79,6 +80,10 @@ func (p Popup) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(p.withHits(msg.Text, msg.Hits))
 	case arrived.Tree:
 		return outcome.Stay(p.withPaths(folderpath.New(msg.Tree)))
+	case pointer.Clicked:
+		return p.clicked(msg)
+	case pointer.ClickedOutside:
+		return outcome.Close()
 	}
 
 	return outcome.Stay(p)
@@ -116,6 +121,18 @@ func (p Popup) pressed(msg tea.KeyPressMsg) outcome.Step {
 	}
 
 	return p.typed(msg)
+}
+
+func (p Popup) clicked(click pointer.Clicked) outcome.Step {
+	onRows := click.InsideFrame().Relative(pointer.Point{X: 0, Y: queryRows})
+	if !click.At.Within(p.halves().results) || !p.results.HasRowAt(onRows.At) {
+		return outcome.Stay(p)
+	}
+
+	next := p
+	next.results, _, _ = p.results.Update(onRows)
+
+	return next.onSelected(revealing)
 }
 
 func (p Popup) onSelected(stepFor func(domain.Snippet) outcome.Step) outcome.Step {

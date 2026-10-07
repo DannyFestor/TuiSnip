@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -12,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
@@ -143,6 +145,7 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			CollapsedFoldersSaver:       NewMockCollapsedFoldersSaver(t),
 			ExternalEditor:              NewMockExternalEditor(t),
 			EditedContentHandler:        tui.IntoEditOverlay{},
+			Clock:                       testkit.NewManualClock(time.Time{}),
 			Settings:                    settings,
 			Logger:                      slog.New(slog.DiscardHandler),
 		})

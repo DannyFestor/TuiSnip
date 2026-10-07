@@ -38,6 +38,21 @@ func (c Cursor) At(index, rows, height int) Cursor {
 	return c
 }
 
+func (c Cursor) RowAt(line, rows, height int) (int, bool) {
+	index := c.offset + line
+	if line < 0 || line >= height || index >= rows {
+		return 0, false
+	}
+
+	return index, true
+}
+
+func (c Cursor) Scrolled(lines, rows, height int) Cursor {
+	c.offset = max(0, min(c.offset+lines, rows-height))
+
+	return c
+}
+
 func (c Cursor) target(direction Direction, rows, height int) int {
 	switch direction {
 	case Down:

@@ -61,6 +61,7 @@ internal/
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
       overlay/               the Overlay stack: which Overlay gets input, whose hints show, where outcomes go
       picker/                the shape the pickers share: a filter line over a list of text choices, each with an optional mark, and a trailing choice the filter never hides, moved and picked with the picker Scope
+      pointer/               clicks and wheel turns at a cell, the click outside an Overlay, and telling a double click from two single ones
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet, the Snippet that takes the cursor's row after a delete
@@ -77,6 +78,7 @@ test/
   testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions
   keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
   overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
+  screencell/                finds the cell that shows a text on a rendered screen, so tests click what the user sees
   foldertree/                the sample Folder tree TUI tests browse
   testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml
@@ -179,6 +181,10 @@ A component never reads `tea.WindowSizeMsg`. Its parent sends it a `look.Resized
 ### Styles come from the parent
 
 A component never reads `tea.BackgroundColorMsg`. Model starts the main screen with the `look.Styles` of the configured `look.Theme`, and turns each `tea.BackgroundColorMsg` into a `look.Restyled` carrying the Styles the theme picks for that background. `auto` follows the background, and `light` and `dark` keep their own scheme. The overlay stack sends the `look.Restyled` to every Overlay, each passes it to its embedded children, and the main screen opens later Overlays with the Styles it last got. The chroma style is part of `look.Styles`, so code follows the same scheme.
+
+### Clicks arrive in the component's own cells
+
+A component never reads `tea.MouseClickMsg` or `tea.MouseWheelMsg`. Model turns them into a `pointer.Clicked`, which says whether it was a double click, or a `pointer.Wheeled`. With `mouse = false` it drops them. The overlay stack sends both only to the top Overlay, with the point counted from that Overlay's top-left corner. A click outside the top Overlay reaches it as `pointer.ClickedOutside`, which it handles as its `esc` Binding does. On the main screen, the layout finds the Pane under the point and sends the Pane the point counted from inside its frame.
 
 ### Outcomes are typed and synchronous
 

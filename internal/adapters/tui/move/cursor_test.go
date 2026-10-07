@@ -90,3 +90,58 @@ func TestCursor_At(t *testing.T) {
 		})
 	}
 }
+
+func TestCursor_RowAt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		start     int
+		rows      int
+		line      int
+		wantIndex int
+		wantOK    bool
+	}{
+		{name: "finds the row on a line", start: 0, rows: rows, line: 1, wantIndex: 1, wantOK: true},
+		{name: "counts from the first visible row", start: 5, rows: rows, line: 0, wantIndex: 3, wantOK: true},
+		{name: "finds no row above the first line", start: 0, rows: rows, line: -1, wantIndex: 0, wantOK: false},
+		{name: "finds no row below the last line", start: 0, rows: rows, line: height, wantIndex: 0, wantOK: false},
+		{name: "finds no row past the last row", start: 0, rows: 2, line: 2, wantIndex: 0, wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			index, ok := move.Cursor{}.At(tt.start, tt.rows, height).RowAt(tt.line, tt.rows, height)
+
+			assert.Equal(t, tt.wantOK, ok)
+			assert.Equal(t, tt.wantIndex, index)
+		})
+	}
+}
+
+func TestCursor_Scrolled(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		start     int
+		lines     int
+		wantShown string
+	}{
+		{name: "scrolls down without moving the cursor", start: 0, lines: 2, wantShown: "2\n3\n4"},
+		{name: "scrolls up without moving the cursor", start: rows - 1, lines: -2, wantShown: "5\n6\n7"},
+		{name: "stops at the last page", start: 0, lines: rows, wantShown: "7\n8\n9"},
+		{name: "stops at the first row", start: 1, lines: -rows, wantShown: "0\n[1]\n2"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := move.Cursor{}.At(tt.start, rows, height).Scrolled(tt.lines, rows, height)
+
+			assert.Equal(t, tt.wantShown, got.VisibleRows(rows, height, strconv.Itoa, bracketed))
+			assert.Equal(t, tt.start, got.Index())
+		})
+	}
+}

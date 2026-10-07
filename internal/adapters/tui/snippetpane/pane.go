@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -68,6 +69,8 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 		return p.resized(msg.Box), nil, nil
 	case look.Restyled:
 		return p.restyled(msg.Styles), nil, nil
+	case pointer.Wheeled:
+		return p.wheeled(msg), nil, nil
 	}
 
 	return p, nil, nil
@@ -181,6 +184,16 @@ func (p Pane) scrolled(direction move.Direction) Pane {
 	case move.PageUp:
 		p.viewport.PageUp()
 	case move.None:
+	}
+
+	return p
+}
+
+func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
+	if wheel.Lines < 0 {
+		p.viewport.ScrollUp(-wheel.Lines)
+	} else {
+		p.viewport.ScrollDown(wheel.Lines)
 	}
 
 	return p

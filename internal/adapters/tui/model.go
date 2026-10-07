@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/savegate"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
@@ -82,6 +83,7 @@ type Model struct {
 	collapsedFoldersGate  *savegate.Gate
 	externalEditor        ExternalEditor
 	editedContentHandler  EditedContentHandler
+	mouse                 mouse
 	sortOrder             domain.SortOrder
 	logger                *slog.Logger
 	forcedQuitKey         string
@@ -150,6 +152,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		collapsedFoldersGate:  &savegate.Gate{},
 		externalEditor:        deps.ExternalEditor,
 		editedContentHandler:  deps.EditedContentHandler,
+		mouse:                 mouse{on: deps.Settings.Mouse, clock: deps.Clock, clicks: pointer.Clicks{}},
 		sortOrder:             deps.Settings.Remembered.SortOrder,
 		logger:                deps.Logger,
 		forcedQuitKey:         deps.Settings.ForcedQuitKey,
@@ -200,6 +203,7 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("collapsedFoldersSaver", deps.CollapsedFoldersSaver),
 		domain.RequireDependency("externalEditor", deps.ExternalEditor),
 		domain.RequireDependency("editedContentHandler", deps.EditedContentHandler),
+		domain.RequireDependency("clock", deps.Clock),
 		requirePointer("logger", deps.Logger),
 		requirePointer("location", deps.Settings.Location),
 	)
@@ -218,6 +222,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return m.pressed(msg)
+	case tea.MouseClickMsg, tea.MouseWheelMsg:
+		return m.pointed(msg)
 	case tea.BackgroundColorMsg:
 		return m.restyledOn(msg)
 	case tea.WindowSizeMsg, tea.PasteMsg,
@@ -243,8 +249,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	view := tea.NewView(m.overlays.Render())
 	view.AltScreen = true
+	view.MouseMode = m.mouse.mode()
 
 	return view
+}
+
+func (m Model) pointed(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.MouseClickMsg:
+		return m.clicked(msg)
+	case tea.MouseWheelMsg:
+		if wheel, ok := m.mouse.wheeled(msg); ok {
+			return m.overlaysUpdated(wheel)
+		}
+	}
+
+	return m, nil
+}
+
+func (m Model) clicked(msg tea.MouseClickMsg) (Model, tea.Cmd) {
+	next := m
+
+	var (
+		click pointer.Clicked
+		ok    bool
+	)
+
+	next.mouse, click, ok = m.mouse.clicked(msg)
+	if !ok {
+		return next, nil
+	}
+
+	return next.overlaysUpdated(click)
 }
 
 func (m Model) restyledOn(background tea.BackgroundColorMsg) (Model, tea.Cmd) {
@@ -821,8 +857,8 @@ func (m Model) shown(text string) (Model, tea.Cmd) {
 	return m.overlaysUpdated(mainscreen.StatusShown{Text: text})
 }
 
-func requirePointer[T any](name string, pointer *T) error {
-	if pointer == nil {
+func requirePointer[T any](name string, required *T) error {
+	if required == nil {
 		return fmt.Errorf("%s: %w", name, domain.ErrMissingDependency)
 	}
 

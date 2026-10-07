@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 )
 
 const filterRows = 2
@@ -56,6 +57,10 @@ func (l List) Update(msg tea.Msg) (List, Result, tea.Cmd) {
 		return l.resized(msg.Box), filtering(), nil
 	case look.Restyled:
 		return l.restyled(msg.Styles), filtering(), nil
+	case pointer.Clicked:
+		return l.clicked(msg.At)
+	case pointer.ClickedOutside:
+		return l, cancelled(), nil
 	}
 
 	return l.typed(msg)
@@ -128,6 +133,17 @@ func (l List) pressed(msg tea.KeyPressMsg) (List, Result, tea.Cmd) {
 	}
 
 	return l.typed(msg)
+}
+
+func (l List) clicked(cell pointer.Point) (List, Result, tea.Cmd) {
+	at, ok := l.cursor.RowAt(cell.Y-filterRows, len(l.shown), l.rowsHeight())
+	if !ok {
+		return l, filtering(), nil
+	}
+
+	next := l.withCursor(at)
+
+	return next, next.picked(), nil
 }
 
 func (l List) picked() Result {

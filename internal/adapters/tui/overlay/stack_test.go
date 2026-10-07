@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
@@ -38,6 +39,78 @@ func TestStack_Update(t *testing.T) {
 		_, outcomes, _ := stack.Update(paste)
 
 		assert.Equal(t, []string{"top pasted"}, outcomes)
+	})
+
+	t.Run("routes a click to the top overlay only, from its own corner", func(t *testing.T) {
+		t.Parallel()
+
+		top := overlayMock(t)
+		top.EXPECT().View().Return("AB\nCD")
+		top.EXPECT().Update(clickAt(1, 1)).Return(stay(top).Passing("top clicked"))
+		stack := smallScreen(t, overlayMock(t), top)
+
+		_, outcomes, _ := stack.Update(clickAt(5, 1))
+
+		assert.Equal(t, []string{"top clicked"}, outcomes)
+	})
+
+	t.Run("tells the top overlay of a click outside it", func(t *testing.T) {
+		t.Parallel()
+
+		top := overlayMock(t)
+		top.EXPECT().View().Return("AB\nCD")
+		top.EXPECT().Update(pointer.ClickedOutside{}).Return(stay(top).Passing("top dismissed"))
+		stack := smallScreen(t, overlayMock(t), top)
+
+		_, outcomes, _ := stack.Update(clickAt(3, 1))
+
+		assert.Equal(t, []string{"top dismissed"}, outcomes)
+	})
+
+	t.Run("routes a click on the base unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		base := baseMock(t)
+		base.EXPECT().Update(clickAt(3, 1)).Return(stay(base).Passing("base clicked"))
+		stack := smallScreen(t, base)
+
+		_, outcomes, _ := stack.Update(clickAt(3, 1))
+
+		assert.Equal(t, []string{"base clicked"}, outcomes)
+	})
+
+	t.Run("routes a wheel turn over the top overlay, from its own corner", func(t *testing.T) {
+		t.Parallel()
+
+		wheeled := pointer.Wheeled{At: pointer.Point{X: 5, Y: 1}, Lines: 3}
+		top := overlayMock(t)
+		top.EXPECT().View().Return("AB\nCD")
+		top.EXPECT().Update(wheeled.Relative(pointer.Point{X: 4, Y: 0})).Return(stay(top).Passing("top wheeled"))
+		stack := smallScreen(t, overlayMock(t), top)
+
+		_, outcomes, _ := stack.Update(wheeled)
+
+		assert.Equal(t, []string{"top wheeled"}, outcomes)
+	})
+
+	t.Run("drops a wheel turn outside the top overlay", func(t *testing.T) {
+		t.Parallel()
+
+		top := overlayMock(t)
+		top.EXPECT().View().Return("AB\nCD")
+		stack := smallScreen(t, overlayMock(t), top)
+
+		_, outcomes, _ := stack.Update(pointer.Wheeled{At: pointer.Point{X: 0, Y: 0}, Lines: 3})
+
+		assert.Empty(t, outcomes)
+	})
+
+	t.Run("ignores a click with nothing open", func(t *testing.T) {
+		t.Parallel()
+
+		_, outcomes, _ := emptyStack().Update(clickAt(0, 0))
+
+		assert.Empty(t, outcomes)
 	})
 
 	t.Run("delivers any other message to every overlay, top first", func(t *testing.T) {

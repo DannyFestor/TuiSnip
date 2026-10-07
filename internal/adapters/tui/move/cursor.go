@@ -47,6 +47,15 @@ func (c Cursor) RowAt(line, rows, height int) (int, bool) {
 	return index, true
 }
 
+func (c Cursor) ClickedAt(line, rows, height int) (Cursor, bool) {
+	index, ok := c.RowAt(line, rows, height)
+	if !ok {
+		return c, false
+	}
+
+	return c.At(index, rows, height), true
+}
+
 func (c Cursor) Scrolled(lines, rows, height int) Cursor {
 	c.offset = max(0, min(c.offset+lines, rows-height))
 

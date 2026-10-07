@@ -128,28 +128,21 @@ func (l List) Snippets() []domain.Snippet {
 }
 
 func (l List) HasRowAt(at pointer.Point) bool {
-	_, ok := l.indexAt(at)
+	_, ok := l.cursor.RowAt(at.Y, len(l.snippets), l.box.Height)
 
 	return ok
 }
 
 func (l List) clicked(at pointer.Point) List {
-	index, ok := l.indexAt(at)
-	if !ok {
-		return l
-	}
+	l.cursor, _ = l.cursor.ClickedAt(at.Y, len(l.snippets), l.box.Height)
 
-	return l.withCursor(index)
+	return l
 }
 
 func (l List) wheeled(wheel pointer.Wheeled) List {
 	l.cursor = l.cursor.Scrolled(wheel.Lines, len(l.snippets), l.box.Height)
 
 	return l
-}
-
-func (l List) indexAt(at pointer.Point) (int, bool) {
-	return l.cursor.RowAt(at.Y, len(l.snippets), l.box.Height)
 }
 
 func (l List) pressed(msg tea.KeyPressMsg) List {

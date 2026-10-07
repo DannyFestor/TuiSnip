@@ -120,6 +120,28 @@ func TestCursor_RowAt(t *testing.T) {
 	}
 }
 
+func TestCursor_ClickedAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("moves to the row on the line", func(t *testing.T) {
+		t.Parallel()
+
+		got, ok := move.Cursor{}.At(5, rows, height).ClickedAt(0, rows, height)
+
+		assert.True(t, ok)
+		assert.Equal(t, 3, got.Index())
+	})
+
+	t.Run("stays without a row on the line", func(t *testing.T) {
+		t.Parallel()
+
+		got, ok := move.Cursor{}.At(1, 2, height).ClickedAt(2, 2, height)
+
+		assert.False(t, ok)
+		assert.Equal(t, 1, got.Index())
+	})
+}
+
 func TestCursor_Scrolled(t *testing.T) {
 	t.Parallel()
 

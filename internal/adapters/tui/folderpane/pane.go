@@ -142,7 +142,7 @@ func (p Pane) Tree() browse.Tree {
 }
 
 func (p Pane) HasRowAt(at pointer.Point) bool {
-	_, ok := p.rowAt(at)
+	_, ok := p.cursor.RowAt(at.Y, len(p.rows), p.box.Height)
 
 	return ok
 }
@@ -165,12 +165,14 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 }
 
 func (p Pane) clicked(click pointer.Clicked) (Pane, []outcome.Outcome, tea.Cmd) {
-	index, ok := p.rowAt(click.At)
+	cursor, ok := p.cursor.ClickedAt(click.At.Y, len(p.rows), p.box.Height)
 	if !ok {
 		return p, nil, nil
 	}
 
-	next := p.withCursor(index)
+	next := p
+	next.cursor = cursor
+
 	if click.Double || !next.selectedRow().markerHolds(click.At.X) {
 		return next, nil, nil
 	}
@@ -184,10 +186,6 @@ func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
 	p.cursor = p.cursor.Scrolled(wheel.Lines, len(p.rows), p.box.Height)
 
 	return p
-}
-
-func (p Pane) rowAt(at pointer.Point) (int, bool) {
-	return p.cursor.RowAt(at.Y, len(p.rows), p.box.Height)
 }
 
 // A Folder created inside a collapsed one would be hidden, and the cursor could not land on it.

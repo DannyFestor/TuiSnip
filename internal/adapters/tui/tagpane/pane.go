@@ -159,28 +159,21 @@ func (p Pane) SelectedTag() (domain.Tag, bool) {
 }
 
 func (p Pane) HasRowAt(at pointer.Point) bool {
-	_, ok := p.rowAt(at)
+	_, ok := p.cursor.RowAt(at.Y, len(p.tags), p.box.Height)
 
 	return ok
 }
 
 func (p Pane) clicked(at pointer.Point) Pane {
-	index, ok := p.rowAt(at)
-	if !ok {
-		return p
-	}
+	p.cursor, _ = p.cursor.ClickedAt(at.Y, len(p.tags), p.box.Height)
 
-	return p.withCursor(index)
+	return p
 }
 
 func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
 	p.cursor = p.cursor.Scrolled(wheel.Lines, len(p.tags), p.box.Height)
 
 	return p
-}
-
-func (p Pane) rowAt(at pointer.Point) (int, bool) {
-	return p.cursor.RowAt(at.Y, len(p.tags), p.box.Height)
 }
 
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {

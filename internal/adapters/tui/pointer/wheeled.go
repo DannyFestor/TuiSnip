@@ -25,12 +25,6 @@ func (w Wheeled) Relative(origin Point) Wheeled {
 	return w
 }
 
-func (w Wheeled) InsideFrame() Wheeled {
-	w.At = w.At.InsideFrame()
-
-	return w
-}
-
 func linesTurnedBy(button tea.MouseButton) int {
 	if button == tea.MouseWheelDown {
 		return linesPerTurn

@@ -136,12 +136,13 @@ func (l List) pressed(msg tea.KeyPressMsg) (List, Result, tea.Cmd) {
 }
 
 func (l List) clicked(cell pointer.Point) (List, Result, tea.Cmd) {
-	at, ok := l.cursor.RowAt(cell.Y-filterRows, len(l.shown), l.rowsHeight())
+	cursor, ok := l.cursor.ClickedAt(cell.Y-filterRows, len(l.shown), l.rowsHeight())
 	if !ok {
 		return l, filtering(), nil
 	}
 
-	next := l.withCursor(at)
+	next := l
+	next.cursor = cursor
 
 	return next, next.picked(), nil
 }

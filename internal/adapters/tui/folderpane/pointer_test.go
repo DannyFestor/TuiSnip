@@ -5,12 +5,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/screencell"
 )
 
 func TestPane_UpdateClick(t *testing.T) {
@@ -20,8 +22,9 @@ func TestPane_UpdateClick(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
+		pane := samplePane(t, sample)
 
-		pane, outcomes, _ := samplePane(t, sample).Update(clickAt(8, 1))
+		pane, outcomes, _ := pane.Update(clickOn(t, pane, "docker"))
 
 		assert.Equal(t, sample.Docker.ID(), pane.Selected())
 		assert.Empty(t, outcomes)
@@ -31,8 +34,9 @@ func TestPane_UpdateClick(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
+		pane := samplePane(t, sample)
 
-		pane, outcomes, _ := samplePane(t, sample).Update(clickAt(0, 2))
+		pane, outcomes, _ := pane.Update(clickOn(t, pane, "▾"))
 
 		assert.Equal(t, []string{
 			"◆ Root                2",
@@ -50,7 +54,7 @@ func TestPane_UpdateClick(t *testing.T) {
 		sample := foldertree.New(t)
 		pane := collapsedPane(t, sample, sample.Go.ID())
 
-		pane, _, _ = pane.Update(clickAt(0, 2))
+		pane, _, _ = pane.Update(clickOn(t, pane, "▸"))
 
 		assert.Contains(t, viewLines(pane), "    testing           1")
 	})
@@ -59,8 +63,11 @@ func TestPane_UpdateClick(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
+		pane := samplePane(t, sample)
+		click := clickOn(t, pane, "▾")
+		click.Double = true
 
-		pane, outcomes, _ := samplePane(t, sample).Update(doubleClickAt(0, 2))
+		pane, outcomes, _ := pane.Update(click)
 
 		assert.Equal(t, sample.Go.ID(), pane.Selected())
 		assert.Empty(t, outcomes)
@@ -71,8 +78,10 @@ func TestPane_UpdateClick(t *testing.T) {
 
 		sample := foldertree.New(t)
 		pane := pressed(samplePane(t, sample), keypress.Letter('j'))
+		below := clickOn(t, pane, "testing")
+		below.At.Y++
 
-		pane, outcomes, _ := pane.Update(clickAt(0, 4))
+		pane, outcomes, _ := pane.Update(below)
 
 		assert.Equal(t, sample.Docker.ID(), pane.Selected())
 		assert.Empty(t, outcomes)
@@ -83,7 +92,7 @@ func TestPane_UpdateClick(t *testing.T) {
 
 		pane := pressed(samplePane(t, foldertree.New(t)), newFolderTyped("ci")...)
 
-		pane, _, _ = pane.Update(clickAt(8, 1))
+		pane, _, _ = pane.Update(clickOn(t, pane, "docker"))
 
 		assert.True(t, pane.Naming())
 	})
@@ -93,9 +102,11 @@ func TestPane_HasRowAt(t *testing.T) {
 	t.Parallel()
 
 	pane := samplePane(t, foldertree.New(t))
+	last := cellOf(t, pane, "testing")
+	below := pointer.Point{X: last.X, Y: last.Y + 1}
 
-	assert.True(t, pane.HasRowAt(pointer.Point{X: 0, Y: 3}))
-	assert.False(t, pane.HasRowAt(pointer.Point{X: 0, Y: 4}))
+	assert.True(t, pane.HasRowAt(last))
+	assert.False(t, pane.HasRowAt(below))
 }
 
 func TestPane_UpdateWheel(t *testing.T) {
@@ -107,7 +118,7 @@ func TestPane_UpdateWheel(t *testing.T) {
 		sample := foldertree.New(t)
 		pane := withTree(paneIn(t, look.Size{Width: boxWidth, Height: 2}), sample.Tree)
 
-		pane, _, _ = pane.Update(pointer.Wheeled{At: pointer.Point{X: 0, Y: 0}, Lines: 3})
+		pane, _, _ = pane.Update(wheelDown(t, pane))
 
 		assert.Equal(t, []string{"▾ go                  2", "    testing           1"}, viewLines(pane))
 		assert.True(t, pane.Selected().IsNil())
@@ -119,17 +130,27 @@ func TestPane_UpdateWheel(t *testing.T) {
 		box := look.Size{Width: boxWidth, Height: 2}
 		pane := withTree(paneIn(t, box), foldertree.New(t).Tree)
 
-		pane, _, _ = pane.Update(pointer.Wheeled{At: pointer.Point{X: 0, Y: 0}, Lines: 3})
+		pane, _, _ = pane.Update(wheelDown(t, pane))
 		pane, _, _ = pane.Update(look.Resized{Box: box})
 
 		assert.Equal(t, []string{"▾ go                  2", "    testing           1"}, viewLines(pane))
 	})
 }
 
-func clickAt(x, y int) pointer.Clicked {
-	return pointer.Clicked{At: pointer.Point{X: x, Y: y}, Double: false}
+func cellOf(t *testing.T, pane folderpane.Pane, text string) pointer.Point {
+	t.Helper()
+
+	return screencell.Find(t, pane.View(upperCursor()), text)
 }
 
-func doubleClickAt(x, y int) pointer.Clicked {
-	return pointer.Clicked{At: pointer.Point{X: x, Y: y}, Double: true}
+func clickOn(t *testing.T, pane folderpane.Pane, text string) pointer.Clicked {
+	t.Helper()
+
+	return pointer.Clicked{At: cellOf(t, pane, text), Double: false}
+}
+
+func wheelDown(t *testing.T, pane folderpane.Pane) pointer.Wheeled {
+	t.Helper()
+
+	return pointer.Wheeled{At: cellOf(t, pane, "ROOT"), Lines: 3}
 }

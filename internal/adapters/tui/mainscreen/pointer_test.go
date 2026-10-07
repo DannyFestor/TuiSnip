@@ -107,7 +107,7 @@ func TestScreen_click(t *testing.T) {
 
 		screen := showingStyled(t, wide(), upperFocusedTitle(), sampleSnippets(t)...)
 
-		screen.Send(pointer.Clicked{At: pointer.Point{X: wide().Width - 1, Y: wide().Height - 1}, Double: false})
+		screen.Click("? help")
 
 		assert.Contains(t, screen.Screen(), "1 FOLDERS")
 	})
@@ -168,7 +168,7 @@ func TestScreen_doubleClick(t *testing.T) {
 
 		screen := showingStyled(t, wide(), upperFocusedTitle(), sampleSnippets(t)...)
 		below := screen.CellOf(secondTitle)
-		below.Y += 3
+		below.Y++
 
 		screen.Send(pointer.Clicked{At: below, Double: true})
 

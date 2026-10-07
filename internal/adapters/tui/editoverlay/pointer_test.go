@@ -54,7 +54,7 @@ func TestSession_UpdateClick(t *testing.T) {
 
 		screen := editing(t)
 		below := screen.CellOf(contentEntryHint)
-		below.Y += 2
+		below.Y++
 
 		screen.Send(pointer.Clicked{At: below, Double: false})
 		screen.Press(keypress.Typed("body")...)

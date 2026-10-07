@@ -176,7 +176,7 @@ func collapsedPane(t *testing.T, sample foldertree.Sample, collapsed ...domain.F
 func treelessPane(t *testing.T, collapsed ...domain.FolderID) folderpane.Pane {
 	t.Helper()
 
-	pane := folderpane.New(testsettings.Default(t).Keys, collapsed)
+	pane := folderpane.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), collapsed)
 	pane, _, _ = pane.Update(look.Resized{Box: look.Size{Width: boxWidth, Height: boxHeight}})
 
 	return pane

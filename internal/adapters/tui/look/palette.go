@@ -6,6 +6,8 @@ type palette struct {
 	cursorText      string
 	unfocusedCursor string
 	invalid         string
+	currentLine     string
+	selection       string
 	codeStyle       string
 }
 
@@ -24,6 +26,8 @@ func darkPalette() palette {
 		cursorText:      "#FFFFFF",
 		unfocusedCursor: "#3A3A3A",
 		invalid:         "#FF5F5F",
+		currentLine:     "#262626",
+		selection:       "#3D3366",
 		codeStyle:       "github-dark",
 	}
 }
@@ -35,6 +39,8 @@ func lightPalette() palette {
 		cursorText:      "#FFFFFF",
 		unfocusedCursor: "#D7D7D7",
 		invalid:         "#D70000",
+		currentLine:     "#F2F2F2",
+		selection:       "#DCD3F7",
 		codeStyle:       "github",
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/nameinput"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -91,7 +92,7 @@ func TestField_Update(t *testing.T) {
 
 		keys := testsettings.Default(t).Keys
 		keys[binding.ScopeNameInput][binding.Accept] = []string{"ctrl+j"}
-		field, _ := nameinput.New(keys, validFolderName, "go")
+		field, _ := nameinput.New(keys, look.NewStyles(look.SchemeDark), validFolderName, "go")
 
 		_, got := pressed(field, keypress.Special(tea.KeyEnter), keypress.Ctrl('j'))
 
@@ -151,6 +152,14 @@ func TestField_View(t *testing.T) {
 	})
 }
 
+func TestField_WithStyles(t *testing.T) {
+	t.Parallel()
+
+	light := look.NewStyles(look.SchemeLight)
+
+	assert.Equal(t, styledField(t, light, "go").View(), newField(t, "go").WithStyles(light).View())
+}
+
 func TestField_Typed(t *testing.T) {
 	t.Parallel()
 
@@ -181,7 +190,13 @@ func TestField_ShortHelp(t *testing.T) {
 func newField(t *testing.T, initial string) nameinput.Field {
 	t.Helper()
 
-	field, _ := nameinput.New(testsettings.Default(t).Keys, validFolderName, initial)
+	return styledField(t, look.NewStyles(look.SchemeDark), initial)
+}
+
+func styledField(t *testing.T, styles look.Styles, initial string) nameinput.Field {
+	t.Helper()
+
+	field, _ := nameinput.New(testsettings.Default(t).Keys, styles, validFolderName, initial)
 
 	return field
 }

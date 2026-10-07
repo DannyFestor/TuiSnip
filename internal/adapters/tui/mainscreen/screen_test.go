@@ -690,6 +690,22 @@ func TestScreen_restyle(t *testing.T) {
 		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
 	})
 
+	for _, naming := range []string{"1Nerrors", "2Nawk"} {
+		t.Run("draws the name typed after "+naming+" in the new Styles", func(t *testing.T) {
+			t.Parallel()
+
+			light := look.NewStyles(look.SchemeLight)
+			screen := showing(t, wide(), sampleSnippets(t)...)
+			styledFromStart := showingStyled(t, wide(), light, sampleSnippets(t)...)
+
+			screen.Press(keypress.Typed(naming)...)
+			screen.Send(look.Restyled{Styles: light})
+			styledFromStart.Press(keypress.Typed(naming)...)
+
+			assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+		})
+	}
+
 	openings := []struct {
 		typed string
 		title string
@@ -1403,7 +1419,9 @@ func TestScreen_FullHelp(t *testing.T) {
 	keys := testsettings.Default(t).Keys
 	screen := newScreen(t, look.NewStyles(look.SchemeDark), domain.SortOrderTitle)
 
-	want := append(keys.For(binding.ScopeGlobal).FullHelp(), folderpane.New(keys, nil).FullHelp()...)
+	want := append(
+		keys.For(binding.ScopeGlobal).FullHelp(),
+		folderpane.New(keys, look.NewStyles(look.SchemeDark), nil).FullHelp()...)
 	assert.Equal(t, want, screen.FullHelp())
 }
 

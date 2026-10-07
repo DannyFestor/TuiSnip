@@ -20,6 +20,7 @@ type Pane struct {
 	nameInputKeys binding.Keys
 	global        binding.Set
 	keys          binding.Set
+	styles        look.Styles
 	tree          browse.Tree
 	collapsed     collapsedSet
 	rows          []row
@@ -29,11 +30,12 @@ type Pane struct {
 	field         nameinput.Field
 }
 
-func New(keys binding.Keys, collapsed []domain.FolderID) Pane {
+func New(keys binding.Keys, styles look.Styles, collapsed []domain.FolderID) Pane {
 	return Pane{
 		nameInputKeys: keys,
 		global:        keys.For(binding.ScopeGlobal),
 		keys:          keys.For(binding.ScopeFolders),
+		styles:        styles,
 		tree:          browse.Tree{RootSnippetCount: 0, Folders: nil},
 		collapsed:     collapsedSetOf(collapsed),
 		rows:          nil,
@@ -48,6 +50,8 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch msg := msg.(type) {
 	case look.Resized:
 		return p.resized(msg.Box), nil, nil
+	case look.Restyled:
+		return p.restyled(msg.Styles), nil, nil
 	case tea.PasteMsg:
 		if p.Naming() {
 			return p.typed(msg)
@@ -204,7 +208,7 @@ func (p Pane) startedNaming(started naming, initial string) (Pane, []outcome.Out
 
 	var cmd tea.Cmd
 
-	next.field, cmd = nameinput.New(p.nameInputKeys, validFolderName, initial)
+	next.field, cmd = nameinput.New(p.nameInputKeys, p.styles, validFolderName, initial)
 
 	return next.withFieldSized(), nil, cmd
 }
@@ -244,6 +248,13 @@ func (p Pane) resized(box look.Size) Pane {
 	next.box = box
 
 	return next.withCursor(p.cursor.Index()).withFieldSized()
+}
+
+func (p Pane) restyled(styles look.Styles) Pane {
+	p.styles = styles
+	p.field = p.field.WithStyles(styles)
+
+	return p
 }
 
 func (p Pane) withFieldSized() Pane {

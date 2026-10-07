@@ -19,6 +19,7 @@ const filterRows = 2
 
 type List struct {
 	keys      binding.Set
+	styles    look.Styles
 	labels    Labels
 	filter    textinput.Model
 	choices   []Choice
@@ -28,12 +29,13 @@ type List struct {
 	box       look.Size
 }
 
-func New(keys binding.Keys, labels Labels, choices []Choice) (List, tea.Cmd) {
-	filter := input.NewLine(labels.Prompt)
+func New(keys binding.Keys, styles look.Styles, labels Labels, choices []Choice) (List, tea.Cmd) {
+	filter := input.NewLine(labels.Prompt, styles)
 	cmd := filter.Focus()
 
 	list := List{
 		keys:      keys.For(binding.ScopePicker),
+		styles:    styles,
 		labels:    labels,
 		filter:    filter,
 		choices:   choices,
@@ -52,13 +54,15 @@ func (l List) Update(msg tea.Msg) (List, Result, tea.Cmd) {
 		return l.pressed(msg)
 	case look.Resized:
 		return l.resized(msg.Box), filtering(), nil
+	case look.Restyled:
+		return l.restyled(msg.Styles), filtering(), nil
 	}
 
 	return l.typed(msg)
 }
 
-func (l List) View(styles look.Styles) string {
-	return l.filter.View() + "\n\n" + l.rows(styles)
+func (l List) View() string {
+	return l.filter.View() + "\n\n" + l.rows()
 }
 
 func (l List) ShortHelp() []key.Binding {
@@ -186,35 +190,42 @@ func (l List) resized(box look.Size) List {
 	return next.withCursor(l.cursor.Index())
 }
 
+func (l List) restyled(styles look.Styles) List {
+	l.styles = styles
+	l.filter = input.RestyledLine(l.filter, styles)
+
+	return l
+}
+
 func (l List) rowsHeight() int {
 	return max(0, l.box.Height-filterRows)
 }
 
-func (l List) rows(styles look.Styles) string {
+func (l List) rows() string {
 	if len(l.shown) == 0 {
-		return styles.Dim.Render(l.labels.NoMatches)
+		return l.styles.Dim.Render(l.labels.NoMatches)
 	}
 
 	return l.cursor.VisibleRows(len(l.shown), l.rowsHeight(), func(at int) string {
 		choice := l.choices[l.shown[at]]
 
-		return l.rowStyle(at, styles).Render(look.Row(choice.Mark+choice.Text, choice.Meta, l.box.Width))
-	}, func(line string) string { return l.cursorStyle(styles).Render(line) })
+		return l.rowStyle(at).Render(look.Row(choice.Mark+choice.Text, choice.Meta, l.box.Width))
+	}, func(line string) string { return l.cursorStyle().Render(line) })
 }
 
 // The cursor style wraps the cursor's row, so that row stays unstyled until then.
-func (l List) rowStyle(at int, styles look.Styles) lipgloss.Style {
+func (l List) rowStyle(at int) lipgloss.Style {
 	if at != l.cursor.Index() && l.greyed(at) {
-		return styles.Dim
+		return l.styles.Dim
 	}
 
-	return styles.Plain
+	return l.styles.Plain
 }
 
-func (l List) cursorStyle(styles look.Styles) lipgloss.Style {
+func (l List) cursorStyle() lipgloss.Style {
 	if l.greyed(l.cursor.Index()) {
-		return styles.Focused.Cursor.Foreground(styles.Dim.GetForeground())
+		return l.styles.Focused.Cursor.Foreground(l.styles.Dim.GetForeground())
 	}
 
-	return styles.Focused.Cursor
+	return l.styles.Focused.Cursor
 }

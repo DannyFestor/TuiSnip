@@ -35,14 +35,29 @@ func pickingWith(
 ) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := languagepicker.New(keys, look.NewStyles(look.SchemeDark), languagepicker.Offer{
+	return pickingStyled(t, keys, look.NewStyles(look.SchemeDark), offerOf(curated, current))
+}
+
+func pickingStyled(
+	t *testing.T,
+	keys binding.Keys,
+	styles look.Styles,
+	offer languagepicker.Offer,
+) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := languagepicker.New(keys, styles, offer)
+
+	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+}
+
+func offerOf(curated []value.Language, current value.Language) languagepicker.Offer {
+	return languagepicker.Offer{
 		Title:   pickerTitle,
 		Curated: curated,
 		Current: current,
 		Picked:  func(picked value.Language) outcome.Outcome { return outcome.LanguagePicked{Language: picked} },
-	})
-
-	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+	}
 }
 
 func language(t *testing.T, name string) value.Language {

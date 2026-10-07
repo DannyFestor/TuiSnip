@@ -26,7 +26,13 @@ func opened(t *testing.T, choices []picker.Choice) picker.List {
 func openedWith(t *testing.T, keys binding.Keys, choices []picker.Choice) picker.List {
 	t.Helper()
 
-	list, _ := picker.New(keys, picker.Labels{Prompt: "filter: ", NoMatches: noMatches}, choices)
+	return openedStyled(t, keys, look.NewStyles(look.SchemeDark), choices)
+}
+
+func openedStyled(t *testing.T, keys binding.Keys, styles look.Styles, choices []picker.Choice) picker.List {
+	t.Helper()
+
+	list, _ := picker.New(keys, styles, picker.Labels{Prompt: "filter: ", NoMatches: noMatches}, choices)
 
 	return resized(list, look.Size{Width: boxWidth, Height: 20})
 }

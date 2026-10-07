@@ -44,7 +44,7 @@ func TestPane_UpdateNewFolder(t *testing.T) {
 
 			sample := foldertree.New(t)
 			pane := pressed(samplePane(t, sample), tt.before...)
-			pane = pressed(pane, append([]tea.KeyPressMsg{keypress.Letter('N')}, keypress.Typed("errors")...)...)
+			pane = pressed(pane, newFolderTyped("errors")...)
 
 			pane, outcomes, _ := pane.Update(keypress.Special(tea.KeyEnter))
 

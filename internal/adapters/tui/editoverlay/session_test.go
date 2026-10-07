@@ -127,6 +127,31 @@ func TestSession_View(t *testing.T) {
 
 		assert.Equal(t, editingStyled(t, testsettings.Default(t).Keys, light).StyledScreen(), screen.StyledScreen())
 	})
+
+	t.Run("draws Content being typed in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		light := look.NewStyles(look.SchemeLight)
+		screen := editing(t)
+		screen.Press(twoContentLines()...)
+
+		screen.Send(look.Restyled{Styles: light})
+
+		styledFromStart := editingStyled(t, testsettings.Default(t).Keys, light)
+		styledFromStart.Press(twoContentLines()...)
+		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
+	})
+
+	t.Run("numbers the lines of Content", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(twoContentLines()...)
+
+		assert.Regexp(t, `1 a\s`, screen.Screen())
+		assert.Regexp(t, `2 b\s`, screen.Screen())
+	})
 }
 
 func TestSession_ShortHelp(t *testing.T) {

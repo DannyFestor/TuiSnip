@@ -62,6 +62,21 @@ func TestPane_View(t *testing.T) {
 
 		assert.Equal(t, []string{"▾ go                  2", "    TESTING           1"}, viewLines(pane))
 	})
+
+	t.Run("draws a Folder name being typed in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		sample := foldertree.New(t)
+		box := look.Size{Width: boxWidth, Height: boxHeight}
+		light := look.NewStyles(look.SchemeLight)
+
+		restyled, _, _ := pressed(
+			samplePane(t, sample),
+			newFolderTyped("errors")...).Update(look.Restyled{Styles: light})
+
+		styledFromStart := pressed(withTree(styledPaneIn(t, light, box), sample.Tree), newFolderTyped("errors")...)
+		assert.Equal(t, styledFromStart.View(light.Focused), restyled.View(light.Focused))
+	})
 }
 
 func TestPane_Update(t *testing.T) {

@@ -122,6 +122,20 @@ func TestPane_Update(t *testing.T) {
 		styledFromStart, _ := pressed(styledPaneIn(t, light, box).WithTags(sample.counts), keypress.Letter('j'))
 		assert.Equal(t, styledFromStart.View(light.Focused), restyled.View(light.Focused))
 	})
+
+	t.Run("draws a Tag name being typed in the new Styles", func(t *testing.T) {
+		t.Parallel()
+
+		sample := newSampleTags(t)
+		box := look.Size{Width: boxWidth, Height: boxHeight}
+		light := look.NewStyles(look.SchemeLight)
+		typing, _ := pressed(samplePane(t, sample), newTagTyped("awk")...)
+
+		restyled, _, _ := typing.Update(look.Restyled{Styles: light})
+
+		styledFromStart, _ := pressed(styledPaneIn(t, light, box).WithTags(sample.counts), newTagTyped("awk")...)
+		assert.Equal(t, styledFromStart.View(light.Focused), restyled.View(light.Focused))
+	})
 }
 
 func TestPane_WithTags(t *testing.T) {

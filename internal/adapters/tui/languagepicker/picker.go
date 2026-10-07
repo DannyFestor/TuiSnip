@@ -47,6 +47,7 @@ func New(keys binding.Keys, styles look.Styles, offer Offer) (Picker, tea.Cmd) {
 
 	opened.list, cmd = picker.New(
 		keys,
+		styles,
 		picker.Labels{Prompt: filterPrompt, NoMatches: noMatches},
 		choicesOf(opened.listed),
 	)
@@ -62,14 +63,14 @@ func (p Picker) Update(msg tea.Msg) outcome.Step {
 	case look.Resized:
 		return outcome.Stay(p.resized(msg.Box))
 	case look.Restyled:
-		return outcome.Stay(p.restyled(msg.Styles))
+		return outcome.Stay(p.restyled(msg))
 	}
 
 	return p.listUpdated(msg)
 }
 
 func (p Picker) View() string {
-	return look.Frame(p.styles.Focused, p.offer.Title, p.list.View(p.styles), p.outer)
+	return look.Frame(p.styles.Focused, p.offer.Title, p.list.View(), p.outer)
 }
 
 func (p Picker) ShortHelp() []key.Binding {
@@ -128,8 +129,9 @@ func (p Picker) resized(screen look.Size) Picker {
 	return next
 }
 
-func (p Picker) restyled(styles look.Styles) Picker {
-	p.styles = styles
+func (p Picker) restyled(msg look.Restyled) Picker {
+	p.styles = msg.Styles
+	p.list, _, _ = p.list.Update(msg)
 
 	return p
 }

@@ -4,32 +4,26 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
-func NewLine(prompt string) textinput.Model {
-	input := textinput.New()
-	input.Prompt = prompt
-	input.KeyMap.Paste = withoutClipboardAccess(input.KeyMap.Paste)
+func NewLine(prompt string, styles look.Styles) textinput.Model {
+	line := textinput.New()
+	line.Prompt = prompt
+	line.KeyMap.Paste = withoutClipboardAccess(line.KeyMap.Paste)
 
-	styles := input.Styles()
-	styles.Cursor.Blink = false
-	input.SetStyles(styles)
-
-	return input
+	return RestyledLine(line, styles)
 }
 
-func NewContentArea() textarea.Model {
+func NewContentArea(styles look.Styles) textarea.Model {
 	area := textarea.New()
 	area.Prompt = ""
 	area.MaxHeight = 0
 	area.KeyMap.Paste = withoutClipboardAccess(area.KeyMap.Paste)
 	area.KeyMap.CopySelection = withoutClipboardAccess(area.KeyMap.CopySelection)
 
-	styles := area.Styles()
-	styles.Cursor.Blink = false
-	area.SetStyles(styles)
-
-	return area
+	return RestyledArea(area, styles)
 }
 
 func withoutClipboardAccess(binding key.Binding) key.Binding {

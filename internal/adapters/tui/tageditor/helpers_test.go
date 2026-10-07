@@ -57,11 +57,13 @@ func editingOn(
 ) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := tageditor.New(
-		testsettings.Default(t).Keys,
-		look.NewStyles(look.SchemeDark),
-		tageditor.Offer{Listed: listed, Chosen: chosen},
-	)
+	return editingStyled(t, look.NewStyles(look.SchemeDark), screen, tageditor.Offer{Listed: listed, Chosen: chosen})
+}
+
+func editingStyled(t *testing.T, styles look.Styles, screen look.Size, offer tageditor.Offer) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := tageditor.New(testsettings.Default(t).Keys, styles, offer)
 
 	return overlaytest.Open(t, screen, opened)
 }

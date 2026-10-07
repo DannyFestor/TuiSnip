@@ -1,9 +1,11 @@
 package helpoverlay_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -93,6 +95,19 @@ func TestOverlay_View(t *testing.T) {
 		screen := helpingWith(t, testsettings.Default(t).Keys, narrow)
 
 		assert.LessOrEqual(t, screen.TopBorderWidth(), narrow.Width)
+	})
+
+	t.Run("dims the ellipsis that marks columns cut off", func(t *testing.T) {
+		t.Parallel()
+
+		keys := testsettings.Default(t).Keys
+		light := look.NewStyles(look.SchemeLight)
+		screen := helpingWith(t, keys, look.Size{Width: 30, Height: 12})
+
+		screen.Send(look.Restyled{Styles: light})
+
+		dimEllipsisCutBeforeReset := strings.TrimSuffix(light.Dim.Render(look.Ellipsis), ansi.ResetStyle)
+		assert.Contains(t, screen.StyledScreen(), dimEllipsisCutBeforeReset)
 	})
 
 	t.Run("draws in the new Styles at the width it has", func(t *testing.T) {

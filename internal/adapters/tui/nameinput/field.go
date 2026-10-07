@@ -7,6 +7,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/input"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 )
 
 type Field struct {
@@ -15,8 +16,8 @@ type Field struct {
 	validate func(raw string) error
 }
 
-func New(keys binding.Keys, validate func(raw string) error, initial string) (Field, tea.Cmd) {
-	line := input.NewLine("")
+func New(keys binding.Keys, styles look.Styles, validate func(raw string) error, initial string) (Field, tea.Cmd) {
+	line := input.NewLine("", styles)
 	line.SetValue(initial)
 	cmd := line.Focus()
 
@@ -53,6 +54,12 @@ func (f Field) Typed() string {
 func (f Field) WithWidth(width int) Field {
 	f.input.SetWidth(max(1, width-input.CursorWidth))
 	f.input.SetCursor(f.input.Position())
+
+	return f
+}
+
+func (f Field) WithStyles(styles look.Styles) Field {
+	f.input = input.RestyledLine(f.input, styles)
 
 	return f
 }

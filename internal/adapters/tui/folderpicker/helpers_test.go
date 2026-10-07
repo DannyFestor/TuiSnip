@@ -30,15 +30,25 @@ func picking(t *testing.T, sample foldertree.Sample, current, moving domain.Fold
 func pickingIn(t *testing.T, tree browse.Tree, current, moving domain.FolderID) *overlaytest.Driver {
 	t.Helper()
 
-	opened, _ := folderpicker.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), folderpicker.Offer{
+	return pickingStyled(t, look.NewStyles(look.SchemeDark), offerOf(tree, current, moving))
+}
+
+func pickingStyled(t *testing.T, styles look.Styles, offer folderpicker.Offer) *overlaytest.Driver {
+	t.Helper()
+
+	opened, _ := folderpicker.New(testsettings.Default(t).Keys, styles, offer)
+
+	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+}
+
+func offerOf(tree browse.Tree, current, moving domain.FolderID) folderpicker.Offer {
+	return folderpicker.Offer{
 		Title:   pickerTitle,
 		Tree:    tree,
 		Current: current,
 		Moving:  moving,
 		Picked:  func(picked domain.FolderID) outcome.Outcome { return pickedOutcome(picked) },
-	})
-
-	return overlaytest.Open(t, look.Size{Width: 120, Height: 40}, opened)
+	}
 }
 
 func pickedOutcome(picked domain.FolderID) outcome.FolderSelected {

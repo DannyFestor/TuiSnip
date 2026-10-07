@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -75,6 +76,10 @@ func samplePane(t *testing.T, sample sampleTags) tagpane.Pane {
 	t.Helper()
 
 	return paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}).WithTags(sample.counts)
+}
+
+func newTagTyped(name string) []tea.KeyPressMsg {
+	return append([]tea.KeyPressMsg{keypress.Letter('N')}, keypress.Typed(name)...)
 }
 
 func pressed(pane tagpane.Pane, keys ...tea.KeyPressMsg) (tagpane.Pane, []outcome.Outcome) {

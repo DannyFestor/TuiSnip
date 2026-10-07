@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -32,7 +33,13 @@ func upperCursor() look.FrameStyle {
 func paneIn(t *testing.T, box look.Size) folderpane.Pane {
 	t.Helper()
 
-	pane := folderpane.New(testsettings.Default(t).Keys, nil)
+	return styledPaneIn(t, look.NewStyles(look.SchemeDark), box)
+}
+
+func styledPaneIn(t *testing.T, styles look.Styles, box look.Size) folderpane.Pane {
+	t.Helper()
+
+	pane := folderpane.New(testsettings.Default(t).Keys, styles, nil)
 	pane, _, _ = pane.Update(look.Resized{Box: box})
 
 	return pane
@@ -54,6 +61,10 @@ func samplePane(t *testing.T, sample foldertree.Sample) folderpane.Pane {
 	t.Helper()
 
 	return withTree(paneIn(t, look.Size{Width: boxWidth, Height: boxHeight}), sample.Tree)
+}
+
+func newFolderTyped(name string) []tea.KeyPressMsg {
+	return append([]tea.KeyPressMsg{keypress.Letter('N')}, keypress.Typed(name)...)
 }
 
 func pressed(pane folderpane.Pane, keys ...tea.KeyPressMsg) folderpane.Pane {

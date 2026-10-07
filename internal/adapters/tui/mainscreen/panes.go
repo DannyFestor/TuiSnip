@@ -33,7 +33,7 @@ type panes struct {
 
 func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, collapsed []domain.FolderID) panes {
 	return panes{
-		folders:    folderpane.New(keys, collapsed),
+		folders:    folderpane.New(keys, styles, collapsed),
 		tags:       tagpane.New(keys, styles),
 		list:       snippetlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
@@ -89,6 +89,7 @@ func (p panes) resized(to layout) panes {
 }
 
 func (p panes) restyled(msg look.Restyled) panes {
+	p.folders, _, _ = p.folders.Update(msg)
 	p.tags, _, _ = p.tags.Update(msg)
 	p.list, _, _ = p.list.Update(msg)
 	p.preview, _, _ = p.preview.Update(msg)

@@ -19,6 +19,19 @@ func TestNewStyles(t *testing.T) {
 
 		assert.NotEqual(t, dark.Focused.Border.Render("│"), light.Focused.Border.Render("│"))
 		assert.NotEqual(t, dark.Dim.Render("x"), light.Dim.Render("x"))
+		assert.NotEqual(t, dark.Accent.Render("x"), light.Accent.Render("x"))
+		assert.NotEqual(t, dark.CurrentLine.Render("x"), light.CurrentLine.Render("x"))
+		assert.NotEqual(t, dark.Selection.Render("x"), light.Selection.Render("x"))
+	})
+
+	t.Run("sets the selection apart from the current line", func(t *testing.T) {
+		t.Parallel()
+
+		for _, scheme := range []look.Scheme{look.SchemeDark, look.SchemeLight} {
+			styles := look.NewStyles(scheme)
+
+			assert.NotEqual(t, styles.CurrentLine.GetBackground(), styles.Selection.GetBackground())
+		}
 	})
 
 	tests := []struct {

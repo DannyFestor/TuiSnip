@@ -3,13 +3,16 @@ package look
 import "charm.land/lipgloss/v2"
 
 type Styles struct {
-	Focused   FrameStyle
-	Unfocused FrameStyle
-	Dim       lipgloss.Style
-	Bold      lipgloss.Style
-	Plain     lipgloss.Style
-	Invalid   lipgloss.Style
-	CodeStyle string
+	Focused     FrameStyle
+	Unfocused   FrameStyle
+	Dim         lipgloss.Style
+	Bold        lipgloss.Style
+	Plain       lipgloss.Style
+	Accent      lipgloss.Style
+	Invalid     lipgloss.Style
+	CurrentLine lipgloss.Style
+	Selection   lipgloss.Style
+	CodeStyle   string
 }
 
 func NewStyles(scheme Scheme) Styles {
@@ -28,10 +31,13 @@ func NewStyles(scheme Scheme) Styles {
 			Title:  lipgloss.NewStyle().Foreground(muted),
 			Cursor: lipgloss.NewStyle().Background(lipgloss.Color(colours.unfocusedCursor)),
 		},
-		Dim:       lipgloss.NewStyle().Foreground(muted),
-		Bold:      lipgloss.NewStyle().Bold(true),
-		Plain:     lipgloss.NewStyle(),
-		Invalid:   lipgloss.NewStyle().Foreground(lipgloss.Color(colours.invalid)).Bold(true),
-		CodeStyle: colours.codeStyle,
+		Dim:         lipgloss.NewStyle().Foreground(muted),
+		Bold:        lipgloss.NewStyle().Bold(true),
+		Plain:       lipgloss.NewStyle(),
+		Accent:      lipgloss.NewStyle().Foreground(accent),
+		Invalid:     lipgloss.NewStyle().Foreground(lipgloss.Color(colours.invalid)).Bold(true),
+		CurrentLine: lipgloss.NewStyle().Background(lipgloss.Color(colours.currentLine)),
+		Selection:   lipgloss.NewStyle().Background(lipgloss.Color(colours.selection)),
+		CodeStyle:   colours.codeStyle,
 	}
 }

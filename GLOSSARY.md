@@ -74,6 +74,16 @@ _Avoid_: Import, paste, grab
 Placing a Fragment's content on the system clipboard. Over a remote session the content is sent to the terminal, which may not confirm it.
 _Avoid_: Yank, export
 
+### Moving data
+
+**Export**:
+Writing all Snippets, Folders, and Tags to a file, as a backup or to move them elsewhere.
+_Avoid_: Backup, dump, save
+
+**Import**:
+Creating Snippets, Folders, and Tags from a file written by Export or by another snippet app.
+_Avoid_: Capture, restore, load, migrate
+
 ### Interaction
 
 **Binding**:

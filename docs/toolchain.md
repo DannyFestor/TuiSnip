@@ -6,7 +6,7 @@ A rejected alternative is listed only when a checked fact rules it out. Where a 
 
 ## Go and mise
 
-**Go 1.27.1**, pinned in `mise.toml`. UUIDs come from the standard library `uuid` package added in 1.27. `github.com/google/uuid` is not used.
+**Go 1.27.2**, pinned in `mise.toml`. UUIDs come from the standard library `uuid` package added in 1.27. `github.com/google/uuid` is not used.
 
 **mise** pins every tool, so a fresh clone runs `mise install` and gets the versions CI uses.
 

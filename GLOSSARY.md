@@ -11,8 +11,12 @@ A saved, titled unit of reusable code or text, filed in at most one Folder and c
 _Avoid_: Entry, note, item, clip
 
 **Fragment**:
-One body of code within a Snippet, with its own Language. Every Snippet has at least one; the first version of the product allows exactly one.
+One body of code within a Snippet, with its own Language and an optional Fragment title. Every Snippet has at least one, in an order the user sets; the last one can't be removed, only the Snippet deleted. A Fragment has no note of its own: the Snippet's Description covers all of them.
 _Avoid_: Body, file, part, section
+
+**Fragment title**:
+Optional free text naming a Fragment within its Snippet, often a file name such as `main.go`. It need not be unique; a Fragment without one is shown by its Language.
+_Avoid_: File name, filename, label, tab name
 
 **Description**:
 Optional free text on a Snippet explaining what it is for. It is searched alongside the title.
@@ -47,7 +51,7 @@ _Avoid_: Label, keyword, category
 ### Retrieval
 
 **Search**:
-Finding Snippets by matching a query against their title, Description, Tags, and Fragment content: fuzzily for the first three, as a literal substring for content.
+Finding Snippets by matching a query against their title, Description, Tags, Fragment titles, and Fragment content: fuzzily for the first four, as a literal substring for content.
 _Avoid_: Filter, find, query
 
 **Search hit**:
@@ -70,8 +74,12 @@ _Avoid_: Closed folder, folded folder, hidden folder
 Creating a new Snippet from the clipboard's current content.
 _Avoid_: Import, paste, grab
 
+**Shown Fragment**:
+The Fragment the Snippet pane displays: the first one, unless the user switches to another or a Search hit matched another. Copy and the external editor act on it.
+_Avoid_: Current fragment, active fragment, selected fragment, tab
+
 **Copy**:
-Placing a Fragment's content on the system clipboard. Over a remote session the content is sent to the terminal, which may not confirm it.
+Placing the Shown Fragment's content on the system clipboard. Over a remote session the content is sent to the terminal, which may not confirm it.
 _Avoid_: Yank, export
 
 ### Moving data

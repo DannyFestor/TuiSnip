@@ -120,7 +120,7 @@ The drift check runs `git add --intent-to-add` before `git diff --exit-code`, so
 | Tool | Why | Rejected |
 |---|---|---|
 | sqlc 1.31.1 | Type-checked Go from plain SQL, no ORM. Generates against `sqltype.ID` and `sqltype.Timestamp`. | ORMs, ruled out while charting. `sqlc verify` stays out of CI because it needs sqlc Cloud. |
-| mockery 3.8.0 | testify mocks with the typed `EXPECT()` API, written into `<pkg>_test` and configured once in `.mockery.yml`. Also chosen to try something other than gomock. | go.uber.org/mock (its own gomock framework, not testify, and flags on every `go:generate` directive); moq and counterfeiter (function-field fakes with no expectations) |
+| mockery 3.8.1 | testify mocks with the typed `EXPECT()` API, written into `<pkg>_test` and configured once in `.mockery.yml`. Also chosen to try something other than gomock. | go.uber.org/mock (its own gomock framework, not testify, and flags on every `go:generate` directive); moq and counterfeiter (function-field fakes with no expectations) |
 | go-enum 0.9.5 | `String`, `Parse…`, `IsValid`, and text marshalling for enums read from config, the database, and the state file | stringer, which only generates `String` |
 | `internal/tools/languagegen` | Writes chroma's canonical lexer names into `value`, so every chroma change shows up in the drift check | a hand-maintained list (drifts from chroma silently); `value` importing chroma (core-purity forbids it); a `//go:generate` directive in `value` (`generate-enums` would run it before `generate-languages` and then again, with paths relative to `internal/domain/value`) |
 
@@ -161,6 +161,6 @@ Avoid gremlins' `-i` until [gremlins#272](https://github.com/go-gremlins/gremlin
 
 fzf is an application at v0.x, and `src/algo` has no API promise. The `FuzzyMatchV2` signature hasn't changed since 0.30.0 (2022), and the import stays inside `memsearch`, so a breaking bump costs an adapter change, which is accepted. `algo.Init` writes package globals, so `memsearch` calls it once, and every query gets its own slab. Dependabot needs no special rule: a v0.x bump counts as minor, so fzf's frequent releases land in the weekly grouped PR.
 
-The **goose 3.28.0** CLI is pinned for people, not for scripts. `goose -dir db/migrations -s create <name> sql` writes the next sequentially numbered migration, and `goose sqlite3 <file> status` shows which migrations a database has applied. The app itself runs migrations through the library.
+The **goose 3.29.0** CLI is pinned for people, not for scripts. `goose -dir db/migrations -s create <name> sql` writes the next sequentially numbered migration, and `goose sqlite3 <file> status` shows which migrations a database has applied. The app itself runs migrations through the library.
 
 A module enters `go.mod` with the first code that imports it, because `go mod tidy` drops the rest. When this was written, only chroma and testify were in. Their indirect modules (regexp2 for chroma's lexers, yaml for testify's `assert`) aren't listed.

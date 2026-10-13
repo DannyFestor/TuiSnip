@@ -174,7 +174,13 @@ func (p panes) withSnippetsIfStillSelected(loaded SnippetsLoaded, selection brow
 		p = p.withOrderLabel(label)
 	}
 
-	return p.previewSelected(), err
+	return p.previewSelected().previewShowing(loaded.Showing), err
+}
+
+func (p panes) previewShowing(id domain.FragmentID) panes {
+	p.preview = p.preview.ShowingFragment(id)
+
+	return p
 }
 
 func (p panes) sortCycleAsked(selection browseselection.Selection) outcome.SortCycleAsked {

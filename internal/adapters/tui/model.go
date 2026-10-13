@@ -356,13 +356,21 @@ func (m Model) listTags(loaded func(tags []browse.TagCount) tea.Msg) tea.Cmd {
 }
 
 func (m Model) loadSnippets(selection browseselection.Selection, selecting domain.SnippetID) tea.Cmd {
+	return m.loadSnippetsShowing(selection, selecting, domain.FragmentID{})
+}
+
+func (m Model) loadSnippetsShowing(
+	selection browseselection.Selection, selecting domain.SnippetID, showing domain.FragmentID,
+) tea.Cmd {
 	order := m.sortOrder
 	loaded := func(snippets []domain.Snippet, err error) tea.Msg {
 		if err != nil {
 			return listFailedMsg{err: err}
 		}
 
-		return mainscreen.SnippetsLoaded{Selection: selection, Snippets: snippets, Selecting: selecting, Order: order}
+		return mainscreen.SnippetsLoaded{
+			Selection: selection, Snippets: snippets, Selecting: selecting, Showing: showing, Order: order,
+		}
 	}
 
 	if tagID, ok := selection.Tag(); ok {
@@ -525,7 +533,7 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 	case outcome.SnippetReloaded:
 		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetRevealed:
-		return m, m.loadSnippets(browseselection.InFolder(reported.FolderID), reported.ID)
+		return m, m.loadSnippetsShowing(browseselection.InFolder(reported.FolderID), reported.ID, reported.FragmentID)
 	case outcome.FolderSelected:
 		return m, m.loadSnippets(browseselection.InFolder(reported.ID), domain.SnippetID{})
 	case outcome.TagSelected:

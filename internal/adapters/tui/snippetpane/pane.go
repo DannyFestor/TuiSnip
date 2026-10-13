@@ -111,6 +111,15 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 	return next.rendered()
 }
 
+func (p Pane) ShowingFragment(id domain.FragmentID) Pane {
+	index, err := p.snippet.FragmentIndex(id)
+	if err != nil {
+		return p
+	}
+
+	return p.withStrip(p.strip.Showing(index))
+}
+
 func (p Pane) Shown() (domain.Snippet, bool) {
 	return p.snippet, p.shown
 }
@@ -148,9 +157,9 @@ func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
 	case p.keys.Matches(msg, binding.Wrap):
 		return p.wrapToggled()
 	case p.keys.Matches(msg, binding.NextFragment):
-		return p.showingFragment(p.strip.Next())
+		return p.withStrip(p.strip.Next())
 	case p.keys.Matches(msg, binding.PrevFragment):
-		return p.showingFragment(p.strip.Previous())
+		return p.withStrip(p.strip.Previous())
 	}
 
 	direction, ok := move.Pressed(p.global, msg)
@@ -175,7 +184,7 @@ func (p Pane) clicked(click pointer.Clicked) Pane {
 		return p
 	}
 
-	return p.showingFragment(p.strip.Clicked(click.At.X))
+	return p.withStrip(p.strip.Clicked(click.At.X))
 }
 
 func (p Pane) stripFor(snippet domain.Snippet) fragmentstrip.Strip {
@@ -186,7 +195,7 @@ func (p Pane) stripFor(snippet domain.Snippet) fragmentstrip.Strip {
 	return p.strip.Of(snippet.Fragments())
 }
 
-func (p Pane) showingFragment(strip fragmentstrip.Strip) Pane {
+func (p Pane) withStrip(strip fragmentstrip.Strip) Pane {
 	if !p.shown || strip.Shown() == p.strip.Shown() {
 		return p
 	}

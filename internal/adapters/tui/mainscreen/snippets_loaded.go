@@ -9,5 +9,6 @@ type SnippetsLoaded struct {
 	Selection browseselection.Selection
 	Snippets  []domain.Snippet
 	Selecting domain.SnippetID
+	Showing   domain.FragmentID
 	Order     domain.SortOrder
 }

@@ -56,11 +56,25 @@ func scoreFields(snippet domain.Snippet, query pattern, slab *util.Slab) (domain
 	title, titleMatched := query.fuzzyScore(snippet.Title().String(), slab)
 	description, descriptionMatched := query.fuzzyScore(snippet.Description().String(), slab)
 	tags, tagMatched := tagScores(snippet.Tags(), query, slab)
-	content, contentMatched := query.literalScore(snippet.FirstFragment().Content().String(), slab)
+	fragments, fragmentMatched := fragmentScores(snippet.Fragments(), query, slab)
 
-	scores := domain.FieldScores{Title: title, Description: description, Tags: tags, Content: content}
+	scores := domain.FieldScores{Title: title, Description: description, Tags: tags, Fragments: fragments}
 
-	return scores, titleMatched || descriptionMatched || tagMatched || contentMatched
+	return scores, titleMatched || descriptionMatched || tagMatched || fragmentMatched
+}
+
+func fragmentScores(fragments []domain.Fragment, query pattern, slab *util.Slab) ([]domain.FragmentScores, bool) {
+	scores := make([]domain.FragmentScores, 0, len(fragments))
+	anyMatched := false
+
+	for _, fragment := range fragments {
+		title, titleMatched := query.fuzzyScore(fragment.Title().String(), slab)
+		content, contentMatched := query.literalScore(fragment.Content().String(), slab)
+		scores = append(scores, domain.FragmentScores{Fragment: fragment, Title: title, Content: content})
+		anyMatched = anyMatched || titleMatched || contentMatched
+	}
+
+	return scores, anyMatched
 }
 
 func tagScores(tags []domain.Tag, query pattern, slab *util.Slab) ([]int, bool) {

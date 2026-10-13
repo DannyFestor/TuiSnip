@@ -47,6 +47,7 @@ type Popup struct {
 	query   textinput.Model
 	browse  []domain.Snippet
 	results snippetlist.List
+	opensOn map[domain.SnippetID]domain.FragmentID
 	preview snippetpane.Pane
 	outer   look.Size
 }
@@ -58,6 +59,7 @@ func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listin
 		query:   input.NewLine(searchPrompt, styles),
 		browse:  listing.Snippets,
 		results: snippetlist.New(keys, styles, shortPathIn(listing.Paths)).WithSnippets(listing.Snippets),
+		opensOn: nil,
 		preview: preview.WithPaths(listing.Paths),
 		outer:   look.Size{Width: 0, Height: 0},
 	}
@@ -135,13 +137,22 @@ func (p Popup) clicked(click pointer.Clicked) outcome.Step {
 	return next.onSelected(revealing)
 }
 
-func (p Popup) onSelected(stepFor func(domain.Snippet) outcome.Step) outcome.Step {
+func (p Popup) onSelected(stepFor func(domain.Snippet, domain.FragmentID) outcome.Step) outcome.Step {
 	selected, ok := p.results.Selected()
 	if !ok {
 		return outcome.Stay(p)
 	}
 
-	return stepFor(selected)
+	return stepFor(selected, p.fragmentOpenedFor(selected))
+}
+
+func (p Popup) fragmentOpenedFor(snippet domain.Snippet) domain.FragmentID {
+	id, ok := p.opensOn[snippet.ID()]
+	if !ok {
+		return snippet.FirstFragment().ID()
+	}
+
+	return id
 }
 
 func (p Popup) text() string {
@@ -154,11 +165,14 @@ func (p Popup) withHits(text string, hits []domain.SearchHit) Popup {
 	}
 
 	snippets := make([]domain.Snippet, 0, len(hits))
+	opensOn := make(map[domain.SnippetID]domain.FragmentID, len(hits))
+
 	for index := range hits {
 		snippets = append(snippets, hits[index].Snippet())
+		opensOn[hits[index].Snippet().ID()] = hits[index].Fragment().ID()
 	}
 
-	return p.listing(snippets)
+	return p.listing(snippets, opensOn)
 }
 
 func (p Popup) withPaths(paths folderpath.Paths) Popup {
@@ -200,15 +214,16 @@ func (p Popup) typed(msg tea.Msg) outcome.Step {
 	}
 
 	if value.NewSearchQuery(next.text()).IsBlank() {
-		return outcome.Stay(next.listing(next.browse)).Running(cmd)
+		return outcome.Stay(next.listing(next.browse, nil)).Running(cmd)
 	}
 
 	return outcome.Stay(next).Passing(outcome.SearchTyped{Text: next.text()}).Running(cmd)
 }
 
-func (p Popup) listing(snippets []domain.Snippet) Popup {
+func (p Popup) listing(snippets []domain.Snippet, opensOn map[domain.SnippetID]domain.FragmentID) Popup {
 	next := p
 	next.results = p.results.WithSnippets(snippets).Moved(move.Top)
+	next.opensOn = opensOn
 
 	return next.previewed()
 }
@@ -223,7 +238,7 @@ func (p Popup) moved(direction move.Direction) Popup {
 func (p Popup) previewed() Popup {
 	selected, ok := p.results.Selected()
 	if ok {
-		p.preview = p.preview.Showing(selected)
+		p.preview = p.preview.Showing(selected).ShowingFragment(p.fragmentOpenedFor(selected))
 	} else {
 		p.preview = p.preview.Cleared()
 	}
@@ -271,10 +286,12 @@ func (p Popup) frameTitle() string {
 	return searchTitle + titleSeparator + strconv.Itoa(count) + noun
 }
 
-func revealing(selected domain.Snippet) outcome.Step {
-	return outcome.Close().Passing(outcome.SnippetRevealed{ID: selected.ID(), FolderID: selected.FolderID()})
+func revealing(selected domain.Snippet, fragmentID domain.FragmentID) outcome.Step {
+	return outcome.Close().Passing(
+		outcome.SnippetRevealed{ID: selected.ID(), FolderID: selected.FolderID(), FragmentID: fragmentID},
+	)
 }
 
-func copying(selected domain.Snippet) outcome.Step {
-	return outcome.Close().Passing(outcome.CopyRequested{ID: selected.ID(), FragmentID: selected.FirstFragment().ID()})
+func copying(selected domain.Snippet, fragmentID domain.FragmentID) outcome.Step {
+	return outcome.Close().Passing(outcome.CopyRequested{ID: selected.ID(), FragmentID: fragmentID})
 }

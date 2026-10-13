@@ -257,6 +257,31 @@ func TestSnippet_Fragment(t *testing.T) {
 	})
 }
 
+func TestSnippet_FragmentIndex(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	firstID, secondID, missingID := ids.NewFragmentID(), ids.NewFragmentID(), ids.NewFragmentID()
+	snippet := testkit.Snippet(t, testkit.SnippetSpec{Fragments: []testkit.FragmentSpec{{ID: firstID}, {ID: secondID}}})
+
+	t.Run("finds the position of the Fragment by its id", func(t *testing.T) {
+		t.Parallel()
+
+		index, err := snippet.FragmentIndex(secondID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, index)
+	})
+
+	t.Run("rejects a Fragment the Snippet doesn't hold", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := snippet.FragmentIndex(missingID)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
 func TestSnippet_Edit(t *testing.T) {
 	t.Parallel()
 

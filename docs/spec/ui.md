@@ -28,7 +28,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 - **The left column** splits its height two-thirds to one-third. The tall Pane is the focused one of Folders and Tags, or the one holding the Browse selection when focus is elsewhere. Folders is tall at start-up.
 - **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order: `by title`, `by last updated`, or `by creation date`. Cycling the order keeps the cursor on the selected Snippet.
 - **The Snippet list's right-hand column** shows the first Fragment's Language, followed by the count of the other Fragments when there are any: `Go +2`.
-- **The Snippet pane** shows one Fragment at a time, the Shown Fragment, and its meta line names that Fragment's Language. A tab strip under the header separator labels each Fragment by its Fragment title, or by its Language when it has none, and marks the Shown Fragment. The strip shows when the Snippet has two or more Fragments, or when its only Fragment has a title. A strip wider than the Pane is cut off with `…`. Showing a different Snippet goes back to its first Fragment.
+- **The Snippet pane** shows one Fragment at a time, the Shown Fragment, and its meta line names that Fragment's Language. A tab strip under the header separator labels each Fragment by its Fragment title, or by its Language when it has none, and marks the Shown Fragment. The strip shows when the Snippet has two or more Fragments, or when its only Fragment has a title. A strip wider than the Pane is cut off with `…`. Showing a different Snippet goes back to its first Fragment, unless Search revealed it on another.
 
 ```
 │Deploy                                  │
@@ -111,11 +111,11 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 ╰─────────────────────────────────╯╰───────────────────────────────────────╯
 ```
 
-- The left 40% holds the query and the results, each with its Folder path. The right side previews the highlighted result the way the Snippet pane shows it.
+- The left 40% holds the query and the results, each with its Folder path. The right side previews the highlighted result the way the Snippet pane shows it, on the Fragment the result opens on ([v1.md: Search](v1.md#search)).
 - An empty query lists the Snippets of the current Browse selection, in the current sort order.
 - `↑` `↓` (also `ctrl+p` `ctrl+n`, `ctrl+k` `ctrl+j`) move through the results. Everything else typed goes to the query.
-- `enter` reveals the Snippet: the Browse selection becomes its Folder or the Root, the Snippet list selects it, and focus moves to the Snippet pane.
-- `ctrl+y` copies the highlighted result and closes the popup. `copy.quit_after` applies as for any Copy.
+- `enter` reveals the Snippet: the Browse selection becomes its Folder or the Root, the Snippet list selects it, focus moves to the Snippet pane, and the pane shows the previewed Fragment.
+- `ctrl+y` copies the previewed Fragment and closes the popup. `copy.quit_after` applies as for any Copy.
 - `esc` closes the popup and changes nothing.
 
 ## Edit overlay

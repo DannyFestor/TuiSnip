@@ -20,7 +20,8 @@ func TestPopup_UpdateClick(t *testing.T) {
 
 		screen.Click("Prune everything")
 
-		assert.Equal(t, []outcome.Outcome{outcome.SnippetRevealed{ID: snippets[1].ID()}}, screen.Outcomes())
+		revealed := outcome.SnippetRevealed{ID: snippets[1].ID(), FragmentID: snippets[1].FirstFragment().ID()}
+		assert.Equal(t, []outcome.Outcome{revealed}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
 	})
 

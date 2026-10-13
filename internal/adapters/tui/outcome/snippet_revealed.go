@@ -3,8 +3,9 @@ package outcome
 import "github.com/DannyFestor/TuiSnip/internal/domain"
 
 type SnippetRevealed struct {
-	ID       domain.SnippetID
-	FolderID domain.FolderID
+	ID         domain.SnippetID
+	FolderID   domain.FolderID
+	FragmentID domain.FragmentID
 }
 
 func (SnippetRevealed) isOutcome() {}

@@ -116,7 +116,7 @@ func (s Snippet) Rename(title value.Title, now time.Time) Snippet {
 }
 ```
 
-`Rename` can't fail because a `value.Title` is valid by construction. Entity invariants that span fields ("exactly one Fragment") are checked in `domain` and reported with `domain` sentinels.
+`Rename` can't fail because a `value.Title` is valid by construction. Entity invariants that span fields ("at least one Fragment") are checked in `domain` and reported with `domain` sentinels.
 
 - Each entity's ID is its own type over `uuid.UUID` (`domain.SnippetID`, `domain.FragmentID`, `domain.FolderID`), so one can't be passed where another belongs. All of them are declared in `internal/domain/id.go`, as instances of the generic `domain.ID[E]`, and a new entity's ID goes there too. The column type sqlc generates against is `sqltype.ID` in `internal/adapters/sqlite/sqltype/id.go`. A constructor rejects the Nil UUID as the entity's own ID.
 - `NewSnippet` and `NewFragment` take every field positionally. revive's `argument-limit` is lifted for `internal/domain` only, because the distinct value and ID types already catch most swapped arguments. The same constructor serves `snippet.Create` and the `sqlite` rebuild from rows.
@@ -124,7 +124,7 @@ func (s Snippet) Rename(title value.Title, now time.Time) Snippet {
 
 ### Value objects
 
-A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.Description`, `value.Content`, `value.FolderName`, `value.TagName`, `value.Language`. A value with no rule stays a plain type. A length cap counts as a rule: Title (200 runes), FolderName (200 runes), Description (2,000 runes), and Content (256 KiB) are capped, and the schema repeats each cap ([database](database.md#constraints)). Description and Content are stored exactly as given, because whitespace in code matters and an all-blank Description is the user's choice.
+A value with a normalisation or validation rule gets its own type in `internal/domain/value`: `value.Title`, `value.Description`, `value.Content`, `value.FolderName`, `value.TagName`, `value.Language`, `value.FragmentTitle`. A value with no rule stays a plain type. A length cap counts as a rule: Title (200 runes), FolderName (200 runes), FragmentTitle (200 runes), Description (2,000 runes), and Content (256 KiB) are capped, and the schema repeats each cap ([database](database.md#constraints)). Description and Content are stored exactly as given, because whitespace in code matters and an all-blank Description is the user's choice.
 
 Each value object wraps an unexported field, so the constructor is the only way to get one:
 

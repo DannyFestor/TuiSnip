@@ -122,6 +122,43 @@ func TestUpdate_Run(t *testing.T) {
 		assert.Equal(t, "if x {\n\treturn\n}\n", updated.FirstFragment().Content().String())
 	})
 
+	t.Run("edits the named Fragment and keeps the others", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "curl")
+		repo := NewMockUpdateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		repo.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		input := updateInput(stored, "curl", "", `{"a": 1}`)
+		input.FragmentID = stored.Fragments()[1].ID()
+		input.Language = "JSON"
+
+		updated, err := newUpdate(t, repo).Run(t.Context(), input)
+
+		require.NoError(t, err)
+		require.Len(t, updated.Fragments(), 3)
+		assert.Equal(t, stored.Fragments()[0], updated.Fragments()[0])
+		assert.Equal(t, `{"a": 1}`, updated.Fragments()[1].Content().String())
+		assert.Equal(t, "body.json", updated.Fragments()[1].Title().String())
+		assert.Equal(t, stored.Fragments()[2], updated.Fragments()[2])
+	})
+
+	t.Run("passes up a Fragment the Snippet doesn't hold without saving", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "curl")
+		repo := NewMockUpdateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		input := updateInput(stored, "curl", "", "curl")
+		input.FragmentID = testkit.Fragment(t, testkit.FragmentSpec{}).ID()
+
+		_, err := newUpdate(t, repo).Run(t.Context(), input)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorContains(t, err, "snippet.Update: ")
+	})
+
 	t.Run("reports every invalid field at once without loading", func(t *testing.T) {
 		t.Parallel()
 
@@ -185,8 +222,14 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 
 	created := createdAt().Add(-time.Hour)
 
+	ids := testkit.NewSequentialIDs()
+
 	return testkit.Snippet(t, testkit.SnippetSpec{
-		Fragment:  testkit.FragmentSpec{Content: content, CreatedAt: created},
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Content: content, CreatedAt: created},
+			{ID: ids.NewFragmentID(), Title: "body.json", Language: "JSON", Content: "{}", CreatedAt: created},
+			{ID: ids.NewFragmentID(), Title: "README", Content: "Posts a body", CreatedAt: created},
+		},
 		CreatedAt: created,
 		UpdatedAt: loadedAt(),
 	})
@@ -195,6 +238,7 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 func updateInput(stored domain.Snippet, title, description, content string) snippet.UpdateInput {
 	return snippet.UpdateInput{
 		SnippetID:       stored.ID(),
+		FragmentID:      stored.FirstFragment().ID(),
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     description,

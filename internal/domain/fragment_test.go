@@ -53,7 +53,9 @@ func TestFragment_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := domain.NewFragment(tt.id, value.PlainText(), mustContent(t, "ls -la"), tt.createdAt, tt.updatedAt)
+			_, err := domain.NewFragment(
+				tt.id, value.FragmentTitle{}, value.PlainText(), mustContent(t, "ls -la"), tt.createdAt, tt.updatedAt,
+			)
 
 			requireErrors(t, err, tt.wantErrs)
 		})
@@ -66,11 +68,13 @@ func TestFragment_Accessors(t *testing.T) {
 	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 	updated := created.Add(time.Hour)
 	content := mustContent(t, "go test ./...")
+	title := mustFragmentTitle(t, "main_test.go")
 
-	fragment, err := domain.NewFragment(fragmentID(), value.PlainText(), content, created, updated)
+	fragment, err := domain.NewFragment(fragmentID(), title, value.PlainText(), content, created, updated)
 
 	require.NoError(t, err)
 	assert.Equal(t, fragmentID(), fragment.ID())
+	assert.Equal(t, title, fragment.Title())
 	assert.Equal(t, value.PlainText(), fragment.Language())
 	assert.Equal(t, content, fragment.Content())
 	assert.Equal(t, created, fragment.CreatedAt())
@@ -135,16 +139,17 @@ func TestFragment_Duplicate(t *testing.T) {
 	duplicateID := testkit.NewSequentialIDs().NewFragmentID()
 	fragment := testkit.Fragment(
 		t,
-		testkit.FragmentSpec{ID: fragmentID(), Language: "Bash", Content: "ls", CreatedAt: created},
+		testkit.FragmentSpec{ID: fragmentID(), Title: "list.sh", Language: "Bash", Content: "ls", CreatedAt: created},
 	)
 
-	t.Run("keeps the Language and content under the new id and time", func(t *testing.T) {
+	t.Run("keeps the title, Language and content under the new id and time", func(t *testing.T) {
 		t.Parallel()
 
 		duplicate, err := fragment.Duplicate(duplicateID, later)
 
 		require.NoError(t, err)
 		assert.Equal(t, duplicateID, duplicate.ID())
+		assert.Equal(t, fragment.Title(), duplicate.Title())
 		assert.Equal(t, fragment.Language(), duplicate.Language())
 		assert.Equal(t, fragment.Content(), duplicate.Content())
 		assert.Equal(t, later, duplicate.CreatedAt())
@@ -171,4 +176,13 @@ func mustContent(t *testing.T, raw string) value.Content {
 	require.NoError(t, err)
 
 	return content
+}
+
+func mustFragmentTitle(t *testing.T, raw string) value.FragmentTitle {
+	t.Helper()
+
+	title, err := value.NewFragmentTitle(raw)
+	require.NoError(t, err)
+
+	return title
 }

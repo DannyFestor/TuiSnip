@@ -230,7 +230,9 @@ func copyFirstSnippet(t *testing.T, build modelConstructor, result snippet.CopyR
 
 	snippets := sampleSnippets(t)
 	copier := NewMockSnippetCopier(t)
-	copier.EXPECT().Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID()}).Return(result, err)
+	copier.EXPECT().
+		Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[0].ID(), FragmentID: snippets[0].FirstFragment().ID()}).
+		Return(result, err)
 
 	model := modelBuiltBy(t, build, actions{
 		lister:     listerOf(t, snippets...),

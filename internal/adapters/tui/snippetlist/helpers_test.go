@@ -52,9 +52,9 @@ func numberedSnippets(t *testing.T, count int) []domain.Snippet {
 
 	for number := 1; number <= count; number++ {
 		snippets = append(snippets, testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Title:    "Snippet " + strconv.Itoa(number),
-			Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go"},
+			ID:        ids.NewSnippetID(),
+			Title:     "Snippet " + strconv.Itoa(number),
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Go"}},
 		}))
 	}
 

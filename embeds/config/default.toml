@@ -90,6 +90,8 @@ copy = ["y"]
 edit = ["e"]
 open_in_editor = ["E"]
 wrap = ["w"]
+next_fragment = ["]"]
+prev_fragment = ["["]
 
 # The edit overlay, outside the Content textarea. Keys in the edit overlay,
 # Search, and pickers need a modifier or must be a non-printing key, so they

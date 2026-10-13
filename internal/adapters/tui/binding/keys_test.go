@@ -79,7 +79,7 @@ func TestKeys_For(t *testing.T) {
 		}
 	})
 
-	t.Run("Snippet pane hints Copy, edit and wrap before zoom", func(t *testing.T) {
+	t.Run("Snippet pane hints Copy, edit, wrap and the Fragment switches before zoom", func(t *testing.T) {
 		t.Parallel()
 
 		keys := keysWith(
@@ -87,11 +87,17 @@ func TestKeys_For(t *testing.T) {
 			bound{scope: binding.ScopeSnippetPane, name: binding.Copy, keys: []string{"y"}},
 			bound{scope: binding.ScopeSnippetPane, name: binding.Edit, keys: []string{"e"}},
 			bound{scope: binding.ScopeSnippetPane, name: binding.Wrap, keys: []string{"w"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.NextFragment, keys: []string{"]"}},
+			bound{scope: binding.ScopeSnippetPane, name: binding.PrevFragment, keys: []string{"["}},
 		)
 
 		got := keys.For(binding.ScopeSnippetPane).ShortHelp()
 
-		assert.Equal(t, []string{"y Copy", "e edit", "w wrap", "z zoom"}, hintTexts(got))
+		assert.Equal(
+			t,
+			[]string{"y Copy", "e edit", "w wrap", "] next Fragment", "[ previous Fragment", "z zoom"},
+			hintTexts(got),
+		)
 	})
 
 	zoomHints := []struct {

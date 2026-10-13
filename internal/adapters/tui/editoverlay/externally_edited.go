@@ -1,6 +1,9 @@
 package editoverlay
 
+import "github.com/DannyFestor/TuiSnip/internal/domain"
+
 type ExternallyEdited struct {
-	Browsed BrowsedSnippet
-	Content string
+	Browsed  BrowsedSnippet
+	Fragment domain.Fragment
+	Content  string
 }

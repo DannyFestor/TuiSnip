@@ -162,6 +162,7 @@ func TestEditCreatingATagNamedLikeAnotherIgnoringCaseIsRefused(t *testing.T) {
 func editOf(loaded domain.Snippet, title, content string) snippet.UpdateInput {
 	return snippet.UpdateInput{
 		SnippetID:       loaded.ID(),
+		FragmentID:      loaded.FirstFragment().ID(),
 		LoadedUpdatedAt: loaded.UpdatedAt(),
 		Title:           title,
 		Description:     loaded.Description().String(),

@@ -567,7 +567,7 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 	case outcome.SearchTyped:
 		return m.querySnippets(reported.Text)
 	case outcome.CopyRequested:
-		return m.copySnippet(reported.ID)
+		return m.copySnippet(reported)
 	case outcome.CaptureAsked:
 		return m.captureSnippet()
 	case outcome.ExternalEditAsked:
@@ -784,8 +784,8 @@ func (m Model) querySnippets(text string) tea.Cmd {
 	}
 }
 
-func (m Model) copySnippet(id domain.SnippetID) tea.Cmd {
-	in := snippet.CopyInput{SnippetID: id}
+func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
+	in := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
 
 	return func() tea.Msg {
 		result, err := m.copier.Run(m.ctx, in)

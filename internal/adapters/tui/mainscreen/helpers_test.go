@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
@@ -128,10 +129,10 @@ func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
 	t.Helper()
 
 	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       domain.SnippetID(uuid.MustParse(filedSnippetID)),
-		Title:    filedTitle,
-		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{Language: "Go"},
+		ID:        domain.SnippetID(uuid.MustParse(filedSnippetID)),
+		Title:     filedTitle,
+		FolderID:  folderID,
+		Fragments: []testkit.FragmentSpec{{Language: "Go"}},
 	})
 }
 
@@ -152,19 +153,39 @@ func sampleSnippets(t *testing.T) []domain.Snippet {
 			ID:          ids.NewSnippetID(),
 			Title:       "Graceful HTTP shutdown",
 			Description: firstDescription,
-			Fragment:    testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go", Content: "return nil\n"},
+			Fragments:   []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Go", Content: "return nil\n"}},
 		}),
 		testkit.Snippet(t, testkit.SnippetSpec{
 			ID:          ids.NewSnippetID(),
 			Title:       secondTitle,
 			Description: "Reclaim disk space",
-			Fragment: testkit.FragmentSpec{
+			Fragments: []testkit.FragmentSpec{{
 				ID:       ids.NewFragmentID(),
 				Language: "Bash",
 				Content:  "docker system prune\n",
-			},
+			}},
 		}),
 	}
+}
+
+func severalFragmentsSnippet(t *testing.T) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:    ids.NewSnippetID(),
+		Title: "Deploy",
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Title: "main.go", Language: "Go", Content: "package main\n"},
+			{ID: ids.NewFragmentID(), Language: "YAML", Content: "on: push\n"},
+			{ID: ids.NewFragmentID(), Title: "README", Content: "Read me\n"},
+		},
+	})
+}
+
+func copyRequestedFor(stored domain.Snippet, index int) outcome.CopyRequested {
+	return outcome.CopyRequested{ID: stored.ID(), FragmentID: stored.Fragments()[index].ID()}
 }
 
 func lines(driver *overlaytest.Driver) []string {

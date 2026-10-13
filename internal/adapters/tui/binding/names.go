@@ -36,6 +36,8 @@ const (
 	Duplicate    = "duplicate"
 	CycleSort    = "cycle_sort"
 	Wrap         = "wrap"
+	NextFragment = "next_fragment"
+	PrevFragment = "prev_fragment"
 	OpenInEditor = "open_in_editor"
 	Save         = "save"
 	Cancel       = "cancel"

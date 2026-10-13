@@ -148,7 +148,25 @@ func TestPane_Update(t *testing.T) {
 
 		_, outcomes, _ := showing(t, snippet).Update(keypress.Letter('y'))
 
-		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippet.ID()}}, outcomes)
+		assert.Equal(
+			t,
+			[]outcome.Outcome{outcome.CopyRequested{ID: snippet.ID(), FragmentID: snippet.FirstFragment().ID()}},
+			outcomes,
+		)
+	})
+
+	t.Run("asks to Copy the Shown Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		snippet := severalFragmentsSnippet(t, testkit.NewSequentialIDs())
+
+		_, outcomes, _ := pressed(t, showing(t, snippet), keypress.Letter(']')).Update(keypress.Letter('y'))
+
+		assert.Equal(
+			t,
+			[]outcome.Outcome{outcome.CopyRequested{ID: snippet.ID(), FragmentID: snippet.Fragments()[1].ID()}},
+			outcomes,
+		)
 	})
 
 	t.Run("asks for no Copy with no Snippet", func(t *testing.T) {
@@ -283,6 +301,115 @@ func TestPane_Showing(t *testing.T) {
 		pane := showing(t, snippet).Cleared().Showing(snippet)
 
 		assert.Equal(t, "Long", lines(pane)[0])
+	})
+
+	t.Run("keeps the Shown Fragment while showing the same Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		snippet := severalFragmentsSnippet(t, testkit.NewSequentialIDs())
+		pane := pressed(t, showing(t, snippet), keypress.Letter(']'))
+
+		assert.Equal(t, "   1 │ on: push", firstCodeLine(pane.Showing(snippet)))
+	})
+
+	t.Run("goes back to the first Fragment for a different Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		pane := pressed(t, showing(t, severalFragmentsSnippet(t, ids)), keypress.Letter(']'))
+
+		pane = pane.Showing(severalFragmentsSnippet(t, ids))
+
+		assert.Equal(t, "   1 │ package main", firstCodeLine(pane))
+	})
+}
+
+func TestPane_ViewFragmentStrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shows no strip for one untitled Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, "   1 │ line 1", trimmed(code(showing(t, longSnippet(t))))[0])
+	})
+
+	t.Run("shows the strip under the header and the first Fragment below it", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, severalFragmentsSnippet(t, testkit.NewSequentialIDs()))
+
+		assert.Equal(t, "Root · Go", strings.TrimSpace(lines(pane)[1]))
+		assert.Equal(t, " main.go │ YAML │ READM…", stripRow(pane))
+		assert.Equal(t, "   1 │ package main", firstCodeLine(pane))
+	})
+
+	t.Run("shows the strip for one titled Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		titled := testkit.Snippet(t, testkit.SnippetSpec{
+			Fragments: []testkit.FragmentSpec{{Title: "main.go", Content: "package main"}},
+		})
+
+		assert.Equal(t, " main.go", stripRow(showing(t, titled)))
+	})
+}
+
+func TestPane_UpdateFragmentSwitch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		keys         []tea.KeyPressMsg
+		wantLanguage string
+		wantCode     string
+	}{
+		{
+			name:         "next Fragment shows the second",
+			keys:         []tea.KeyPressMsg{keypress.Letter(']')},
+			wantLanguage: "Root · YAML",
+			wantCode:     "   1 │ on: push",
+		},
+		{
+			name:         "previous Fragment from the first shows the last",
+			keys:         []tea.KeyPressMsg{keypress.Letter('[')},
+			wantLanguage: "Root · plaintext",
+			wantCode:     "   1 │ Read me",
+		},
+		{
+			name:         "next then previous shows the first again",
+			keys:         []tea.KeyPressMsg{keypress.Letter(']'), keypress.Letter('[')},
+			wantLanguage: "Root · Go",
+			wantCode:     "   1 │ package main",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			pane := pressed(t, showing(t, severalFragmentsSnippet(t, testkit.NewSequentialIDs())), tt.keys...)
+
+			assert.Equal(t, tt.wantLanguage, strings.TrimSpace(lines(pane)[1]))
+			assert.Equal(t, tt.wantCode, firstCodeLine(pane))
+		})
+	}
+
+	t.Run("reports the Shown Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		snippet := severalFragmentsSnippet(t, testkit.NewSequentialIDs())
+
+		shown, ok := pressed(t, showing(t, snippet), keypress.Letter(']')).ShownFragment()
+
+		assert.True(t, ok)
+		assert.Equal(t, snippet.Fragments()[1], shown)
+	})
+
+	t.Run("reports no Shown Fragment with no Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		_, ok := paneIn(t, time.UTC, look.Size{Width: boxWidth, Height: headerLines}).ShownFragment()
+
+		assert.False(t, ok)
 	})
 }
 

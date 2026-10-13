@@ -38,6 +38,7 @@ func updateSnippetParams(snippet domain.Snippet, loadedUpdatedAt time.Time) sqlc
 
 func updateFragmentParams(fragment domain.Fragment) sqlcgen.UpdateFragmentParams {
 	return sqlcgen.UpdateFragmentParams{
+		Title:     fragment.Title().String(),
 		Language:  fragment.Language().String(),
 		Content:   fragment.Content().String(),
 		UpdatedAt: sqltype.Timestamp(fragment.UpdatedAt()),
@@ -58,6 +59,7 @@ func insertFragmentParams(
 		ID:        columnID(fragment.ID()),
 		SnippetID: columnID(snippetID),
 		Position:  int64(position),
+		Title:     fragment.Title().String(),
 		Language:  fragment.Language().String(),
 		Content:   fragment.Content().String(),
 		CreatedAt: sqltype.Timestamp(fragment.CreatedAt()),

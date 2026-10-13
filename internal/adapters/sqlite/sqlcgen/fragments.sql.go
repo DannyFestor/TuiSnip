@@ -12,14 +12,15 @@ import (
 )
 
 const insertFragment = `-- name: InsertFragment :exec
-INSERT INTO fragments (id, snippet_id, position, language, content, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO fragments (id, snippet_id, position, title, language, content, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertFragmentParams struct {
 	ID        sqltype.ID
 	SnippetID sqltype.ID
 	Position  int64
+	Title     string
 	Language  string
 	Content   string
 	CreatedAt sqltype.Timestamp
@@ -31,6 +32,7 @@ func (q *Queries) InsertFragment(ctx context.Context, arg InsertFragmentParams) 
 		arg.ID,
 		arg.SnippetID,
 		arg.Position,
+		arg.Title,
 		arg.Language,
 		arg.Content,
 		arg.CreatedAt,
@@ -40,7 +42,7 @@ func (q *Queries) InsertFragment(ctx context.Context, arg InsertFragmentParams) 
 }
 
 const listFragments = `-- name: ListFragments :many
-SELECT id, snippet_id, position, language, content, created_at, updated_at
+SELECT id, snippet_id, position, language, content, created_at, updated_at, title
 FROM fragments
 ORDER BY snippet_id, position
 `
@@ -62,6 +64,7 @@ func (q *Queries) ListFragments(ctx context.Context) ([]Fragment, error) {
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Title,
 		); err != nil {
 			return nil, err
 		}
@@ -77,7 +80,7 @@ func (q *Queries) ListFragments(ctx context.Context) ([]Fragment, error) {
 }
 
 const listFragmentsBySnippet = `-- name: ListFragmentsBySnippet :many
-SELECT id, snippet_id, position, language, content, created_at, updated_at
+SELECT id, snippet_id, position, language, content, created_at, updated_at, title
 FROM fragments
 WHERE snippet_id = ?
 ORDER BY position
@@ -100,6 +103,7 @@ func (q *Queries) ListFragmentsBySnippet(ctx context.Context, snippetID sqltype.
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Title,
 		); err != nil {
 			return nil, err
 		}
@@ -116,7 +120,7 @@ func (q *Queries) ListFragmentsBySnippet(ctx context.Context, snippetID sqltype.
 
 const listFragmentsInFolder = `-- name: ListFragmentsInFolder :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
-       fragments.created_at, fragments.updated_at
+       fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
 JOIN snippets ON snippets.id = fragments.snippet_id
 WHERE snippets.folder_id IS ?1
@@ -140,6 +144,7 @@ func (q *Queries) ListFragmentsInFolder(ctx context.Context, folderID *sqltype.I
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Title,
 		); err != nil {
 			return nil, err
 		}
@@ -156,7 +161,7 @@ func (q *Queries) ListFragmentsInFolder(ctx context.Context, folderID *sqltype.I
 
 const listFragmentsWithTag = `-- name: ListFragmentsWithTag :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
-       fragments.created_at, fragments.updated_at
+       fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
 JOIN snippet_tag ON snippet_tag.snippet_id = fragments.snippet_id
 WHERE snippet_tag.tag_id = ?1
@@ -180,6 +185,7 @@ func (q *Queries) ListFragmentsWithTag(ctx context.Context, tagID sqltype.ID) ([
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Title,
 		); err != nil {
 			return nil, err
 		}
@@ -196,11 +202,12 @@ func (q *Queries) ListFragmentsWithTag(ctx context.Context, tagID sqltype.ID) ([
 
 const updateFragment = `-- name: UpdateFragment :exec
 UPDATE fragments
-SET language = ?, content = ?, updated_at = ?
+SET title = ?, language = ?, content = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateFragmentParams struct {
+	Title     string
 	Language  string
 	Content   string
 	UpdatedAt sqltype.Timestamp
@@ -209,6 +216,7 @@ type UpdateFragmentParams struct {
 
 func (q *Queries) UpdateFragment(ctx context.Context, arg UpdateFragmentParams) error {
 	_, err := q.db.ExecContext(ctx, updateFragment,
+		arg.Title,
 		arg.Language,
 		arg.Content,
 		arg.UpdatedAt,

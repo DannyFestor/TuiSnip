@@ -57,9 +57,35 @@ func TestDuplicate_Run(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, inserted, duplicate)
 		assert.NotEqual(t, stored.ID(), duplicate.ID())
-		assert.NotEqual(t, stored.FirstFragment().ID(), duplicate.FirstFragment().ID())
-		assert.Equal(t, stored.FirstFragment().Content(), duplicate.FirstFragment().Content())
 		assert.Equal(t, createdAt(), duplicate.CreatedAt())
+	})
+
+	t.Run("copies every Fragment in order under its own new id", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "curl -d @b.json")
+		repo := NewMockDuplicateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		repo.EXPECT().Insert(mock.Anything, mock.Anything).Return(nil)
+
+		duplicate, err := newDuplicate(t, repo).Run(t.Context(), snippet.DuplicateInput{SnippetID: stored.ID()})
+
+		require.NoError(t, err)
+		require.Len(t, duplicate.Fragments(), 3)
+
+		copiedIDs := make(map[domain.FragmentID]bool, 3)
+
+		for i, fragment := range duplicate.Fragments() {
+			original := stored.Fragments()[i]
+			copiedIDs[fragment.ID()] = true
+
+			assert.NotEqual(t, original.ID(), fragment.ID())
+			assert.Equal(t, original.Title(), fragment.Title())
+			assert.Equal(t, original.Language(), fragment.Language())
+			assert.Equal(t, original.Content(), fragment.Content())
+		}
+
+		assert.Len(t, copiedIDs, 3, "every Fragment gets its own id")
 	})
 
 	t.Run("passes up a Snippet that is gone", func(t *testing.T) {

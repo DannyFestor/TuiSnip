@@ -9,7 +9,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
@@ -73,33 +72,6 @@ func TestList_Update(t *testing.T) {
 			assert.Equal(t, tt.want, selectedTitle(t, list))
 		})
 	}
-
-	t.Run("asks to Copy the Snippet under the cursor", func(t *testing.T) {
-		t.Parallel()
-
-		snippets := numberedSnippets(t, 2)
-		list := pressed(t, listOf(t, snippets), keypress.Letter('j'))
-
-		_, outcomes, _ := list.Update(keypress.Letter('y'))
-
-		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[1].ID()}}, outcomes)
-	})
-
-	t.Run("asks for no Copy with no Snippets", func(t *testing.T) {
-		t.Parallel()
-
-		_, outcomes, _ := listOf(t, nil).Update(keypress.Letter('y'))
-
-		assert.Empty(t, outcomes)
-	})
-
-	t.Run("asks for no Copy on other keys", func(t *testing.T) {
-		t.Parallel()
-
-		_, outcomes, _ := listOf(t, numberedSnippets(t, 2)).Update(keypress.Letter('j'))
-
-		assert.Empty(t, outcomes)
-	})
 
 	t.Run("ignores messages it does not handle", func(t *testing.T) {
 		t.Parallel()

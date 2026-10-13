@@ -19,16 +19,25 @@ type nameRules struct {
 }
 
 func parseTrimmedName[K any](raw string, rules nameRules) (trimmedName[K], error) {
-	trimmed := strings.TrimSpace(raw)
+	trimmed, err := trimmedWithin(raw, rules.maxRunes, rules.errTooLong)
+	if err != nil {
+		return trimmedName[K]{}, err
+	}
+
 	if trimmed == "" {
 		return trimmedName[K]{}, rules.errBlank
 	}
 
-	if utf8.RuneCountInString(trimmed) > rules.maxRunes {
-		return trimmedName[K]{}, rules.errTooLong
+	return trimmedName[K]{value: trimmed}, nil
+}
+
+func trimmedWithin(raw string, maxRunes int, errTooLong error) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if utf8.RuneCountInString(trimmed) > maxRunes {
+		return "", errTooLong
 	}
 
-	return trimmedName[K]{value: trimmed}, nil
+	return trimmed, nil
 }
 
 func (n trimmedName[K]) String() string {

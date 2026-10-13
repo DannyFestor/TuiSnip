@@ -8,6 +8,7 @@ import (
 
 type UpdateInput struct {
 	SnippetID       domain.SnippetID
+	FragmentID      domain.FragmentID
 	LoadedUpdatedAt time.Time
 	Title           string
 	Description     string

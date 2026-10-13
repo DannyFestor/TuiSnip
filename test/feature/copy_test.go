@@ -32,7 +32,7 @@ func TestCopyTrimsTrailingNewlineByDefault(t *testing.T) {
 		snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls -la\n"},
 	)
 
-	result := copySnippet(t, app, created.ID())
+	result := copySnippet(t, app, created)
 
 	assert.Equal(t, domain.CopyDeliveryPlaced, result.Delivery)
 	assert.Equal(t, "ls -la", home.Copied(t))
@@ -51,7 +51,7 @@ func TestCopyPlacesContentByteExact(t *testing.T) {
 		snippet.CreateInput{Title: "unicode", Description: "", Language: plainText, Content: content},
 	)
 
-	copySnippet(t, app, created.ID())
+	copySnippet(t, app, created)
 
 	assert.Equal(t, content, home.Copied(t))
 }
@@ -69,7 +69,7 @@ func TestCopyAtContentCap(t *testing.T) {
 		snippet.CreateInput{Title: "large", Description: "", Language: plainText, Content: content},
 	)
 
-	copySnippet(t, app, created.ID())
+	copySnippet(t, app, created)
 
 	assert.Len(t, home.Copied(t), contentCapBytes)
 }
@@ -81,7 +81,7 @@ func TestCopyOfMissingSnippetIsNotFound(t *testing.T) {
 	removed := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 	_, otherApp := testapp.Start(t, testapp.RecordingTool)
 
-	_, err := otherApp.Copy.Run(t.Context(), snippet.CopyInput{SnippetID: removed.ID()})
+	_, err := otherApp.Copy.Run(t.Context(), copyInputOf(removed, removed.FirstFragment()))
 
 	require.ErrorIs(t, err, domain.ErrNotFound)
 }
@@ -94,7 +94,7 @@ func TestNativeCopyWithoutToolFails(t *testing.T) {
 	app := home.Start(t, testapp.NoTool)
 	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 
-	_, err := app.Copy.Run(t.Context(), snippet.CopyInput{SnippetID: created.ID()})
+	_, err := app.Copy.Run(t.Context(), copyInputOf(created, created.FirstFragment()))
 
 	require.ErrorIs(t, err, domain.ErrNoClipboardTool)
 }
@@ -105,7 +105,7 @@ func TestAutoCopySendsToTerminalWhenToolFails(t *testing.T) {
 	_, app := testapp.Start(t, testapp.FailingTool)
 	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls\n"})
 
-	result := copySnippet(t, app, created.ID())
+	result := copySnippet(t, app, created)
 
 	assert.Equal(t, domain.CopyDeliverySentToTerminal, result.Delivery)
 	assert.Equal(t, "ls", result.Content.String())
@@ -119,17 +119,29 @@ func TestOSC52CopySendsToTerminal(t *testing.T) {
 	app := home.Start(t, testapp.RecordingTool)
 	created := create(t, app, snippet.CreateInput{Title: "ls", Description: "", Language: plainText, Content: "ls"})
 
-	result := copySnippet(t, app, created.ID())
+	result := copySnippet(t, app, created)
 
 	assert.Equal(t, domain.CopyDeliverySentToTerminal, result.Delivery)
 	assert.NoFileExists(t, home.ToolRecording())
 }
 
-func copySnippet(t *testing.T, app *bootstrap.App, id domain.SnippetID) snippet.CopyResult {
+func copySnippet(t *testing.T, app *bootstrap.App, created domain.Snippet) snippet.CopyResult {
 	t.Helper()
 
-	result, err := app.Copy.Run(t.Context(), snippet.CopyInput{SnippetID: id})
+	return copyFragment(t, app, created, created.FirstFragment())
+}
+
+func copyFragment(
+	t *testing.T, app *bootstrap.App, stored domain.Snippet, fragment domain.Fragment,
+) snippet.CopyResult {
+	t.Helper()
+
+	result, err := app.Copy.Run(t.Context(), copyInputOf(stored, fragment))
 	require.NoError(t, err)
 
 	return result
+}
+
+func copyInputOf(stored domain.Snippet, fragment domain.Fragment) snippet.CopyInput {
+	return snippet.CopyInput{SnippetID: stored.ID(), FragmentID: fragment.ID()}
 }

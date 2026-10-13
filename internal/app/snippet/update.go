@@ -54,7 +54,9 @@ func (u *Update) Run(ctx context.Context, input UpdateInput) (domain.Snippet, er
 func (u *Update) edited(stored domain.Snippet, parsed fields, input UpdateInput) (domain.Snippet, error) {
 	now := u.clock.Now()
 
-	edited, err := stored.Edit(parsed.title, parsed.description, parsed.language, parsed.content, now)
+	edit := domain.FragmentEdit{ID: input.FragmentID, Language: parsed.language, Content: parsed.content}
+
+	edited, err := stored.Edit(parsed.title, parsed.description, edit, now)
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("edit: %w", err)
 	}

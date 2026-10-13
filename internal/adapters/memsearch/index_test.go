@@ -63,26 +63,32 @@ func TestIndex_Search(t *testing.T) {
 			wantOrder: []string{"menu"},
 		},
 		{
-			name:      "matches content as a literal substring",
-			snippets:  []testkit.SnippetSpec{{Title: "a", Fragment: testkit.FragmentSpec{Content: "kubectl get pods"}}},
+			name: "matches content as a literal substring",
+			snippets: []testkit.SnippetSpec{
+				{Title: "a", Fragments: []testkit.FragmentSpec{{Content: "kubectl get pods"}}},
+			},
 			query:     "get pods",
 			wantOrder: []string{"a"},
 		},
 		{
-			name:      "does not match content fuzzily",
-			snippets:  []testkit.SnippetSpec{{Title: "a", Fragment: testkit.FragmentSpec{Content: "kubectl get pods"}}},
+			name: "does not match content fuzzily",
+			snippets: []testkit.SnippetSpec{
+				{Title: "a", Fragments: []testkit.FragmentSpec{{Content: "kubectl get pods"}}},
+			},
 			query:     "kgp",
 			wantOrder: []string{},
 		},
 		{
 			name:      "keeps diacritics in content",
-			snippets:  []testkit.SnippetSpec{{Title: "a", Fragment: testkit.FragmentSpec{Content: "echo café"}}},
+			snippets:  []testkit.SnippetSpec{{Title: "a", Fragments: []testkit.FragmentSpec{{Content: "echo café"}}}},
 			query:     "cafe",
 			wantOrder: []string{},
 		},
 		{
-			name:      "matches case-insensitively for a lowercase query",
-			snippets:  []testkit.SnippetSpec{{Title: "Docker", Fragment: testkit.FragmentSpec{Content: "FROM alpine"}}},
+			name: "matches case-insensitively for a lowercase query",
+			snippets: []testkit.SnippetSpec{
+				{Title: "Docker", Fragments: []testkit.FragmentSpec{{Content: "FROM alpine"}}},
+			},
 			query:     "from",
 			wantOrder: []string{"Docker"},
 		},
@@ -218,7 +224,7 @@ func fuzzSnippet(t *testing.T, title, description, content string) (domain.Snipp
 	spec := testkit.SnippetSpec{
 		Title:       title,
 		Description: description,
-		Fragment:    testkit.FragmentSpec{Content: content},
+		Fragments:   []testkit.FragmentSpec{{Content: content}},
 	}
 
 	return testkit.Snippet(t, spec), true
@@ -242,11 +248,22 @@ func buildSnippets(t *testing.T, specs []testkit.SnippetSpec) []domain.Snippet {
 	for i := range specs {
 		spec := specs[i]
 		spec.ID = ids.NewSnippetID()
-		spec.Fragment.ID = ids.NewFragmentID()
+		spec.Fragments = []testkit.FragmentSpec{fragmentWithID(spec.Fragments, ids.NewFragmentID())}
 		snippets = append(snippets, testkit.Snippet(t, spec))
 	}
 
 	return snippets
+}
+
+func fragmentWithID(specs []testkit.FragmentSpec, id domain.FragmentID) testkit.FragmentSpec {
+	var fragment testkit.FragmentSpec
+	if len(specs) > 0 {
+		fragment = specs[0]
+	}
+
+	fragment.ID = id
+
+	return fragment
 }
 
 func tagsNamed(t *testing.T, names ...string) []domain.Tag {

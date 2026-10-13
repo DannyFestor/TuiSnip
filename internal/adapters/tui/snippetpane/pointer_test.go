@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
+	"github.com/DannyFestor/TuiSnip/test/screencell"
 )
 
 func TestPane_UpdateWheel(t *testing.T) {
@@ -31,4 +33,28 @@ func TestPane_UpdateWheel(t *testing.T) {
 			assert.Equal(t, tt.want, trimmed(code(pane))[0])
 		})
 	}
+}
+
+func TestPane_UpdateClick(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a click on a label shows its Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, severalFragmentsSnippet(t, testkit.NewSequentialIDs()))
+
+		pane, _, _ = pane.Update(pointer.Clicked{At: screencell.Find(t, pane.View(), "YAML"), Double: false})
+
+		assert.Equal(t, "   1 │ on: push", firstCodeLine(pane))
+	})
+
+	t.Run("a click on the code keeps the Shown Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, severalFragmentsSnippet(t, testkit.NewSequentialIDs()))
+
+		pane, _, _ = pane.Update(pointer.Clicked{At: screencell.Find(t, pane.View(), "package main"), Double: false})
+
+		assert.Equal(t, "   1 │ package main", firstCodeLine(pane))
+	})
 }

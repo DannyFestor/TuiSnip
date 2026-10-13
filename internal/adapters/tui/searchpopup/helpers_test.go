@@ -79,10 +79,10 @@ func filedInTestingFolder(t *testing.T, sample foldertree.Sample) domain.Snippet
 	ids := testkit.NewSequentialIDs()
 
 	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    "Table test skeleton",
-		FolderID: sample.Tests.ID(),
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
+		ID:        ids.NewSnippetID(),
+		Title:     "Table test skeleton",
+		FolderID:  sample.Tests.ID(),
+		Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
 	})
 }
 
@@ -96,21 +96,21 @@ func sampleSnippets(t *testing.T) []domain.Snippet {
 			ID:          ids.NewSnippetID(),
 			Title:       "Graceful HTTP shutdown",
 			Description: "Stop accepting, drain, exit",
-			Fragment: testkit.FragmentSpec{
+			Fragments: []testkit.FragmentSpec{{
 				ID:       ids.NewFragmentID(),
 				Language: "Go",
 				Content:  "return " + firstContent + "(ctx)\n",
-			},
+			}},
 		}),
 		testkit.Snippet(t, testkit.SnippetSpec{
 			ID:          ids.NewSnippetID(),
 			Title:       "Prune everything",
 			Description: "Reclaim disk space",
-			Fragment: testkit.FragmentSpec{
+			Fragments: []testkit.FragmentSpec{{
 				ID:       ids.NewFragmentID(),
 				Language: "Bash",
 				Content:  secondContent + " --all\n",
-			},
+			}},
 		}),
 	}
 }
@@ -123,9 +123,9 @@ func numberedSnippets(t *testing.T, count int) []domain.Snippet {
 
 	for number := 1; number <= count; number++ {
 		snippets = append(snippets, testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Title:    numberedTitle(number),
-			Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID()},
+			ID:        ids.NewSnippetID(),
+			Title:     numberedTitle(number),
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
 		}))
 	}
 

@@ -216,9 +216,9 @@ func manySnippets(t *testing.T, count int) []domain.Snippet {
 
 	for number := 1; number <= count; number++ {
 		snippets = append(snippets, testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Title:    fmt.Sprintf("Snippet %02d", number),
-			Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go"},
+			ID:        ids.NewSnippetID(),
+			Title:     fmt.Sprintf("Snippet %02d", number),
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Go"}},
 		}))
 	}
 

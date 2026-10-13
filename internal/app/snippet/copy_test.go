@@ -69,7 +69,12 @@ func TestCopy_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			stored := testkit.Snippet(t, testkit.SnippetSpec{Fragment: testkit.FragmentSpec{Content: tt.content}})
+			ids := testkit.NewSequentialIDs()
+			shownID := ids.NewFragmentID()
+			stored := testkit.Snippet(t, testkit.SnippetSpec{Fragments: []testkit.FragmentSpec{
+				{ID: ids.NewFragmentID(), Content: "not shown\n"},
+				{ID: shownID, Content: tt.content},
+			}})
 			finder := NewMockFinder(t)
 			finder.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
 
@@ -77,7 +82,7 @@ func TestCopy_Run(t *testing.T) {
 			copier.EXPECT().Copy(mock.Anything, tt.wantText).Return(domain.CopyDeliverySentToTerminal, nil)
 
 			result, err := newCopy(t, tt.constructor, finder, copier).Run(
-				t.Context(), snippet.CopyInput{SnippetID: stored.ID()},
+				t.Context(), snippet.CopyInput{SnippetID: stored.ID(), FragmentID: shownID},
 			)
 
 			require.NoError(t, err)
@@ -91,6 +96,7 @@ func TestCopy_RunFailures(t *testing.T) {
 	t.Parallel()
 
 	stored := testkit.Snippet(t, testkit.SnippetSpec{})
+	fragmentID := stored.FirstFragment().ID()
 
 	t.Run("returns a missing Snippet without copying", func(t *testing.T) {
 		t.Parallel()
@@ -99,7 +105,22 @@ func TestCopy_RunFailures(t *testing.T) {
 		finder.EXPECT().Find(mock.Anything, stored.ID()).Return(domain.Snippet{}, domain.ErrNotFound)
 
 		_, err := newCopy(t, snippet.NewCopy, finder, NewMockCopier(t)).Run(
-			t.Context(), snippet.CopyInput{SnippetID: stored.ID()},
+			t.Context(), snippet.CopyInput{SnippetID: stored.ID(), FragmentID: fragmentID},
+		)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorContains(t, err, "snippet.Copy: ")
+	})
+
+	t.Run("returns a Fragment the Snippet doesn't hold without copying", func(t *testing.T) {
+		t.Parallel()
+
+		finder := NewMockFinder(t)
+		finder.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+
+		_, err := newCopy(t, snippet.NewCopy, finder, NewMockCopier(t)).Run(
+			t.Context(),
+			snippet.CopyInput{SnippetID: stored.ID(), FragmentID: testkit.NewSequentialIDs().NewFragmentID()},
 		)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
@@ -116,7 +137,7 @@ func TestCopy_RunFailures(t *testing.T) {
 		copier.EXPECT().Copy(mock.Anything, mock.Anything).Return("", domain.ErrNoClipboardTool)
 
 		_, err := newCopy(t, snippet.NewCopy, finder, copier).Run(
-			t.Context(), snippet.CopyInput{SnippetID: stored.ID()},
+			t.Context(), snippet.CopyInput{SnippetID: stored.ID(), FragmentID: fragmentID},
 		)
 
 		require.ErrorIs(t, err, domain.ErrNoClipboardTool)

@@ -15,6 +15,8 @@ func (s Screen) listPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	}
 
 	switch {
+	case s.listKeys.Matches(msg, binding.Copy):
+		return s.copyAsked(), true
 	case s.listKeys.Matches(msg, binding.CycleSort):
 		return outcome.Stay(s).Passing(s.panes.sortCycleAsked(s.selection())), true
 	case s.listKeys.Matches(msg, binding.Duplicate):
@@ -24,6 +26,15 @@ func (s Screen) listPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	}
 
 	return outcome.Stay(s), false
+}
+
+func (s Screen) copyAsked() outcome.Step {
+	request, ok := s.panes.preview.Copying()
+	if !ok {
+		return outcome.Stay(s)
+	}
+
+	return outcome.Stay(s).Passing(request)
 }
 
 func (s Screen) duplicateAsked() outcome.Step {

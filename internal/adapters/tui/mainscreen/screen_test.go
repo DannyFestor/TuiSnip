@@ -816,7 +816,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen.Press(keypress.Typed("3y")...)
 
-		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[0].ID()}}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{copyRequestedFor(snippets[0], 0)}, screen.Outcomes())
 	})
 
 	t.Run("y in the Snippet pane asks to copy the shown Snippet", func(t *testing.T) {
@@ -827,7 +827,29 @@ func TestScreen_Update(t *testing.T) {
 
 		screen.Press(keypress.Typed("4y")...)
 
-		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[0].ID()}}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{copyRequestedFor(snippets[0], 0)}, screen.Outcomes())
+	})
+
+	t.Run("y in the Snippet pane asks to copy the Shown Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		several := severalFragmentsSnippet(t)
+		screen := showing(t, wide(), several)
+
+		screen.Press(keypress.Typed("4]y")...)
+
+		assert.Equal(t, []outcome.Outcome{copyRequestedFor(several, 1)}, screen.Outcomes())
+	})
+
+	t.Run("y in the Snippet list asks to copy the Shown Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		several := severalFragmentsSnippet(t)
+		screen := showing(t, wide(), several)
+
+		screen.Press(keypress.Typed("4[3y")...)
+
+		assert.Equal(t, []outcome.Outcome{copyRequestedFor(several, 2)}, screen.Outcomes())
 	})
 
 	t.Run("y does nothing in Folders and Tags", func(t *testing.T) {

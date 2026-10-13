@@ -10,6 +10,7 @@ import (
 
 type Fragment struct {
 	id        FragmentID
+	title     value.FragmentTitle
 	language  value.Language
 	content   value.Content
 	createdAt time.Time
@@ -17,18 +18,33 @@ type Fragment struct {
 }
 
 func NewFragment(
-	id FragmentID, language value.Language, content value.Content, createdAt, updatedAt time.Time,
+	id FragmentID,
+	title value.FragmentTitle,
+	language value.Language,
+	content value.Content,
+	createdAt, updatedAt time.Time,
 ) (Fragment, error) {
 	err := errors.Join(requireID(id), requireTimestamps(createdAt, updatedAt))
 	if err != nil {
 		return Fragment{}, fmt.Errorf("domain.NewFragment: %w", err)
 	}
 
-	return Fragment{id: id, language: language, content: content, createdAt: createdAt, updatedAt: updatedAt}, nil
+	return Fragment{
+		id:        id,
+		title:     title,
+		language:  language,
+		content:   content,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	}, nil
 }
 
 func (f Fragment) ID() FragmentID {
 	return f.id
+}
+
+func (f Fragment) Title() value.FragmentTitle {
+	return f.title
 }
 
 func (f Fragment) Language() value.Language {
@@ -48,7 +64,7 @@ func (f Fragment) UpdatedAt() time.Time {
 }
 
 func (f Fragment) Duplicate(id FragmentID, now time.Time) (Fragment, error) {
-	duplicate, err := NewFragment(id, f.language, f.content, now, now)
+	duplicate, err := NewFragment(id, f.title, f.language, f.content, now, now)
 	if err != nil {
 		return Fragment{}, fmt.Errorf("domain.Fragment.Duplicate: %w", err)
 	}

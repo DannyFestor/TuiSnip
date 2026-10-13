@@ -27,6 +27,17 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 - **The focused Pane grows by 8 columns.** They come from the Snippet pane, or from the other two columns when the Snippet pane has focus.
 - **The left column** splits its height two-thirds to one-third. The tall Pane is the focused one of Folders and Tags, or the one holding the Browse selection when focus is elsewhere. Folders is tall at start-up.
 - **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order: `by title`, `by last updated`, or `by creation date`. Cycling the order keeps the cursor on the selected Snippet.
+- **The Snippet list's right-hand column** shows the first Fragment's Language, followed by the count of the other Fragments when there are any: `Go +2`.
+- **The Snippet pane** shows one Fragment at a time, the Shown Fragment, and its meta line names that Fragment's Language. A tab strip under the header separator labels each Fragment by its Fragment title, or by its Language when it has none, and marks the Shown Fragment. The strip shows when the Snippet has two or more Fragments, or when its only Fragment has a title. A strip wider than the Pane is cut off with `…`. Showing a different Snippet goes back to its first Fragment.
+
+```
+│Deploy                                  │
+│Root / go · YAML                        │
+│created 2026-09-06 · updated 2026-09-27 │
+│────────────────────────────────────────│
+│ main.go │ YAML │ README                │
+│   1 │ on: push                         │
+```
 - **The status line** under the Panes shows the last message on the left and the focused Scope's main Bindings on the right (see [Status hint](#status-hint)).
 - **Below 80×24** TuiSnip shows only the focused Pane, as when zoomed, with a hint that the terminal is too small for all four. Focus still moves between Panes.
 - The proportions, the growth, and the minimum size are named constants in `tui`.
@@ -67,13 +78,15 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 | Folders | `N` new Folder inside the selected one (at the Root when the Root is selected), typed in place on a new row below the cursor · `r` rename in place · `d` delete · `m` move · `space` collapse · `L` Default Language |
 | Tags | `N` new Tag, typed in place; it exists with a count of 0 until a Snippet carries it · `r` rename in place · `d` delete |
 | Snippet list | `y` Copy · `e` edit · `E` external editor · `m` move · `c` duplicate · `d` delete · `s` cycle sort |
-| Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap |
+| Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap · `]` next Fragment · `[` previous Fragment |
 
 - In-place entry commits with `enter` and cancels with `esc` (the `name_input` Scope). A blank name is refused. A new Folder becomes the Browse selection once it is created.
 - A new Tag is typed on a row placed where the name will sort among the Tags, in the order the Tags Pane lists them. The row moves as the name is typed, and an empty name sorts first. The new Tag becomes the Browse selection once it is created. A name that already exists, compared case-insensitively, is refused with "Tag go already exists", which names the existing Tag with its own spelling, not the typed one. A comma is refused with "Tag name contains a comma", and a blank name with "Tag name is blank". A refused name stays in the row to be fixed.
 - Renaming a Tag onto another Tag's name merges the two. The other Tag survives with the typed spelling, every Snippet that carried either Tag carries it once, and the cursor moves onto it.
 - Deleting a Tag no Snippet carries happens at once. Otherwise a confirmation titled "Delete Tag" asks first, default No: `Permanently delete Tag "go" and remove it from 4 Snippets? This cannot be undone. [y/N]`. A count of one reads "1 Snippet". After a delete the cursor keeps its row. When the deleted Tag held the Browse selection, the Tag now under the cursor takes it, or the Folders take it back when no Tag is left.
-- `c` in the Snippet list copies the Snippet under the cursor into the same Folder, with the same Title, Description, Tags, Fragment content, and Language, and the cursor moves onto the copy.
+- `c` in the Snippet list copies the Snippet under the cursor into the same Folder, with the same Title, Description, and Tags, and every Fragment with its title, content, and Language, in the same order. The cursor moves onto the copy.
+- `y` and `E` in the Snippet list and the Snippet pane act on the Shown Fragment. `e` edits the first Fragment, and an external edit returns to the edit overlay on the Fragment it edited.
+- `]` and `[` in the Snippet pane show the next and the previous Fragment, wrapping around at either end, and scroll back to the top.
 - `d` in the Snippet list asks first with a confirmation titled "Delete Snippet", default No: `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`. The deletion is permanent, and the Tags the Snippet carried stay. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
 - `m` in Folders or the Snippet list opens the [Folder picker](#other-overlays) for the row under the cursor.
   - A moved Folder keeps the cursor and the Browse selection in its new place, and its new parent expands if it was collapsed. When a Tag held the Browse selection, the Folders take it back.
@@ -122,7 +135,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 ╰────────────────────────────────────────────────────────────────────────╯
 ```
 
-- Fields, top to bottom: Title, Description, Tags, Language, Content. The overlay opens on Title. `•` in the title marks unsaved changes.
+- Fields, top to bottom: Title, Description, Tags, Language, Content. Language and Content edit the first Fragment, or the Fragment an external edit returned, and saving keeps the other Fragments. The overlay opens on Title. `•` in the title marks unsaved changes.
 - `↓` / `↑` (also `tab` / `shift+tab`) move between fields.
 - `enter` on a text field moves to the next field. On Tags it opens the Tag editor, on Language the Language picker, and on Content it enters the textarea.
 - `ctrl+t` and `ctrl+l` open the Tag editor and the Language picker from any field.
@@ -135,7 +148,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
   - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
   - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
-- `ctrl+e` opens the Fragment in the external editor from any field.
+- `ctrl+e` opens the edited Fragment in the external editor from any field.
 - **Content over 10,000 lines** is read-only, like [Content with tabs](#content-with-tabs), because the textarea would cut it at 10,000 lines. That covers a stored Snippet opened with `e`, and externally edited content, which lands as an unsaved change. Lines are counted the way a paste into empty Content is, so exactly 10,000 lines stay editable. The Content field says "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Longer than 10,000 lines: read-only here". Content that also has a tab gets the tabs notice. Saving keeps the content byte for byte. When the external editor returns it with 10,000 lines or fewer and no tab, it is editable again.
 
 ### Content with tabs
@@ -247,7 +260,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `folders` | open · new Folder · rename · delete · move · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
 | `snippet_list` | Copy · edit · external editor · new · move · duplicate · delete · sort · zoom · search · help |
-| `snippet_pane` | Copy · edit · external editor · wrap · zoom · search · help |
+| `snippet_pane` | Copy · edit · external editor · wrap · next Fragment · previous Fragment · zoom · search · help |
 | `editor` | save · cancel · field · Tags · Language · external editor |
 | `content` | save · leave · indent · dedent · external editor |
 | `search` | move · reveal · Copy · close |
@@ -265,6 +278,7 @@ On by default. `mouse = false` in config turns it off ([config](config.md#keys))
 |---|---|
 | Click in a Pane | focuses it |
 | Click a row | selects it, as moving the cursor there would; in Folders or Tags it becomes the Browse selection |
+| Click a label in the Snippet pane's tab strip | shows that Fragment |
 | Click a Folder's `▸`/`▾` | collapses or expands it, and selects it as a click on its row would |
 | Double-click a row | same as `enter` |
 | Wheel | scrolls the Pane under the pointer without moving focus |

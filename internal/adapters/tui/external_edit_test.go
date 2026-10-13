@@ -184,9 +184,9 @@ func storedIn(t *testing.T, language string) domain.Snippet {
 	ids := testkit.NewSequentialIDs()
 
 	return testkit.Snippet(t, testkit.SnippetSpec{
-		ID:       ids.NewSnippetID(),
-		Title:    editedTitle,
-		Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: language, Content: storedContent},
+		ID:        ids.NewSnippetID(),
+		Title:     editedTitle,
+		Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: language, Content: storedContent}},
 	})
 }
 

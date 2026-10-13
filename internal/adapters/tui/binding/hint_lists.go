@@ -48,7 +48,7 @@ func paneOwnHintList(scope Scope) []labelledRef {
 			rowRef{scope: scope, name: CycleSort},
 		)
 	case ScopeSnippetPane:
-		return withRowLabels(refsIn(scope, Copy, Edit, OpenInEditor, Wrap)...)
+		return withRowLabels(refsIn(scope, Copy, Edit, OpenInEditor, Wrap, NextFragment, PrevFragment)...)
 	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
 	}
 

@@ -433,6 +433,7 @@ func refuseAsStale(screen *overlaytest.Driver) *overlaytest.Driver {
 func updateInput(stored domain.Snippet, title, content string) snippet.UpdateInput {
 	return snippet.UpdateInput{
 		SnippetID:       stored.ID(),
+		FragmentID:      stored.FirstFragment().ID(),
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     stored.Description().String(),

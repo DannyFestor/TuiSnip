@@ -196,6 +196,13 @@ linters:
       case:
         rules:
           toml: snake
+        # The Export format is TuiSnip's own, so its keys follow the snake_case of the
+        # TOML files and SQL columns. JSON from outside (hook payloads, other apps'
+        # exports) keeps whatever case its owner chose.
+        overrides:
+          - pkg: internal/adapters/exportfile
+            rules:
+              json: snake
     testifylint:
       enable-all: true
     unparam:

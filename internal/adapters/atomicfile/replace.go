@@ -7,7 +7,12 @@ import (
 )
 
 func Replace(path string, data []byte) error {
-	err := renameTempOver(path, data)
+	err := createDirectoryFor(path)
+	if err != nil {
+		return fmt.Errorf("atomicfile.Replace: %w", err)
+	}
+
+	err = renameTempOver(path, data, filePermissions)
 	if err != nil {
 		return fmt.Errorf("atomicfile.Replace: %w", err)
 	}
@@ -15,13 +20,8 @@ func Replace(path string, data []byte) error {
 	return nil
 }
 
-func renameTempOver(path string, data []byte) error {
-	err := createDirectoryFor(path)
-	if err != nil {
-		return err
-	}
-
-	tempPath, err := writeTempBeside(path, data)
+func renameTempOver(path string, data []byte, permissions os.FileMode) error {
+	tempPath, err := writeTempBeside(path, data, permissions)
 	if err != nil {
 		return err
 	}

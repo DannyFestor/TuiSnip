@@ -11,6 +11,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/clipboard"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/exportfile"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
@@ -21,6 +22,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/xdg"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
+	"github.com/DannyFestor/TuiSnip/internal/app/library"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
@@ -49,6 +51,7 @@ type App struct {
 	RenameTag                *tag.Rename
 	PreviewDeleteTag         *tag.PreviewDelete
 	DeleteTag                *tag.Delete
+	Export                   *library.Export
 	model                    tui.Model
 	database                 *sqlite.Database
 	log                      *logging.Log
@@ -194,6 +197,7 @@ type repositories struct {
 	snippets *sqlite.SnippetRepository
 	folders  *sqlite.FolderRepository
 	tags     *sqlite.TagRepository
+	library  *sqlite.LibraryRepository
 }
 
 func openRepositories(database *sqlite.Database, logger *slog.Logger) repositories {
@@ -201,6 +205,7 @@ func openRepositories(database *sqlite.Database, logger *slog.Logger) repositori
 		snippets: sqlite.NewSnippetRepository(database, logger),
 		folders:  sqlite.NewFolderRepository(database, logger),
 		tags:     sqlite.NewTagRepository(database, logger),
+		library:  sqlite.NewLibraryRepository(database, logger),
 	}
 }
 
@@ -218,8 +223,9 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	browsing, browseErr := newBrowseActions(repos)
 	folders, foldersErr := newFolderActions(repos.folders)
 	tags, tagsErr := newTagActions(repos.tags)
+	export, exportErr := library.NewExport(repos.library, exportfile.NewWriter())
 
-	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr)
+	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, exportErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
@@ -247,6 +253,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		RenameTag:                tags.rename,
 		PreviewDeleteTag:         tags.previewDelete,
 		DeleteTag:                tags.delete,
+		Export:                   export,
 		model:                    tui.Model{},
 		database:                 nil,
 		log:                      nil,

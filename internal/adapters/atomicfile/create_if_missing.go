@@ -37,7 +37,7 @@ func createUnlessPresent(path string, data []byte) (bool, error) {
 }
 
 func linkTemp(path string, data []byte) (bool, error) {
-	tempPath, err := writeTempBeside(path, data)
+	tempPath, err := writeTempBeside(path, data, filePermissions)
 	if err != nil {
 		return false, err
 	}
@@ -70,7 +70,7 @@ func writeExclusive(path string, data []byte) (bool, error) {
 		return false, fmt.Errorf("create file: %w", err)
 	}
 
-	err = writeAndClose(file, data)
+	err = writeAndClose(file, data, filePermissions)
 	if err != nil {
 		return false, errors.Join(err, os.Remove(path))
 	}

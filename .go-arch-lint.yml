@@ -29,6 +29,7 @@ components:
   app-tag:     { in: internal/app/tag/** }
   app-browse:  { in: internal/app/browse/** }
   app-search:  { in: internal/app/search/** }
+  app-library: { in: internal/app/library/** }
 
   sqlite:      { in: internal/adapters/sqlite/** }
   migrations:  { in: db/migrations }
@@ -38,6 +39,7 @@ components:
   xdg:         { in: internal/adapters/xdg/** }
   state:       { in: internal/adapters/state/** }
   atomicfile:  { in: internal/adapters/atomicfile/** }
+  exportfile:  { in: internal/adapters/exportfile/** }
   editor:      { in: internal/adapters/editor/** }
   memsearch:   { in: internal/adapters/memsearch/** }
   system:      { in: internal/adapters/system/** }
@@ -64,6 +66,7 @@ deps:
   app-tag:     { mayDependOn: [ app-tag ] }
   app-browse:  { mayDependOn: [ app-browse ] }
   app-search:  { mayDependOn: [ app-search ] }
+  app-library: { mayDependOn: [ app-library ] }
 
   sqlite:
     mayDependOn: [ sqlite, migrations ]
@@ -79,6 +82,7 @@ deps:
     mayDependOn: [ state, atomicfile ]
     canUse: [ toml ]
   atomicfile:  { mayDependOn: [ atomicfile ] }
+  exportfile:  { mayDependOn: [ exportfile, atomicfile ] }
   editor:      { mayDependOn: [ editor ] }
   memsearch:
     mayDependOn: [ memsearch ]
@@ -93,7 +97,7 @@ deps:
   bootstrap:
     anyProjectDeps: true
     anyVendorDeps: true
-  main:        { mayDependOn: [ main, bootstrap, xdg ] }
+  main:        { mayDependOn: [ main, bootstrap, xdg, app-library ] }
 
   testkit:
     mayDependOn: [ testkit ]

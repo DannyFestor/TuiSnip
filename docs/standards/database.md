@@ -93,6 +93,7 @@ SQLite's `length()` counts characters on `TEXT` and bytes on a `BLOB`, matching 
 - `sqlite.Open` returns a `*sqlite.Database`, which owns the connection pool and `Close`. Each aggregate gets its own repository built over it: `sqlite.NewSnippetRepository(database, logger)`, and later a `FolderRepository` and a `TagRepository`.
 - Go has no overloading, so one repository for every aggregate would need the noun in every method (`InsertSnippet`, `InsertFolder`). Per-aggregate repositories keep method names short (`Insert`, `Find`, `List`), so capabilities read `snippet.Inserter { Insert(ctx, domain.Snippet) error }`.
 - An Action that needs two aggregates gets two repositories from `bootstrap`.
+- The one exception is `sqlite.LibraryRepository`, whose `Load` reads every Folder, Tag, and Snippet for Export in one read transaction. Three repositories would read in three transactions, and an instance writing between them could leave a Snippet pointing at a Folder the Export lacks.
 
 ## Reading entities
 
@@ -102,6 +103,7 @@ Every read goes through the private Snippet loader. A repository method names a 
 
 - `Find` on a corrupt Snippet returns the error and logs it at Error.
 - A list skips the corrupt Snippet, logs it at Warn, and returns the rest. Otherwise one bad row would break List, Search on every keystroke, and Browse, and a chroma upgrade that drops a lexer is enough to cause one.
+- `LibraryRepository.Load` fails on any corrupt Folder, Tag, or Snippet, naming each one, and logs at Error. An Export that skipped a record would be a backup that can't be restored.
 
 Loading many Snippets, for the Search index or a Folder listing, runs one query per table (Snippets, Fragments, Tag links) in one read transaction and stitches them together in Go. It never runs one query per Snippet.
 

@@ -214,10 +214,10 @@ func TestEditedExternally_laterFragment(t *testing.T) {
 
 	screen.Press(save())
 
-	want := updateInput(stored, "Deploy", "on: pull_request\n")
-	want.FragmentID = later.ID()
-	want.Language = "YAML"
+	want := updateInput(stored, "Deploy", "package main\n")
+	want.Fragments[1].Content = "on: pull_request\n"
 	assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
+	assert.Contains(t, screen.Screen(), "Language       YAML")
 }
 
 func externalEditor() tea.KeyPressMsg {

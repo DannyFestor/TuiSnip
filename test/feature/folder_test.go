@@ -94,7 +94,7 @@ func TestFolderDefaultLanguageChangeLeavesItsSnippetsAlone(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
-	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID(), Language: "Bash"})
+	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID(), Fragments: fragmentIn("Bash", "")})
 
 	_, err := app.SetFolderDefaultLanguage.Run(
 		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "Go"},
@@ -110,7 +110,9 @@ func TestNewSnippetTakesTheChangedFolderDefaultLanguage(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
-	existing := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID(), Language: "Bash"})
+	existing := testapp.SeedSnippet(
+		t, app, snippet.CreateInput{FolderID: golang.ID(), Fragments: fragmentIn("Bash", "")},
+	)
 	_, err := app.SetFolderDefaultLanguage.Run(
 		t.Context(), folder.SetDefaultLanguageInput{FolderID: golang.ID(), Language: "Go"},
 	)
@@ -119,10 +121,11 @@ func TestNewSnippetTakesTheChangedFolderDefaultLanguage(t *testing.T) {
 	created := create(t, app, snippet.CreateInput{
 		Title:       "table test",
 		Description: "",
-		Language:    testapp.StoredFolder(t, app, golang.ID()).DefaultLanguage().String(),
-		Content:     "for _, tt := range tests {}\n",
-		FolderID:    golang.ID(),
-		Tags:        nil,
+		Fragments: fragmentIn(
+			testapp.StoredFolder(t, app, golang.ID()).DefaultLanguage().String(), "for _, tt := range tests {}\n",
+		),
+		FolderID: golang.ID(),
+		Tags:     nil,
 	})
 
 	assert.Equal(t, "Go", created.FirstFragment().Language().String())

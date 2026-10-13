@@ -29,7 +29,7 @@ const (
 	contentEntryHint = "enter or down to edit"
 	discardQuestion  = "Discard the unsaved changes? [y/N]"
 	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
-	titleInputWidth  = 91
+	titleInputWidth  = 88
 	contentRows      = 30
 	pickerHints      = "down move · enter pick · esc close"
 
@@ -206,6 +206,10 @@ func toContent() []tea.KeyPressMsg {
 }
 
 func toLanguage() []tea.KeyPressMsg {
+	return append(toFragmentTitle(), keypress.Special(tea.KeyDown))
+}
+
+func toFragmentTitle() []tea.KeyPressMsg {
 	return append(toTags(), keypress.Special(tea.KeyDown))
 }
 
@@ -266,8 +270,7 @@ func inputIn(title, description, language, content string) snippet.CreateInput {
 	return snippet.CreateInput{
 		Title:       title,
 		Description: description,
-		Language:    language,
-		Content:     content,
+		Fragments:   []snippet.FragmentInput{{Language: language, Content: content}},
 		FolderID:    destinationFolderID(),
 		Tags:        nil,
 		NewTags:     nil,

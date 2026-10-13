@@ -36,16 +36,6 @@ func updateSnippetParams(snippet domain.Snippet, loadedUpdatedAt time.Time) sqlc
 	}
 }
 
-func updateFragmentParams(fragment domain.Fragment) sqlcgen.UpdateFragmentParams {
-	return sqlcgen.UpdateFragmentParams{
-		Title:     fragment.Title().String(),
-		Language:  fragment.Language().String(),
-		Content:   fragment.Content().String(),
-		UpdatedAt: sqltype.Timestamp(fragment.UpdatedAt()),
-		ID:        columnID(fragment.ID()),
-	}
-}
-
 func insertSnippetTagParams(snippetID domain.SnippetID, tag domain.Tag) sqlcgen.InsertSnippetTagParams {
 	return sqlcgen.InsertSnippetTagParams{SnippetID: columnID(snippetID), TagID: columnID(tag.ID())}
 }

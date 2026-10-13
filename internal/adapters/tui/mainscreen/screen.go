@@ -158,12 +158,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 	}
 
 	if stored, ok := s.shownFor(msg, binding.Edit); ok {
-		return s.opening(editoverlay.Editing(
-			s.keys,
-			s.styles,
-			s.overlayOptions(),
-			editoverlay.BrowsedSnippet{Snippet: stored, Selection: s.selection()},
-		))
+		return s.opening(editoverlay.Editing(s.keys, s.styles, s.overlayOptions(), s.browsed(stored, s.selection())))
 	}
 
 	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
@@ -261,7 +256,7 @@ func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsk
 
 func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
 	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.overlayOptions(), editoverlay.ExternallyEdited{
-		Browsed:  editoverlay.BrowsedSnippet{Snippet: edited.Asked.Snippet, Selection: edited.Asked.Selection},
+		Browsed:  s.browsed(edited.Asked.Snippet, edited.Asked.Selection),
 		Fragment: edited.Asked.Fragment,
 		Content:  edited.Content,
 	}))
@@ -374,6 +369,14 @@ func (s Screen) selection() browseselection.Selection {
 
 func (s Screen) destination() editoverlay.Destination {
 	return s.panes.destination(s.selection())
+}
+
+func (s Screen) browsed(stored domain.Snippet, selection browseselection.Selection) editoverlay.BrowsedSnippet {
+	return editoverlay.BrowsedSnippet{
+		Snippet:         stored,
+		Selection:       selection,
+		DefaultLanguage: s.panes.folders.DefaultLanguageOf(stored.FolderID()),
+	}
 }
 
 func (s Screen) overlayOptions() editoverlay.Options {

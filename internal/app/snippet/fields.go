@@ -13,41 +13,85 @@ import (
 type rawFields struct {
 	title       string
 	description string
-	language    string
-	content     string
+	fragments   []FragmentInput
 	newTags     []string
 }
 
 type fields struct {
 	title       value.Title
 	description value.Description
-	language    value.Language
-	content     value.Content
+	fragments   []domain.FragmentEdit
 	newTags     []value.TagName
 }
 
 func parseFields(raw rawFields) (fields, error) {
 	parsedTitle, titleErr := value.NewTitle(raw.title)
 	parsedDescription, descriptionErr := value.NewDescription(raw.description)
-	parsedLanguage, languageErr := value.NewLanguage(raw.language)
-	parsedContent, contentErr := value.NewContent(raw.content)
+	parsedFragments, fragmentsErr := parseFragments(raw.fragments)
 	parsedNewTags, newTagsErr := parseTagNames(raw.newTags)
 
 	parsed := fields{
 		title:       parsedTitle,
 		description: parsedDescription,
-		language:    parsedLanguage,
-		content:     parsedContent,
+		fragments:   parsedFragments,
 		newTags:     parsedNewTags,
 	}
 
 	return parsed, errors.Join(
 		domain.OnField(domain.FieldTitle, titleErr),
 		domain.OnField(domain.FieldDescription, descriptionErr),
-		domain.OnField(domain.FieldLanguage, languageErr),
-		domain.OnField(domain.FieldContent, contentErr),
+		fragmentsErr,
 		newTagsErr,
 	)
+}
+
+func parseFragments(raw []FragmentInput) ([]domain.FragmentEdit, error) {
+	parsed := make([]domain.FragmentEdit, 0, len(raw))
+	fragmentErrs := make([]error, 0, len(raw))
+
+	for position, input := range raw {
+		fragment, err := parseFragment(input)
+		parsed = append(parsed, fragment)
+		fragmentErrs = append(fragmentErrs, domain.InFragment(position, err))
+	}
+
+	return parsed, errors.Join(fragmentErrs...)
+}
+
+func parseFragment(raw FragmentInput) (domain.FragmentEdit, error) {
+	title, titleErr := value.NewFragmentTitle(raw.Title)
+	language, languageErr := value.NewLanguage(raw.Language)
+	content, contentErr := value.NewContent(raw.Content)
+
+	parsed := domain.FragmentEdit{ID: raw.ID, Title: title, Language: language, Content: content}
+
+	return parsed, errors.Join(
+		domain.OnField(domain.FieldFragmentTitle, titleErr),
+		domain.OnField(domain.FieldLanguage, languageErr),
+		domain.OnField(domain.FieldContent, contentErr),
+	)
+}
+
+func (f fields) newFragments(ids IDGenerator, now time.Time) ([]domain.Fragment, error) {
+	fragments := make([]domain.Fragment, 0, len(f.fragments))
+
+	for _, parsed := range f.fragments {
+		fragment, err := domain.NewFragment(
+			ids.NewFragmentID(),
+			parsed.Title,
+			parsed.Language,
+			parsed.Content,
+			now,
+			now,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("new fragment: %w", err)
+		}
+
+		fragments = append(fragments, fragment)
+	}
+
+	return fragments, nil
 }
 
 func parseTagNames(raw []string) ([]value.TagName, error) {

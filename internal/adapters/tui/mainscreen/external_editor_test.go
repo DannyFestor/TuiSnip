@@ -76,7 +76,7 @@ func TestScreen_externalEditor(t *testing.T) {
 		screen.Offer(outcome.ContentEdited{Asked: externalEditAskedFor(snippets[1]), Content: "docker image prune\n"})
 
 		assert.Contains(t, screen.Screen(), "Editing •")
-		assert.Contains(t, screen.Screen(), "› Title       "+secondTitle)
+		assert.Contains(t, screen.Screen(), "› Title          "+secondTitle)
 		assert.Contains(t, screen.Screen(), "docker image prune")
 		assert.Equal(t, editorHint, screen.Hints())
 	})

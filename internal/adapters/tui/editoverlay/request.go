@@ -11,4 +11,7 @@ const (
 	requestRefusePasteWithTabs
 	requestRefuseOverlongPaste
 	requestExternalEditor
+	requestAddFragment
+	requestRemoveFragment
+	requestRefuseRemovingLastFragment
 )

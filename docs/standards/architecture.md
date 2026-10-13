@@ -47,7 +47,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, or the Tag whose Snippets the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Folder, Tag, or Snippet is deleted
-      editoverlay/           the edit overlay: the form, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
+      editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
       folderpicker/          the Folder picker: the Root and every Folder by path, a moving Folder's subtree greyed out, and the outcome its opener builds for the pick

@@ -23,7 +23,7 @@ func TestEditedSnippetPersistsWithNewUpdatedTime(t *testing.T) {
 	created := create(
 		t,
 		app,
-		snippet.CreateInput{Title: "curl", Description: "", Language: plainText, Content: "curl\n"},
+		snippet.CreateInput{Title: "curl", Description: "", Fragments: plainFragment("curl\n")},
 	)
 
 	updated, err := app.Update.Run(t.Context(), editOf(created, "curl json", "curl -d @-\n"))
@@ -46,7 +46,7 @@ func TestEditOverSnippetChangedElsewhereIsRefused(t *testing.T) {
 	created := create(
 		t,
 		first,
-		snippet.CreateInput{Title: "curl", Description: "", Language: plainText, Content: "curl\n"},
+		snippet.CreateInput{Title: "curl", Description: "", Fragments: plainFragment("curl\n")},
 	)
 
 	_, err := second.Update.Run(t.Context(), editOf(created, "changed elsewhere", "curl\n"))
@@ -63,7 +63,7 @@ func TestEditKeepsContentWithTabsByteForByte(t *testing.T) {
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
 	tabbed := "if x {\n\treturn\n}\n"
-	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: plainText, Content: tabbed})
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Fragments: plainFragment(tabbed)})
 
 	_, err := app.Update.Run(t.Context(), editOf(created, "go return", tabbed))
 
@@ -75,9 +75,9 @@ func TestEditChangesTheLanguage(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: plainText, Content: "go"})
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Fragments: plainFragment("go")})
 	edit := editOf(created, "go", "go")
-	edit.Language = "Go"
+	edit.Fragments[0].Language = "Go"
 
 	_, err := app.Update.Run(t.Context(), edit)
 
@@ -91,7 +91,7 @@ func TestEditKeepsALanguageTheConfigNoLongerOffers(t *testing.T) {
 	home := testapp.NewHome(t)
 	home.WriteConfig(t, "languages = [\"YAML\"]\n")
 	app := home.Start(t, testapp.RecordingTool)
-	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Language: "Go", Content: "go"})
+	created := create(t, app, snippet.CreateInput{Title: "go", Description: "", Fragments: fragmentIn("Go", "go")})
 
 	_, err := app.Update.Run(t.Context(), editOf(created, "go edited", "go"))
 
@@ -159,15 +159,16 @@ func TestEditCreatingATagNamedLikeAnotherIgnoringCaseIsRefused(t *testing.T) {
 	assert.Equal(t, map[string]int{"go": 1}, tagCounts(t, app))
 }
 
-func editOf(loaded domain.Snippet, title, content string) snippet.UpdateInput {
+func editOf(loaded domain.Snippet, title, firstContent string) snippet.UpdateInput {
+	fragments := fragmentInputsOf(loaded)
+	fragments[0].Content = firstContent
+
 	return snippet.UpdateInput{
 		SnippetID:       loaded.ID(),
-		FragmentID:      loaded.FirstFragment().ID(),
 		LoadedUpdatedAt: loaded.UpdatedAt(),
 		Title:           title,
 		Description:     loaded.Description().String(),
-		Language:        loaded.FirstFragment().Language().String(),
-		Content:         content,
+		Fragments:       fragments,
 		Tags:            loaded.Tags(),
 		NewTags:         nil,
 	}

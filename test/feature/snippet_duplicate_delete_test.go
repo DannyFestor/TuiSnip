@@ -26,8 +26,7 @@ func TestDuplicateMatchesTheOriginalInEveryFieldButIDsAndTimestamps(t *testing.T
 	original := testapp.SeedSnippet(t, app, snippet.CreateInput{
 		Title:       "Prune everything",
 		Description: "Reclaim disk space",
-		Language:    "Bash",
-		Content:     "docker system prune\n",
+		Fragments:   fragmentIn("Bash", "docker system prune\n"),
 		FolderID:    scripts.ID(),
 		Tags:        []domain.Tag{shell},
 	})

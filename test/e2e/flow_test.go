@@ -104,7 +104,7 @@ func createPruneSnippet(screen *session) {
 	screen.press(keypress.Special(tea.KeyTab))
 	screen.press(keypress.Typed("Reclaim")...)
 	screen.press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
-	screen.press(keypress.Special(tea.KeyEnter))
+	screen.press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 	screen.press(keypress.Typed("docker")...)
 	screen.press(keypress.Special(tea.KeyEnter))
 	screen.press(keypress.Typed("prune")...)

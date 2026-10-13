@@ -174,6 +174,34 @@ func TestKeys_For(t *testing.T) {
 		)
 	})
 
+	t.Run("editor hints switching, adding, removing and moving Fragments", func(t *testing.T) {
+		t.Parallel()
+
+		keys := keysWith(
+			bound{scope: binding.ScopeEditor, name: binding.NextFragment, keys: []string{"alt+right"}},
+			bound{scope: binding.ScopeEditor, name: binding.PrevFragment, keys: []string{"alt+left"}},
+			bound{scope: binding.ScopeEditor, name: binding.AddFragment, keys: []string{"ctrl+n"}},
+			bound{scope: binding.ScopeEditor, name: binding.RemoveFragment, keys: []string{"ctrl+x"}},
+			bound{scope: binding.ScopeEditor, name: binding.MoveFragmentLeft, keys: []string{"alt+shift+left"}},
+			bound{scope: binding.ScopeEditor, name: binding.MoveFragmentRight, keys: []string{"alt+shift+right"}},
+		)
+
+		got := keys.For(binding.ScopeEditor).ShortHelp()
+
+		assert.Equal(
+			t,
+			[]string{
+				"alt+right next Fragment",
+				"alt+left previous Fragment",
+				"ctrl+n add Fragment",
+				"ctrl+x remove Fragment",
+				"alt+shift+left move Fragment left",
+				"alt+shift+right move Fragment right",
+			},
+			hintTexts(got),
+		)
+	})
+
 	t.Run("Content matches edit_tags and lists it in full help", func(t *testing.T) {
 		t.Parallel()
 

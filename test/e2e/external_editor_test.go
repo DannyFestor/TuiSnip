@@ -78,9 +78,8 @@ func startWithEditor(t *testing.T, editor testapp.Editor) (*bootstrap.App, domai
 	app := home.Start(t, testapp.RecordingTool)
 
 	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{
-		Title:    rootTitle,
-		Language: "Bash",
-		Content:  storedCommand,
+		Title:     rootTitle,
+		Fragments: []snippet.FragmentInput{{Language: "Bash", Content: storedCommand}},
 	})
 
 	return app, stored

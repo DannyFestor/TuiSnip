@@ -34,7 +34,7 @@ func TestModel_editOverlay(t *testing.T) {
 		snippets := numberedSnippets(t, 3)
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
-			Title: "Prune", Description: "", Language: "plaintext", Content: "",
+			Title: "Prune", Description: "", Fragments: []snippet.FragmentInput{{Language: "plaintext"}},
 		}).Return(snippets[2], nil)
 		screen := start(t, creatingModel(t, creator, listerReturning(t, snippets[:2], snippets)), wideWidth, wideHeight)
 
@@ -80,7 +80,10 @@ func TestModel_editOverlay(t *testing.T) {
 		tags := sampleTagCounts(t)
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
-			Title: "Prune", Language: "plaintext", Tags: []domain.Tag{tags[1].Tag}, NewTags: []string{"api"},
+			Title:     "Prune",
+			Fragments: []snippet.FragmentInput{{Language: "plaintext"}},
+			Tags:      []domain.Tag{tags[1].Tag},
+			NewTags:   []string{"api"},
 		}).Return(domain.Snippet{}, errDatabaseLocked)
 		with := actions{
 			lister:     listerOf(t),
@@ -137,12 +140,15 @@ func TestModel_editOverlay(t *testing.T) {
 		updater := NewMockSnippetUpdater(t)
 		updater.EXPECT().Run(mock.Anything, snippet.UpdateInput{
 			SnippetID:       snippets[0].ID(),
-			FragmentID:      snippets[0].FirstFragment().ID(),
 			LoadedUpdatedAt: snippets[0].UpdatedAt(),
 			Title:           "Snippet 1 edited",
 			Description:     "Description 1",
-			Language:        "plaintext",
-			Content:         "",
+			Fragments: []snippet.FragmentInput{{
+				ID:       snippets[0].FirstFragment().ID(),
+				Title:    snippets[0].FirstFragment().Title().String(),
+				Language: "plaintext",
+				Content:  snippets[0].FirstFragment().Content().String(),
+			}},
 		}).Return(edited, nil)
 		lister := listerReturning(t, snippets, []domain.Snippet{edited, snippets[1]})
 		screen := start(t, updatingModel(t, updater, lister), wideWidth, wideHeight)

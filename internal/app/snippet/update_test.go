@@ -2,6 +2,7 @@ package snippet_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func TestUpdate_Run(t *testing.T) {
 		repo.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		input := updateInput(stored, "curl", "", "curl")
-		input.Language = "Bash"
+		input.Fragments[0].Language = "Bash"
 
 		updated, err := newUpdate(t, repo).Run(t.Context(), input)
 
@@ -122,26 +123,37 @@ func TestUpdate_Run(t *testing.T) {
 		assert.Equal(t, "if x {\n\treturn\n}\n", updated.FirstFragment().Content().String())
 	})
 
-	t.Run("edits the named Fragment and keeps the others", func(t *testing.T) {
+	t.Run("saves the Fragments it lists, in its order and with their titles", func(t *testing.T) {
 		t.Parallel()
 
-		stored := storedSnippet(t, "curl")
+		ids := testkit.NewSequentialIDs()
+		stored := storedSnippetWith(t, ids, "curl")
 		repo := NewMockUpdateRepository(t)
 		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
 		repo.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-		input := updateInput(stored, "curl", "", `{"a": 1}`)
-		input.FragmentID = stored.Fragments()[1].ID()
-		input.Language = "JSON"
+		listed := updateInput(stored, "curl", "", "curl")
+		listed.Fragments[2].Title = " NOTES "
+		added := snippet.FragmentInput{
+			ID:       domain.FragmentID{},
+			Title:    "put.sh",
+			Language: "Bash",
+			Content:  "curl -X PUT",
+		}
+		listed.Fragments = []snippet.FragmentInput{listed.Fragments[2], added, listed.Fragments[0]}
 
-		updated, err := newUpdate(t, repo).Run(t.Context(), input)
+		updated, err := newUpdateWith(t, repo, ids).Run(t.Context(), listed)
 
 		require.NoError(t, err)
 		require.Len(t, updated.Fragments(), 3)
-		assert.Equal(t, stored.Fragments()[0], updated.Fragments()[0])
-		assert.Equal(t, `{"a": 1}`, updated.Fragments()[1].Content().String())
-		assert.Equal(t, "body.json", updated.Fragments()[1].Title().String())
-		assert.Equal(t, stored.Fragments()[2], updated.Fragments()[2])
+		assert.Equal(t, stored.Fragments()[2].ID(), updated.Fragments()[0].ID())
+		assert.Equal(t, "NOTES", updated.Fragments()[0].Title().String())
+		assert.NotContains(t, []domain.FragmentID{{}, stored.Fragments()[0].ID()}, updated.Fragments()[1].ID())
+		assert.Equal(t, "put.sh", updated.Fragments()[1].Title().String())
+		assert.Equal(t, "Bash", updated.Fragments()[1].Language().String())
+		assert.Equal(t, "curl -X PUT", updated.Fragments()[1].Content().String())
+		assert.Equal(t, createdAt(), updated.Fragments()[1].CreatedAt())
+		assert.Equal(t, stored.Fragments()[0], updated.Fragments()[2])
 	})
 
 	t.Run("passes up a Fragment the Snippet doesn't hold without saving", func(t *testing.T) {
@@ -151,12 +163,26 @@ func TestUpdate_Run(t *testing.T) {
 		repo := NewMockUpdateRepository(t)
 		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
 		input := updateInput(stored, "curl", "", "curl")
-		input.FragmentID = testkit.Fragment(t, testkit.FragmentSpec{}).ID()
+		input.Fragments[0].ID = testkit.Fragment(t, testkit.FragmentSpec{}).ID()
 
 		_, err := newUpdate(t, repo).Run(t.Context(), input)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 		assert.ErrorContains(t, err, "snippet.Update: ")
+	})
+
+	t.Run("refuses to save no Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "curl")
+		repo := NewMockUpdateRepository(t)
+		repo.EXPECT().Find(mock.Anything, stored.ID()).Return(stored, nil)
+		input := updateInput(stored, "curl", "", "curl")
+		input.Fragments = nil
+
+		_, err := newUpdate(t, repo).Run(t.Context(), input)
+
+		require.ErrorIs(t, err, domain.ErrNoFragment)
 	})
 
 	t.Run("reports every invalid field at once without loading", func(t *testing.T) {
@@ -167,17 +193,36 @@ func TestUpdate_Run(t *testing.T) {
 		input := updateInput(
 			stored, " ", strings.Repeat("d", maxDescriptionRunes+1), strings.Repeat("c", maxContentBytes+1),
 		)
-		input.Language = "golang"
+		input.Fragments[0].Language = "golang"
+		input.Fragments[1].Title = strings.Repeat("t", maxFragmentTitleRunes+1)
 
 		_, err := newUpdate(t, NewMockUpdateRepository(t)).Run(t.Context(), input)
 
 		require.ErrorIs(t, err, value.ErrBlankTitle)
 		require.ErrorIs(t, err, value.ErrUnknownLanguage)
+		require.ErrorIs(t, err, value.ErrFragmentTitleTooLong)
 		assert.Equal(
 			t,
-			[]domain.Field{domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent},
+			[]domain.Field{
+				domain.FieldTitle, domain.FieldDescription, domain.FieldLanguage, domain.FieldContent,
+				domain.FieldFragmentTitle,
+			},
 			fieldsOf(domain.FieldErrors(err)),
 		)
+	})
+
+	t.Run("names the position of the first Fragment with an invalid field", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, "")
+		input := updateInput(stored, "curl", "", "")
+		input.Fragments[1].Content = strings.Repeat("c", maxContentBytes+1)
+
+		_, err := newUpdate(t, NewMockUpdateRepository(t)).Run(t.Context(), input)
+
+		fragmentErr, ok := errors.AsType[domain.FragmentError](err)
+		require.True(t, ok)
+		assert.Equal(t, 1, fragmentErr.Position)
 	})
 
 	t.Run("passes up a Snippet that is gone", func(t *testing.T) {
@@ -211,7 +256,13 @@ func TestUpdate_Run(t *testing.T) {
 func newUpdate(t *testing.T, repo snippet.UpdateRepository) *snippet.Update {
 	t.Helper()
 
-	update, err := snippet.NewUpdate(repo, testkit.NewSequentialIDs(), fixedClock())
+	return newUpdateWith(t, repo, testkit.NewSequentialIDs())
+}
+
+func newUpdateWith(t *testing.T, repo snippet.UpdateRepository, ids snippet.IDGenerator) *snippet.Update {
+	t.Helper()
+
+	update, err := snippet.NewUpdate(repo, ids, fixedClock())
 	require.NoError(t, err)
 
 	return update
@@ -220,9 +271,13 @@ func newUpdate(t *testing.T, repo snippet.UpdateRepository) *snippet.Update {
 func storedSnippet(t *testing.T, content string) domain.Snippet {
 	t.Helper()
 
-	created := createdAt().Add(-time.Hour)
+	return storedSnippetWith(t, testkit.NewSequentialIDs(), content)
+}
 
-	ids := testkit.NewSequentialIDs()
+func storedSnippetWith(t *testing.T, ids *testkit.SequentialIDs, content string) domain.Snippet {
+	t.Helper()
+
+	created := createdAt().Add(-time.Hour)
 
 	return testkit.Snippet(t, testkit.SnippetSpec{
 		Fragments: []testkit.FragmentSpec{
@@ -235,15 +290,25 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 	})
 }
 
-func updateInput(stored domain.Snippet, title, description, content string) snippet.UpdateInput {
+func updateInput(stored domain.Snippet, title, description, firstContent string) snippet.UpdateInput {
+	fragments := make([]snippet.FragmentInput, 0, len(stored.Fragments()))
+	for _, fragment := range stored.Fragments() {
+		fragments = append(fragments, snippet.FragmentInput{
+			ID:       fragment.ID(),
+			Title:    fragment.Title().String(),
+			Language: fragment.Language().String(),
+			Content:  fragment.Content().String(),
+		})
+	}
+
+	fragments[0].Content = firstContent
+
 	return snippet.UpdateInput{
 		SnippetID:       stored.ID(),
-		FragmentID:      stored.FirstFragment().ID(),
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     description,
-		Language:        stored.FirstFragment().Language().String(),
-		Content:         content,
+		Fragments:       fragments,
 		Tags:            stored.Tags(),
 		NewTags:         nil,
 	}

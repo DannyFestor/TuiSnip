@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	maxDescriptionRunes = 2000
-	maxContentBytes     = 256 * 1024
+	maxDescriptionRunes   = 2000
+	maxFragmentTitleRunes = 200
+	maxContentBytes       = 256 * 1024
 )
 
 var errDatabaseLocked = errors.New("database is locked")
@@ -63,8 +64,7 @@ func TestCreate_Run(t *testing.T) {
 		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
 			Title:       "  curl json ",
 			Description: "POST with a JSON body",
-			Language:    "plaintext",
-			Content:     "curl -d @body.json\n",
+			Fragments:   []snippet.FragmentInput{{Language: "plaintext", Content: "curl -d @body.json\n"}},
 		})
 
 		require.NoError(t, err)
@@ -79,11 +79,44 @@ func TestCreate_Run(t *testing.T) {
 		inserter.EXPECT().Insert(mock.Anything, mock.Anything).Return(nil)
 
 		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
-			Title: "curl json", Description: "", Language: "Bash", Content: "curl\n",
+			Title: "curl json", Fragments: []snippet.FragmentInput{{Language: "Bash", Content: "curl\n"}},
 		})
 
 		require.NoError(t, err)
 		assert.Equal(t, "Bash", created.FirstFragment().Language().String())
+	})
+
+	t.Run("inserts every Fragment it lists, in order, each under a new ID", func(t *testing.T) {
+		t.Parallel()
+
+		inserter := NewMockInserter(t)
+		inserter.EXPECT().Insert(mock.Anything, mock.Anything).Return(nil)
+
+		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
+			Title: "curl json",
+			Fragments: []snippet.FragmentInput{
+				{Title: " post.sh ", Language: "Bash", Content: "curl -d @body.json"},
+				{Title: "body.json", Language: "JSON", Content: "{}"},
+			},
+		})
+
+		require.NoError(t, err)
+
+		fragments := created.Fragments()
+		require.Len(t, fragments, 2)
+		assert.Equal(t, "post.sh", fragments[0].Title().String())
+		assert.Equal(t, "Bash", fragments[0].Language().String())
+		assert.Equal(t, "body.json", fragments[1].Title().String())
+		assert.Equal(t, "{}", fragments[1].Content().String())
+		assert.NotEqual(t, fragments[0].ID(), fragments[1].ID())
+	})
+
+	t.Run("refuses a Snippet with no Fragment", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := newCreate(t, NewMockInserter(t)).Run(t.Context(), snippet.CreateInput{Title: "curl json"})
+
+		require.ErrorIs(t, err, domain.ErrNoFragment)
 	})
 
 	t.Run("files the Snippet in the given Folder carrying the given Tags", func(t *testing.T) {
@@ -95,7 +128,7 @@ func TestCreate_Run(t *testing.T) {
 		inserter.EXPECT().Insert(mock.Anything, mock.AnythingOfType("domain.Snippet")).Return(nil)
 
 		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
-			Title: "prune", Language: "plaintext", FolderID: folder.ID(), Tags: []domain.Tag{tag},
+			Title: "prune", Fragments: plainTextFragment(), FolderID: folder.ID(), Tags: []domain.Tag{tag},
 		})
 
 		require.NoError(t, err)
@@ -111,7 +144,7 @@ func TestCreate_Run(t *testing.T) {
 		inserter.EXPECT().Insert(mock.Anything, mock.AnythingOfType("domain.Snippet")).Return(nil)
 
 		created, err := newCreate(t, inserter).Run(t.Context(), snippet.CreateInput{
-			Title: "prune", Language: "plaintext", Tags: []domain.Tag{stored}, NewTags: []string{" Docker "},
+			Title: "prune", Fragments: plainTextFragment(), Tags: []domain.Tag{stored}, NewTags: []string{" Docker "},
 		})
 
 		require.NoError(t, err)
@@ -129,13 +162,17 @@ func TestCreate_Run(t *testing.T) {
 		_, err := newCreate(t, NewMockInserter(t)).Run(t.Context(), snippet.CreateInput{
 			Title:       "   ",
 			Description: strings.Repeat("d", maxDescriptionRunes+1),
-			Language:    "golang",
-			Content:     strings.Repeat("c", maxContentBytes+1),
-			NewTags:     []string{"a,b"},
+			Fragments: []snippet.FragmentInput{{
+				Title:    strings.Repeat("t", maxFragmentTitleRunes+1),
+				Language: "golang",
+				Content:  strings.Repeat("c", maxContentBytes+1),
+			}},
+			NewTags: []string{"a,b"},
 		})
 
 		require.ErrorIs(t, err, value.ErrBlankTitle)
 		require.ErrorIs(t, err, value.ErrDescriptionTooLong)
+		require.ErrorIs(t, err, value.ErrFragmentTitleTooLong)
 		require.ErrorIs(t, err, value.ErrUnknownLanguage)
 		require.ErrorIs(t, err, value.ErrContentTooLong)
 		require.ErrorIs(t, err, value.ErrTagNameHasComma)
@@ -144,6 +181,7 @@ func TestCreate_Run(t *testing.T) {
 			[]domain.Field{
 				domain.FieldTitle,
 				domain.FieldDescription,
+				domain.FieldFragmentTitle,
 				domain.FieldLanguage,
 				domain.FieldContent,
 				domain.FieldTagName,
@@ -159,7 +197,7 @@ func TestCreate_Run(t *testing.T) {
 		inserter.EXPECT().Insert(mock.Anything, mock.Anything).Return(errDatabaseLocked)
 
 		_, err := newCreate(t, inserter).Run(
-			t.Context(), snippet.CreateInput{Title: "curl json", Description: "", Language: "plaintext", Content: ""},
+			t.Context(), snippet.CreateInput{Title: "curl json", Fragments: plainTextFragment()},
 		)
 
 		require.ErrorIs(t, err, errDatabaseLocked)
@@ -190,6 +228,10 @@ func assertCreatedAtRoot(t *testing.T, created domain.Snippet) {
 	assert.Equal(t, createdAt(), created.CreatedAt())
 	assert.Equal(t, createdAt(), created.UpdatedAt())
 	assert.Equal(t, createdAt(), fragment.CreatedAt())
+}
+
+func plainTextFragment() []snippet.FragmentInput {
+	return []snippet.FragmentInput{{Language: value.PlainText().String()}}
 }
 
 func fieldsOf(fieldErrors []domain.FieldError) []domain.Field {

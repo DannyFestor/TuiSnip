@@ -25,10 +25,6 @@ func editableContent() readOnlyContent {
 	return readOnlyContent{notice: "", content: "", language: value.Language{}, highlighted: ""}
 }
 
-func readOnlyIfTabbed(content string, language value.Language, codeStyle string) readOnlyContent {
-	return readOnlyIf(content, language, codeStyle, noticeIfTabbed)
-}
-
 func readOnlyIfUneditable(content string, language value.Language, codeStyle string) readOnlyContent {
 	return readOnlyIf(content, language, codeStyle, noticeIfTabbed, noticeIfOverlong)
 }

@@ -60,6 +60,43 @@ func TestStrip_View(t *testing.T) {
 	})
 }
 
+func TestStrip_OfTabs(t *testing.T) {
+	t.Parallel()
+
+	styles := look.NewStyles(look.SchemeDark)
+	titled := testkit.Fragment(t, testkit.FragmentSpec{Title: "main.go", Language: "Go"})
+	untitled := testkit.Fragment(t, testkit.FragmentSpec{Language: "YAML"})
+
+	t.Run("labels a tab by its title, or its Language without one", func(t *testing.T) {
+		t.Parallel()
+
+		strip := fragmentstrip.New(styles).OfTabs([]fragmentstrip.Tab{
+			{Title: titled.Title(), Language: titled.Language()},
+			{Title: untitled.Title(), Language: untitled.Language()},
+		})
+
+		assert.Equal(t, " main.go │ YAML ", ansi.Strip(strip.View(wide)))
+	})
+
+	t.Run("hides for one untitled tab", func(t *testing.T) {
+		t.Parallel()
+
+		strip := fragmentstrip.New(styles).OfTabs(
+			[]fragmentstrip.Tab{{Title: untitled.Title(), Language: untitled.Language()}},
+		)
+
+		assert.False(t, strip.Visible())
+	})
+}
+
+func TestStrip_Showing(t *testing.T) {
+	t.Parallel()
+
+	three := []testkit.FragmentSpec{{Title: "a.go"}, {Title: "b.go"}, {Title: "c.go"}}
+
+	assert.Equal(t, 2, stripOf(t, three...).Showing(2).Shown())
+}
+
 func TestStrip_Shown(t *testing.T) {
 	t.Parallel()
 

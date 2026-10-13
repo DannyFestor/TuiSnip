@@ -2,10 +2,9 @@
 INSERT INTO fragments (id, snippet_id, position, title, language, content, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
--- name: UpdateFragment :exec
-UPDATE fragments
-SET title = ?, language = ?, content = ?, updated_at = ?
-WHERE id = ?;
+-- name: DeleteFragmentsBySnippet :exec
+DELETE FROM fragments
+WHERE snippet_id = ?;
 
 -- name: ListFragmentsBySnippet :many
 SELECT id, snippet_id, position, language, content, created_at, updated_at, title

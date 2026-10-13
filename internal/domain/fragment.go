@@ -72,16 +72,19 @@ func (f Fragment) Duplicate(id FragmentID, now time.Time) (Fragment, error) {
 	return duplicate, nil
 }
 
-func (f Fragment) Edit(language value.Language, content value.Content, now time.Time) (Fragment, error) {
+func (f Fragment) Edit(
+	title value.FragmentTitle, language value.Language, content value.Content, now time.Time,
+) (Fragment, error) {
 	err := requireTimestamps(f.createdAt, now)
 	if err != nil {
 		return Fragment{}, fmt.Errorf("domain.Fragment.Edit: %w", err)
 	}
 
-	if language == f.language && content == f.content {
+	if title == f.title && language == f.language && content == f.content {
 		return f, nil
 	}
 
+	f.title = title
 	f.language = language
 	f.content = content
 	f.updatedAt = now

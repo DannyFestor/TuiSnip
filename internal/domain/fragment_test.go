@@ -88,13 +88,13 @@ func TestFragment_Edit(t *testing.T) {
 	later := created.Add(time.Hour)
 	fragment := testkit.Fragment(
 		t,
-		testkit.FragmentSpec{ID: fragmentID(), Language: "Bash", Content: "ls", CreatedAt: created},
+		testkit.FragmentSpec{ID: fragmentID(), Title: "list.sh", Language: "Bash", Content: "ls", CreatedAt: created},
 	)
 
 	t.Run("takes new content and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls -la"), later)
+		edited, err := fragment.Edit(fragment.Title(), mustLanguage(t, "Bash"), mustContent(t, "ls -la"), later)
 
 		require.NoError(t, err)
 		assert.Equal(t, "ls -la", edited.Content().String())
@@ -105,7 +105,7 @@ func TestFragment_Edit(t *testing.T) {
 	t.Run("takes a new Language and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := fragment.Edit(mustLanguage(t, "Python"), mustContent(t, "ls"), later)
+		edited, err := fragment.Edit(fragment.Title(), mustLanguage(t, "Python"), mustContent(t, "ls"), later)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Python", edited.Language().String())
@@ -113,10 +113,23 @@ func TestFragment_Edit(t *testing.T) {
 		assert.Equal(t, "Bash", fragment.Language().String(), "the original is untouched")
 	})
 
-	t.Run("keeps its time when the Language and content are the same", func(t *testing.T) {
+	t.Run("takes a new title and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls"), later)
+		edited, err := fragment.Edit(
+			mustFragmentTitle(t, "tree.sh"), mustLanguage(t, "Bash"), mustContent(t, "ls"), later,
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, "tree.sh", edited.Title().String())
+		assert.Equal(t, later, edited.UpdatedAt())
+		assert.Equal(t, "list.sh", fragment.Title().String(), "the original is untouched")
+	})
+
+	t.Run("keeps its time when the title, Language and content are the same", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := fragment.Edit(fragment.Title(), mustLanguage(t, "Bash"), mustContent(t, "ls"), later)
 
 		require.NoError(t, err)
 		assert.Equal(t, created, edited.UpdatedAt())
@@ -125,7 +138,9 @@ func TestFragment_Edit(t *testing.T) {
 	t.Run("rejects a time before creation", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := fragment.Edit(mustLanguage(t, "Bash"), mustContent(t, "ls -la"), created.Add(-time.Hour))
+		_, err := fragment.Edit(
+			fragment.Title(), mustLanguage(t, "Bash"), mustContent(t, "ls -la"), created.Add(-time.Hour),
+		)
 
 		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
 	})

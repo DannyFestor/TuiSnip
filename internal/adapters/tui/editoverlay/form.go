@@ -78,7 +78,7 @@ func newForm(keys formKeys, styles look.Styles, original entered, shown int) (fo
 	filled.title.SetValue(original.title)
 	filled.description.SetValue(original.description)
 
-	return filled.withDraft(filled.tabs.current()).focused(domain.FieldTitle)
+	return filled.withDraft(filled.tabs.shownDraft()).focused(domain.FieldTitle)
 }
 
 func (f form) withContent(content string) form {

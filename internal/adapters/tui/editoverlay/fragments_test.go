@@ -109,25 +109,28 @@ func TestEditing_FragmentTabs(t *testing.T) {
 func TestEditing_FragmentChanges(t *testing.T) {
 	t.Parallel()
 
-	t.Run("adds a Fragment after the current one, in the Folder's Default Language, and shows it", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"adds a Fragment after the Shown Fragment, in the Folder's Default Language, and shows it",
+		func(t *testing.T) {
+			t.Parallel()
 
-		stored := deploySnippet(t)
-		screen := editingStoredIn(t, stored, language(t, "Bash"))
-		screen.Press(addFragment())
+			stored := deploySnippet(t)
+			screen := editingStoredIn(t, stored, language(t, "Bash"))
+			screen.Press(addFragment())
 
-		assert.Contains(t, screen.Screen(), " main.go │ Bash │ YAML ")
-		assert.Contains(t, screen.Screen(), "Language       Bash")
-		assert.Contains(t, screen.Screen(), unsavedTitle)
+			assert.Contains(t, screen.Screen(), " main.go │ Bash │ YAML ")
+			assert.Contains(t, screen.Screen(), "Language       Bash")
+			assert.Contains(t, screen.Screen(), unsavedTitle)
 
-		screen.Press(save())
+			screen.Press(save())
 
-		fragments := savedFragments(t, screen)
-		require.Len(t, fragments, 3)
-		assert.Equal(t, snippet.FragmentInput{ID: domain.FragmentID{}, Language: "Bash"}, fragments[1])
-	})
+			fragments := savedFragments(t, screen)
+			require.Len(t, fragments, 3)
+			assert.Equal(t, snippet.FragmentInput{ID: domain.FragmentID{}, Language: "Bash"}, fragments[1])
+		},
+	)
 
-	t.Run("moves the current Fragment right and left", func(t *testing.T) {
+	t.Run("moves the Shown Fragment right and left", func(t *testing.T) {
 		t.Parallel()
 
 		stored := deploySnippet(t)
@@ -151,7 +154,7 @@ func TestEditing_FragmentChanges(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
 	})
 
-	t.Run("asks before removing the current Fragment", func(t *testing.T) {
+	t.Run("asks before removing the Shown Fragment", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editingStored(t, deploySnippet(t))
@@ -161,7 +164,7 @@ func TestEditing_FragmentChanges(t *testing.T) {
 		assert.Contains(t, screen.Screen(), removeYAMLQuestion)
 	})
 
-	t.Run("removes the current Fragment once confirmed", func(t *testing.T) {
+	t.Run("removes the Shown Fragment once confirmed", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editingStored(t, deploySnippet(t))
@@ -230,7 +233,7 @@ func TestEditing_FragmentChanges(t *testing.T) {
 func TestEditing_FragmentExternalEdit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("opens the current Fragment in the external editor", func(t *testing.T) {
+	t.Run("opens the Shown Fragment in the external editor", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editingStored(t, deploySnippet(t))
@@ -239,7 +242,7 @@ func TestEditing_FragmentExternalEdit(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{externalEditAsked("on: push\n", language(t, "YAML"))}, screen.Outcomes())
 	})
 
-	t.Run("puts the edited content into the current Fragment", func(t *testing.T) {
+	t.Run("puts the edited content into the Shown Fragment", func(t *testing.T) {
 		t.Parallel()
 
 		stored := deploySnippet(t)

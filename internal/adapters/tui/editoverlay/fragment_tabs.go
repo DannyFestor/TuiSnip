@@ -16,7 +16,7 @@ func newFragmentTabs(styles look.Styles, drafts []fragmentDraft, shown int) frag
 	return fragmentTabs{drafts: nil, strip: fragmentstrip.New(styles)}.with(slices.Clone(drafts), shown)
 }
 
-func (t fragmentTabs) current() fragmentDraft {
+func (t fragmentTabs) shownDraft() fragmentDraft {
 	return t.drafts[t.shown()]
 }
 
@@ -46,7 +46,7 @@ func (t fragmentTabs) restyled(styles look.Styles) fragmentTabs {
 	return t
 }
 
-func (t fragmentTabs) withCurrent(draft fragmentDraft) fragmentTabs {
+func (t fragmentTabs) withShown(draft fragmentDraft) fragmentTabs {
 	drafts := t.all()
 	drafts[t.shown()] = draft
 

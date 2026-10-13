@@ -75,7 +75,7 @@ Creating a new Snippet from the clipboard's current content.
 _Avoid_: Import, paste, grab
 
 **Shown Fragment**:
-The Fragment the Snippet pane displays: the first one, unless the user switches to another or a Search hit matched another. Copy and the external editor act on it.
+The Fragment the Snippet pane or the edit overlay displays: the first one, unless the user switches to another or a Search hit matched another. In the edit overlay it is the Fragment the Fragment title, Language and Content rows edit. Copy and the external editor act on it.
 _Avoid_: Current fragment, active fragment, selected fragment, tab
 
 **Copy**:

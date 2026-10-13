@@ -138,11 +138,11 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 ```
 
 - Fields, top to bottom: Title, Description, Tags, Fragment title, Language, Content. The overlay opens on Title. `•` in the title marks unsaved changes.
-- **Fragments.** Fragment title, Language and Content edit the current Fragment. The overlay opens on the first Fragment, or on the Fragment an external edit returned. Above the Fragment title row sits the same tab strip as in the Snippet pane, shown for two or more Fragments or for one titled Fragment. The Fragment title row is always shown. A typed Fragment title relabels its tab as it is typed, and a Fragment without one is labelled by its Language.
+- **Fragments.** Fragment title, Language and Content edit the Shown Fragment. The overlay opens on the first Fragment, or on the Fragment an external edit returned. Above the Fragment title row sits the same tab strip as in the Snippet pane, shown for two or more Fragments or for one titled Fragment. The Fragment title row is always shown. A typed Fragment title relabels its tab as it is typed, and a Fragment without one is labelled by its Language.
   - `alt+right` / `alt+left` switch to the next / previous Fragment, wrapping around at either end, and a click on a tab switches to it. Each Fragment keeps its unsaved edits while another is shown.
-  - `ctrl+n` adds an empty, untitled Fragment right after the current one and switches to it. Its Language is the Default Language of the Snippet's Folder, or of the Folder a new Snippet goes to. The Fragment title never sets the Language.
-  - `ctrl+x` removes the current Fragment after a confirmation titled "Remove Fragment", default No: `Remove Fragment "main.go"? [y/N]`, naming the Fragment by its tab label. The last Fragment can't be removed: the status line says "A Snippet needs a Fragment; delete the Snippet instead".
-  - `alt+shift+left` / `alt+shift+right` move the current Fragment one place left / right. They do nothing at either end.
+  - `ctrl+n` adds an empty, untitled Fragment right after the Shown Fragment and switches to it. Its Language is the Default Language of the Snippet's Folder, or of the Folder a new Snippet goes to. The Fragment title never sets the Language.
+  - `ctrl+x` removes the Shown Fragment after a confirmation titled "Remove Fragment", default No: `Remove Fragment "main.go"? [y/N]`, naming the Fragment by its tab label. The last Fragment can't be removed: the status line says "A Snippet needs a Fragment; delete the Snippet instead".
+  - `alt+shift+left` / `alt+shift+right` move the Shown Fragment one place left / right. They do nothing at either end.
   - These keys work outside the Content textarea. `esc` leaves the textarea first.
   - Saving writes every Fragment in the order the strip shows. Cancelling discards every Fragment change, after the usual [y/N].
   - A save refused for a Fragment's field, such as a Fragment title longer than 200 characters ("Fragment title is longer than 200 characters"), switches to that Fragment and marks the field.
@@ -158,7 +158,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
   - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
   - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
-- `ctrl+e` opens the current Fragment in the external editor from any field. The temp file is named from its Language.
+- `ctrl+e` opens the Shown Fragment in the external editor from any field. The temp file is named from its Language.
 - **Content over 10,000 lines** is read-only, like [Content with tabs](#content-with-tabs), because the textarea would cut it at 10,000 lines. That covers a stored Snippet opened with `e`, and externally edited content, which lands as an unsaved change. Lines are counted the way a paste into empty Content is, so exactly 10,000 lines stay editable. The Content field says "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Longer than 10,000 lines: read-only here". Content that also has a tab gets the tabs notice. Saving keeps the content byte for byte. When the external editor returns it with 10,000 lines or fewer and no tab, it is editable again.
 
 ### Content with tabs
@@ -289,7 +289,7 @@ On by default. `mouse = false` in config turns it off ([config](config.md#keys))
 | Click in a Pane | focuses it |
 | Click a row | selects it, as moving the cursor there would; in Folders or Tags it becomes the Browse selection |
 | Click a label in the Snippet pane's tab strip | shows that Fragment |
-| Click a label in the edit overlay's tab strip | makes that Fragment the current one |
+| Click a label in the edit overlay's tab strip | makes that Fragment the Shown Fragment |
 | Click a Folder's `▸`/`▾` | collapses or expands it, and selects it as a click on its row would |
 | Double-click a row | same as `enter` |
 | Wheel | scrolls the Pane under the pointer without moving focus |

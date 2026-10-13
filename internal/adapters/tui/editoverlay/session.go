@@ -152,7 +152,7 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 		return outcome.Stay(next)
 	case outcome.FragmentRemoveConfirmed:
 		next := s
-		next.form = s.form.withCurrentFragmentRemoved()
+		next.form = s.form.withShownFragmentRemoved()
 
 		return outcome.Stay(next)
 	case outcome.TagsEdited:
@@ -245,7 +245,7 @@ func (s Session) withFragmentAdded() Session {
 func (s Session) confirmingFragmentRemoval() outcome.Step {
 	question := confirm.Question{
 		Title: removeFragmentTitle,
-		Text:  removeFragmentTitle + ` "` + s.form.currentFragmentLabel() + `"?`,
+		Text:  removeFragmentTitle + ` "` + s.form.shownFragmentName() + `"?`,
 	}
 
 	return s.confirming(question, outcome.FragmentRemoveConfirmed{})
@@ -253,7 +253,7 @@ func (s Session) confirmingFragmentRemoval() outcome.Step {
 
 func (s Session) externalEditAsked() outcome.Step {
 	return outcome.Stay(s).Passing(outcome.ExternalEditAsked{
-		Content:   s.form.currentDraft().content,
+		Content:   s.form.shownDraft().content,
 		Language:  s.form.language,
 		Snippet:   domain.Snippet{},
 		Fragment:  domain.Fragment{},

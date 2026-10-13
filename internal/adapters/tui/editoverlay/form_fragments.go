@@ -12,11 +12,11 @@ import (
 )
 
 func (f form) fragments() fragmentTabs {
-	return f.tabs.withCurrent(f.currentDraft())
+	return f.tabs.withShown(f.shownDraft())
 }
 
-func (f form) currentDraft() fragmentDraft {
-	draft := f.tabs.current()
+func (f form) shownDraft() fragmentDraft {
+	draft := f.tabs.shownDraft()
 	draft.title = f.fragmentTitle.Value()
 	draft.language = f.language
 	draft.content = f.contentValue()
@@ -24,8 +24,8 @@ func (f form) currentDraft() fragmentDraft {
 	return draft
 }
 
-func (f form) currentFragmentLabel() string {
-	return f.currentDraft().tab().Label()
+func (f form) shownFragmentName() string {
+	return f.shownDraft().tab().Label()
 }
 
 func (f form) contentValue() string {
@@ -71,7 +71,7 @@ func (f form) withFragmentAdded(language value.Language) form {
 	})
 }
 
-func (f form) withCurrentFragmentRemoved() form {
+func (f form) withShownFragmentRemoved() form {
 	return f.withTabsChanged(fragmentTabs.removed)
 }
 
@@ -97,7 +97,7 @@ func (f form) withTabsChanged(change func(fragmentTabs) fragmentTabs) form {
 	next.tabs = change(f.fragments())
 	next.invalid = slices.DeleteFunc(slices.Clone(f.invalid), isFragmentField)
 
-	return next.withDraft(next.tabs.current()).resized(next.outer)
+	return next.withDraft(next.tabs.shownDraft()).resized(next.outer)
 }
 
 func (f form) withDraft(draft fragmentDraft) form {

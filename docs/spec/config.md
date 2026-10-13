@@ -147,7 +147,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 - `focus_right` and `focus_left` treat Folders and Tags as one column. `open` and `back` drill in and out. The details are in [the UI spec](ui.md#keyboard-navigation).
 - `up`, `down`, `top`, `bottom`, `page_up`, and `page_down` move the cursor in Folders, Tags, and the Snippet list, and scroll the Snippet pane.
 - `editor.open_field` moves on from a text field, opens the Tag editor or the Language picker on those fields, and enters the textarea on Content.
-- `editor.next_fragment` and `editor.prev_fragment` switch the edit overlay's current Fragment, wrapping around at either end. `editor.add_fragment` adds a Fragment after the current one, `editor.remove_fragment` removes the current one after a confirmation, and `editor.move_fragment_left` and `editor.move_fragment_right` move it one place, stopping at either end. None of them work inside the Content textarea.
+- `editor.next_fragment` and `editor.prev_fragment` switch the edit overlay's Shown Fragment, wrapping around at either end. `editor.add_fragment` adds a Fragment after the Shown Fragment, `editor.remove_fragment` removes the Shown Fragment after a confirmation, and `editor.move_fragment_left` and `editor.move_fragment_right` move it one place, stopping at either end. None of them work inside the Content textarea.
 - `search.accept` reveals the highlighted Snippet in its Folder and focuses the Snippet pane. `search.copy` copies it and closes the popup.
 - `picker.accept` picks and closes, except in the Tag editor, where it toggles the highlighted Tag or creates the typed one.
 - `picker.show_all_languages` only acts in the Language picker when `languages` is set.

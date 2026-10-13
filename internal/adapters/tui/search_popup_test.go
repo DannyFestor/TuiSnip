@@ -13,6 +13,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
@@ -65,6 +66,32 @@ func TestModel_searchPopup(t *testing.T) {
 		assert.NotContains(t, screen.screen(), searchTitle)
 		assert.Contains(t, screen.screen(), snippetPaneTitle)
 		assert.Contains(t, screen.screen(), "Reclaim disk space")
+	})
+
+	t.Run("enter keeps the Fragment the hit opened on in the Snippet pane", func(t *testing.T) {
+		t.Parallel()
+
+		deploy := deploySnippet(t)
+		thirdMatched := domain.FieldScores{
+			Fragments: []domain.FragmentScores{{Fragment: deploy.Fragments()[2], Content: 1}},
+		}
+		searcher := NewMockSnippetSearcher(t)
+		searcher.EXPECT().
+			Run(mock.Anything, search.QueryInput{Text: "k"}).
+			Return([]domain.SearchHit{domain.NewSearchHit(deploy, thirdMatched)}, nil)
+		screen := start(t, modelWith(t, actions{
+			lister:     listerOf(t, deploy),
+			treeLister: treeOf(t, emptyTree()),
+			copier:     NewMockSnippetCopier(t),
+			creator:    NewMockSnippetCreator(t),
+			searcher:   searcher,
+		}), wideWidth, wideHeight)
+
+		screen.press(keypress.Letter('/'), keypress.Letter('k'), keypress.Special(tea.KeyEnter))
+
+		assert.NotContains(t, screen.screen(), searchTitle)
+		assert.Contains(t, screen.screen(), "kubectl apply")
+		assert.NotContains(t, screen.screen(), "go build")
 	})
 
 	t.Run("ctrl+y copies the highlighted result", func(t *testing.T) {
@@ -130,6 +157,21 @@ func TestModel_searchPopupFolderPaths(t *testing.T) {
 			)
 		})
 	}
+}
+
+func deploySnippet(t *testing.T) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID: ids.NewSnippetID(),
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Content: "go build ./..."},
+			{ID: ids.NewFragmentID(), Content: "docker push"},
+			{ID: ids.NewFragmentID(), Content: "kubectl apply -f deploy.yaml"},
+		},
+	})
 }
 
 func searchingModel(t *testing.T, searcher *MockSnippetSearcher) tui.Model {

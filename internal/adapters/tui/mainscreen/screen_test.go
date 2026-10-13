@@ -1401,6 +1401,24 @@ func TestScreen_Received(t *testing.T) {
 		assert.Equal(t, 26, lineIndexOf(screen, tagPaneTitle), "Folders, holding the Browse selection, is tall")
 	})
 
+	t.Run("shows the revealed Snippet on the Fragment it was revealed on", func(t *testing.T) {
+		t.Parallel()
+
+		several := severalFragmentsSnippet(t)
+		screen := opened(t, wide(), look.NewStyles(look.SchemeDark), domain.SortOrderTitle)
+
+		screen.Send(mainscreen.SnippetsLoaded{
+			Selection: browseselection.Selection{},
+			Snippets:  []domain.Snippet{several},
+			Selecting: several.ID(),
+			Showing:   several.Fragments()[2].ID(),
+			Order:     domain.SortOrderTitle,
+		})
+
+		assert.Contains(t, screen.Screen(), "Read me")
+		assert.NotContains(t, screen.Screen(), "package main")
+	})
+
 	t.Run("expands the collapsed Folders hiding a revealed Snippet's Folder", func(t *testing.T) {
 		t.Parallel()
 

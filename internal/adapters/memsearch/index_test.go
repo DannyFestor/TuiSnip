@@ -2,6 +2,7 @@ package memsearch_test
 
 import (
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -127,6 +128,39 @@ func TestIndex_Search(t *testing.T) {
 			wantOrder: []string{"docker", "list", "notes"},
 		},
 		{
+			name: "matches the content of every Fragment",
+			snippets: []testkit.SnippetSpec{
+				{
+					Title: "a",
+					Fragments: []testkit.FragmentSpec{
+						{Content: "go"},
+						{Content: "rust"},
+						{Content: "kubectl get pods"},
+					},
+				},
+			},
+			query:     "get pods",
+			wantOrder: []string{"a"},
+		},
+		{
+			name: "matches a Fragment title fuzzily, ignoring diacritics",
+			snippets: []testkit.SnippetSpec{
+				{Title: "a", Fragments: []testkit.FragmentSpec{{}, {Title: "Café.go"}}},
+				{Title: "b"},
+			},
+			query:     "cfgo",
+			wantOrder: []string{"a"},
+		},
+		{
+			name: "ranks a Fragment title match above the same match in a Description",
+			snippets: []testkit.SnippetSpec{
+				{Title: "notes", Description: "docker"},
+				{Title: "list", Fragments: []testkit.FragmentSpec{{Title: "docker"}}},
+			},
+			query:     "docker",
+			wantOrder: []string{"list", "notes"},
+		},
+		{
 			name:      "returns no hits when nothing matches",
 			snippets:  []testkit.SnippetSpec{{Title: "curl json"}},
 			query:     "zzz",
@@ -160,6 +194,40 @@ func TestIndex_SearchBreaksTiesByMostRecentlyUpdated(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"curl newer", "curl older"}, hitTitles(hits))
+}
+
+func TestIndex_SearchOpensOnTheMatchingFragment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{name: "opens on the Fragment whose content matched", query: "kubectl", want: 2},
+		{name: "opens on the Fragment whose title matched", query: "dockerfile", want: 1},
+		{name: "opens on the first Fragment when only the title matched", query: "release", want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			snippets := buildSnippets(t, []testkit.SnippetSpec{{
+				Title: "release",
+				Fragments: []testkit.FragmentSpec{
+					{Content: "go build"},
+					{Title: "Dockerfile", Content: "FROM alpine"},
+					{Content: "kubectl apply"},
+				},
+			}})
+
+			hits, err := memsearch.NewIndex(listerOf(t, snippets)).Search(t.Context(), value.NewSearchQuery(tt.query))
+
+			require.NoError(t, err)
+			require.Len(t, hits, 1)
+			assert.Equal(t, snippets[0].Fragments()[tt.want], hits[0].Fragment())
+		})
+	}
 }
 
 func TestIndex_SearchReturnsTheListError(t *testing.T) {
@@ -248,22 +316,24 @@ func buildSnippets(t *testing.T, specs []testkit.SnippetSpec) []domain.Snippet {
 	for i := range specs {
 		spec := specs[i]
 		spec.ID = ids.NewSnippetID()
-		spec.Fragments = []testkit.FragmentSpec{fragmentWithID(spec.Fragments, ids.NewFragmentID())}
+		spec.Fragments = fragmentsWithIDs(spec.Fragments, ids)
 		snippets = append(snippets, testkit.Snippet(t, spec))
 	}
 
 	return snippets
 }
 
-func fragmentWithID(specs []testkit.FragmentSpec, id domain.FragmentID) testkit.FragmentSpec {
-	var fragment testkit.FragmentSpec
+func fragmentsWithIDs(specs []testkit.FragmentSpec, ids *testkit.SequentialIDs) []testkit.FragmentSpec {
+	fragments := []testkit.FragmentSpec{{}}
 	if len(specs) > 0 {
-		fragment = specs[0]
+		fragments = slices.Clone(specs)
 	}
 
-	fragment.ID = id
+	for i := range fragments {
+		fragments[i].ID = ids.NewFragmentID()
+	}
 
-	return fragment
+	return fragments
 }
 
 func tagsNamed(t *testing.T, names ...string) []domain.Tag {

@@ -12,7 +12,15 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+)
+
+const (
+	firstFragmentContent = "go build ./..."
+	thirdFragmentContent = "kubectl apply -f deploy.yaml"
 )
 
 func TestPopup_View(t *testing.T) {
@@ -266,7 +274,8 @@ func TestPopup_end(t *testing.T) {
 
 		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 
-		assert.Equal(t, []outcome.Outcome{outcome.SnippetRevealed{ID: snippets[1].ID()}}, screen.Outcomes())
+		revealed := outcome.SnippetRevealed{ID: snippets[1].ID(), FragmentID: snippets[1].FirstFragment().ID()}
+		assert.Equal(t, []outcome.Outcome{revealed}, screen.Outcomes())
 		assert.False(t, screen.IsOpen())
 	})
 
@@ -277,7 +286,9 @@ func TestPopup_end(t *testing.T) {
 
 		screen.Press(keypress.Special(tea.KeyEnter))
 
-		revealed := outcome.SnippetRevealed{ID: filed.ID(), FolderID: filed.FolderID()}
+		revealed := outcome.SnippetRevealed{
+			ID: filed.ID(), FolderID: filed.FolderID(), FragmentID: filed.FirstFragment().ID(),
+		}
 		assert.Equal(t, []outcome.Outcome{revealed}, screen.Outcomes())
 	})
 
@@ -322,4 +333,79 @@ func TestPopup_end(t *testing.T) {
 			assert.True(t, screen.IsOpen())
 		})
 	}
+}
+
+func TestPopup_hitOnAFragment(t *testing.T) {
+	t.Parallel()
+
+	t.Run("previews the Fragment the hit opens on", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := searchingHitOnThirdFragment(t)
+
+		assert.Contains(t, screen.Screen(), thirdFragmentContent)
+		assert.NotContains(t, screen.Screen(), firstFragmentContent)
+	})
+
+	t.Run("enter reveals the Snippet on the Fragment the hit opens on", func(t *testing.T) {
+		t.Parallel()
+
+		screen, deploy := searchingHitOnThirdFragment(t)
+
+		screen.Press(keypress.Special(tea.KeyEnter))
+
+		revealed := outcome.SnippetRevealed{ID: deploy.ID(), FragmentID: deploy.Fragments()[2].ID()}
+		assert.Contains(t, screen.Outcomes(), revealed)
+	})
+
+	t.Run("ctrl+y copies the Fragment the hit opens on", func(t *testing.T) {
+		t.Parallel()
+
+		screen, deploy := searchingHitOnThirdFragment(t)
+
+		screen.Press(keypress.Ctrl('y'))
+
+		copied := outcome.CopyRequested{ID: deploy.ID(), FragmentID: deploy.Fragments()[2].ID()}
+		assert.Contains(t, screen.Outcomes(), copied)
+	})
+
+	t.Run("previews the first Fragment again for a blank query", func(t *testing.T) {
+		t.Parallel()
+
+		screen, _ := searchingHitOnThirdFragment(t)
+
+		screen.Press(keypress.Special(tea.KeyBackspace))
+
+		assert.Contains(t, screen.Screen(), firstFragmentContent)
+	})
+}
+
+func searchingHitOnThirdFragment(t *testing.T) (*overlaytest.Driver, domain.Snippet) {
+	t.Helper()
+
+	deploy := snippetWithThreeFragments(t)
+	screen := searchingIn(t, []domain.Snippet{deploy})
+	thirdMatched := domain.FieldScores{
+		Fragments: []domain.FragmentScores{{Fragment: deploy.Fragments()[2], Content: 1}},
+	}
+
+	screen.Press(keypress.Letter('k'))
+	screen.Send(searchpopup.HitsFound{Text: "k", Hits: []domain.SearchHit{domain.NewSearchHit(deploy, thirdMatched)}})
+
+	return screen, deploy
+}
+
+func snippetWithThreeFragments(t *testing.T) domain.Snippet {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID: ids.NewSnippetID(),
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Content: firstFragmentContent},
+			{ID: ids.NewFragmentID(), Content: "docker push"},
+			{ID: ids.NewFragmentID(), Content: thirdFragmentContent},
+		},
+	})
 }

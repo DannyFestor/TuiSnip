@@ -87,12 +87,21 @@ func (s Snippet) UpdatedAt() time.Time {
 }
 
 func (s Snippet) Fragment(id FragmentID) (Fragment, error) {
-	index, err := s.fragmentIndex(id)
+	index, err := s.FragmentIndex(id)
 	if err != nil {
 		return Fragment{}, fmt.Errorf("domain.Snippet.Fragment: %w", err)
 	}
 
 	return s.fragments[index], nil
+}
+
+func (s Snippet) FragmentIndex(id FragmentID) (int, error) {
+	index := slices.IndexFunc(s.fragments, func(fragment Fragment) bool { return fragment.ID() == id })
+	if index < 0 {
+		return 0, fmt.Errorf("domain.Snippet.FragmentIndex: %w", ErrNotFound)
+	}
+
+	return index, nil
 }
 
 func (s Snippet) Edit(
@@ -144,15 +153,6 @@ func (s Snippet) MoveTo(folderID FolderID) Snippet {
 	s.folderID = folderID
 
 	return s
-}
-
-func (s Snippet) fragmentIndex(id FragmentID) (int, error) {
-	index := slices.IndexFunc(s.fragments, func(fragment Fragment) bool { return fragment.ID() == id })
-	if index < 0 {
-		return 0, ErrNotFound
-	}
-
-	return index, nil
 }
 
 func (s Snippet) editedFragments(

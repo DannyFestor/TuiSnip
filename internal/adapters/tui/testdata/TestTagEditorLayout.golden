@@ -3,11 +3,11 @@
 │  doc╭ Editing ─────────────────────────────────────────────────────────────────────────────────────────────────╮     │
 │▾ go │› Title                                                                                                   │     │
 │    t│  Description                                                                                             │     │
-│     │  Tags           (enter or ctrl+t to edit)                                                                │─────│
-│     │  Language    plaintext   (enter or ctrl+l to pick)                                                       │{    │
-│     │  Content     enter or down to edit                                                                       │     │
-│     │ 1               ╭──────────────────────────────────────────────────────────────────────╮                 │     │
-│     │                 │Tags  docker                                                          │                 │     │
+│     │  Tags              (enter or ctrl+t to edit)                                                             │─────│
+│     │  Fragment title                                                                                          │{    │
+│     │  Language       plaintext   (enter or ctrl+l to pick)                                                    │     │
+│     │  Content        ╭──────────────────────────────────────────────────────────────────────╮                 │     │
+│     │ 1               │Tags  docker                                                          │                 │     │
 │     │                 │filter or new Tag: o                                                  │                 │     │
 │     │                 │                                                                      │                 │     │
 │     │                 │✓ docker                                                             3│                 │     │

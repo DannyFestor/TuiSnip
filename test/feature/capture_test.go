@@ -76,7 +76,7 @@ func TestCreateFilesSnippetInFolderCarryingTag(t *testing.T) {
 	oneliner := testapp.SeedTag(t, app, tag.CreateInput{Name: "oneliner"})
 
 	created := create(t, app, snippet.CreateInput{
-		Title: "prune", Description: "", Language: plainText, Content: "docker system prune\n",
+		Title: "prune", Description: "", Fragments: plainFragment("docker system prune\n"),
 		FolderID: docker.ID(), Tags: []domain.Tag{oneliner},
 	})
 

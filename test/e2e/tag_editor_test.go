@@ -37,7 +37,7 @@ func TestToggleAndCreateTagsInTheTagEditor(t *testing.T) {
 	screen.press(keypress.Typed("API")...)
 	screen.waitForFrame(`+ create "API"`)
 	screen.press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape))
-	screen.waitForFrame("Tags        #API #docker")
+	screen.waitForFrame("Tags           #API #docker")
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame("Root · plaintext · #API #docker")
 
@@ -56,7 +56,7 @@ func TestCancellingTheEditOverlayDiscardsCreatedTags(t *testing.T) {
 	screen.press(keypress.Letter('3'), keypress.Letter('e'), keypress.Ctrl('t'))
 	screen.press(keypress.Typed("scratch")...)
 	screen.press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape))
-	screen.waitForFrame("Tags        #scratch")
+	screen.waitForFrame("Tags           #scratch")
 	screen.press(keypress.Special(tea.KeyEscape))
 	screen.waitForFrame("Discard the unsaved changes?")
 	screen.press(keypress.Letter('y'))

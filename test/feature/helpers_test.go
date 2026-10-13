@@ -22,3 +22,25 @@ func create(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domain.Sni
 
 	return created
 }
+
+func plainFragment(content string) []snippet.FragmentInput {
+	return fragmentIn(plainText, content)
+}
+
+func fragmentIn(language, content string) []snippet.FragmentInput {
+	return []snippet.FragmentInput{{ID: domain.FragmentID{}, Title: "", Language: language, Content: content}}
+}
+
+func fragmentInputsOf(stored domain.Snippet) []snippet.FragmentInput {
+	inputs := make([]snippet.FragmentInput, 0, len(stored.Fragments()))
+	for _, fragment := range stored.Fragments() {
+		inputs = append(inputs, snippet.FragmentInput{
+			ID:       fragment.ID(),
+			Title:    fragment.Title().String(),
+			Language: fragment.Language().String(),
+			Content:  fragment.Content().String(),
+		})
+	}
+
+	return inputs
+}

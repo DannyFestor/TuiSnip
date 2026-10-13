@@ -30,9 +30,11 @@ const (
 	tooSmallHint     = "Terminal too small for all four Panes (80×24)"
 	listHint         = "y Copy · e edit · E external editor · n new · m move · c duplicate · d delete · s sort · " +
 		"z zoom · / search · ? help"
-	helpHint         = "? help"
-	searchHint       = "down move · enter reveal · ctrl+y Copy · esc close"
-	editorHint       = "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor"
+	helpHint   = "? help"
+	searchHint = "down move · enter reveal · ctrl+y Copy · esc close"
+	editorHint = "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor · " +
+		"alt+right next Fragment · alt+left previous Fragment · ctrl+n add Fragment · ctrl+x remove Fragment · " +
+		"alt+shift+left move Fragment left · alt+shift+right move Fragment right"
 	folderHints      = "enter open · N new Folder · r rename · d delete · m move · z zoom · / search · ? help"
 	tagHints         = "enter open · N new Tag · r rename · d delete · z zoom · / search · ? help"
 	firstDescription = "Stop accepting, drain, exit"

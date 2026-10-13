@@ -28,8 +28,17 @@ func New(styles look.Styles) Strip {
 }
 
 func (s Strip) Of(fragments []domain.Fragment) Strip {
-	s.labels = labelsOf(fragments)
-	s.visible = len(fragments) > 1 || (len(fragments) == 1 && fragments[0].Title().IsSet())
+	tabs := make([]Tab, 0, len(fragments))
+	for _, fragment := range fragments {
+		tabs = append(tabs, tabOf(fragment))
+	}
+
+	return s.OfTabs(tabs)
+}
+
+func (s Strip) OfTabs(tabs []Tab) Strip {
+	s.labels = labelsOf(tabs)
+	s.visible = len(tabs) > 1 || (len(tabs) == 1 && tabs[0].Title.IsSet())
 	s.shown = max(0, min(s.shown, len(s.labels)-1))
 
 	return s
@@ -56,11 +65,21 @@ func (s Strip) First() Strip {
 }
 
 func (s Strip) Next() Strip {
-	return s.showing(s.shown + 1)
+	return s.Showing(s.shown + 1)
 }
 
 func (s Strip) Previous() Strip {
-	return s.showing(s.shown - 1)
+	return s.Showing(s.shown - 1)
+}
+
+func (s Strip) Showing(index int) Strip {
+	if len(s.labels) == 0 {
+		return s
+	}
+
+	s.shown = (index + len(s.labels)) % len(s.labels)
+
+	return s
 }
 
 func (s Strip) Clicked(x int) Strip {
@@ -69,7 +88,7 @@ func (s Strip) Clicked(x int) Strip {
 	for index, label := range s.labels {
 		end := start + ansi.StringWidth(padded(label))
 		if x >= start && x < end {
-			return s.showing(index)
+			return s.Showing(index)
 		}
 
 		start = end + ansi.StringWidth(separator)
@@ -87,16 +106,6 @@ func (s Strip) View(width int) string {
 	return ansi.Truncate(strings.Join(rendered, s.styles.Dim.Render(separator)), width, ellipsis)
 }
 
-func (s Strip) showing(index int) Strip {
-	if len(s.labels) == 0 {
-		return s
-	}
-
-	s.shown = (index + len(s.labels)) % len(s.labels)
-
-	return s
-}
-
 func (s Strip) styleOf(index int) lipgloss.Style {
 	if index == s.shown {
 		return s.styles.Focused.Cursor
@@ -105,21 +114,13 @@ func (s Strip) styleOf(index int) lipgloss.Style {
 	return s.styles.Dim
 }
 
-func labelsOf(fragments []domain.Fragment) []string {
-	labels := make([]string, 0, len(fragments))
-	for _, fragment := range fragments {
-		labels = append(labels, labelOf(fragment))
+func labelsOf(tabs []Tab) []string {
+	labels := make([]string, 0, len(tabs))
+	for _, tab := range tabs {
+		labels = append(labels, tab.Label())
 	}
 
 	return labels
-}
-
-func labelOf(fragment domain.Fragment) string {
-	if fragment.Title().IsSet() {
-		return fragment.Title().String()
-	}
-
-	return fragment.Language().String()
 }
 
 func padded(label string) string {

@@ -19,6 +19,8 @@ const (
 	FieldContent Field = "content"
 	// FieldLanguage is a Field of type language.
 	FieldLanguage Field = "language"
+	// FieldFragmentTitle is a Field of type fragment_title.
+	FieldFragmentTitle Field = "fragment_title"
 	// FieldFolderName is a Field of type folder_name.
 	FieldFolderName Field = "folder_name"
 	// FieldTagName is a Field of type tag_name.
@@ -40,12 +42,13 @@ func (x Field) IsValid() bool {
 }
 
 var _FieldValue = map[string]Field{
-	"title":       FieldTitle,
-	"description": FieldDescription,
-	"content":     FieldContent,
-	"language":    FieldLanguage,
-	"folder_name": FieldFolderName,
-	"tag_name":    FieldTagName,
+	"title":          FieldTitle,
+	"description":    FieldDescription,
+	"content":        FieldContent,
+	"language":       FieldLanguage,
+	"fragment_title": FieldFragmentTitle,
+	"folder_name":    FieldFolderName,
+	"tag_name":       FieldTagName,
 }
 
 // ParseField attempts to convert a string to a Field.

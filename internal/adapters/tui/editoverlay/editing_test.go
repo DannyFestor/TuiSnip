@@ -38,8 +38,8 @@ func TestEditing_View(t *testing.T) {
 
 		screen := editingStored(t, storedSnippet(t, "echo hi"))
 
-		assert.Contains(t, screen.Screen(), "› Title       Prune")
-		assert.Contains(t, screen.Screen(), "Description Reclaim")
+		assert.Contains(t, screen.Screen(), "› Title          Prune")
+		assert.Contains(t, screen.Screen(), "Description    Reclaim")
 		assert.Contains(t, screen.Screen(), "echo hi")
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
 	})
@@ -154,7 +154,7 @@ func TestEditing_language(t *testing.T) {
 
 		screen := editingStored(t, storedSnippet(t, "echo hi"))
 
-		assert.Contains(t, screen.Screen(), "  Language    Go   (enter or ctrl+l to pick)")
+		assert.Contains(t, screen.Screen(), "  Language       Go   (enter or ctrl+l to pick)")
 	})
 
 	t.Run("saves a picked Language", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestEditing_language(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter), save())
 
 		want := updateInput(stored, "Prune", "echo hi")
-		want.Language = "Bash"
+		want.Fragments[0].Language = "Bash"
 		assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
 	})
 
@@ -181,9 +181,9 @@ func TestEditing_language(t *testing.T) {
 		screen.Press(keypress.Letter('!'), save())
 
 		want := updateInput(stored, "Prune!", "echo hi")
-		assert.Equal(t, "Go", want.Language)
+		assert.Equal(t, "Go", want.Fragments[0].Language)
 		assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
-		assert.Contains(t, screen.Screen(), "Language    Go")
+		assert.Contains(t, screen.Screen(), "Language       Go")
 	})
 
 	t.Run("picking the same Language leaves nothing unsaved", func(t *testing.T) {
@@ -430,14 +430,24 @@ func refuseAsStale(screen *overlaytest.Driver) *overlaytest.Driver {
 	return screen
 }
 
-func updateInput(stored domain.Snippet, title, content string) snippet.UpdateInput {
+func updateInput(stored domain.Snippet, title, firstContent string) snippet.UpdateInput {
+	fragments := make([]snippet.FragmentInput, 0, len(stored.Fragments()))
+	for _, fragment := range stored.Fragments() {
+		fragments = append(fragments, snippet.FragmentInput{
+			ID:       fragment.ID(),
+			Title:    fragment.Title().String(),
+			Language: fragment.Language().String(),
+			Content:  fragment.Content().String(),
+		})
+	}
+
+	fragments[0].Content = firstContent
+
 	return snippet.UpdateInput{
 		SnippetID:       stored.ID(),
-		FragmentID:      stored.FirstFragment().ID(),
 		LoadedUpdatedAt: stored.UpdatedAt(),
 		Title:           title,
 		Description:     stored.Description().String(),
-		Language:        stored.FirstFragment().Language().String(),
-		Content:         content,
+		Fragments:       fragments,
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
@@ -179,6 +180,29 @@ func TestSnippetRepository_Update(t *testing.T) {
 		stored := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Fragments: severalFragments(ids)})
 		require.NoError(t, repository.Insert(t.Context(), stored))
 		edited := editedFragment(t, stored, stored.Fragments()[1].ID(), "on: pull_request\n")
+
+		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, edited, got)
+	})
+
+	t.Run("writes the Fragments reordered, with one added and one removed", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		ids := testkit.NewSequentialIDs()
+		stored := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Fragments: severalFragments(ids)})
+		require.NoError(t, repository.Insert(t.Context(), stored))
+
+		edits := testkit.UnchangedEdits(stored)
+		added := domain.FragmentEdit{
+			ID:       domain.FragmentID{},
+			Language: value.PlainText(),
+			Content:  mustContent(t, "new"),
+		}
+		edited := editedWith(t, stored, []domain.FragmentEdit{edits[2], added, edits[0]}, ids.NewFragmentID)
 
 		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
 

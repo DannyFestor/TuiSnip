@@ -30,6 +30,8 @@ func fieldErrorText(fieldErr domain.FieldError) string {
 		return "Title is longer than 200 characters"
 	case errors.Is(fieldErr, value.ErrDescriptionTooLong):
 		return "Description is longer than 2000 characters"
+	case errors.Is(fieldErr, value.ErrFragmentTitleTooLong):
+		return "Fragment title is longer than 200 characters"
 	case errors.Is(fieldErr, value.ErrContentTooLong):
 		return "Content is larger than 256 KiB"
 	}

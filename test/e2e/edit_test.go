@@ -25,7 +25,9 @@ func TestEditSnippetKeepsTabbedContent(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle, Language: "Go", Content: tabbedContent})
+	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{
+		Title: rootTitle, Fragments: []snippet.FragmentInput{{Language: "Go", Content: tabbedContent}},
+	})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
 
@@ -46,7 +48,9 @@ func TestEditOverChangedSnippetThenReload(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: rootTitle, Content: "echo hi\n"})
+	stored := testapp.SeedSnippet(t, app, snippet.CreateInput{
+		Title: rootTitle, Fragments: []snippet.FragmentInput{{Content: "echo hi\n"}},
+	})
 	screen := open(t, app)
 	screen.waitForFrame(rootTitle)
 
@@ -66,14 +70,18 @@ func TestEditOverChangedSnippetThenReload(t *testing.T) {
 func changeElsewhere(t *testing.T, app *bootstrap.App, loaded domain.Snippet, title string) {
 	t.Helper()
 
+	fragment := loaded.FirstFragment()
 	_, err := app.Update.Run(t.Context(), snippet.UpdateInput{
 		SnippetID:       loaded.ID(),
-		FragmentID:      loaded.FirstFragment().ID(),
 		LoadedUpdatedAt: loaded.UpdatedAt(),
 		Title:           title,
 		Description:     loaded.Description().String(),
-		Language:        loaded.FirstFragment().Language().String(),
-		Content:         loaded.FirstFragment().Content().String(),
+		Fragments: []snippet.FragmentInput{{
+			ID:       fragment.ID(),
+			Title:    fragment.Title().String(),
+			Language: fragment.Language().String(),
+			Content:  fragment.Content().String(),
+		}},
 	})
 	require.NoError(t, err)
 }

@@ -277,23 +277,26 @@ func TestSnippet_Edit(t *testing.T) {
 		CreatedAt: created,
 	})
 
+	newID := ids.NewFragmentID()
+	newFragmentID := func() domain.FragmentID { return newID }
+
 	t.Run("takes the fields and the time", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := stored.Edit(
-			mustTitle(t, "curl json"),
-			mustDescription(t, "POST"),
-			domain.FragmentEdit{
-				ID:       secondID,
-				Language: mustLanguage(t, "Bash"),
-				Content:  mustContent(t, "curl -X PUT"),
-			},
-			later,
-		)
+		edits := testkit.UnchangedEdits(stored)
+		edits[1] = domain.FragmentEdit{
+			ID:       secondID,
+			Title:    mustFragmentTitle(t, "put.sh"),
+			Language: mustLanguage(t, "Bash"),
+			Content:  mustContent(t, "curl -X PUT"),
+		}
+
+		edited, err := stored.Edit(mustTitle(t, "curl json"), mustDescription(t, "POST"), edits, newFragmentID, later)
 
 		require.NoError(t, err)
 		assert.Equal(t, "curl json", edited.Title().String())
 		assert.Equal(t, "POST", edited.Description().String())
+		assert.Equal(t, "put.sh", edited.Fragments()[1].Title().String())
 		assert.Equal(t, "Bash", edited.Fragments()[1].Language().String())
 		assert.Equal(t, "curl -X PUT", edited.Fragments()[1].Content().String())
 		assert.Equal(t, later, edited.UpdatedAt())
@@ -301,13 +304,14 @@ func TestSnippet_Edit(t *testing.T) {
 		assert.Equal(t, "curl", stored.Title().String(), "the original is untouched")
 	})
 
-	t.Run("keeps the ID, Folder, other Fragments, Tags and creation time", func(t *testing.T) {
+	t.Run("keeps the ID, Folder, unchanged Fragments, Tags and creation time", func(t *testing.T) {
 		t.Parallel()
 
 		edited, err := stored.Edit(
 			mustTitle(t, "curl"),
 			value.Description{},
-			domain.FragmentEdit{ID: secondID, Language: value.PlainText(), Content: mustContent(t, "curl -X PUT")},
+			testkit.UnchangedEdits(stored),
+			newFragmentID,
 			later,
 		)
 
@@ -316,52 +320,100 @@ func TestSnippet_Edit(t *testing.T) {
 		assert.Equal(t, stored.FolderID(), edited.FolderID())
 		assert.Equal(t, stored.Tags(), edited.Tags())
 		assert.Equal(t, created, edited.CreatedAt())
-		require.Len(t, edited.Fragments(), 3)
-		assert.Equal(t, stored.Fragments()[0], edited.Fragments()[0])
-		assert.Equal(t, secondID, edited.Fragments()[1].ID())
-		assert.Equal(t, "post.sh", edited.Fragments()[1].Title().String())
-		assert.Equal(t, stored.Fragments()[2], edited.Fragments()[2])
+		assert.Equal(t, stored.Fragments(), edited.Fragments())
 	})
 
-	t.Run("keeps an unchanged Fragment's time", func(t *testing.T) {
+	t.Run("orders the Fragments as the edits list them", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := stored.Edit(
-			mustTitle(t, "curl"),
-			value.Description{},
-			domain.FragmentEdit{ID: firstID, Language: value.PlainText(), Content: mustContent(t, "curl")},
-			later,
-		)
+		edits := testkit.UnchangedEdits(stored)
+		reordered := []domain.FragmentEdit{edits[2], edits[0], edits[1]}
+
+		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, reordered, newFragmentID, later)
 
 		require.NoError(t, err)
-		assert.Equal(t, created, edited.FirstFragment().UpdatedAt())
+		assert.Equal(t, []domain.FragmentID{thirdID, firstID, secondID}, fragmentIDsOf(edited))
+	})
+
+	t.Run("adds a Fragment for an edit without an ID, created at the time", func(t *testing.T) {
+		t.Parallel()
+
+		added := domain.FragmentEdit{
+			ID:       domain.FragmentID{},
+			Title:    mustFragmentTitle(t, "put.sh"),
+			Language: mustLanguage(t, "Bash"),
+			Content:  mustContent(t, "curl -X PUT"),
+		}
+		edits := append(testkit.UnchangedEdits(stored), added)
+
+		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, edits, newFragmentID, later)
+
+		require.NoError(t, err)
+		require.Len(t, edited.Fragments(), 4)
+		fragment := edited.Fragments()[3]
+		assert.Equal(t, newID, fragment.ID())
+		assert.Equal(t, "put.sh", fragment.Title().String())
+		assert.Equal(t, "Bash", fragment.Language().String())
+		assert.Equal(t, "curl -X PUT", fragment.Content().String())
+		assert.Equal(t, later, fragment.CreatedAt())
+		assert.Equal(t, later, fragment.UpdatedAt())
+	})
+
+	t.Run("drops the Fragments the edits leave out", func(t *testing.T) {
+		t.Parallel()
+
+		edits := testkit.UnchangedEdits(stored)
+
+		edited, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, edits[1:], newFragmentID, later)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.FragmentID{secondID, thirdID}, fragmentIDsOf(edited))
 	})
 
 	t.Run("rejects a Fragment the Snippet doesn't hold", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := stored.Edit(
-			mustTitle(t, "curl"),
-			value.Description{},
-			domain.FragmentEdit{ID: ids.NewFragmentID(), Language: value.PlainText(), Content: mustContent(t, "curl")},
-			later,
-		)
+		edits := testkit.UnchangedEdits(stored)
+		edits[0].ID = ids.NewFragmentID()
+
+		_, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, edits, newFragmentID, later)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("rejects no Fragments", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := stored.Edit(mustTitle(t, "curl"), value.Description{}, nil, newFragmentID, later)
+
+		require.ErrorIs(t, err, domain.ErrNoFragment)
 	})
 
 	t.Run("rejects a time before creation", func(t *testing.T) {
 		t.Parallel()
 
 		_, err := stored.Edit(
-			mustTitle(t, "curl json"),
+			mustTitle(
+				t,
+				"curl json",
+			),
 			value.Description{},
-			domain.FragmentEdit{ID: firstID, Language: value.PlainText(), Content: mustContent(t, "curl")},
+			testkit.UnchangedEdits(stored),
+			newFragmentID,
 			created.Add(-1),
 		)
 
 		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
 	})
+}
+
+func fragmentIDsOf(snippet domain.Snippet) []domain.FragmentID {
+	ids := make([]domain.FragmentID, 0, len(snippet.Fragments()))
+	for _, fragment := range snippet.Fragments() {
+		ids = append(ids, fragment.ID())
+	}
+
+	return ids
 }
 
 func TestSnippet_Duplicate(t *testing.T) {

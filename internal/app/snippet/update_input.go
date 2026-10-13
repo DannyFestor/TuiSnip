@@ -8,12 +8,10 @@ import (
 
 type UpdateInput struct {
 	SnippetID       domain.SnippetID
-	FragmentID      domain.FragmentID
 	LoadedUpdatedAt time.Time
 	Title           string
 	Description     string
-	Language        string
-	Content         string
+	Fragments       []FragmentInput
 	Tags            []domain.Tag
 	NewTags         []string
 }
@@ -22,8 +20,7 @@ func (in UpdateInput) raw() rawFields {
 	return rawFields{
 		title:       in.Title,
 		description: in.Description,
-		language:    in.Language,
-		content:     in.Content,
+		fragments:   in.Fragments,
 		newTags:     in.NewTags,
 	}
 }

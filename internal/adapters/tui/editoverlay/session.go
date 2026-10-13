@@ -29,6 +29,9 @@ const (
 	staleTitle      = "Changed elsewhere"
 	reloadQuestion  = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
 
+	removeFragmentTitle = "Remove Fragment"
+	lastFragmentRefusal = "A Snippet needs a Fragment; delete the Snippet instead"
+
 	languagePickerTitle = "Pick a Language"
 )
 
@@ -48,7 +51,6 @@ func New(keys binding.Keys, styles look.Styles, options Options, destination Des
 
 func Capturing(keys binding.Keys, styles look.Styles, options Options, captured Captured) (Session, tea.Cmd) {
 	destination := captured.Destination
-	readOnly := readOnlyIfTabbed(captured.Content, destination.Language, styles.CodeStyle)
 	blank, cmd := newForm(
 		formKeysOf(keys),
 		styles,
@@ -56,12 +58,11 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 			title:       "",
 			description: "",
 			tags:        tagchoice.Of(destination.Tags),
-			language:    destination.Language,
-			content:     "",
+			fragments:   []fragmentDraft{newFragmentDraft(destination.Language, "")},
 		},
-		readOnly,
+		0,
 	)
-	opened := blank.withContent(captured.Content)
+	opened := blank.withExternalContent(captured.Content)
 
 	return newSession(keys, styles, options, opened).aimedAt(newSnippet{destination: destination}), cmd
 }
@@ -87,21 +88,19 @@ func EditedExternally(
 func editingFragment(
 	keys binding.Keys, styles look.Styles, options Options, opened browsedFragment,
 ) (Session, tea.Cmd) {
-	stored, fragment := opened.browsed.Snippet, opened.fragment
+	stored := opened.browsed.Snippet
 	original := entered{
 		title:       stored.Title().String(),
 		description: stored.Description().String(),
 		tags:        tagchoice.Of(stored.Tags()),
-		language:    fragment.Language(),
-		content:     fragment.Content().String(),
+		fragments:   draftsOf(stored.Fragments()),
 	}
-	readOnly := readOnlyIfUneditable(original.content, fragment.Language(), styles.CodeStyle)
-	filled, cmd := newForm(formKeysOf(keys), styles, original, readOnly)
+	filled, cmd := newForm(formKeysOf(keys), styles, original, opened.shown())
 	target := storedSnippet{
 		id:              stored.ID(),
-		fragmentID:      fragment.ID(),
 		selection:       opened.browsed.Selection,
 		loadedUpdatedAt: stored.UpdatedAt(),
+		defaultLanguage: opened.browsed.DefaultLanguage,
 	}
 
 	return newSession(keys, styles, options, filled).aimedAt(target), cmd
@@ -148,7 +147,12 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 		return outcome.Close().Passing(received)
 	case outcome.LanguagePicked:
 		next := s
-		next.form = s.form.withLanguage(received.Language, s.styles.CodeStyle)
+		next.form = s.form.withLanguage(received.Language)
+
+		return outcome.Stay(next)
+	case outcome.FragmentRemoveConfirmed:
+		next := s
+		next.form = s.form.withShownFragmentRemoved()
 
 		return outcome.Stay(next)
 	case outcome.TagsEdited:
@@ -209,15 +213,47 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.pasteRefused(pasteOverflowsContent)
 	case requestExternalEditor:
 		return s.externalEditAsked()
+	case requestAddFragment, requestRemoveFragment, requestRefuseRemovingLastFragment:
+		return s.fragmentRequested(asked)
 	case requestNothing:
 	}
 
 	return outcome.Stay(s)
 }
 
+func (s Session) fragmentRequested(asked request) outcome.Step {
+	switch asked {
+	case requestAddFragment:
+		return outcome.Stay(s.withFragmentAdded())
+	case requestRemoveFragment:
+		return s.confirmingFragmentRemoval()
+	case requestRefuseRemovingLastFragment:
+		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: lastFragmentRefusal})
+	case requestNothing, requestSave, requestCancel, requestEditTags, requestPickLanguage,
+		requestRefusePasteWithTabs, requestRefuseOverlongPaste, requestExternalEditor:
+	}
+
+	return outcome.Stay(s)
+}
+
+func (s Session) withFragmentAdded() Session {
+	s.form = s.form.withFragmentAdded(s.target.newFragmentLanguage())
+
+	return s
+}
+
+func (s Session) confirmingFragmentRemoval() outcome.Step {
+	question := confirm.Question{
+		Title: removeFragmentTitle,
+		Text:  removeFragmentTitle + ` "` + s.form.shownFragmentName() + `"?`,
+	}
+
+	return s.confirming(question, outcome.FragmentRemoveConfirmed{})
+}
+
 func (s Session) externalEditAsked() outcome.Step {
 	return outcome.Stay(s).Passing(outcome.ExternalEditAsked{
-		Content:   s.form.entered().content,
+		Content:   s.form.shownDraft().content,
 		Language:  s.form.language,
 		Snippet:   domain.Snippet{},
 		Fragment:  domain.Fragment{},
@@ -226,7 +262,7 @@ func (s Session) externalEditAsked() outcome.Step {
 }
 
 func (s Session) withExternalContent(content string) Session {
-	s.form = s.form.withExternalContent(content, s.styles.CodeStyle)
+	s.form = s.form.withExternalContent(content)
 
 	return s
 }
@@ -296,13 +332,13 @@ func (s Session) refused(err error) outcome.Step {
 		return s.confirming(confirm.Question{Title: staleTitle, Text: reloadQuestion}, reload)
 	}
 
-	fieldErrors := domain.FieldErrors(err)
+	fieldErrors := shownFieldErrors(err)
 	if len(fieldErrors) == 0 {
 		return outcome.Stay(s).Passing(outcome.SaveFailed{Err: err})
 	}
 
 	next := s
-	next.form = s.form.withInvalid(fieldErrors)
+	next.form = s.form.showingFragmentOf(err).withInvalid(fieldErrors)
 
 	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
 }

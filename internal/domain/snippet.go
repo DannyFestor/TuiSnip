@@ -29,7 +29,7 @@ func NewSnippet(
 	tags []Tag,
 	createdAt, updatedAt time.Time,
 ) (Snippet, error) {
-	err := errors.Join(requireID(id), requireFragments(fragments), requireTimestamps(createdAt, updatedAt))
+	err := errors.Join(requireID(id), requireOneFragment(fragments), requireTimestamps(createdAt, updatedAt))
 	if err != nil {
 		return Snippet{}, fmt.Errorf("domain.NewSnippet: %w", err)
 	}
@@ -96,14 +96,18 @@ func (s Snippet) Fragment(id FragmentID) (Fragment, error) {
 }
 
 func (s Snippet) Edit(
-	title value.Title, description value.Description, edit FragmentEdit, now time.Time,
+	title value.Title,
+	description value.Description,
+	edits []FragmentEdit,
+	newFragmentID func() FragmentID,
+	now time.Time,
 ) (Snippet, error) {
-	err := requireTimestamps(s.createdAt, now)
+	err := errors.Join(requireTimestamps(s.createdAt, now), requireOneFragment(edits))
 	if err != nil {
 		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
 	}
 
-	fragments, err := s.withFragmentEdited(edit, now)
+	fragments, err := s.editedFragments(edits, newFragmentID, now)
 	if err != nil {
 		return Snippet{}, fmt.Errorf("domain.Snippet.Edit: %w", err)
 	}
@@ -151,21 +155,34 @@ func (s Snippet) fragmentIndex(id FragmentID) (int, error) {
 	return index, nil
 }
 
-func (s Snippet) withFragmentEdited(edit FragmentEdit, now time.Time) ([]Fragment, error) {
-	index, err := s.fragmentIndex(edit.ID)
-	if err != nil {
-		return nil, err
-	}
+func (s Snippet) editedFragments(
+	edits []FragmentEdit, newFragmentID func() FragmentID, now time.Time,
+) ([]Fragment, error) {
+	fragments := make([]Fragment, 0, len(edits))
 
-	edited, err := s.fragments[index].Edit(edit.Language, edit.Content, now)
-	if err != nil {
-		return nil, err
-	}
+	for _, edit := range edits {
+		fragment, err := s.editedFragment(edit, newFragmentID, now)
+		if err != nil {
+			return nil, err
+		}
 
-	fragments := slices.Clone(s.fragments)
-	fragments[index] = edited
+		fragments = append(fragments, fragment)
+	}
 
 	return fragments, nil
+}
+
+func (s Snippet) editedFragment(edit FragmentEdit, newFragmentID func() FragmentID, now time.Time) (Fragment, error) {
+	if edit.adds() {
+		return NewFragment(newFragmentID(), edit.Title, edit.Language, edit.Content, now, now)
+	}
+
+	stored, err := s.Fragment(edit.ID)
+	if err != nil {
+		return Fragment{}, err
+	}
+
+	return stored.Edit(edit.Title, edit.Language, edit.Content, now)
 }
 
 func (s Snippet) duplicatedFragments(newFragmentID func() FragmentID, now time.Time) ([]Fragment, error) {
@@ -183,7 +200,7 @@ func (s Snippet) duplicatedFragments(newFragmentID func() FragmentID, now time.T
 	return fragments, nil
 }
 
-func requireFragments(fragments []Fragment) error {
+func requireOneFragment[E Fragment | FragmentEdit](fragments []E) error {
 	if len(fragments) == 0 {
 		return ErrNoFragment
 	}

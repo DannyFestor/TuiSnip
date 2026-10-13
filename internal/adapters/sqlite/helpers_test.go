@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
@@ -195,18 +196,26 @@ func editedSnippet(t *testing.T, stored domain.Snippet, content string) domain.S
 func editedFragment(t *testing.T, stored domain.Snippet, fragmentID domain.FragmentID, content string) domain.Snippet {
 	t.Helper()
 
-	title, err := value.NewTitle("edited")
-	require.NoError(t, err)
-
 	language, err := value.NewLanguage("Go")
 	require.NoError(t, err)
 
-	edited, err := stored.Edit(
-		title,
-		stored.Description(),
-		domain.FragmentEdit{ID: fragmentID, Language: language, Content: mustContent(t, content)},
-		stored.UpdatedAt().Add(time.Hour),
-	)
+	edits := testkit.UnchangedEdits(stored)
+	index := slices.IndexFunc(edits, func(edit domain.FragmentEdit) bool { return edit.ID == fragmentID })
+	edits[index].Language = language
+	edits[index].Content = mustContent(t, content)
+
+	return editedWith(t, stored, edits, nil)
+}
+
+func editedWith(
+	t *testing.T, stored domain.Snippet, edits []domain.FragmentEdit, newFragmentID func() domain.FragmentID,
+) domain.Snippet {
+	t.Helper()
+
+	title, err := value.NewTitle("edited")
+	require.NoError(t, err)
+
+	edited, err := stored.Edit(title, stored.Description(), edits, newFragmentID, stored.UpdatedAt().Add(time.Hour))
 	require.NoError(t, err)
 
 	return edited

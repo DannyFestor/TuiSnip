@@ -2,6 +2,7 @@ package testapp
 
 import (
 	"cmp"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,9 +45,18 @@ func SeedSnippet(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domai
 	return StoredSnippet(t, app, created.ID())
 }
 
-func withSnippetDefaults(in snippet.CreateInput) snippet.CreateInput {
-	in.Title = cmp.Or(in.Title, defaultSnippetTitle)
-	in.Language = cmp.Or(in.Language, value.PlainText().String())
+func withSnippetDefaults(requested snippet.CreateInput) snippet.CreateInput {
+	requested.Title = cmp.Or(requested.Title, defaultSnippetTitle)
+	requested.Fragments = slices.Clone(requested.Fragments)
 
-	return in
+	if len(requested.Fragments) == 0 {
+		requested.Fragments = []snippet.FragmentInput{{ID: domain.FragmentID{}, Title: "", Language: "", Content: ""}}
+	}
+
+	for index := range requested.Fragments {
+		fragment := &requested.Fragments[index]
+		fragment.Language = cmp.Or(fragment.Language, value.PlainText().String())
+	}
+
+	return requested
 }

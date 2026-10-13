@@ -21,7 +21,7 @@ func TestMovedSnippetKeepsItsLanguageInItsNewFolder(t *testing.T) {
 	_, app := testapp.Start(t, testapp.RecordingTool)
 	golang := testapp.SeedFolder(t, app, folder.CreateInput{Name: "go"})
 	docker := testapp.SeedFolder(t, app, folder.CreateInput{Name: "docker"})
-	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID(), Language: "Bash"})
+	filed := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID(), Fragments: fragmentIn("Bash", "")})
 
 	_, err := app.Move.Run(t.Context(), snippet.MoveInput{SnippetID: filed.ID(), FolderID: docker.ID()})
 

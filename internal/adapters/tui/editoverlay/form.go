@@ -23,8 +23,8 @@ const (
 	unsavedMarker     = " •"
 	fieldCursor       = "› "
 	fieldIndent       = "  "
-	fieldLabelWidth   = 12
-	fieldRows         = 5
+	fieldLabelWidth   = 15
+	fieldRows         = 6
 	tagPrefix         = "#"
 	tagSeparator      = " "
 	tabCharacter      = "\t"
@@ -40,37 +40,45 @@ const (
 )
 
 type form struct {
-	keys        formKeys
-	title       textinput.Model
-	description textinput.Model
-	tags        tagchoice.Chosen
-	language    value.Language
-	content     textarea.Model
-	readOnly    readOnlyContent
-	original    entered
-	field       domain.Field
-	inContent   bool
-	invalid     []domain.Field
+	keys          formKeys
+	title         textinput.Model
+	description   textinput.Model
+	tags          tagchoice.Chosen
+	fragmentTitle textinput.Model
+	language      value.Language
+	content       textarea.Model
+	readOnly      readOnlyContent
+	tabs          fragmentTabs
+	codeStyle     string
+	outer         look.Size
+	original      entered
+	field         domain.Field
+	inContent     bool
+	invalid       []domain.Field
 }
 
-func newForm(keys formKeys, styles look.Styles, original entered, readOnly readOnlyContent) (form, tea.Cmd) {
+func newForm(keys formKeys, styles look.Styles, original entered, shown int) (form, tea.Cmd) {
 	filled := form{
-		keys:        keys,
-		title:       input.NewLine("", styles),
-		description: input.NewLine("", styles),
-		tags:        original.tags,
-		language:    original.language,
-		content:     input.NewContentArea(styles),
-		readOnly:    readOnly,
-		original:    original,
-		field:       domain.FieldTitle,
-		inContent:   false,
-		invalid:     nil,
+		keys:          keys,
+		title:         input.NewLine("", styles),
+		description:   input.NewLine("", styles),
+		tags:          original.tags,
+		fragmentTitle: input.NewLine("", styles),
+		language:      value.Language{},
+		content:       input.NewContentArea(styles),
+		readOnly:      editableContent(),
+		tabs:          newFragmentTabs(styles, original.fragments, shown),
+		codeStyle:     styles.CodeStyle,
+		outer:         look.Size{Width: 0, Height: 0},
+		original:      original,
+		field:         domain.FieldTitle,
+		inContent:     false,
+		invalid:       nil,
 	}
 	filled.title.SetValue(original.title)
 	filled.description.SetValue(original.description)
 
-	return filled.withContent(original.content).focused(domain.FieldTitle)
+	return filled.withDraft(filled.tabs.shownDraft()).focused(domain.FieldTitle)
 }
 
 func (f form) withContent(content string) form {
@@ -81,9 +89,9 @@ func (f form) withContent(content string) form {
 	return f
 }
 
-func (f form) withExternalContent(content, codeStyle string) form {
+func (f form) withExternalContent(content string) form {
 	next := f
-	next.readOnly = readOnlyIfUneditable(content, f.language, codeStyle)
+	next.readOnly = readOnlyIfUneditable(content, f.language, f.codeStyle)
 
 	if next.readOnly.held() {
 		next = next.leftContent()
@@ -97,6 +105,10 @@ func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
 	case tea.KeyPressMsg:
 		if f.inContent {
 			return f.contentPressed(msg)
+		}
+
+		if next, asked, ok := f.fragmentKeyPressed(msg); ok {
+			return next, asked, nil
 		}
 
 		return f.fieldPressed(msg)
@@ -115,10 +127,12 @@ func (f form) resized(outer look.Size) form {
 	inner := outer.Inner()
 	inputWidth := max(1, inner.Width-len(fieldIndent)-fieldLabelWidth-input.CursorWidth)
 
+	f.outer = outer
 	f.title.SetWidth(inputWidth)
 	f.description.SetWidth(inputWidth)
+	f.fragmentTitle.SetWidth(inputWidth)
 	f.content.SetWidth(inner.Width)
-	f.content.SetHeight(max(1, inner.Height-fieldRows))
+	f.content.SetHeight(max(1, inner.Height-fieldRows-f.stripRows()))
 
 	return f
 }
@@ -126,7 +140,10 @@ func (f form) resized(outer look.Size) form {
 func (f form) restyled(styles look.Styles) form {
 	f.title = input.RestyledLine(f.title, styles)
 	f.description = input.RestyledLine(f.description, styles)
+	f.fragmentTitle = input.RestyledLine(f.fragmentTitle, styles)
 	f.content = input.RestyledArea(f.content, styles)
+	f.tabs = f.tabs.restyled(styles)
+	f.codeStyle = styles.CodeStyle
 	f.readOnly = f.readOnly.highlightedIn(styles.CodeStyle)
 
 	return f
@@ -141,9 +158,9 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 	return f
 }
 
-func (f form) withLanguage(language value.Language, codeStyle string) form {
+func (f form) withLanguage(language value.Language) form {
 	f.language = language
-	f.readOnly = f.readOnly.inLanguage(language, codeStyle)
+	f.readOnly = f.readOnly.inLanguage(language, f.codeStyle)
 
 	return f
 }
@@ -159,17 +176,11 @@ func (f form) changed() bool {
 }
 
 func (f form) entered() entered {
-	content := f.content.Value()
-	if f.readOnly.held() {
-		content = f.readOnly.content
-	}
-
 	return entered{
 		title:       f.title.Value(),
 		description: f.description.Value(),
 		tags:        f.tags,
-		language:    f.language,
-		content:     content,
+		fragments:   f.fragments().all(),
 	}
 }
 
@@ -190,10 +201,18 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
 		f.fieldLine(styles, domain.FieldTagName, f.tagsEntry(styles)),
+	}
+
+	if tabs := f.fragments(); tabs.visible() {
+		lines = append(lines, fieldIndent+tabs.view(outer.Inner().Width-len(fieldIndent)))
+	}
+
+	lines = append(lines,
+		f.fieldLine(styles, domain.FieldFragmentTitle, f.fragmentTitle.View()),
 		f.fieldLine(styles, domain.FieldLanguage, f.languageEntry(styles)),
 		f.fieldLine(styles, domain.FieldContent, f.contentEntryHint(styles)),
 		f.contentView(),
-	}
+	)
 
 	return look.Frame(styles.Focused, f.frameTitle(), strings.Join(lines, "\n"), outer)
 }
@@ -261,7 +280,22 @@ func (f form) contentPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
 }
 
 func (f form) clicked(click pointer.Clicked) (form, request, tea.Cmd) {
-	line := click.InsideFrame().At.Y
+	point := click.InsideFrame().At
+	line := point.Y
+
+	if f.fragments().visible() {
+		switch {
+		case line == stripRow():
+			return f.withFragmentClicked(point.X - len(fieldIndent)), requestNothing, nil
+		case line > stripRow():
+			line--
+		}
+	}
+
+	return f.fieldClicked(line)
+}
+
+func (f form) fieldClicked(line int) (form, request, tea.Cmd) {
 	fields := editFields()
 
 	switch {
@@ -335,6 +369,8 @@ func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
 		f.title, cmd = f.title.Update(msg)
 	case domain.FieldDescription:
 		f.description, cmd = f.description.Update(msg)
+	case domain.FieldFragmentTitle:
+		f.fragmentTitle, cmd = f.fragmentTitle.Update(msg)
 	case domain.FieldContent, domain.FieldLanguage:
 		if f.inContent {
 			f.content, cmd = f.content.Update(msg)
@@ -372,12 +408,15 @@ func (f form) focused(field domain.Field) (form, tea.Cmd) {
 	f = f.leftContent()
 	f.title.Blur()
 	f.description.Blur()
+	f.fragmentTitle.Blur()
 
 	switch field {
 	case domain.FieldTitle:
 		return f, f.title.Focus()
 	case domain.FieldDescription:
 		return f, f.description.Focus()
+	case domain.FieldFragmentTitle:
+		return f, f.fragmentTitle.Focus()
 	case domain.FieldContent, domain.FieldLanguage, domain.FieldFolderName, domain.FieldTagName:
 	}
 
@@ -480,8 +519,17 @@ func (f form) frameTitle() string {
 
 func editFields() []domain.Field {
 	return []domain.Field{
-		domain.FieldTitle, domain.FieldDescription, domain.FieldTagName, domain.FieldLanguage, domain.FieldContent,
+		domain.FieldTitle,
+		domain.FieldDescription,
+		domain.FieldTagName,
+		domain.FieldFragmentTitle,
+		domain.FieldLanguage,
+		domain.FieldContent,
 	}
+}
+
+func stripRow() int {
+	return slices.Index(editFields(), domain.FieldFragmentTitle)
 }
 
 func fieldLabel(field domain.Field) string {
@@ -496,6 +544,8 @@ func fieldLabel(field domain.Field) string {
 		return "Language"
 	case domain.FieldTagName:
 		return "Tags"
+	case domain.FieldFragmentTitle:
+		return "Fragment title"
 	case domain.FieldFolderName:
 	}
 

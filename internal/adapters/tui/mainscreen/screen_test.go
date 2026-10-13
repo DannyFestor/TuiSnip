@@ -774,7 +774,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen.Press(keypress.Typed("3e")...)
 
-		assert.Contains(t, screen.Screen(), "› Title       Graceful HTTP shutdown")
+		assert.Contains(t, screen.Screen(), "› Title          Graceful HTTP shutdown")
 		assert.Equal(t, editorHint, screen.Hints())
 	})
 
@@ -785,7 +785,7 @@ func TestScreen_Update(t *testing.T) {
 
 		screen.Press(keypress.Typed("3j4e")...)
 
-		assert.Contains(t, screen.Screen(), "› Title       "+secondTitle)
+		assert.Contains(t, screen.Screen(), "› Title          "+secondTitle)
 	})
 
 	t.Run("e edits nothing outside the Snippet list and the Snippet pane", func(t *testing.T) {
@@ -990,7 +990,7 @@ func TestScreen_newSnippet(t *testing.T) {
 		screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
 
 		assert.Contains(t, screen.Screen(), "Contains tabs")
-		assert.Contains(t, screen.Screen(), "Language    Go")
+		assert.Contains(t, screen.Screen(), "Language       Go")
 	})
 }
 
@@ -1004,7 +1004,7 @@ func TestScreen_newSnippetLanguage(t *testing.T) {
 
 		screen.Press(keypress.Typed("nx")...)
 
-		assert.Contains(t, screen.Screen(), "Language    Go")
+		assert.Contains(t, screen.Screen(), "Language       Go")
 
 		screen.Press(keypress.Ctrl('s'))
 
@@ -1038,6 +1038,29 @@ func TestScreen_newSnippetLanguage(t *testing.T) {
 	})
 }
 
+func TestScreen_newFragmentLanguage(t *testing.T) {
+	t.Parallel()
+
+	filing := goFolder(t)
+	stored := testkit.Snippet(t, testkit.SnippetSpec{
+		Title:     "Prune",
+		FolderID:  filing.ID(),
+		Fragments: []testkit.FragmentSpec{{Language: "Bash", Content: "docker system prune"}},
+	})
+	screen, _ := inFolderOf(t, filing)
+	screen.Send(mainscreen.SnippetsLoaded{
+		Selection: browseselection.InFolder(filing.ID()),
+		Snippets:  []domain.Snippet{stored},
+		Selecting: domain.SnippetID{},
+		Order:     domain.SortOrderTitle,
+	})
+
+	screen.Press(keypress.Letter('3'), keypress.Letter('e'), keypress.Ctrl('n'))
+
+	assert.Contains(t, screen.Screen(), " Bash │ Go ")
+	assert.Contains(t, screen.Screen(), "Language       Go")
+}
+
 func goFolder(t *testing.T) domain.Folder {
 	t.Helper()
 
@@ -1053,7 +1076,7 @@ func inFolderOf(t *testing.T, filing domain.Folder) (*overlaytest.Driver, create
 
 	return screen, func(content string) snippet.CreateInput {
 		created := createdIn(filing.ID())(content)
-		created.Language = filing.DefaultLanguage().String()
+		created.Fragments[0].Language = filing.DefaultLanguage().String()
 
 		return created
 	}
@@ -1108,7 +1131,11 @@ func browsingTag(t *testing.T) (*overlaytest.Driver, createdFor) {
 func createdIn(folderID domain.FolderID, tags ...domain.Tag) createdFor {
 	return func(content string) snippet.CreateInput {
 		return snippet.CreateInput{
-			Title: "x", Description: "", Language: "plaintext", Content: content, FolderID: folderID, Tags: tags,
+			Title:       "x",
+			Description: "",
+			Fragments:   []snippet.FragmentInput{{Language: "plaintext", Content: content}},
+			FolderID:    folderID,
+			Tags:        tags,
 		}
 	}
 }
@@ -1523,12 +1550,16 @@ func TestScreen_help(t *testing.T) {
 		screen := showing(t, wide())
 
 		screen.Press(keypress.Letter('n'), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
-		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
-		screen.Press(keypress.Letter('?'), keypress.Ctrl('s'))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
+		screen.Press(keypress.Special(tea.KeyEnter), keypress.Letter('?'), keypress.Ctrl('s'))
 
 		assert.NotContains(t, screen.Screen(), "╭ Help ")
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{
-			Input: snippet.CreateInput{Title: "", Description: "", Language: "plaintext", Content: "?"},
+			Input: snippet.CreateInput{
+				Title:       "",
+				Description: "",
+				Fragments:   []snippet.FragmentInput{{Language: "plaintext", Content: "?"}},
+			},
 		}}, screen.Outcomes())
 	})
 
@@ -1646,7 +1677,7 @@ func TestScreen_defaultLanguage(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter), keypress.Ctrl('s'))
 
 		requested := lastOutcomeOf[outcome.SaveRequested](t, screen.Outcomes())
-		assert.Equal(t, "Go", requested.Input.Language)
+		assert.Equal(t, "Go", requested.Input.Fragments[0].Language)
 	})
 }
 

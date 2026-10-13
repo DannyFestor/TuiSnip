@@ -93,7 +93,7 @@ func TestModel_browse(t *testing.T) {
 
 		creator := NewMockSnippetCreator(t)
 		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
-			Title: "Prune", Description: "", Language: "plaintext", Content: "",
+			Title: "Prune", Description: "", Fragments: []snippet.FragmentInput{{Language: "plaintext"}},
 		}).Return(saved, nil)
 		screen := start(t, modelWith(t, actions{
 			lister:     listerReturning(t, nil, []domain.Snippet{saved}),

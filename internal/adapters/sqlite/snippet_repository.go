@@ -149,14 +149,21 @@ func updateSnippet(
 		return whyNotUpdated(ctx, queries, snippet.ID())
 	}
 
-	for _, fragment := range snippet.Fragments() {
-		err = queries.UpdateFragment(ctx, updateFragmentParams(fragment))
-		if err != nil {
-			return fmt.Errorf("update fragment: %w", err)
-		}
+	err = replaceFragments(ctx, queries, snippet)
+	if err != nil {
+		return err
 	}
 
 	return relinkTags(ctx, queries, snippet)
+}
+
+func replaceFragments(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
+	err := queries.DeleteFragmentsBySnippet(ctx, columnID(snippet.ID()))
+	if err != nil {
+		return fmt.Errorf("delete fragments: %w", err)
+	}
+
+	return insertFragments(ctx, queries, snippet)
 }
 
 func deleteSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID) error {
@@ -203,14 +210,23 @@ func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain
 		return fmt.Errorf("insert snippet: %w", err)
 	}
 
+	err = insertFragments(ctx, queries, snippet)
+	if err != nil {
+		return err
+	}
+
+	return linkTags(ctx, queries, snippet)
+}
+
+func insertFragments(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
 	for position, fragment := range snippet.Fragments() {
-		err = queries.InsertFragment(ctx, insertFragmentParams(snippet.ID(), position, fragment))
+		err := queries.InsertFragment(ctx, insertFragmentParams(snippet.ID(), position, fragment))
 		if err != nil {
 			return fmt.Errorf("insert fragment: %w", err)
 		}
 	}
 
-	return linkTags(ctx, queries, snippet)
+	return nil
 }
 
 func relinkTags(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {

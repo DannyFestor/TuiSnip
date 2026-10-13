@@ -77,7 +77,7 @@ func TestSession_View(t *testing.T) {
 
 		screen.Press(keypress.Typed(title)...)
 
-		assert.Contains(t, screen.Screen(), "│› Title       "+title[len(title)-titleInputWidth:]+" │")
+		assert.Contains(t, screen.Screen(), "│› Title          "+title[len(title)-titleInputWidth:]+" │")
 	})
 
 	t.Run("scrolls long Content to keep its last line in the frame", func(t *testing.T) {
@@ -162,7 +162,9 @@ func TestSession_ShortHelp(t *testing.T) {
 
 		screen := editing(t)
 
-		want := "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor"
+		want := "ctrl+s save · esc cancel · down field · ctrl+t Tags · ctrl+l Language · ctrl+e external editor · " +
+			"alt+right next Fragment · alt+left previous Fragment · ctrl+n add Fragment · ctrl+x remove Fragment · " +
+			"alt+shift+left move Fragment left · alt+shift+right move Fragment right"
 		assert.Equal(t, want, screen.Hints())
 	})
 
@@ -190,7 +192,7 @@ func TestSession_save(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyTab))
 		screen.Press(keypress.Typed("Reclaim")...)
 		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyDown), keypress.Special(tea.KeyDown))
-		screen.Press(keypress.Special(tea.KeyEnter))
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("docker")...)
 		screen.Press(keypress.Special(tea.KeyEnter))
 		screen.Press(keypress.Typed("prune")...)
@@ -235,8 +237,7 @@ func TestSession_save(t *testing.T) {
 		created := snippet.CreateInput{
 			Title:       "x",
 			Description: "",
-			Language:    value.PlainText().String(),
-			Content:     "",
+			Fragments:   []snippet.FragmentInput{{Language: value.PlainText().String()}},
 			FolderID:    domain.FolderID{},
 			Tags:        []domain.Tag{tag},
 			NewTags:     nil,
@@ -875,7 +876,7 @@ func TestSession_language(t *testing.T) {
 
 		screen := editing(t)
 
-		assert.Contains(t, screen.Screen(), "  Language    plaintext   (enter or ctrl+l to pick)")
+		assert.Contains(t, screen.Screen(), "  Language       plaintext   (enter or ctrl+l to pick)")
 	})
 
 	t.Run("starts a new Snippet in the Destination's Language with nothing unsaved", func(t *testing.T) {
@@ -883,7 +884,7 @@ func TestSession_language(t *testing.T) {
 
 		screen := editingIn(t, destinationIn(t, "Go"))
 
-		assert.Contains(t, screen.Screen(), "  Language    Go   (enter or ctrl+l to pick)")
+		assert.Contains(t, screen.Screen(), "  Language       Go   (enter or ctrl+l to pick)")
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
 
 		screen.Press(save())
@@ -990,7 +991,7 @@ func TestSession_language(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Contains(t, screen.Screen(), unsavedTitle)
-		assert.Contains(t, screen.Screen(), "Language    Bash")
+		assert.Contains(t, screen.Screen(), "Language       Bash")
 
 		screen.Press(save())
 

@@ -58,7 +58,7 @@ func TestCuratedLanguagesRevealEveryLanguage(t *testing.T) {
 	screen.press(keypress.Ctrl('a'))
 	screen.waitForFrame("Bash")
 	screen.press(keypress.Special(tea.KeyEnter))
-	screen.waitForFrame("Language    Bash")
+	screen.waitForFrame("Language       Bash")
 
 	screen.press(keypress.Special(tea.KeyEscape), keypress.Letter('y'))
 	screen.waitForFrame("enter open · N new Folder")
@@ -101,7 +101,7 @@ func TestNewSnippetStartsInFolderDefaultLanguage(t *testing.T) {
 	screen.press(keypress.Special(tea.KeyEnter))
 	screen.waitForFrame(folderHintsShown)
 
-	screen.openNewSnippetShowing("Language    Go")
+	screen.openNewSnippetShowing("Language       Go")
 	screen.press(keypress.Typed(filedTitle)...)
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame("go · Go")
@@ -142,9 +142,8 @@ func seededSnippetIn(t *testing.T, app *bootstrap.App, folderID domain.FolderID,
 	t.Helper()
 
 	return testapp.SeedSnippet(t, app, snippet.CreateInput{
-		Title:    rootTitle,
-		Language: language,
-		Content:  "echo hi\n",
-		FolderID: folderID,
+		Title:     rootTitle,
+		Fragments: []snippet.FragmentInput{{Language: language, Content: "echo hi\n"}},
+		FolderID:  folderID,
 	})
 }

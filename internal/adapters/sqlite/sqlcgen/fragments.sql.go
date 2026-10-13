@@ -11,6 +11,16 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const deleteFragmentsBySnippet = `-- name: DeleteFragmentsBySnippet :exec
+DELETE FROM fragments
+WHERE snippet_id = ?
+`
+
+func (q *Queries) DeleteFragmentsBySnippet(ctx context.Context, snippetID sqltype.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteFragmentsBySnippet, snippetID)
+	return err
+}
+
 const insertFragment = `-- name: InsertFragment :exec
 INSERT INTO fragments (id, snippet_id, position, title, language, content, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -198,29 +208,4 @@ func (q *Queries) ListFragmentsWithTag(ctx context.Context, tagID sqltype.ID) ([
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateFragment = `-- name: UpdateFragment :exec
-UPDATE fragments
-SET title = ?, language = ?, content = ?, updated_at = ?
-WHERE id = ?
-`
-
-type UpdateFragmentParams struct {
-	Title     string
-	Language  string
-	Content   string
-	UpdatedAt sqltype.Timestamp
-	ID        sqltype.ID
-}
-
-func (q *Queries) UpdateFragment(ctx context.Context, arg UpdateFragmentParams) error {
-	_, err := q.db.ExecContext(ctx, updateFragment,
-		arg.Title,
-		arg.Language,
-		arg.Content,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
 }

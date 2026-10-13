@@ -38,6 +38,12 @@ const (
 	Wrap         = "wrap"
 	NextFragment = "next_fragment"
 	PrevFragment = "prev_fragment"
+
+	AddFragment       = "add_fragment"
+	RemoveFragment    = "remove_fragment"
+	MoveFragmentLeft  = "move_fragment_left"
+	MoveFragmentRight = "move_fragment_right"
+
 	OpenInEditor = "open_in_editor"
 	Save         = "save"
 	Cancel       = "cancel"

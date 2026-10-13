@@ -105,6 +105,12 @@ open_field = ["enter"]
 pick_language = ["ctrl+l"]
 edit_tags = ["ctrl+t"]
 open_in_editor = ["ctrl+e"]
+next_fragment = ["alt+right"]
+prev_fragment = ["alt+left"]
+add_fragment = ["ctrl+n"]
+remove_fragment = ["ctrl+x"]
+move_fragment_left = ["alt+shift+left"]
+move_fragment_right = ["alt+shift+right"]
 
 # Inside the Content textarea.
 [bindings.content]

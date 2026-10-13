@@ -7,24 +7,29 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
 type saveTarget interface {
 	savingAs(saving outcome.Overlay, values entered) outcome.Step
 	closedAfterSave(saved domain.Snippet) outcome.Step
 	reloaded() (outcome.SnippetReloaded, bool)
+	newFragmentLanguage() value.Language
 }
 
 type newSnippet struct {
 	destination Destination
 }
 
+func (n newSnippet) newFragmentLanguage() value.Language {
+	return n.destination.Language
+}
+
 func (n newSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
 	return outcome.Stay(saving).Passing(outcome.SaveRequested{Input: snippet.CreateInput{
 		Title:       values.title,
 		Description: values.description,
-		Language:    values.language.String(),
-		Content:     values.content,
+		Fragments:   values.fragmentInputs(),
 		FolderID:    n.destination.folderID(),
 		Tags:        values.tags.Stored(),
 		NewTags:     values.newTagNames(),
@@ -41,20 +46,22 @@ func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {
 
 type storedSnippet struct {
 	id              domain.SnippetID
-	fragmentID      domain.FragmentID
 	selection       browseselection.Selection
 	loadedUpdatedAt time.Time
+	defaultLanguage value.Language
+}
+
+func (s storedSnippet) newFragmentLanguage() value.Language {
+	return s.defaultLanguage
 }
 
 func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
 	return outcome.Stay(saving).Passing(outcome.UpdateRequested{Input: snippet.UpdateInput{
 		SnippetID:       s.id,
-		FragmentID:      s.fragmentID,
 		LoadedUpdatedAt: s.loadedUpdatedAt,
 		Title:           values.title,
 		Description:     values.description,
-		Language:        values.language.String(),
-		Content:         values.content,
+		Fragments:       values.fragmentInputs(),
 		Tags:            values.tags.Stored(),
 		NewTags:         values.newTagNames(),
 	}})

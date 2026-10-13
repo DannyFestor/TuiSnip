@@ -40,7 +40,7 @@ func TestSession_tags(t *testing.T) {
 		stored := storedSnippet(t, "echo hi").Retagged([]domain.Tag{oneliner, docker})
 		screen := editingStoredWithOptions(t, listed, stored)
 
-		assert.Contains(t, screen.Screen(), "  Tags        #docker #oneliner   (enter or ctrl+t to edit)")
+		assert.Contains(t, screen.Screen(), "  Tags           #docker #oneliner   (enter or ctrl+t to edit)")
 	})
 
 	t.Run("starts a new Snippet with the Destination's Tags and nothing unsaved", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestSession_tags(t *testing.T) {
 		filedIn.Tags = []domain.Tag{docker}
 		screen := editingWithOptions(t, listed, filedIn)
 
-		assert.Contains(t, screen.Screen(), "  Tags        #docker   (enter or ctrl+t to edit)")
+		assert.Contains(t, screen.Screen(), "  Tags           #docker   (enter or ctrl+t to edit)")
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
 	})
 
@@ -156,7 +156,7 @@ func TestSession_tags(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter), keypress.Special(tea.KeyEscape))
 
 		assert.Contains(t, screen.Screen(), unsavedTitle)
-		assert.Contains(t, screen.Screen(), "Tags        #api #docker")
+		assert.Contains(t, screen.Screen(), "Tags           #api #docker")
 
 		screen.Press(save())
 

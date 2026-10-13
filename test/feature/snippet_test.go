@@ -25,8 +25,7 @@ func TestCreatedSnippetListedAtRoot(t *testing.T) {
 	created := create(t, app, snippet.CreateInput{
 		Title:       "curl json",
 		Description: "POST",
-		Language:    "Bash",
-		Content:     "curl -d @-\n",
+		Fragments:   fragmentIn("Bash", "curl -d @-\n"),
 	})
 
 	listed := listAtRoot(t, app)
@@ -46,7 +45,7 @@ func TestCreateWithBlankTitleSavesNothing(t *testing.T) {
 
 	_, err := app.Create.Run(
 		t.Context(),
-		snippet.CreateInput{Title: "   ", Description: "", Language: plainText, Content: "ls"},
+		snippet.CreateInput{Title: "   ", Description: "", Fragments: plainFragment("ls")},
 	)
 
 	fieldErrors := domain.FieldErrors(err)
@@ -62,7 +61,7 @@ func TestCreatedSnippetCreatesTheNewTagsItCarries(t *testing.T) {
 	golang := testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
 
 	created := create(t, app, snippet.CreateInput{
-		Title: "tagged", Language: plainText, Tags: []domain.Tag{golang}, NewTags: []string{" api "},
+		Title: "tagged", Fragments: plainFragment(""), Tags: []domain.Tag{golang}, NewTags: []string{" api "},
 	})
 
 	carried := testapp.StoredSnippet(t, app, created.ID()).Tags()
@@ -79,7 +78,7 @@ func TestCreateWithANewTagNamedLikeAnotherIgnoringCaseSavesNothing(t *testing.T)
 	testapp.SeedTag(t, app, tag.CreateInput{Name: "go"})
 
 	_, err := app.Create.Run(t.Context(), snippet.CreateInput{
-		Title: "refused", Language: plainText, NewTags: []string{"api", "Go"},
+		Title: "refused", Fragments: plainFragment(""), NewTags: []string{"api", "Go"},
 	})
 
 	require.ErrorIs(t, err, domain.ErrTagNameTaken)
@@ -96,7 +95,7 @@ func TestSnippetsSurviveRestart(t *testing.T) {
 	created := create(
 		t,
 		first,
-		snippet.CreateInput{Title: "kept", Description: "", Language: plainText, Content: "echo kept"},
+		snippet.CreateInput{Title: "kept", Description: "", Fragments: plainFragment("echo kept")},
 	)
 	require.NoError(t, first.Close())
 
@@ -127,13 +126,12 @@ func TestSearchFindsCreatedSnippet(t *testing.T) {
 			wanted := create(t, app, snippet.CreateInput{
 				Title:       "Crème brûlée",
 				Description: "Use the torch",
-				Language:    plainText,
-				Content:     "sprinkle sugar on top\n",
+				Fragments:   plainFragment("sprinkle sugar on top\n"),
 			})
 			create(
 				t,
 				app,
-				snippet.CreateInput{Title: "Unrelated", Description: "", Language: plainText, Content: "ls -la"},
+				snippet.CreateInput{Title: "Unrelated", Description: "", Fragments: plainFragment("ls -la")},
 			)
 
 			hits, err := app.Query.Run(t.Context(), search.QueryInput{Text: tt.query})
@@ -149,7 +147,7 @@ func TestBlankSearchFindsNothing(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
-	create(t, app, snippet.CreateInput{Title: "anything", Description: "", Language: plainText, Content: "ls"})
+	create(t, app, snippet.CreateInput{Title: "anything", Description: "", Fragments: plainFragment("ls")})
 
 	hits, err := app.Query.Run(t.Context(), search.QueryInput{Text: "  "})
 

@@ -42,7 +42,7 @@ func TestCapturing_View(t *testing.T) {
 		inGo := capturingIn(t, destinationIn(t, "Go"), tabbedContent)
 		plain := capturing(t, tabbedContent)
 
-		assert.Contains(t, inGo.Screen(), "Language    Go")
+		assert.Contains(t, inGo.Screen(), "Language       Go")
 		assert.Equal(t, withoutLanguageRow(plain.Screen()), withoutLanguageRow(inGo.Screen()))
 		assert.NotEqual(t, withoutLanguageRow(plain.StyledScreen()), withoutLanguageRow(inGo.StyledScreen()))
 	})
@@ -126,6 +126,7 @@ func TestCapturing_save(t *testing.T) {
 			name:     "keeps captured content with tabs byte for byte",
 			captured: tabbedContent,
 			sent: []tea.Msg{
+				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyDown),
 				keypress.Special(tea.KeyDown),

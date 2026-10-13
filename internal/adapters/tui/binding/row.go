@@ -22,6 +22,8 @@ const (
 	labelDuplicate      = "duplicate"
 	labelSort           = "sort"
 	labelWrap           = "wrap"
+	labelNextFragment   = "next Fragment"
+	labelPrevFragment   = "previous Fragment"
 	labelExternalEditor = "external editor"
 	labelSave           = "save"
 	labelCancel         = "cancel"
@@ -82,6 +84,10 @@ func Rows() []Row {
 }
 
 func paneRows() []Row {
+	return append(browseRows(), snippetRows()...)
+}
+
+func browseRows() []Row {
 	return []Row{
 		{Scope: ScopeFolders, Name: NewFolder, Label: labelNewFolder},
 		{Scope: ScopeFolders, Name: Rename, Label: labelRename},
@@ -92,6 +98,11 @@ func paneRows() []Row {
 		{Scope: ScopeTags, Name: NewTag, Label: labelNewTag},
 		{Scope: ScopeTags, Name: Rename, Label: labelRename},
 		{Scope: ScopeTags, Name: Delete, Label: labelDelete},
+	}
+}
+
+func snippetRows() []Row {
+	return []Row{
 		{Scope: ScopeSnippetList, Name: Copy, Label: labelCopy},
 		{Scope: ScopeSnippetList, Name: Edit, Label: labelEdit},
 		{Scope: ScopeSnippetList, Name: OpenInEditor, Label: labelExternalEditor},
@@ -103,6 +114,8 @@ func paneRows() []Row {
 		{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
 		{Scope: ScopeSnippetPane, Name: OpenInEditor, Label: labelExternalEditor},
 		{Scope: ScopeSnippetPane, Name: Wrap, Label: labelWrap},
+		{Scope: ScopeSnippetPane, Name: NextFragment, Label: labelNextFragment},
+		{Scope: ScopeSnippetPane, Name: PrevFragment, Label: labelPrevFragment},
 	}
 }
 

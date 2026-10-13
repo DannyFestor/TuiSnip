@@ -41,6 +41,7 @@ func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {
 
 type storedSnippet struct {
 	id              domain.SnippetID
+	fragmentID      domain.FragmentID
 	selection       browseselection.Selection
 	loadedUpdatedAt time.Time
 }
@@ -48,6 +49,7 @@ type storedSnippet struct {
 func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.Step {
 	return outcome.Stay(saving).Passing(outcome.UpdateRequested{Input: snippet.UpdateInput{
 		SnippetID:       s.id,
+		FragmentID:      s.fragmentID,
 		LoadedUpdatedAt: s.loadedUpdatedAt,
 		Title:           values.title,
 		Description:     values.description,

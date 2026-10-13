@@ -188,7 +188,7 @@ func storedSnippet(t *testing.T, content string) domain.Snippet {
 		Title:       "Prune",
 		Description: "Reclaim",
 		FolderID:    ids.NewFolderID(),
-		Fragment:    testkit.FragmentSpec{Language: "Go", Content: content},
+		Fragments:   []testkit.FragmentSpec{{Language: "Go", Content: content}},
 		UpdatedAt:   time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
 	})
 }

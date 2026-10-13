@@ -33,7 +33,7 @@ func (d *Duplicate) Run(ctx context.Context, input DuplicateInput) (domain.Snipp
 		return domain.Snippet{}, fmt.Errorf("snippet.Duplicate: %w", err)
 	}
 
-	duplicate, err := original.Duplicate(d.ids.NewSnippetID(), d.ids.NewFragmentID(), d.clock.Now())
+	duplicate, err := original.Duplicate(d.ids.NewSnippetID(), d.ids.NewFragmentID, d.clock.Now())
 	if err != nil {
 		return domain.Snippet{}, fmt.Errorf("snippet.Duplicate: %w", err)
 	}

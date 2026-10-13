@@ -33,13 +33,18 @@ func NewCopyTrimmingTrailingNewline(finder Finder, copier Copier) (*Copy, error)
 	return copyAction, nil
 }
 
-func (c *Copy) Run(ctx context.Context, in CopyInput) (CopyResult, error) {
-	snippet, err := c.finder.Find(ctx, in.SnippetID)
+func (c *Copy) Run(ctx context.Context, input CopyInput) (CopyResult, error) {
+	snippet, err := c.finder.Find(ctx, input.SnippetID)
 	if err != nil {
 		return CopyResult{}, fmt.Errorf("snippet.Copy: %w", err)
 	}
 
-	content := c.shape(snippet.FirstFragment().Content())
+	fragment, err := snippet.Fragment(input.FragmentID)
+	if err != nil {
+		return CopyResult{}, fmt.Errorf("snippet.Copy: %w", err)
+	}
+
+	content := c.shape(fragment.Content())
 
 	delivery, err := c.copier.Copy(ctx, content.String())
 	if err != nil {

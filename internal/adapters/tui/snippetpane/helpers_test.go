@@ -89,10 +89,33 @@ func snippetWithContent(t *testing.T, spec testkit.SnippetSpec, content string) 
 	ids := testkit.NewSequentialIDs()
 	spec.ID = ids.NewSnippetID()
 	spec.Title = "Long"
-	spec.Fragment = testkit.FragmentSpec{ID: ids.NewFragmentID(), Language: "Go", Content: content}
+	spec.Fragments = []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Go", Content: content}}
 	spec.CreatedAt = created()
 
 	return testkit.Snippet(t, spec)
+}
+
+func severalFragmentsSnippet(t *testing.T, ids *testkit.SequentialIDs) domain.Snippet {
+	t.Helper()
+
+	return testkit.Snippet(t, testkit.SnippetSpec{
+		ID:    ids.NewSnippetID(),
+		Title: "Several",
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Title: "main.go", Language: "Go", Content: "package main"},
+			{ID: ids.NewFragmentID(), Language: "YAML", Content: "on: push"},
+			{ID: ids.NewFragmentID(), Title: "README", Content: "Read me"},
+		},
+		CreatedAt: created(),
+	})
+}
+
+func stripRow(pane snippetpane.Pane) string {
+	return strings.TrimRight(lines(pane)[headerLines], " ")
+}
+
+func firstCodeLine(pane snippetpane.Pane) string {
+	return strings.TrimRight(lines(pane)[headerLines+1], " ")
 }
 
 func pressed(t *testing.T, pane snippetpane.Pane, keys ...tea.KeyPressMsg) snippetpane.Pane {

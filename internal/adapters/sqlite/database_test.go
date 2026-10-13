@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	knownSchemaVersion = 5
+	knownSchemaVersion = 6
 	lockWaitInTest     = 200 * time.Millisecond
 )
 
@@ -52,7 +52,7 @@ func TestOpen(t *testing.T) {
 
 		require.NoError(t, openAndClose(t, path))
 
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema4.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
 	})
 
 	t.Run("treats a file: prefixed Path as the plain path", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestOpen(t *testing.T) {
 
 		assert.FileExists(t, path+".lock")
 		assert.Equal(t, sqlite.BackupDir(path), sqlite.BackupDir("file:"+path))
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema4.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
 	})
 
 	t.Run("refuses to migrate when the backup fails", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestOpen(t *testing.T) {
 
 		require.NoError(t, os.Remove(sqlite.BackupDir(path)))
 		require.NoError(t, openAndClose(t, path))
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema4.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
 	})
 
 	t.Run("keeps the three newest backups and nothing else it did not write", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestOpen(t *testing.T) {
 			"notes.txt",
 			"tuisnip-20260301T090000Z-schema3.db",
 			"tuisnip-20260601T090000Z-schema3.db",
-			"tuisnip-20261001T120000Z-schema4.db",
+			"tuisnip-20261001T120000Z-schema5.db",
 		}, backupNames(t, path))
 	})
 
@@ -143,7 +143,7 @@ func TestOpen(t *testing.T) {
 		require.True(t, ok, "want NewerSchemaError, got %v", err)
 		assert.Equal(t, sqlite.NewerSchemaError{Database: 99, Known: knownSchemaVersion}, newer)
 		assert.Equal(t,
-			"The database was created by a newer TuiSnip (schema 99; this build knows 5). Upgrade TuiSnip.",
+			"The database was created by a newer TuiSnip (schema 99; this build knows 6). Upgrade TuiSnip.",
 			newer.Error(),
 		)
 	})

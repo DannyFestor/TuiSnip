@@ -23,7 +23,7 @@ func TestSnippetRepository_Find(t *testing.T) {
 		snippet := testkit.Snippet(t, testkit.SnippetSpec{
 			Title:       "curl json",
 			Description: "POST with a JSON body",
-			Fragment:    testkit.FragmentSpec{Language: "Bash", Content: "curl -d @body.json\n"},
+			Fragments:   []testkit.FragmentSpec{{Language: "Bash", Content: "curl -d @body.json\n"}},
 		})
 		require.NoError(t, repository.Insert(t.Context(), snippet))
 
@@ -31,6 +31,20 @@ func TestSnippetRepository_Find(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, snippet, got)
+	})
+
+	t.Run("returns every Fragment in order with its title", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		ids := testkit.NewSequentialIDs()
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Fragments: severalFragments(ids)})
+		require.NoError(t, repository.Insert(t.Context(), snippet))
+
+		got, err := repository.Find(t.Context(), snippet.ID())
+
+		require.NoError(t, err)
+		assert.Equal(t, snippet.Fragments(), got.Fragments())
 	})
 
 	t.Run("returns an inserted Snippet inside a Folder", func(t *testing.T) {
@@ -88,12 +102,12 @@ func TestSnippetRepository_Insert(t *testing.T) {
 		ids := testkit.NewSequentialIDs()
 		sharedFragmentID := ids.NewFragmentID()
 		first := testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Fragment: testkit.FragmentSpec{ID: sharedFragmentID},
+			ID:        ids.NewSnippetID(),
+			Fragments: []testkit.FragmentSpec{{ID: sharedFragmentID}},
 		})
 		second := testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Fragment: testkit.FragmentSpec{ID: sharedFragmentID},
+			ID:        ids.NewSnippetID(),
+			Fragments: []testkit.FragmentSpec{{ID: sharedFragmentID}},
 		})
 		require.NoError(t, repository.Insert(t.Context(), first))
 
@@ -149,6 +163,22 @@ func TestSnippetRepository_Update(t *testing.T) {
 		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
 		stored := insertSnippet(t, repository, testkit.NewSequentialIDs(), testkit.SnippetSpec{Title: "curl"})
 		edited := editedSnippet(t, stored, "if x {\n\treturn\n}\n")
+
+		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
+
+		got, err := repository.Find(t.Context(), stored.ID())
+		require.NoError(t, err)
+		assert.Equal(t, edited, got)
+	})
+
+	t.Run("writes one edited Fragment and keeps the others", func(t *testing.T) {
+		t.Parallel()
+
+		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
+		ids := testkit.NewSequentialIDs()
+		stored := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Fragments: severalFragments(ids)})
+		require.NoError(t, repository.Insert(t.Context(), stored))
+		edited := editedFragment(t, stored, stored.Fragments()[1].ID(), "on: pull_request\n")
 
 		require.NoError(t, repository.Update(t.Context(), edited, stored.UpdatedAt()))
 
@@ -381,18 +411,14 @@ func TestSnippetRepository_List(t *testing.T) {
 		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
 		ids := testkit.NewSequentialIDs()
 		first := testkit.Snippet(t, testkit.SnippetSpec{
-			ID:       ids.NewSnippetID(),
-			Title:    "curl json",
-			Fragment: testkit.FragmentSpec{ID: ids.NewFragmentID(), Content: "curl -d @body.json"},
+			ID:        ids.NewSnippetID(),
+			Title:     "curl json",
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Content: "curl -d @body.json"}},
 		})
 		second := testkit.Snippet(t, testkit.SnippetSpec{
-			ID:    ids.NewSnippetID(),
-			Title: "git undo",
-			Fragment: testkit.FragmentSpec{
-				ID:       ids.NewFragmentID(),
-				Language: "Bash",
-				Content:  "git reset HEAD~",
-			},
+			ID:        ids.NewSnippetID(),
+			Title:     "git undo",
+			Fragments: severalFragments(ids),
 		})
 		require.NoError(t, repository.Insert(t.Context(), first))
 		require.NoError(t, repository.Insert(t.Context(), second))

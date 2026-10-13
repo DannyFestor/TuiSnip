@@ -10,6 +10,7 @@ type ExternalEditAsked struct {
 	Content   string
 	Language  value.Language
 	Snippet   domain.Snippet
+	Fragment  domain.Fragment
 	Selection browseselection.Selection
 }
 

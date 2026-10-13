@@ -25,6 +25,7 @@ type Fragment struct {
 	Content   string
 	CreatedAt sqltype.Timestamp
 	UpdatedAt sqltype.Timestamp
+	Title     string
 }
 
 type Snippet struct {

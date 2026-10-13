@@ -16,6 +16,7 @@ const defaultFragmentID = "0194c3a0-0000-7000-8000-00000000f001"
 
 type FragmentSpec struct {
 	ID        domain.FragmentID
+	Title     string
 	Language  string
 	Content   string
 	CreatedAt time.Time
@@ -31,9 +32,13 @@ func Fragment(tb testing.TB, spec FragmentSpec) domain.Fragment {
 	content, err := value.NewContent(spec.Content)
 	require.NoError(tb, err)
 
+	title, err := value.NewFragmentTitle(spec.Title)
+	require.NoError(tb, err)
+
 	createdAt := cmp.Or(spec.CreatedAt, defaultTime())
 	fragment, err := domain.NewFragment(
 		cmp.Or(spec.ID, domain.FragmentID(uuid.MustParse(defaultFragmentID))),
+		title,
 		language,
 		content,
 		createdAt,

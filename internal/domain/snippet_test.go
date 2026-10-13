@@ -51,15 +51,14 @@ func TestSnippet_New(t *testing.T) {
 			fragments: nil,
 			createdAt: created,
 			updatedAt: created,
-			wantErrs:  []error{domain.ErrNotOneFragment},
+			wantErrs:  []error{domain.ErrNoFragment},
 		},
 		{
-			name:      "rejects two fragments",
+			name:      "accepts several fragments",
 			id:        snippetID(),
-			fragments: []domain.Fragment{fragment, fragment},
+			fragments: []domain.Fragment{fragment, fragment, fragment},
 			createdAt: created,
 			updatedAt: created,
-			wantErrs:  []error{domain.ErrNotOneFragment},
 		},
 		{
 			name:      "rejects the epoch",
@@ -91,7 +90,7 @@ func TestSnippet_New(t *testing.T) {
 			fragments: nil,
 			createdAt: created,
 			updatedAt: created.Add(-time.Second),
-			wantErrs:  []error{domain.ErrNilID, domain.ErrNotOneFragment, domain.ErrUpdatedBeforeCreate},
+			wantErrs:  []error{domain.ErrNilID, domain.ErrNoFragment, domain.ErrUpdatedBeforeCreate},
 		},
 	}
 	for _, tt := range tests {
@@ -225,9 +224,37 @@ func TestSnippet_Retagged(t *testing.T) {
 func TestSnippet_FirstFragment(t *testing.T) {
 	t.Parallel()
 
-	snippet := testkit.Snippet(t, testkit.SnippetSpec{Fragment: testkit.FragmentSpec{Content: "echo hi"}})
+	snippet := testkit.Snippet(t, testkit.SnippetSpec{Fragments: []testkit.FragmentSpec{{Content: "echo hi"}}})
 
 	assert.Equal(t, "echo hi", snippet.FirstFragment().Content().String())
+}
+
+func TestSnippet_Fragment(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	firstID, secondID := ids.NewFragmentID(), ids.NewFragmentID()
+	snippet := testkit.Snippet(t, testkit.SnippetSpec{Fragments: []testkit.FragmentSpec{
+		{ID: firstID, Content: "first"},
+		{ID: secondID, Content: "second"},
+	}})
+
+	t.Run("finds the Fragment by its id", func(t *testing.T) {
+		t.Parallel()
+
+		fragment, err := snippet.Fragment(secondID)
+
+		require.NoError(t, err)
+		assert.Equal(t, "second", fragment.Content().String())
+	})
+
+	t.Run("rejects a Fragment the Snippet doesn't hold", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := snippet.Fragment(ids.NewFragmentID())
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
 }
 
 func TestSnippet_Edit(t *testing.T) {
@@ -235,11 +262,17 @@ func TestSnippet_Edit(t *testing.T) {
 
 	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 	later := created.Add(time.Hour)
+	ids := testkit.NewSequentialIDs()
+	firstID, secondID, thirdID := ids.NewFragmentID(), ids.NewFragmentID(), ids.NewFragmentID()
 	stored := testkit.Snippet(t, testkit.SnippetSpec{
-		ID:        snippetID(),
-		Title:     "curl",
-		FolderID:  domain.FolderID(uuid.MustParse(storedID)),
-		Fragment:  testkit.FragmentSpec{Content: "curl", CreatedAt: created},
+		ID:       snippetID(),
+		Title:    "curl",
+		FolderID: domain.FolderID(uuid.MustParse(storedID)),
+		Fragments: []testkit.FragmentSpec{
+			{ID: firstID, Title: "get.sh", Content: "curl", CreatedAt: created},
+			{ID: secondID, Title: "post.sh", Content: "curl -d @b.json", CreatedAt: created},
+			{ID: thirdID, Content: "{}", Language: "JSON", CreatedAt: created},
+		},
 		Tags:      []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "http"})},
 		CreatedAt: created,
 	})
@@ -250,42 +283,81 @@ func TestSnippet_Edit(t *testing.T) {
 		edited, err := stored.Edit(
 			mustTitle(t, "curl json"),
 			mustDescription(t, "POST"),
-			mustLanguage(t, "Bash"),
-			mustContent(t, "curl -d @b.json"),
+			domain.FragmentEdit{
+				ID:       secondID,
+				Language: mustLanguage(t, "Bash"),
+				Content:  mustContent(t, "curl -X PUT"),
+			},
 			later,
 		)
 
 		require.NoError(t, err)
 		assert.Equal(t, "curl json", edited.Title().String())
 		assert.Equal(t, "POST", edited.Description().String())
-		assert.Equal(t, "Bash", edited.FirstFragment().Language().String())
-		assert.Equal(t, "curl -d @b.json", edited.FirstFragment().Content().String())
+		assert.Equal(t, "Bash", edited.Fragments()[1].Language().String())
+		assert.Equal(t, "curl -X PUT", edited.Fragments()[1].Content().String())
 		assert.Equal(t, later, edited.UpdatedAt())
-		assert.Equal(t, later, edited.FirstFragment().UpdatedAt())
+		assert.Equal(t, later, edited.Fragments()[1].UpdatedAt())
 		assert.Equal(t, "curl", stored.Title().String(), "the original is untouched")
 	})
 
-	t.Run("keeps the ID, Folder, Fragment, Tags and creation time", func(t *testing.T) {
+	t.Run("keeps the ID, Folder, other Fragments, Tags and creation time", func(t *testing.T) {
 		t.Parallel()
 
 		edited, err := stored.Edit(
-			mustTitle(t, "curl"), value.Description{}, value.PlainText(), mustContent(t, "curl"), later,
+			mustTitle(t, "curl"),
+			value.Description{},
+			domain.FragmentEdit{ID: secondID, Language: value.PlainText(), Content: mustContent(t, "curl -X PUT")},
+			later,
 		)
 
 		require.NoError(t, err)
 		assert.Equal(t, stored.ID(), edited.ID())
 		assert.Equal(t, stored.FolderID(), edited.FolderID())
 		assert.Equal(t, stored.Tags(), edited.Tags())
-		assert.Equal(t, stored.FirstFragment().ID(), edited.FirstFragment().ID())
 		assert.Equal(t, created, edited.CreatedAt())
-		assert.Equal(t, created, edited.FirstFragment().UpdatedAt(), "unchanged content keeps its time")
+		require.Len(t, edited.Fragments(), 3)
+		assert.Equal(t, stored.Fragments()[0], edited.Fragments()[0])
+		assert.Equal(t, secondID, edited.Fragments()[1].ID())
+		assert.Equal(t, "post.sh", edited.Fragments()[1].Title().String())
+		assert.Equal(t, stored.Fragments()[2], edited.Fragments()[2])
+	})
+
+	t.Run("keeps an unchanged Fragment's time", func(t *testing.T) {
+		t.Parallel()
+
+		edited, err := stored.Edit(
+			mustTitle(t, "curl"),
+			value.Description{},
+			domain.FragmentEdit{ID: firstID, Language: value.PlainText(), Content: mustContent(t, "curl")},
+			later,
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, created, edited.FirstFragment().UpdatedAt())
+	})
+
+	t.Run("rejects a Fragment the Snippet doesn't hold", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := stored.Edit(
+			mustTitle(t, "curl"),
+			value.Description{},
+			domain.FragmentEdit{ID: ids.NewFragmentID(), Language: value.PlainText(), Content: mustContent(t, "curl")},
+			later,
+		)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
 	t.Run("rejects a time before creation", func(t *testing.T) {
 		t.Parallel()
 
 		_, err := stored.Edit(
-			mustTitle(t, "curl json"), value.Description{}, value.PlainText(), mustContent(t, "curl"), created.Add(-1),
+			mustTitle(t, "curl json"),
+			value.Description{},
+			domain.FragmentEdit{ID: firstID, Language: value.PlainText(), Content: mustContent(t, "curl")},
+			created.Add(-1),
 		)
 
 		require.ErrorIs(t, err, domain.ErrUpdatedBeforeCreate)
@@ -298,21 +370,32 @@ func TestSnippet_Duplicate(t *testing.T) {
 	created := time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 	later := created.Add(time.Hour)
 	ids := testkit.NewSequentialIDs()
-	duplicateID, duplicateFragmentID := ids.NewSnippetID(), ids.NewFragmentID()
 	stored := testkit.Snippet(t, testkit.SnippetSpec{
 		ID:          snippetID(),
 		Title:       "curl",
 		Description: "POST",
 		FolderID:    domain.FolderID(uuid.MustParse(folderUUID)),
-		Fragment:    testkit.FragmentSpec{Language: "Bash", Content: "curl -d @b.json", CreatedAt: created},
-		Tags:        []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "http"})},
-		CreatedAt:   created,
+		Fragments: []testkit.FragmentSpec{
+			{
+				ID:        ids.NewFragmentID(),
+				Title:     "post.sh",
+				Language:  "Bash",
+				Content:   "curl -d @b.json",
+				CreatedAt: created,
+			},
+			{ID: ids.NewFragmentID(), Language: "JSON", Content: "{}", CreatedAt: created},
+		},
+		Tags:      []domain.Tag{testkit.Tag(t, testkit.TagSpec{Name: "http"})},
+		CreatedAt: created,
 	})
 
 	t.Run("keeps every field but the ids and times", func(t *testing.T) {
 		t.Parallel()
 
-		duplicate, err := stored.Duplicate(duplicateID, duplicateFragmentID, later)
+		copyIDs := testkit.NewSequentialIDs()
+		duplicateID := copyIDs.NewSnippetID()
+
+		duplicate, err := stored.Duplicate(duplicateID, copyIDs.NewFragmentID, later)
 
 		require.NoError(t, err)
 		assert.Equal(t, duplicateID, duplicate.ID())
@@ -322,15 +405,35 @@ func TestSnippet_Duplicate(t *testing.T) {
 		assert.Equal(t, stored.Tags(), duplicate.Tags())
 		assert.Equal(t, later, duplicate.CreatedAt())
 		assert.Equal(t, later, duplicate.UpdatedAt())
-		assert.Equal(t, duplicateFragmentID, duplicate.FirstFragment().ID())
-		assert.Equal(t, stored.FirstFragment().Language(), duplicate.FirstFragment().Language())
-		assert.Equal(t, stored.FirstFragment().Content(), duplicate.FirstFragment().Content())
+	})
+
+	t.Run("copies every Fragment in order under new ids", func(t *testing.T) {
+		t.Parallel()
+
+		copyIDs := testkit.NewSequentialIDs()
+		duplicateID := copyIDs.NewSnippetID()
+		expectedIDs := testkit.NewSequentialIDs()
+		expectedIDs.NewSnippetID()
+
+		duplicate, err := stored.Duplicate(duplicateID, copyIDs.NewFragmentID, later)
+
+		require.NoError(t, err)
+		require.Len(t, duplicate.Fragments(), 2)
+
+		for i, fragment := range duplicate.Fragments() {
+			original := stored.Fragments()[i]
+
+			assert.Equal(t, expectedIDs.NewFragmentID(), fragment.ID())
+			assert.Equal(t, original.Title(), fragment.Title())
+			assert.Equal(t, original.Language(), fragment.Language())
+			assert.Equal(t, original.Content(), fragment.Content())
+		}
 	})
 
 	t.Run("rejects nil ids", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := stored.Duplicate(domain.SnippetID{}, domain.FragmentID{}, later)
+		_, err := stored.Duplicate(domain.SnippetID{}, func() domain.FragmentID { return domain.FragmentID{} }, later)
 
 		require.ErrorIs(t, err, domain.ErrNilID)
 	})
@@ -342,7 +445,7 @@ func TestSnippet_MoveTo(t *testing.T) {
 	stored := testkit.Snippet(t, testkit.SnippetSpec{
 		ID:        snippetID(),
 		FolderID:  parentID(),
-		Fragment:  testkit.FragmentSpec{Language: "Bash"},
+		Fragments: []testkit.FragmentSpec{{Language: "Bash"}},
 		UpdatedAt: time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
 	})
 

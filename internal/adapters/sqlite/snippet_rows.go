@@ -43,8 +43,9 @@ func snippetFromRows(
 
 func fragmentsBySnippet(rows []sqlcgen.Fragment) map[sqltype.ID][]sqlcgen.Fragment {
 	grouped := make(map[sqltype.ID][]sqlcgen.Fragment, len(rows))
-	for _, row := range rows {
-		grouped[row.SnippetID] = append(grouped[row.SnippetID], row)
+	for index := range rows {
+		snippetID := rows[index].SnippetID
+		grouped[snippetID] = append(grouped[snippetID], rows[index])
 	}
 
 	return grouped
@@ -52,8 +53,8 @@ func fragmentsBySnippet(rows []sqlcgen.Fragment) map[sqltype.ID][]sqlcgen.Fragme
 
 func fragmentsFromRows(rows []sqlcgen.Fragment) ([]domain.Fragment, error) {
 	fragments := make([]domain.Fragment, 0, len(rows))
-	for _, row := range rows {
-		fragment, err := fragmentFromRow(row)
+	for index := range rows {
+		fragment, err := fragmentFromRow(rows[index])
 		if err != nil {
 			return nil, err
 		}
@@ -65,16 +66,18 @@ func fragmentsFromRows(rows []sqlcgen.Fragment) ([]domain.Fragment, error) {
 }
 
 func fragmentFromRow(row sqlcgen.Fragment) (domain.Fragment, error) {
+	title, titleErr := value.NewFragmentTitle(row.Title)
 	language, languageErr := value.NewLanguage(row.Language)
 	content, contentErr := value.NewContent(row.Content)
 
-	err := errors.Join(languageErr, contentErr)
+	err := errors.Join(titleErr, languageErr, contentErr)
 	if err != nil {
 		return domain.Fragment{}, err
 	}
 
 	fragment, err := domain.NewFragment(
 		entityID[domain.FragmentID](row.ID),
+		title,
 		language,
 		content,
 		time.Time(row.CreatedAt),

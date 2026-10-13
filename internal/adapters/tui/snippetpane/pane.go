@@ -11,6 +11,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/fragmentstrip"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -36,6 +37,7 @@ type Pane struct {
 	styles     look.Styles
 	snippet    domain.Snippet
 	shown      bool
+	strip      fragmentstrip.Strip
 	viewport   viewport.Model
 	location   *time.Location
 	paths      folderpath.Paths
@@ -53,6 +55,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 		styles:     styles,
 		snippet:    domain.Snippet{},
 		shown:      false,
+		strip:      fragmentstrip.New(styles),
 		viewport:   code,
 		location:   location,
 		paths:      folderpath.Paths{},
@@ -71,6 +74,8 @@ func (p Pane) Update(msg tea.Msg) (Pane, []outcome.Outcome, tea.Cmd) {
 		return p.restyled(msg.Styles), nil, nil
 	case pointer.Wheeled:
 		return p.wheeled(msg), nil, nil
+	case pointer.Clicked:
+		return p.clicked(msg), nil, nil
 	}
 
 	return p, nil, nil
@@ -95,6 +100,7 @@ func (p Pane) FullHelp() [][]key.Binding {
 func (p Pane) Showing(snippet domain.Snippet) Pane {
 	next := p
 	next.snippet = snippet
+	next.strip = p.stripFor(snippet)
 
 	if p.shown && p.snippet.ID() == snippet.ID() && p.snippet.UpdatedAt().Equal(snippet.UpdatedAt()) {
 		return next
@@ -107,6 +113,20 @@ func (p Pane) Showing(snippet domain.Snippet) Pane {
 
 func (p Pane) Shown() (domain.Snippet, bool) {
 	return p.snippet, p.shown
+}
+
+func (p Pane) ShownFragment() (domain.Fragment, bool) {
+	if !p.shown {
+		return domain.Fragment{}, false
+	}
+
+	return p.fragmentInView(), true
+}
+
+func (p Pane) Copying() (outcome.CopyRequested, bool) {
+	fragment, ok := p.ShownFragment()
+
+	return outcome.CopyRequested{ID: p.snippet.ID(), FragmentID: fragment.ID()}, ok
 }
 
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
@@ -124,8 +144,13 @@ func (p Pane) Cleared() Pane {
 }
 
 func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
-	if p.keys.Matches(msg, binding.Wrap) {
+	switch {
+	case p.keys.Matches(msg, binding.Wrap):
 		return p.wrapToggled()
+	case p.keys.Matches(msg, binding.NextFragment):
+		return p.showingFragment(p.strip.Next())
+	case p.keys.Matches(msg, binding.PrevFragment):
+		return p.showingFragment(p.strip.Previous())
 	}
 
 	direction, ok := move.Pressed(p.global, msg)
@@ -137,11 +162,42 @@ func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
 }
 
 func (p Pane) copyRequested(msg tea.KeyPressMsg) []outcome.Outcome {
-	if !p.shown || !p.keys.Matches(msg, binding.Copy) {
+	request, ok := p.Copying()
+	if !ok || !p.keys.Matches(msg, binding.Copy) {
 		return nil
 	}
 
-	return []outcome.Outcome{outcome.CopyRequested{ID: p.snippet.ID()}}
+	return []outcome.Outcome{request}
+}
+
+func (p Pane) clicked(click pointer.Clicked) Pane {
+	if !p.shown || !p.strip.Visible() || click.At.Y != p.stripRow() {
+		return p
+	}
+
+	return p.showingFragment(p.strip.Clicked(click.At.X))
+}
+
+func (p Pane) stripFor(snippet domain.Snippet) fragmentstrip.Strip {
+	if !p.shown || p.snippet.ID() != snippet.ID() {
+		return p.strip.First().Of(snippet.Fragments())
+	}
+
+	return p.strip.Of(snippet.Fragments())
+}
+
+func (p Pane) showingFragment(strip fragmentstrip.Strip) Pane {
+	if !p.shown || strip.Shown() == p.strip.Shown() {
+		return p
+	}
+
+	p.strip = strip
+
+	return p.rendered()
+}
+
+func (p Pane) fragmentInView() domain.Fragment {
+	return p.snippet.Fragments()[p.strip.Shown()]
 }
 
 func (p Pane) wrapToggled() Pane {
@@ -153,6 +209,7 @@ func (p Pane) wrapToggled() Pane {
 func (p Pane) restyled(styles look.Styles) Pane {
 	next := p
 	next.styles = styles
+	next.strip = p.strip.Restyled(styles)
 	next.viewport.LeftGutterFunc = lineNumbers(styles)
 
 	if !next.shown {
@@ -200,7 +257,7 @@ func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
 }
 
 func (p Pane) rendered() Pane {
-	fragment := p.snippet.FirstFragment()
+	fragment := p.fragmentInView()
 	p.viewport.SetContent(look.Highlight(fragment.Content().String(), fragment.Language().String(), p.styles.CodeStyle))
 	p.viewport.GotoTop()
 
@@ -221,12 +278,25 @@ func (p Pane) header() []string {
 		p.styles.Dim.Render(p.timestamps()),
 	}
 	lines = append(lines, p.descriptionLines()...)
+	lines = append(lines, p.styles.Dim.Render(strings.Repeat("─", p.box.Width)))
 
-	return append(lines, p.styles.Dim.Render(strings.Repeat("─", p.box.Width)))
+	return append(lines, p.stripLines()...)
+}
+
+func (p Pane) stripLines() []string {
+	if !p.shown || !p.strip.Visible() {
+		return nil
+	}
+
+	return []string{p.strip.View(p.box.Width)}
+}
+
+func (p Pane) stripRow() int {
+	return fixedHeaderLines + len(p.descriptionLines())
 }
 
 func (p Pane) meta() string {
-	place := p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.snippet.FirstFragment().Language().String()
+	place := p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.fragmentInView().Language().String()
 
 	tags := p.snippet.Tags()
 	if len(tags) == 0 {
@@ -242,7 +312,7 @@ func (p Pane) meta() string {
 }
 
 func (p Pane) headerHeight() int {
-	return fixedHeaderLines + len(p.descriptionLines())
+	return p.stripRow() + len(p.stripLines())
 }
 
 func (p Pane) descriptionLines() []string {

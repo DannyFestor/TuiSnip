@@ -157,7 +157,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if stored, ok := s.selectedFor(msg, binding.Edit); ok {
+	if stored, ok := s.shownFor(msg, binding.Edit); ok {
 		return s.opening(editoverlay.Editing(
 			s.keys,
 			s.styles,
@@ -166,7 +166,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		))
 	}
 
-	if stored, ok := s.selectedFor(msg, binding.OpenInEditor); ok {
+	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
 		return outcome.Stay(s).Passing(s.externalEditAsked(stored))
 	}
 
@@ -238,11 +238,9 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	return outcome.Stay(s), false
 }
 
-func (s Screen) selectedFor(msg tea.KeyPressMsg, name string) (domain.Snippet, bool) {
-	switch {
-	case s.focus == paneList && s.listKeys.Matches(msg, name):
-		return s.panes.list.Selected()
-	case s.focus == paneSnippet && s.paneKeys.Matches(msg, name):
+func (s Screen) shownFor(msg tea.KeyPressMsg, name string) (domain.Snippet, bool) {
+	if (s.focus == paneList && s.listKeys.Matches(msg, name)) ||
+		(s.focus == paneSnippet && s.paneKeys.Matches(msg, name)) {
 		return s.panes.preview.Shown()
 	}
 
@@ -250,20 +248,22 @@ func (s Screen) selectedFor(msg tea.KeyPressMsg, name string) (domain.Snippet, b
 }
 
 func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsked {
-	fragment := stored.FirstFragment()
+	fragment, _ := s.panes.preview.ShownFragment()
 
 	return outcome.ExternalEditAsked{
 		Content:   fragment.Content().String(),
 		Language:  fragment.Language(),
 		Snippet:   stored,
+		Fragment:  fragment,
 		Selection: s.selection(),
 	}
 }
 
 func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
 	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.overlayOptions(), editoverlay.ExternallyEdited{
-		Browsed: editoverlay.BrowsedSnippet{Snippet: edited.Asked.Snippet, Selection: edited.Asked.Selection},
-		Content: edited.Content,
+		Browsed:  editoverlay.BrowsedSnippet{Snippet: edited.Asked.Snippet, Selection: edited.Asked.Selection},
+		Fragment: edited.Asked.Fragment,
+		Content:  edited.Content,
 	}))
 }
 

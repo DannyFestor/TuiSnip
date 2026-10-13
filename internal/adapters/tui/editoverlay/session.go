@@ -67,8 +67,27 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 }
 
 func Editing(keys binding.Keys, styles look.Styles, options Options, browsed BrowsedSnippet) (Session, tea.Cmd) {
-	stored := browsed.Snippet
-	fragment := stored.FirstFragment()
+	return editingFragment(keys, styles, options, browsedFragment{
+		browsed:  browsed,
+		fragment: browsed.Snippet.FirstFragment(),
+	})
+}
+
+func EditedExternally(
+	keys binding.Keys, styles look.Styles, options Options, edited ExternallyEdited,
+) (Session, tea.Cmd) {
+	opened, cmd := editingFragment(keys, styles, options, browsedFragment{
+		browsed:  edited.Browsed,
+		fragment: edited.Fragment,
+	})
+
+	return opened.withExternalContent(edited.Content), cmd
+}
+
+func editingFragment(
+	keys binding.Keys, styles look.Styles, options Options, opened browsedFragment,
+) (Session, tea.Cmd) {
+	stored, fragment := opened.browsed.Snippet, opened.fragment
 	original := entered{
 		title:       stored.Title().String(),
 		description: stored.Description().String(),
@@ -78,17 +97,14 @@ func Editing(keys binding.Keys, styles look.Styles, options Options, browsed Bro
 	}
 	readOnly := readOnlyIfUneditable(original.content, fragment.Language(), styles.CodeStyle)
 	filled, cmd := newForm(formKeysOf(keys), styles, original, readOnly)
-	target := storedSnippet{id: stored.ID(), selection: browsed.Selection, loadedUpdatedAt: stored.UpdatedAt()}
+	target := storedSnippet{
+		id:              stored.ID(),
+		fragmentID:      fragment.ID(),
+		selection:       opened.browsed.Selection,
+		loadedUpdatedAt: stored.UpdatedAt(),
+	}
 
 	return newSession(keys, styles, options, filled).aimedAt(target), cmd
-}
-
-func EditedExternally(
-	keys binding.Keys, styles look.Styles, options Options, edited ExternallyEdited,
-) (Session, tea.Cmd) {
-	opened, cmd := Editing(keys, styles, options, edited.Browsed)
-
-	return opened.withExternalContent(edited.Content), cmd
 }
 
 func newSession(keys binding.Keys, styles look.Styles, options Options, opened form) Session {
@@ -204,6 +220,7 @@ func (s Session) externalEditAsked() outcome.Step {
 		Content:   s.form.entered().content,
 		Language:  s.form.language,
 		Snippet:   domain.Snippet{},
+		Fragment:  domain.Fragment{},
 		Selection: browseselection.Selection{},
 	})
 }

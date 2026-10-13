@@ -22,7 +22,7 @@ type SnippetSpec struct {
 	Title       string
 	Description string
 	FolderID    domain.FolderID
-	Fragment    FragmentSpec
+	Fragments   []FragmentSpec
 	Tags        []domain.Tag
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -43,7 +43,7 @@ func Snippet(tb testing.TB, spec SnippetSpec) domain.Snippet {
 		title,
 		description,
 		spec.FolderID,
-		[]domain.Fragment{Fragment(tb, spec.Fragment)},
+		fragments(tb, spec.Fragments),
 		spec.Tags,
 		createdAt,
 		cmp.Or(spec.UpdatedAt, createdAt),
@@ -51,4 +51,30 @@ func Snippet(tb testing.TB, spec SnippetSpec) domain.Snippet {
 	require.NoError(tb, err)
 
 	return snippet
+}
+
+func fragments(tb testing.TB, specs []FragmentSpec) []domain.Fragment {
+	tb.Helper()
+
+	if len(specs) == 0 {
+		return []domain.Fragment{Fragment(tb, defaultFragmentSpec())}
+	}
+
+	built := make([]domain.Fragment, 0, len(specs))
+	for _, spec := range specs {
+		built = append(built, Fragment(tb, spec))
+	}
+
+	return built
+}
+
+func defaultFragmentSpec() FragmentSpec {
+	return FragmentSpec{
+		ID:        domain.FragmentID{},
+		Title:     "",
+		Language:  "",
+		Content:   "",
+		CreatedAt: time.Time{},
+		UpdatedAt: time.Time{},
+	}
 }

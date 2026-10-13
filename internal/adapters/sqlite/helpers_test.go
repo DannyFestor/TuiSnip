@@ -179,7 +179,7 @@ func insertSnippet(
 	t.Helper()
 
 	spec.ID = ids.NewSnippetID()
-	spec.Fragment.ID = ids.NewFragmentID()
+	spec.Fragments = []testkit.FragmentSpec{{ID: ids.NewFragmentID()}}
 	snippet := testkit.Snippet(t, spec)
 	require.NoError(t, repository.Insert(t.Context(), snippet))
 
@@ -189,6 +189,12 @@ func insertSnippet(
 func editedSnippet(t *testing.T, stored domain.Snippet, content string) domain.Snippet {
 	t.Helper()
 
+	return editedFragment(t, stored, stored.FirstFragment().ID(), content)
+}
+
+func editedFragment(t *testing.T, stored domain.Snippet, fragmentID domain.FragmentID, content string) domain.Snippet {
+	t.Helper()
+
 	title, err := value.NewTitle("edited")
 	require.NoError(t, err)
 
@@ -196,11 +202,22 @@ func editedSnippet(t *testing.T, stored domain.Snippet, content string) domain.S
 	require.NoError(t, err)
 
 	edited, err := stored.Edit(
-		title, stored.Description(), language, mustContent(t, content), stored.UpdatedAt().Add(time.Hour),
+		title,
+		stored.Description(),
+		domain.FragmentEdit{ID: fragmentID, Language: language, Content: mustContent(t, content)},
+		stored.UpdatedAt().Add(time.Hour),
 	)
 	require.NoError(t, err)
 
 	return edited
+}
+
+func severalFragments(ids *testkit.SequentialIDs) []testkit.FragmentSpec {
+	return []testkit.FragmentSpec{
+		{ID: ids.NewFragmentID(), Title: "main.go", Language: "Go", Content: "package main\n"},
+		{ID: ids.NewFragmentID(), Language: "YAML", Content: "on: push\n"},
+		{ID: ids.NewFragmentID(), Title: "README", Content: "Read me first\n"},
+	}
 }
 
 func mustContent(t *testing.T, raw string) value.Content {

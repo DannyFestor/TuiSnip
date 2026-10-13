@@ -42,7 +42,7 @@ func New(keys binding.Keys, styles look.Styles, meta Meta) List {
 func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		return l.pressed(msg), l.copyRequested(msg), nil
+		return l.pressed(msg), nil, nil
 	case look.Resized:
 		return l.resized(msg.Box), nil, nil
 	case look.Restyled:
@@ -152,15 +152,6 @@ func (l List) pressed(msg tea.KeyPressMsg) List {
 	}
 
 	return l.Moved(direction)
-}
-
-func (l List) copyRequested(msg tea.KeyPressMsg) []outcome.Outcome {
-	selected, ok := l.Selected()
-	if !ok || !l.keys.Matches(msg, binding.Copy) {
-		return nil
-	}
-
-	return []outcome.Outcome{outcome.CopyRequested{ID: selected.ID()}}
 }
 
 func (l List) resized(box look.Size) List {

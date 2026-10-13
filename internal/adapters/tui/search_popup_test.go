@@ -73,7 +73,7 @@ func TestModel_searchPopup(t *testing.T) {
 		snippets := sampleSnippets(t)
 		copier := NewMockSnippetCopier(t)
 		copier.EXPECT().
-			Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[1].ID()}).
+			Run(mock.Anything, snippet.CopyInput{SnippetID: snippets[1].ID(), FragmentID: snippets[1].FirstFragment().ID()}).
 			Return(copied(t, domain.CopyDeliveryPlaced), nil)
 		screen := start(t, modelWith(t, actions{
 			lister:     listerOf(t, snippets...),

@@ -22,7 +22,7 @@ embeds/
   config/                    default.toml, embedded by embed.go
 internal/
   domain/                    entities, invariants, search weights, FieldError, sentinel errors
-    value/                   value objects (Title, Description, Content, FolderName, TagName, Language) and their rule sentinels
+    value/                   value objects (Title, Description, Content, FolderName, TagName, Language, FragmentTitle) and their rule sentinels
   app/
     snippet/                 Create, Update, Delete, Move, Duplicate, Capture, Copy
     folder/                  Create, Rename, Move, Delete, SetDefaultLanguage
@@ -51,11 +51,12 @@ internal/
       folderpane/            the Folder pane: the Root and the Folder tree with Snippet counts, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
       folderpicker/          the Folder picker: the Root and every Folder by path, a moving Folder's subtree greyed out, and the outcome its opener builds for the pick
+      fragmentstrip/         the tab strip of a Snippet's Fragments: their labels, which one is shown, moving to another, the label a click lands on
       helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
       languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick
       look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
-      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to duplicate and delete the selected Snippet
+      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to copy, duplicate, and delete the selected Snippet
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
@@ -64,8 +65,8 @@ internal/
       pointer/               clicks and wheel turns at a cell, the click outside an Overlay, and telling a double click from two single ones
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
-      snippetlist/           the Snippet list: rows, cursor, scrolling, Copy of the selected Snippet, the Snippet that takes the cursor's row after a delete
-      snippetpane/           the Snippet pane: header, highlighted and scrolled Fragment, Copy of the shown Snippet
+      snippetlist/           the Snippet list: rows, cursor, scrolling, the Snippet that takes the cursor's row after a delete
+      snippetpane/           the Snippet pane: header, the tab strip, the highlighted and scrolled Shown Fragment, Copy of the Shown Fragment
       tagchoice/             the Tags a Snippet carries while the edit overlay is open: stored Tags and the names of Tags to create on save
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
@@ -75,7 +76,7 @@ internal/
 test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
-  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions
+  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions, and Snippets with several Fragments inserted through the repository
   keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
   overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
   screencell/                finds the cell that shows a text on a rendered screen, so tests click what the user sees
@@ -91,7 +92,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 | Layer | Owns | Must not |
 |---|---|---|
 | `domain` | Snippet, Fragment, Folder, Tag, IDs; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
-| `domain/value` | Title, Description, Content, FolderName, TagName, Language: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
+| `domain/value` | Title, Description, Content, FolderName, TagName, Language, FragmentTitle: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter (except `atomicfile`), or `bootstrap` |
 | `atomicfile` | writing a file whole: replacing it, or creating it only when missing | import anything outside the standard library |

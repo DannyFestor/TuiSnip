@@ -276,5 +276,5 @@ func revealing(selected domain.Snippet) outcome.Step {
 }
 
 func copying(selected domain.Snippet) outcome.Step {
-	return outcome.Close().Passing(outcome.CopyRequested{ID: selected.ID()})
+	return outcome.Close().Passing(outcome.CopyRequested{ID: selected.ID(), FragmentID: selected.FirstFragment().ID()})
 }

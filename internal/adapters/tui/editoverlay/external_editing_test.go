@@ -12,6 +12,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
@@ -170,8 +171,9 @@ func TestEditedExternally(t *testing.T) {
 		look.NewStyles(look.SchemeDark),
 		editoverlay.Options{},
 		editoverlay.ExternallyEdited{
-			Browsed: editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
-			Content: externallyEditedContent,
+			Browsed:  editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+			Fragment: stored.FirstFragment(),
+			Content:  externallyEditedContent,
 		},
 	)
 	screen := overlaytest.Open(t, screenSize(), opened)
@@ -183,6 +185,39 @@ func TestEditedExternally(t *testing.T) {
 
 	want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", externallyEditedContent)}
 	assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+}
+
+func TestEditedExternally_laterFragment(t *testing.T) {
+	t.Parallel()
+
+	ids := testkit.NewSequentialIDs()
+	stored := testkit.Snippet(t, testkit.SnippetSpec{
+		ID:    ids.NewSnippetID(),
+		Title: "Deploy",
+		Fragments: []testkit.FragmentSpec{
+			{ID: ids.NewFragmentID(), Language: "Go", Content: "package main\n"},
+			{ID: ids.NewFragmentID(), Language: "YAML", Content: "on: push\n"},
+		},
+	})
+	later := stored.Fragments()[1]
+	opened, _ := editoverlay.EditedExternally(
+		testsettings.Default(t).Keys,
+		look.NewStyles(look.SchemeDark),
+		editoverlay.Options{},
+		editoverlay.ExternallyEdited{
+			Browsed:  editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
+			Fragment: later,
+			Content:  "on: pull_request\n",
+		},
+	)
+	screen := overlaytest.Open(t, screenSize(), opened)
+
+	screen.Press(save())
+
+	want := updateInput(stored, "Deploy", "on: pull_request\n")
+	want.FragmentID = later.ID()
+	want.Language = "YAML"
+	assert.Equal(t, []outcome.Outcome{outcome.UpdateRequested{Input: want}}, screen.Outcomes())
 }
 
 func externalEditor() tea.KeyPressMsg {

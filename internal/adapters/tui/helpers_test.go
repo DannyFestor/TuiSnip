@@ -239,11 +239,11 @@ func sampleSnippets(t *testing.T) []domain.Snippet {
 			ID:          ids.NewSnippetID(),
 			Title:       "Graceful HTTP shutdown",
 			Description: "Stop accepting, drain, exit",
-			Fragment: testkit.FragmentSpec{
+			Fragments: []testkit.FragmentSpec{{
 				ID:       ids.NewFragmentID(),
 				Language: "Go",
 				Content:  "func run(ctx context.Context) error {\n\treturn srv.Shutdown(ctx)\n}\n",
-			},
+			}},
 			CreatedAt: created,
 			UpdatedAt: created.AddDate(0, 0, 21),
 		}),
@@ -251,11 +251,11 @@ func sampleSnippets(t *testing.T) []domain.Snippet {
 			ID:          ids.NewSnippetID(),
 			Title:       "Prune everything",
 			Description: "Reclaim disk space",
-			Fragment: testkit.FragmentSpec{
+			Fragments: []testkit.FragmentSpec{{
 				ID:       ids.NewFragmentID(),
 				Language: "Bash",
 				Content:  "docker system prune --all --volumes --force\n",
-			},
+			}},
 			CreatedAt: created,
 		}),
 	}
@@ -269,11 +269,11 @@ func longLineSnippet(t *testing.T) domain.Snippet {
 	return testkit.Snippet(t, testkit.SnippetSpec{
 		ID:    ids.NewSnippetID(),
 		Title: "Find large files",
-		Fragment: testkit.FragmentSpec{
+		Fragments: []testkit.FragmentSpec{{
 			ID:       ids.NewFragmentID(),
 			Language: "Bash",
 			Content:  "find . -type f -size +100M -not -path './.git/*' -exec ls -lh {} + | sort -k5 -h\necho done\n",
-		},
+		}},
 		Tags: []domain.Tag{
 			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"}),
 			testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "oneliner"}),
@@ -293,7 +293,7 @@ func numberedSnippets(t *testing.T, count int) []domain.Snippet {
 			ID:          ids.NewSnippetID(),
 			Title:       "Snippet " + strconv.Itoa(number),
 			Description: "Description " + strconv.Itoa(number),
-			Fragment:    testkit.FragmentSpec{ID: ids.NewFragmentID()},
+			Fragments:   []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
 		}))
 	}
 
@@ -307,10 +307,10 @@ func filedIn(t *testing.T, folderID domain.FolderID) domain.Snippet {
 		ID:       domain.SnippetID(uuid.MustParse(filedSnippetID)),
 		Title:    filedTitle,
 		FolderID: folderID,
-		Fragment: testkit.FragmentSpec{
+		Fragments: []testkit.FragmentSpec{{
 			Language: "Go",
 			Content:  "func TestParse(t *testing.T) {}\n",
-		},
+		}},
 	})
 }
 

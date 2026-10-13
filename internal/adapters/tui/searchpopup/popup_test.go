@@ -289,7 +289,13 @@ func TestPopup_end(t *testing.T) {
 
 		screen.Press(keypress.Special(tea.KeyDown), keypress.Ctrl('y'))
 
-		assert.Equal(t, []outcome.Outcome{outcome.CopyRequested{ID: snippets[1].ID()}}, screen.Outcomes())
+		assert.Equal(
+			t,
+			[]outcome.Outcome{
+				outcome.CopyRequested{ID: snippets[1].ID(), FragmentID: snippets[1].FirstFragment().ID()},
+			},
+			screen.Outcomes(),
+		)
 		assert.False(t, screen.IsOpen())
 	})
 

@@ -32,7 +32,7 @@ func TestSnippet_Spec(t *testing.T) {
 	snippet := testkit.Snippet(t, testkit.SnippetSpec{
 		Title:     "curl json",
 		FolderID:  folderID,
-		Fragment:  testkit.FragmentSpec{Language: "Bash", Content: "curl -d @body.json"},
+		Fragments: []testkit.FragmentSpec{{Language: "Bash", Content: "curl -d @body.json"}},
 		CreatedAt: created,
 	})
 

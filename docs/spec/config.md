@@ -56,7 +56,7 @@ tuisnip: invalid config ~/.config/tuisnip/config.toml:
 | `theme` | `auto` \| `light` \| `dark` | `auto` | `auto` follows the terminal background and uses dark if the terminal does not report one. |
 | `languages` | array of Language names | `[]` | The Languages the Language picker offers. Empty means every Language. |
 | `copy.clipboard` | `auto` \| `native` \| `osc52` | `auto` | How Copy reaches the clipboard. See [Clipboard](#clipboard). |
-| `copy.trim_trailing_newline` | bool | `true` | Copy drops one trailing newline from the Fragment. |
+| `copy.trim_trailing_newline` | bool | `true` | Copy drops one trailing newline from the copied Fragment. |
 | `copy.quit_after` | bool | `false` | TuiSnip quits after a successful Copy. |
 | `mouse` | bool | `true` | Mouse clicks and the wheel work in the TUI. While on, the terminal's own text selection needs a modifier key. See [the UI spec](ui.md#mouse). |
 | `bindings.<scope>.<name>` | array of key strings | see the default file | The keys of one Binding. See [Bindings](#bindings). |
@@ -131,7 +131,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 | `folders` | `new_folder` N · `rename` r · `delete` d · `move` m · `collapse` space · `language` L |
 | `tags` | `new_tag` N · `rename` r · `delete` d |
 | `snippet_list` | `copy` y · `edit` e · `open_in_editor` E · `move` m · `duplicate` c · `delete` d · `cycle_sort` s |
-| `snippet_pane` | `copy` y · `edit` e · `open_in_editor` E · `wrap` w |
+| `snippet_pane` | `copy` y · `edit` e · `open_in_editor` E · `wrap` w · `next_fragment` ] · `prev_fragment` [ |
 | `editor` | `save` ctrl+s · `cancel` esc · `next_field` down, tab · `prev_field` up, shift+tab · `open_field` enter · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
 | `content` | `save` ctrl+s · `leave` esc · `indent` tab · `dedent` shift+tab · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
 | `search` | `down` down, ctrl+n, ctrl+j · `up` up, ctrl+p, ctrl+k · `accept` enter · `copy` ctrl+y · `cancel` esc |
@@ -142,6 +142,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 - `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag.
 - `rename` acts on the row under the cursor in `folders` or `tags`, and `delete` on the row under the cursor in `folders`, `tags`, or `snippet_list`. `move` opens the Folder picker for the row under the cursor in `folders` or `snippet_list`, and does nothing on the Root. Tags don't move.
 - `snippet_list.duplicate` copies the Snippet under the cursor into the same Folder.
+- `snippet_pane.next_fragment` and `snippet_pane.prev_fragment` switch the Shown Fragment, wrapping around at either end. `copy` and `open_in_editor` in `snippet_list` and `snippet_pane` act on the Shown Fragment.
 - `folders.language` opens the Language picker on the Folder under the cursor and sets its Default Language. Snippets already in the Folder keep their Language. It does nothing on the Root.
 - `focus_right` and `focus_left` treat Folders and Tags as one column. `open` and `back` drill in and out. The details are in [the UI spec](ui.md#keyboard-navigation).
 - `up`, `down`, `top`, `bottom`, `page_up`, and `page_down` move the cursor in Folders, Tags, and the Snippet list, and scroll the Snippet pane.

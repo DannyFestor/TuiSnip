@@ -81,6 +81,10 @@ const (
 	BindingCycleSort Binding = "cycle_sort"
 	// BindingWrap is a Binding of type wrap.
 	BindingWrap Binding = "wrap"
+	// BindingNextFragment is a Binding of type next_fragment.
+	BindingNextFragment Binding = "next_fragment"
+	// BindingPrevFragment is a Binding of type prev_fragment.
+	BindingPrevFragment Binding = "prev_fragment"
 	// BindingSave is a Binding of type save.
 	BindingSave Binding = "save"
 	// BindingCancel is a Binding of type cancel.
@@ -149,6 +153,8 @@ var _BindingNames = []string{
 	string(BindingDuplicate),
 	string(BindingCycleSort),
 	string(BindingWrap),
+	string(BindingNextFragment),
+	string(BindingPrevFragment),
 	string(BindingSave),
 	string(BindingCancel),
 	string(BindingNextField),
@@ -220,6 +226,8 @@ var _BindingValue = map[string]Binding{
 	"duplicate":          BindingDuplicate,
 	"cycle_sort":         BindingCycleSort,
 	"wrap":               BindingWrap,
+	"next_fragment":      BindingNextFragment,
+	"prev_fragment":      BindingPrevFragment,
 	"save":               BindingSave,
 	"cancel":             BindingCancel,
 	"next_field":         BindingNextField,

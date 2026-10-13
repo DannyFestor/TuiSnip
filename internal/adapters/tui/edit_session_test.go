@@ -132,11 +132,12 @@ func TestModel_editOverlay(t *testing.T) {
 			ID:          snippets[0].ID(),
 			Title:       "Snippet 1 edited",
 			Description: "Description 1",
-			Fragment:    testkit.FragmentSpec{ID: snippets[0].FirstFragment().ID()},
+			Fragments:   []testkit.FragmentSpec{{ID: snippets[0].FirstFragment().ID()}},
 		})
 		updater := NewMockSnippetUpdater(t)
 		updater.EXPECT().Run(mock.Anything, snippet.UpdateInput{
 			SnippetID:       snippets[0].ID(),
+			FragmentID:      snippets[0].FirstFragment().ID(),
 			LoadedUpdatedAt: snippets[0].UpdatedAt(),
 			Title:           "Snippet 1 edited",
 			Description:     "Description 1",
@@ -356,7 +357,7 @@ func renamed(t *testing.T, loaded domain.Snippet, title string) domain.Snippet {
 		ID:          loaded.ID(),
 		Title:       title,
 		Description: loaded.Description().String(),
-		Fragment:    testkit.FragmentSpec{ID: loaded.FirstFragment().ID()},
+		Fragments:   []testkit.FragmentSpec{{ID: loaded.FirstFragment().ID()}},
 	})
 }
 

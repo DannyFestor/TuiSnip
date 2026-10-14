@@ -95,6 +95,7 @@ SQLite's `length()` counts characters on `TEXT` and bytes on a `BLOB`, matching 
 - An Action that needs two aggregates gets two repositories from `bootstrap`.
 - The one exception is `sqlite.LibraryRepository`, whose `Load` reads every Folder, Tag, and Snippet for Export in one read transaction. Three repositories would read in three transactions, and an instance writing between them could leave a Snippet pointing at a Folder the Export lacks.
 - Its `InsertIntoEmpty` writes a whole Library for Import in one write transaction. It checks that the Library is empty inside that transaction, so another instance can't save between the check and the write. It inserts Folders parents first, because the foreign keys are checked on every insert.
+- Its `InsertAlongside` writes a whole Library from another app beside the stored one, in one write transaction. It reads the stored Tags inside that transaction and swaps each imported Tag for the stored Tag of the same name, ignoring case, so a Tag another instance saves meanwhile is reused rather than clashing. It returns the Library as written, so the report counts only the Tags it created.
 
 ## Reading entities
 

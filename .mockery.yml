@@ -40,9 +40,11 @@ packages:
       TagSnippetLister: {}
   github.com/DannyFestor/TuiSnip/internal/app/library:
     interfaces:
+      AlongsideInserter: {}
       EmptyInserter: {}
       Loader: {}
       Reader: {}
+      SnippetsLabReader: {}
       Writer: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui:
     interfaces:

@@ -187,6 +187,75 @@ func TestLibraryRepository_InsertIntoEmpty(t *testing.T) {
 	})
 }
 
+func TestLibraryRepository_InsertAlongside(t *testing.T) {
+	t.Parallel()
+
+	t.Run("adds beside the stored records, reusing a stored Tag of the same name", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		ids := testkit.NewSequentialIDs()
+		storedFolder := insertFolder(
+			t,
+			newFolderRepository(t, database, slog.New(slog.DiscardHandler)),
+			testkit.FolderSpec{
+				ID: ids.NewFolderID(), Name: "scripts",
+			},
+		)
+		storedTag := insertTag(t, newTagRepository(t, database), ids, "go")
+		folder := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "scripts"})
+		sameName := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Go"})
+		fresh := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{
+			ID:        ids.NewSnippetID(),
+			FolderID:  folder.ID(),
+			Fragments: severalFragments(ids),
+			Tags:      []domain.Tag{sameName, fresh},
+		})
+		repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+
+		written, err := repository.InsertAlongside(t.Context(), domain.Library{
+			Folders:  []domain.Folder{folder},
+			Tags:     []domain.Tag{sameName, fresh},
+			Snippets: []domain.Snippet{snippet},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Tag{fresh}, written.Tags)
+		got, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.Folder{storedFolder, folder}, got.Folders)
+		assert.ElementsMatch(t, []domain.Tag{storedTag, fresh}, got.Tags)
+		require.Len(t, got.Snippets, 1)
+		assert.Equal(t, []domain.Tag{storedTag, fresh}, got.Snippets[0].Tags())
+	})
+
+	t.Run("writes nothing when a record fails to insert", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		ids := testkit.NewSequentialIDs()
+		insertTag(t, newTagRepository(t, database), ids, "go")
+		repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+		before, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		twin := testkit.Snippet(t, testkit.SnippetSpec{
+			ID: ids.NewSnippetID(), Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
+		})
+
+		_, err = repository.InsertAlongside(t.Context(), domain.Library{
+			Folders:  []domain.Folder{testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID()})},
+			Tags:     []domain.Tag{testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})},
+			Snippets: []domain.Snippet{twin, twin},
+		})
+
+		require.ErrorContains(t, err, "sqlite.LibraryRepository.InsertAlongside: ")
+		after, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, before, after)
+	})
+}
+
 func importedLibrary(t *testing.T) domain.Library {
 	t.Helper()
 

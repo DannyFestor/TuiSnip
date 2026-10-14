@@ -11,7 +11,6 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/clipboard"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/exportfile"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
@@ -53,6 +52,7 @@ type App struct {
 	DeleteTag                *tag.Delete
 	Export                   *library.Export
 	Import                   *library.Import
+	ImportSnippetsLab        *library.ImportSnippetsLab
 	model                    tui.Model
 	database                 *sqlite.Database
 	log                      *logging.Log
@@ -224,10 +224,9 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	browsing, browseErr := newBrowseActions(repos)
 	folders, foldersErr := newFolderActions(repos.folders)
 	tags, tagsErr := newTagActions(repos.tags)
-	export, exportErr := library.NewExport(repos.library, exportfile.NewWriter())
-	imported, importErr := library.NewImport(exportfile.NewReader(), repos.library)
+	libraries, librariesErr := newLibraryActions(repos.library)
 
-	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, exportErr, importErr)
+	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, librariesErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
@@ -255,8 +254,9 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		RenameTag:                tags.rename,
 		PreviewDeleteTag:         tags.previewDelete,
 		DeleteTag:                tags.delete,
-		Export:                   export,
-		Import:                   imported,
+		Export:                   libraries.export,
+		Import:                   libraries.importExport,
+		ImportSnippetsLab:        libraries.importSnippetsLab,
 		model:                    tui.Model{},
 		database:                 nil,
 		log:                      nil,

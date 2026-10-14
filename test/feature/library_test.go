@@ -62,7 +62,7 @@ func TestExportReportsTheCountsWritten(t *testing.T) {
 	counts, err := app.Export.Run(t.Context(), library.ExportInput{Path: filepath.Join(t.TempDir(), "out.json")})
 
 	require.NoError(t, err)
-	assert.Equal(t, library.Counts{Folders: 1, Tags: 2, Snippets: 1}, counts)
+	assert.Equal(t, library.Counts{Folders: 1, Tags: 2, Snippets: 1, Fragments: 1}, counts)
 }
 
 func TestExportIncludesATagNoSnippetCarries(t *testing.T) {
@@ -104,7 +104,7 @@ func TestImportingAnExportIntoAnEmptyLibraryExportsTheSameFile(t *testing.T) {
 	counts, err := target.Import.Run(t.Context(), library.ImportInput{Path: filepath.Join(dir, "first.json")})
 
 	require.NoError(t, err)
-	assert.Equal(t, library.Counts{Folders: 2, Tags: 2, Snippets: 2}, counts)
+	assert.Equal(t, library.Counts{Folders: 2, Tags: 2, Snippets: 2, Fragments: 3}, counts)
 	assert.Equal(t, string(first), string(exported(t, target, filepath.Join(dir, "second.json"))))
 }
 

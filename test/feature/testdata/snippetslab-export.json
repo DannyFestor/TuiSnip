@@ -1,0 +1,103 @@
+{
+  "app": "SnippetsLab",
+  "schema": "2.6",
+  "contents": {
+    "folders": [
+      {
+        "uuid": "8A1F0000-0000-4000-8000-000000000001",
+        "title": "go",
+        "defaultLanguage": "GoLexer",
+        "children": [
+          {
+            "uuid": "8A1F0000-0000-4000-8000-000000000002",
+            "title": "cli",
+            "children": []
+          }
+        ]
+      },
+      {
+        "uuid": "8A1F0000-0000-4000-8000-000000000003",
+        "title": "grammars",
+        "defaultLanguage": "YaccLexer",
+        "children": []
+      }
+    ],
+    "tags": [
+      {"uuid": "7A6C0000-0000-4000-8000-000000000001", "title": "Go", "accentColor": 3},
+      {"uuid": "7A6C0000-0000-4000-8000-000000000002", "title": "shell"}
+    ],
+    "snippets": [
+      {
+        "uuid": "5E1C0000-0000-4000-8000-000000000001",
+        "title": "flags",
+        "folder": "8A1F0000-0000-4000-8000-000000000002",
+        "tags": ["7A6C0000-0000-4000-8000-000000000001", "7A6C0000-0000-4000-8000-000000000002"],
+        "pinned": true,
+        "locked": false,
+        "dateCreated": "2024-03-16T08:00:00Z",
+        "dateModified": "2024-03-16T08:00:00Z",
+        "fragments": [
+          {
+            "uuid": "F7A90000-0000-4000-8000-000000000001",
+            "title": "main.go",
+            "language": "GoLexer",
+            "content": "flag.Parse()\n",
+            "note": "Parses flags.",
+            "noteAttributes": [],
+            "dateCreated": "2024-03-16T08:00:00Z",
+            "dateModified": "2024-03-16T08:00:00Z"
+          },
+          {
+            "uuid": "F7A90000-0000-4000-8000-000000000002",
+            "title": "Fragment",
+            "language": "BashLexer",
+            "content": "go run . -h\n",
+            "note": "Run with -h.",
+            "dateCreated": "2024-03-16T08:00:00Z",
+            "dateModified": "2024-04-01T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "uuid": "5E1C0000-0000-4000-8000-000000000002",
+        "title": "yacc",
+        "folder": "8A1F0000-0000-4000-8000-000000000003",
+        "tags": [],
+        "pinned": false,
+        "dateCreated": "2024-05-01T09:30:00Z",
+        "dateModified": "2024-05-01T09:30:00Z",
+        "fragments": [
+          {
+            "uuid": "F7A90000-0000-4000-8000-000000000003",
+            "title": "Fragment",
+            "language": "YaccLexer",
+            "content": "%%\n",
+            "note": "",
+            "dateCreated": "2024-05-01T09:30:00Z",
+            "dateModified": "2024-05-01T09:30:00Z"
+          }
+        ]
+      },
+      {
+        "uuid": "5E1C0000-0000-4000-8000-000000000003",
+        "title": "trashed",
+        "pinned": false,
+        "dateCreated": "2024-05-01T09:30:00Z",
+        "dateModified": "2024-05-01T09:30:00Z",
+        "dateDeleted": "2024-06-01T00:00:00Z",
+        "fragments": [
+          {
+            "uuid": "F7A90000-0000-4000-8000-000000000004",
+            "title": "Fragment",
+            "language": "TextLexer",
+            "content": "old\n",
+            "dateCreated": "2024-05-01T09:30:00Z",
+            "dateModified": "2024-05-01T09:30:00Z"
+          }
+        ]
+      }
+    ],
+    "smartGroups": [],
+    "shortcuts": []
+  }
+}

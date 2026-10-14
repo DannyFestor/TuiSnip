@@ -31,7 +31,7 @@ func (i *Import) Run(ctx context.Context, input ImportInput) (Counts, error) {
 		return Counts{}, fmt.Errorf("library.Import: %w", err)
 	}
 
-	counts, err := insertWhole(ctx, i.inserter.InsertIntoEmpty, read)
+	counts, err := insertWhole(ctx, writtenAsGiven(i.inserter.InsertIntoEmpty), read)
 	if err != nil {
 		return Counts{}, fmt.Errorf("library.Import: %w", err)
 	}

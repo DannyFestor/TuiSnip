@@ -22,6 +22,8 @@ func snippetsLabReportText(report library.SnippetsLabReport) string {
 			"Skipped " + pluralised(report.Losses.TrashedSnippets, "Snippet") + " in the Trash",
 		},
 		lostLines("Lost a pin", report.Losses.LostPins),
+		lostLines("Lost a Gist link", report.Losses.LostGistLinks),
+		lostLines("Lost an attachment", report.Losses.LostAttachments),
 		fallbackLines(report.Losses),
 	)
 

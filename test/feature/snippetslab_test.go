@@ -38,6 +38,8 @@ func TestImportFromSnippetsLabBuildsTheLibraryAndReportsWhatItLeftBehind(t *test
 	assert.Equal(t, library.Counts{Folders: 3, Tags: 2, Snippets: 2, Fragments: 3}, report.Counts)
 	assert.Equal(t, 1, report.Losses.TrashedSnippets)
 	assert.Equal(t, []string{"flags"}, titlesOf(report.Losses.LostPins))
+	assert.Equal(t, []string{"yacc"}, titlesOf(report.Losses.LostGistLinks))
+	assert.Equal(t, []string{"flags"}, titlesOf(report.Losses.LostAttachments))
 	require.Len(t, report.Losses.FolderFallbacks, 1)
 	assert.Equal(t, "grammars", report.Losses.FolderFallbacks[0].Folder.String())
 	require.Len(t, report.Losses.FragmentFallbacks, 1)

@@ -1,6 +1,7 @@
 package snippetslab
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,13 +12,18 @@ import (
 const defaultFragmentTitle = "Fragment"
 
 type fragmentRecord struct {
-	Title          string          `json:"title"`
-	Language       string          `json:"language"`
-	Content        string          `json:"content"`
-	Note           string          `json:"note"`
-	NoteAttributes []noteAttribute `json:"noteAttributes"`
-	DateCreated    string          `json:"dateCreated"`
-	DateModified   string          `json:"dateModified"`
+	Title          string            `json:"title"`
+	Language       string            `json:"language"`
+	Content        string            `json:"content"`
+	Note           string            `json:"note"`
+	NoteAttributes []noteAttribute   `json:"noteAttributes"`
+	Attachments    []json.RawMessage `json:"attachments"`
+	DateCreated    string            `json:"dateCreated"`
+	DateModified   string            `json:"dateModified"`
+}
+
+func (r fragmentRecord) attached() bool {
+	return len(r.Attachments) > 0
 }
 
 func (r fragmentRecord) keptTitle() string {
@@ -44,10 +50,10 @@ func (c *conversion) fragments(owner value.Title, records []fragmentRecord) ([]d
 
 	var errs []error
 
-	for i, record := range records {
-		place := fragmentPlace{snippet: owner, position: i + 1}
+	for index := range records {
+		place := fragmentPlace{snippet: owner, position: index + 1}
 
-		fragment, err := c.fragment(place, record)
+		fragment, err := c.fragment(place, records[index])
 		if err != nil {
 			errs = append(errs, fmt.Errorf("fragment %d: %w", place.position, err))
 

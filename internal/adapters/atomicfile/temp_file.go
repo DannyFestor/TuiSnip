@@ -10,6 +10,7 @@ import (
 const (
 	directoryPermissions = 0o755
 	filePermissions      = 0o644
+	ownerOnlyPermissions = 0o600
 	tempFileSuffix       = "-*.tmp"
 )
 
@@ -22,13 +23,13 @@ func createDirectoryFor(path string) error {
 	return nil
 }
 
-func writeTempBeside(path string, data []byte) (string, error) {
+func writeTempBeside(path string, data []byte, permissions os.FileMode) (string, error) {
 	file, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+tempFileSuffix)
 	if err != nil {
 		return "", fmt.Errorf("create temporary file: %w", err)
 	}
 
-	err = writeAndClose(file, data)
+	err = writeAndClose(file, data, permissions)
 	if err != nil {
 		return "", errors.Join(err, removeTemp(file.Name()))
 	}
@@ -36,10 +37,10 @@ func writeTempBeside(path string, data []byte) (string, error) {
 	return file.Name(), nil
 }
 
-func writeAndClose(file *os.File, data []byte) error {
+func writeAndClose(file *os.File, data []byte, permissions os.FileMode) error {
 	_, err := file.Write(data)
 
-	err = errors.Join(err, file.Chmod(filePermissions), file.Sync(), file.Close())
+	err = errors.Join(err, file.Chmod(permissions), file.Sync(), file.Close())
 	if err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}

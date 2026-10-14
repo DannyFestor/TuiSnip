@@ -84,6 +84,10 @@ _Avoid_: Yank, export
 
 ### Moving data
 
+**Library**:
+Every Snippet, Folder, and Tag in the database, Tags no Snippet carries included. Export writes it whole, and an Import restores it.
+_Avoid_: Collection, database, store, everything
+
 **Export**:
 Writing all Snippets, Folders, and Tags to a file, as a backup or to move them elsewhere.
 _Avoid_: Backup, dump, save

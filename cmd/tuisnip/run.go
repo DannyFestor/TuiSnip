@@ -18,11 +18,12 @@ const (
 	programName = "tuisnip"
 )
 
-var errUnexpectedArguments = errors.New("unexpected arguments")
+var errFlagWithCommand = errors.New("-version and -paths take no command")
 
 type request struct {
 	version bool
 	paths   bool
+	start   func(ctx context.Context, paths xdg.Paths, env environment) error
 }
 
 func run(ctx context.Context, args []string, env environment) int {
@@ -48,14 +49,15 @@ func run(ctx context.Context, args []string, env environment) int {
 		return exitCodeFor(env, printPaths(env.stdout, paths))
 	}
 
-	return exitCodeFor(env, startTUI(ctx, paths, env))
+	return exitCodeFor(env, req.start(ctx, paths, env))
 }
 
 func parseArgs(args []string, stderr io.Writer) (request, error) {
-	var req request
+	req := request{version: false, paths: false, start: startTUI}
 
 	flags := flag.NewFlagSet(programName, flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	flags.Usage = func() { printUsage(flags) }
 	flags.BoolVar(&req.version, "version", false, "print the version")
 	flags.BoolVar(&req.paths, "paths", false, "print the config, data, backup, state, and log paths")
 
@@ -64,17 +66,34 @@ func parseArgs(args []string, stderr io.Writer) (request, error) {
 		return request{}, fmt.Errorf("parse flags: %w", err)
 	}
 
-	if flags.NArg() > 0 {
-		complain(stderr, fmt.Sprintf("%v: %v", errUnexpectedArguments, flags.Args()))
+	if flags.NArg() == 0 {
+		return req, nil
+	}
+
+	if req.version || req.paths {
+		complain(stderr, errFlagWithCommand.Error())
 		flags.Usage()
 
-		return request{}, errUnexpectedArguments
+		return request{}, errFlagWithCommand
 	}
+
+	called, err := parseInvocation(flags.Args(), stderr, flags.Usage)
+	if err != nil {
+		return request{}, err
+	}
+
+	req.start = called.run
 
 	return req, nil
 }
 
 func startTUI(ctx context.Context, paths xdg.Paths, env environment) error {
+	return withApp(ctx, paths, env, func(app *bootstrap.App) error {
+		return unlessCancelled(app.Run(ctx))
+	})
+}
+
+func withApp(ctx context.Context, paths xdg.Paths, env environment, use func(app *bootstrap.App) error) error {
 	app, err := bootstrap.New(ctx, bootstrap.Options{
 		Paths:    paths,
 		Environ:  env.environ,
@@ -85,12 +104,15 @@ func startTUI(ctx context.Context, paths xdg.Paths, env environment) error {
 		return fmt.Errorf("start: %w", err)
 	}
 
-	err = app.Run(ctx)
+	return errors.Join(use(app), app.Close())
+}
+
+func unlessCancelled(err error) error {
 	if errors.Is(err, context.Canceled) {
-		err = nil
+		return nil
 	}
 
-	return errors.Join(err, app.Close())
+	return err
 }
 
 func exitCodeFor(env environment, err error) int {
@@ -108,6 +130,10 @@ func failed(env environment, err error) int {
 }
 
 func complain(stderr io.Writer, message string) {
+	writeStderr(stderr, programName+": "+message+"\n")
+}
+
+func writeStderr(stderr io.Writer, text string) {
 	//nolint:errcheck,gosec // a failed write to stderr has nowhere left to be reported
-	io.WriteString(stderr, programName+": "+message+"\n")
+	io.WriteString(stderr, text)
 }

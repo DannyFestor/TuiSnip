@@ -150,6 +150,21 @@ func newLoggingSnippetRepository(t *testing.T, path string, logged *bytes.Buffer
 	return sqlite.NewSnippetRepository(openDatabase(t, path), slog.New(slog.NewJSONHandler(logged, nil)))
 }
 
+func newFolderRepository(t *testing.T, database *sqlite.Database, logger *slog.Logger) *sqlite.FolderRepository {
+	t.Helper()
+
+	return sqlite.NewFolderRepository(database, logger)
+}
+
+func insertFolder(t *testing.T, repository *sqlite.FolderRepository, spec testkit.FolderSpec) domain.Folder {
+	t.Helper()
+
+	folder := testkit.Folder(t, spec)
+	require.NoError(t, repository.Insert(t.Context(), folder))
+
+	return folder
+}
+
 func newTagRepository(t *testing.T, database *sqlite.Database) *sqlite.TagRepository {
 	t.Helper()
 

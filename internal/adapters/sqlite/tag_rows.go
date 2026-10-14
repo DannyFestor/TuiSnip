@@ -55,6 +55,15 @@ func tagsFromRows(rows []sqlcgen.Tag) ([]domain.Tag, error) {
 	return tags, nil
 }
 
+func standaloneTagFromRow(row sqlcgen.Tag) (domain.Tag, error) {
+	tag, err := tagFromRow(row)
+	if err != nil {
+		return domain.Tag{}, corrupt(err)
+	}
+
+	return tag, nil
+}
+
 func tagFromRow(row sqlcgen.Tag) (domain.Tag, error) {
 	name, err := value.NewTagName(row.Name)
 	if err != nil {

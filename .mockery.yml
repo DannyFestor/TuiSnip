@@ -38,6 +38,10 @@ packages:
       TagLister: {}
       TagSnippetCounter: {}
       TagSnippetLister: {}
+  github.com/DannyFestor/TuiSnip/internal/app/library:
+    interfaces:
+      Loader: {}
+      Writer: {}
   github.com/DannyFestor/TuiSnip/internal/adapters/tui:
     interfaces:
       FolderSnippetsLister: {}

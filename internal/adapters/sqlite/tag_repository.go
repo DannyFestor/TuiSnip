@@ -147,9 +147,8 @@ func (r *TagRepository) merged(
 }
 
 func (r *TagRepository) rebuild(ctx context.Context, row sqlcgen.Tag, corruptLevel slog.Level) (domain.Tag, error) {
-	tag, err := tagFromRow(row)
+	tag, err := standaloneTagFromRow(row)
 	if err != nil {
-		err = corrupt(err)
 		r.logger.LogAttrs(
 			ctx,
 			corruptLevel,

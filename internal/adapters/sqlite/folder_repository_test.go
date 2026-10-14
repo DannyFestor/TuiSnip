@@ -387,21 +387,6 @@ func folderName(t *testing.T, raw string) value.FolderName {
 	return name
 }
 
-func newFolderRepository(t *testing.T, database *sqlite.Database, logger *slog.Logger) *sqlite.FolderRepository {
-	t.Helper()
-
-	return sqlite.NewFolderRepository(database, logger)
-}
-
-func insertFolder(t *testing.T, repository *sqlite.FolderRepository, spec testkit.FolderSpec) domain.Folder {
-	t.Helper()
-
-	folder := testkit.Folder(t, spec)
-	require.NoError(t, repository.Insert(t.Context(), folder))
-
-	return folder
-}
-
 func newSubtreeFixture(t *testing.T) subtreeFixture {
 	t.Helper()
 

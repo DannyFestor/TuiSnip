@@ -59,7 +59,7 @@ func TestExport_Run(t *testing.T) {
 		got, err := newExport(t, loader, writer).Run(t.Context(), library.ExportInput{Path: exportPath})
 
 		require.NoError(t, err)
-		assert.Equal(t, library.ExportCounts{Folders: 2, Tags: 1, Snippets: 2}, got)
+		assert.Equal(t, library.Counts{Folders: 2, Tags: 1, Snippets: 2}, got)
 	})
 
 	t.Run("writes nothing when the Library can't be loaded", func(t *testing.T) {

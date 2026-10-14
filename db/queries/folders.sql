@@ -11,6 +11,9 @@ WHERE id = ?;
 SELECT id, parent_id, name, default_language, created_at, updated_at
 FROM folders;
 
+-- name: CountFolders :one
+SELECT COUNT(*) FROM folders;
+
 -- name: CountSubfolders :one
 WITH RECURSIVE subtree (id) AS (
     SELECT folders.id FROM folders WHERE folders.id = sqlc.arg(id)

@@ -94,6 +94,7 @@ SQLite's `length()` counts characters on `TEXT` and bytes on a `BLOB`, matching 
 - Go has no overloading, so one repository for every aggregate would need the noun in every method (`InsertSnippet`, `InsertFolder`). Per-aggregate repositories keep method names short (`Insert`, `Find`, `List`), so capabilities read `snippet.Inserter { Insert(ctx, domain.Snippet) error }`.
 - An Action that needs two aggregates gets two repositories from `bootstrap`.
 - The one exception is `sqlite.LibraryRepository`, whose `Load` reads every Folder, Tag, and Snippet for Export in one read transaction. Three repositories would read in three transactions, and an instance writing between them could leave a Snippet pointing at a Folder the Export lacks.
+- Its `InsertIntoEmpty` writes a whole Library for Import in one write transaction. It checks that the Library is empty inside that transaction, so another instance can't save between the check and the write. It inserts Folders parents first, because the foreign keys are checked on every insert.
 
 ## Reading entities
 

@@ -56,6 +56,7 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, exitOK, got.code)
 		assert.Contains(t, got.stderr, "-paths")
 		assert.Contains(t, got.stderr, "export <file>")
+		assert.Contains(t, got.stderr, "import <file>")
 	})
 
 	t.Run("refuses an unknown flag", func(t *testing.T) {
@@ -92,6 +93,30 @@ func TestRun(t *testing.T) {
 		assert.Contains(t, read(t, target), `"format": "tuisnip-export"`)
 	})
 
+	t.Run("imports an Export into an empty Library and reports the counts", func(t *testing.T) {
+		t.Parallel()
+
+		got := runWith(t, t.TempDir(), "import", exportHoldingOneTag(t))
+
+		assert.Equal(t, exitOK, got.code, got.stderr)
+		assert.Equal(t, "Imported 0 Folders, 1 Tag, 0 Snippets\n", got.stdout)
+	})
+
+	t.Run("refuses to import into a Library that isn't empty and points to --paths", func(t *testing.T) {
+		t.Parallel()
+
+		home := t.TempDir()
+		path := exportHoldingOneTag(t)
+		require.Equal(t, exitOK, runWith(t, home, "import", path).code)
+
+		got := runWith(t, home, "import", path)
+
+		assert.Equal(t, exitFailure, got.code)
+		assert.Empty(t, got.stdout)
+		assert.True(t, strings.HasPrefix(got.stderr, "tuisnip: import: "), got.stderr)
+		assert.Contains(t, got.stderr, "tuisnip --paths")
+	})
+
 	refusals := []struct {
 		name       string
 		args       []string
@@ -111,6 +136,11 @@ func TestRun(t *testing.T) {
 			name:       "refuses - as the file to export to",
 			args:       []string{"export", "-"},
 			wantStderr: []string{"tuisnip: export: - is not supported\n", "usage: tuisnip export <file>\n"},
+		},
+		{
+			name:       "refuses an import without a file",
+			args:       []string{"import"},
+			wantStderr: []string{"tuisnip: import: wrong number of arguments\n", "usage: tuisnip import <file>\n"},
 		},
 		{
 			name:       "refuses --paths together with a command",
@@ -215,6 +245,29 @@ func homeOnly(home string) func(string) string {
 
 		return ""
 	}
+}
+
+func exportHoldingOneTag(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "backup.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{
+  "format": "tuisnip-export",
+  "version": 1,
+  "folders": [],
+  "tags": [
+    {
+      "id": "0194c3a0-0000-7000-8000-000000000002",
+      "name": "Shell",
+      "created_at": "2026-03-01T09:30:00.123456789Z",
+      "updated_at": "2026-03-01T09:30:00.123456789Z"
+    }
+  ],
+  "snippets": []
+}
+`), 0o600))
+
+	return path
 }
 
 func read(t *testing.T, path string) string {

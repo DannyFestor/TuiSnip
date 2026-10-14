@@ -11,6 +11,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countSnippets = `-- name: CountSnippets :one
+SELECT COUNT(*) FROM snippets
+`
+
+func (q *Queries) CountSnippets(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSnippets)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSnippetsByFolder = `-- name: CountSnippetsByFolder :many
 SELECT folder_id, COUNT(*) AS snippet_count
 FROM snippets

@@ -52,6 +52,7 @@ type App struct {
 	PreviewDeleteTag         *tag.PreviewDelete
 	DeleteTag                *tag.Delete
 	Export                   *library.Export
+	Import                   *library.Import
 	model                    tui.Model
 	database                 *sqlite.Database
 	log                      *logging.Log
@@ -224,8 +225,9 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 	folders, foldersErr := newFolderActions(repos.folders)
 	tags, tagsErr := newTagActions(repos.tags)
 	export, exportErr := library.NewExport(repos.library, exportfile.NewWriter())
+	imported, importErr := library.NewImport(exportfile.NewReader(), repos.library)
 
-	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, exportErr)
+	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, exportErr, importErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
@@ -254,6 +256,7 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		PreviewDeleteTag:         tags.previewDelete,
 		DeleteTag:                tags.delete,
 		Export:                   export,
+		Import:                   imported,
 		model:                    tui.Model{},
 		database:                 nil,
 		log:                      nil,

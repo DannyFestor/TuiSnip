@@ -54,6 +54,33 @@ func (r *LibraryRepository) InsertIntoEmpty(ctx context.Context, library domain.
 	return nil
 }
 
+// The stored Tags are read inside the write transaction, so a Tag a TUI saves
+// meanwhile is reused rather than failing the Import on its name.
+func (r *LibraryRepository) InsertAlongside(ctx context.Context, library domain.Library) (domain.Library, error) {
+	var written domain.Library
+
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		stored, listErr := queries.ListTags(ctx)
+		if listErr != nil {
+			return fmt.Errorf("list tags: %w", listErr)
+		}
+
+		storedTags, rebuildErr := tagsFromRows(stored)
+		if rebuildErr != nil {
+			return corrupt(rebuildErr)
+		}
+
+		written = library.ReusingTags(storedTags)
+
+		return insertLibrary(ctx, queries, written)
+	})
+	if err != nil {
+		return domain.Library{}, fmt.Errorf("sqlite.LibraryRepository.InsertAlongside: %w", err)
+	}
+
+	return written, nil
+}
+
 func (r *LibraryRepository) readRows(ctx context.Context) (libraryRows, error) {
 	var rows libraryRows
 

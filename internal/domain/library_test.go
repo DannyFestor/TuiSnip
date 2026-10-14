@@ -192,6 +192,43 @@ func TestLibrary_RequireIntact(t *testing.T) {
 	})
 }
 
+func TestLibrary_ReusingTags(t *testing.T) {
+	t.Parallel()
+
+	t.Run(
+		"swaps a Tag for the stored Tag of the same name, ignoring case, and drops it from the new Tags",
+		func(t *testing.T) {
+			t.Parallel()
+
+			ids := testkit.NewSequentialIDs()
+			stored := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "go"})
+			imported := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Go"})
+			fresh := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+			snippet := testkit.Snippet(t, testkit.SnippetSpec{
+				ID: ids.NewSnippetID(), Tags: []domain.Tag{imported, fresh},
+			})
+			library := domain.Library{Tags: []domain.Tag{imported, fresh}, Snippets: []domain.Snippet{snippet}}
+
+			got := library.ReusingTags([]domain.Tag{stored})
+
+			assert.Equal(t, []domain.Tag{fresh}, got.Tags)
+			require.Len(t, got.Snippets, 1)
+			assert.Equal(t, []domain.Tag{stored, fresh}, got.Snippets[0].Tags())
+		},
+	)
+
+	t.Run("keeps every Tag when none is stored", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		tag := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), Tags: []domain.Tag{tag}})
+		library := domain.Library{Tags: []domain.Tag{tag}, Snippets: []domain.Snippet{snippet}}
+
+		assert.Equal(t, library, library.ReusingTags(nil))
+	})
+}
+
 func earlier() time.Time {
 	return time.Date(2026, time.March, 1, 9, 0, 0, 0, time.UTC)
 }

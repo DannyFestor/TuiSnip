@@ -44,6 +44,17 @@ func (l Library) RequireIntact() error {
 	return nil
 }
 
+func (l Library) ReusingTags(stored []Tag) Library {
+	byName := newTagsByName(stored)
+
+	snippets := make([]Snippet, 0, len(l.Snippets))
+	for i := range l.Snippets {
+		snippets = append(snippets, l.Snippets[i].Retagged(byName.reused(l.Snippets[i].Tags())))
+	}
+
+	return Library{Folders: l.Folders, Tags: byName.unmatched(l.Tags), Snippets: snippets}
+}
+
 func (l Library) folderDepths() (map[FolderID]int, error) {
 	parentOf := make(map[FolderID]FolderID, len(l.Folders))
 	for _, folder := range l.Folders {

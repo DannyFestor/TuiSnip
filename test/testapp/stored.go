@@ -14,7 +14,7 @@ import (
 func StoredFolder(t *testing.T, app *bootstrap.App, id domain.FolderID) domain.Folder {
 	t.Helper()
 
-	found, stored := withID(storedFolders(t, app), id)
+	found, stored := withID(StoredFolders(t, app), id)
 	require.True(t, stored, "Folder %v is not stored", id)
 
 	return found
@@ -23,7 +23,7 @@ func StoredFolder(t *testing.T, app *bootstrap.App, id domain.FolderID) domain.F
 func StoredTag(t *testing.T, app *bootstrap.App, id domain.TagID) domain.Tag {
 	t.Helper()
 
-	found, stored := withID(storedTags(t, app), id)
+	found, stored := withID(StoredTags(t, app), id)
 	require.True(t, stored, "Tag %v is not stored", id)
 
 	return found
@@ -66,7 +66,7 @@ func withID[E interface{ ID() ID }, ID comparable](items []E, id ID) (E, bool) {
 func storedFolderIDs(t *testing.T, app *bootstrap.App) []domain.FolderID {
 	t.Helper()
 
-	folders := storedFolders(t, app)
+	folders := StoredFolders(t, app)
 
 	ids := make([]domain.FolderID, 0, len(folders)+1)
 	ids = append(ids, domain.FolderID{})
@@ -78,7 +78,20 @@ func storedFolderIDs(t *testing.T, app *bootstrap.App) []domain.FolderID {
 	return ids
 }
 
-func storedFolders(t *testing.T, app *bootstrap.App) []domain.Folder {
+func StoredSnippets(t *testing.T, app *bootstrap.App) []domain.Snippet {
+	t.Helper()
+
+	folderIDs := storedFolderIDs(t, app)
+	snippets := make([]domain.Snippet, 0, len(folderIDs))
+
+	for _, folderID := range folderIDs {
+		snippets = append(snippets, snippetsIn(t, app, folderID)...)
+	}
+
+	return snippets
+}
+
+func StoredFolders(t *testing.T, app *bootstrap.App) []domain.Folder {
 	t.Helper()
 
 	tree, err := app.FolderTree.Run(t.Context(), browse.FolderTreeInput{})
@@ -97,7 +110,7 @@ func flattened(nodes []browse.FolderNode) []domain.Folder {
 	return folders
 }
 
-func storedTags(t *testing.T, app *bootstrap.App) []domain.Tag {
+func StoredTags(t *testing.T, app *bootstrap.App) []domain.Tag {
 	t.Helper()
 
 	counts, err := app.TagList.Run(t.Context(), browse.TagListInput{})

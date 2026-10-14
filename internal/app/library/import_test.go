@@ -52,7 +52,7 @@ func TestImport_Run(t *testing.T) {
 		got, err := newImport(t, reader, inserter).Run(t.Context(), library.ImportInput{Path: importPath})
 
 		require.NoError(t, err)
-		assert.Equal(t, library.Counts{Folders: 1, Tags: 2, Snippets: 1}, got)
+		assert.Equal(t, library.Counts{Folders: 1, Tags: 2, Snippets: 1, Fragments: 1}, got)
 	})
 
 	t.Run("inserts nothing when the file can't be read", func(t *testing.T) {

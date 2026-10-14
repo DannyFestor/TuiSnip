@@ -57,6 +57,7 @@ func TestRun(t *testing.T) {
 		assert.Contains(t, got.stderr, "-paths")
 		assert.Contains(t, got.stderr, "export <file>")
 		assert.Contains(t, got.stderr, "import <file>")
+		assert.Contains(t, got.stderr, "import --from snippetslab <file>")
 	})
 
 	t.Run("refuses an unknown flag", func(t *testing.T) {
@@ -102,6 +103,40 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, "Imported 0 Folders, 1 Tag, 0 Snippets\n", got.stdout)
 	})
 
+	t.Run("imports a SnippetsLab export and prints the closing report", func(t *testing.T) {
+		t.Parallel()
+
+		got := runWith(t, t.TempDir(), "import", "--from", "snippetslab", snippetsLabExport(t))
+
+		assert.Equal(t, exitOK, got.code, got.stderr)
+		assert.Equal(t, ""+
+			"Imported 1 Folder, 1 Tag, 2 Snippets, 4 Fragments\n"+
+			"Skipped 1 Snippet in the Trash\n"+
+			"Lost a pin: loop; parser\n"+
+			"Fell back to plaintext:\n"+
+			"  Folder grammars: YaccLexer\n"+
+			"  Snippet parser, Fragment 2 (grammar.y): YaccLexer\n"+
+			"  Snippet parser, Fragment 3: no lexer\n",
+			got.stdout)
+	})
+
+	t.Run("imports a second SnippetsLab export beside the first", func(t *testing.T) {
+		t.Parallel()
+
+		home := t.TempDir()
+		path := snippetsLabExport(t)
+		require.Equal(t, exitOK, runWith(t, home, "import", "--from", "snippetslab", path).code)
+
+		got := runWith(t, home, "import", "--from", "snippetslab", path)
+
+		assert.Equal(t, exitOK, got.code, got.stderr)
+		assert.True(
+			t,
+			strings.HasPrefix(got.stdout, "Imported 1 Folder, 0 Tags, 2 Snippets, 4 Fragments\n"),
+			got.stdout,
+		)
+	})
+
 	t.Run("refuses to import into a Library that isn't empty and points to --paths", func(t *testing.T) {
 		t.Parallel()
 
@@ -141,6 +176,20 @@ func TestRun(t *testing.T) {
 			name:       "refuses an import without a file",
 			args:       []string{"import"},
 			wantStderr: []string{"tuisnip: import: wrong number of arguments\n", "usage: tuisnip import <file>\n"},
+		},
+		{
+			name: "refuses an import from an app it can't read",
+			args: []string{"import", "--from", "bear", "notes.json"},
+			wantStderr: []string{
+				"tuisnip: import: unknown source: bear\n",
+				"usage: tuisnip import <file>\n",
+				"usage: tuisnip import --from snippetslab <file>\n",
+			},
+		},
+		{
+			name:       "refuses --from on a command that reads no other app's file",
+			args:       []string{"export", "--from", "snippetslab", "backup.json"},
+			wantStderr: []string{"flag provided but not defined: -from\n"},
 		},
 		{
 			name:       "refuses --paths together with a command",
@@ -264,6 +313,47 @@ func exportHoldingOneTag(t *testing.T) string {
     }
   ],
   "snippets": []
+}
+`), 0o600))
+
+	return path
+}
+
+func snippetsLabExport(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "snippetslab.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{
+  "contents": {
+    "folders": [{"uuid": "F1", "title": "grammars", "defaultLanguage": "YaccLexer", "children": []}],
+    "tags": [{"uuid": "T1", "title": "Go"}],
+    "snippets": [
+      {
+        "uuid": "S1", "title": "loop", "pinned": true, "tags": ["T1"],
+        "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
+        "fragments": [{"title": "Fragment", "language": "GoLexer", "content": "for {}",
+          "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"}]
+      },
+      {
+        "uuid": "S2", "title": "parser", "pinned": true, "folder": "F1",
+        "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
+        "fragments": [
+          {"title": "main.go", "language": "GoLexer", "content": "package main",
+            "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"},
+          {"title": "grammar.y", "language": "YaccLexer", "content": "%%",
+            "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"},
+          {"content": "notes",
+            "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"}
+        ]
+      },
+      {
+        "uuid": "S3", "title": "old", "dateDeleted": "2024-06-01T00:00:00Z",
+        "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
+        "fragments": [{"content": "gone",
+          "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"}]
+      }
+    ]
+  }
 }
 `), 0o600))
 

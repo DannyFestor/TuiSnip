@@ -40,6 +40,7 @@ components:
   state:       { in: internal/adapters/state/** }
   atomicfile:  { in: internal/adapters/atomicfile/** }
   exportfile:  { in: internal/adapters/exportfile/** }
+  snippetslab: { in: internal/adapters/snippetslab/** }
   editor:      { in: internal/adapters/editor/** }
   memsearch:   { in: internal/adapters/memsearch/** }
   system:      { in: internal/adapters/system/** }
@@ -83,6 +84,7 @@ deps:
     canUse: [ toml ]
   atomicfile:  { mayDependOn: [ atomicfile ] }
   exportfile:  { mayDependOn: [ exportfile, atomicfile ] }
+  snippetslab: { mayDependOn: [ snippetslab ] }
   editor:      { mayDependOn: [ editor ] }
   memsearch:
     mayDependOn: [ memsearch ]

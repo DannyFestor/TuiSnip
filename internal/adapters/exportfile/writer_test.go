@@ -16,8 +16,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
-const exportName = "tuisnip.json"
-
 func TestWriter_Write(t *testing.T) {
 	t.Parallel()
 

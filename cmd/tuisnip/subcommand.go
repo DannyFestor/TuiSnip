@@ -35,6 +35,12 @@ func subcommands() []subcommand {
 			summary:      "write every Folder, Tag, and Snippet to a JSON file",
 			run:          exportLibrary,
 		},
+		{
+			name:         "import",
+			operandNames: []string{"file"},
+			summary:      "add every Folder, Tag, and Snippet in an Export to an empty Library",
+			run:          importLibrary,
+		},
 	}
 }
 

@@ -86,6 +86,14 @@ Exporting an unchanged Library twice gives byte-identical files.
 - A record the database holds but the domain rejects, such as a Fragment whose Language chroma no longer knows, fails the Export and names the record. Browse skips such a record, but a backup that silently drops one couldn't be restored.
 - `-` is refused as the file, with usage and exit 2. Writing to stdout isn't supported.
 
+## Reading
+
+`tuisnip import <file>` ([v1: Command line](v1.md#command-line)) reads the file back.
+
+- A file whose `format` isn't `tuisnip-export` is refused as not being an Export.
+- A field the format doesn't have is refused, so a mistyped key such as `parent-id` can't drop its value silently.
+- Each record is built through the same checks the TUI applies. A bad record is named by its kind and ID (`snippet 0194…: value: title is longer than 200 characters`), and every bad record is reported at once.
+
 ## Versioning
 
 Import refuses a newer version and asks for an upgrade. Upgrading an older version gets built once a version 2 exists.

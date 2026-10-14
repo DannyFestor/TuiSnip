@@ -11,6 +11,9 @@ WHERE id = ?;
 SELECT id, folder_id, title, description, created_at, updated_at
 FROM snippets;
 
+-- name: CountSnippets :one
+SELECT COUNT(*) FROM snippets;
+
 -- name: ListSnippetsInFolderByTitle :many
 SELECT id, folder_id, title, description, created_at, updated_at
 FROM snippets

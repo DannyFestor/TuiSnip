@@ -25,26 +25,18 @@ func NewExport(loader Loader, writer Writer) (*Export, error) {
 	return &Export{loader: loader, writer: writer}, nil
 }
 
-func (e *Export) Run(ctx context.Context, input ExportInput) (ExportCounts, error) {
+func (e *Export) Run(ctx context.Context, input ExportInput) (Counts, error) {
 	loaded, err := e.loader.Load(ctx)
 	if err != nil {
-		return ExportCounts{}, fmt.Errorf("library.Export: %w", err)
+		return Counts{}, fmt.Errorf("library.Export: %w", err)
 	}
 
 	ordered := loaded.InCreatedOrder()
 
 	err = e.writer.Write(ctx, input.Path, ordered)
 	if err != nil {
-		return ExportCounts{}, fmt.Errorf("library.Export: %w", err)
+		return Counts{}, fmt.Errorf("library.Export: %w", err)
 	}
 
 	return countsOf(ordered), nil
-}
-
-func countsOf(written domain.Library) ExportCounts {
-	return ExportCounts{
-		Folders:  len(written.Folders),
-		Tags:     len(written.Tags),
-		Snippets: len(written.Snippets),
-	}
 }

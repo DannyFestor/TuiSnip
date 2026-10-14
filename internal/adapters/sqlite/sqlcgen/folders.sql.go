@@ -11,6 +11,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countFolders = `-- name: CountFolders :one
+SELECT COUNT(*) FROM folders
+`
+
+func (q *Queries) CountFolders(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countFolders)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSnippetsInSubtree = `-- name: CountSnippetsInSubtree :one
 WITH RECURSIVE subtree (id) AS (
     SELECT folders.id FROM folders WHERE folders.id = ?1

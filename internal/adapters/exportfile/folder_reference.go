@@ -9,3 +9,11 @@ func folderReference[E any](entity E, atRoot func(entity E) bool, folderID func(
 
 	return new(folderID(entity).String())
 }
+
+func parseFolderReference(reference *string) (domain.FolderID, error) {
+	if reference == nil {
+		return domain.FolderID{}, nil
+	}
+
+	return parseID[domain.FolderID](*reference)
+}

@@ -11,6 +11,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countTags = `-- name: CountTags :one
+SELECT COUNT(*) FROM tags
+`
+
+func (q *Queries) CountTags(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTags)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteTag = `-- name: DeleteTag :execrows
 DELETE FROM tags
 WHERE id = ?

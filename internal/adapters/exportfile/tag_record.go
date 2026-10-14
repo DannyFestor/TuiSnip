@@ -1,6 +1,12 @@
 package exportfile
 
-import "github.com/DannyFestor/TuiSnip/internal/domain"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+)
 
 type tagRecord struct {
 	ID        string `json:"id"`
@@ -20,4 +26,26 @@ func tagRecordOf(tag domain.Tag) tagRecord {
 
 func tagIDOf(tag domain.Tag) string {
 	return tag.ID().String()
+}
+
+func (r tagRecord) tag() (domain.Tag, error) {
+	id, idErr := parseID[domain.TagID](r.ID)
+	name, nameErr := value.NewTagName(r.Name)
+	stamped, datesErr := parseDates(r.CreatedAt, r.UpdatedAt)
+
+	err := errors.Join(idErr, nameErr, datesErr)
+	if err != nil {
+		return domain.Tag{}, r.named(err)
+	}
+
+	tag, err := domain.NewTag(id, name, stamped.created, stamped.updated)
+	if err != nil {
+		return domain.Tag{}, r.named(err)
+	}
+
+	return tag, nil
+}
+
+func (r tagRecord) named(err error) error {
+	return fmt.Errorf("tag %s: %w", r.ID, err)
 }

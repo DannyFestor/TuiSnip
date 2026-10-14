@@ -100,6 +100,130 @@ func TestLibraryRepository_Load(t *testing.T) {
 	}
 }
 
+func TestLibraryRepository_InsertIntoEmpty(t *testing.T) {
+	t.Parallel()
+
+	t.Run("inserts every Folder, Tag, and Snippet, a subfolder listed before its parent included", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		ids := testkit.NewSequentialIDs()
+		parentID := ids.NewFolderID()
+		child := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "go", ParentID: parentID})
+		parent := testkit.Folder(t, testkit.FolderSpec{ID: parentID, Name: "scripts"})
+		carried := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"})
+		unused := testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "unused"})
+		filed := testkit.Snippet(t, testkit.SnippetSpec{
+			ID: ids.NewSnippetID(), FolderID: child.ID(), Fragments: severalFragments(ids), Tags: []domain.Tag{carried},
+		})
+		atRoot := testkit.Snippet(t, testkit.SnippetSpec{
+			ID: ids.NewSnippetID(), Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
+		})
+		repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+
+		err := repository.InsertIntoEmpty(t.Context(), domain.Library{
+			Folders:  []domain.Folder{child, parent},
+			Tags:     []domain.Tag{carried, unused},
+			Snippets: []domain.Snippet{filed, atRoot},
+		})
+
+		require.NoError(t, err)
+		got, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.Folder{parent, child}, got.Folders)
+		assert.ElementsMatch(t, []domain.Tag{carried, unused}, got.Tags)
+		assert.ElementsMatch(t, []domain.Snippet{filed, atRoot}, got.Snippets)
+	})
+
+	refusals := []struct {
+		name string
+		seed func(t *testing.T, database *sqlite.Database)
+	}{
+		{name: "refuses a Library holding a Folder and writes nothing", seed: seedFolder},
+		{name: "refuses a Library holding a Tag and writes nothing", seed: seedTag},
+		{name: "refuses a Library holding a Snippet and writes nothing", seed: seedSnippet},
+	}
+	for _, tt := range refusals {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			database := openDatabase(t, newDatabasePath(t))
+			tt.seed(t, database)
+			repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+			before, err := repository.Load(t.Context())
+			require.NoError(t, err)
+
+			err = repository.InsertIntoEmpty(t.Context(), importedLibrary(t))
+
+			require.ErrorIs(t, err, domain.ErrLibraryNotEmpty)
+			require.ErrorContains(t, err, "sqlite.LibraryRepository.InsertIntoEmpty: ")
+			after, err := repository.Load(t.Context())
+			require.NoError(t, err)
+			assert.Equal(t, before, after)
+		})
+	}
+
+	t.Run("writes nothing when a record fails to insert", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		ids := testkit.NewSequentialIDs()
+		repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+
+		err := repository.InsertIntoEmpty(t.Context(), domain.Library{
+			Folders: []domain.Folder{testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID()})},
+			Tags: []domain.Tag{
+				testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "Shell"}),
+				testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "shell"}),
+			},
+			Snippets: nil,
+		})
+
+		require.ErrorIs(t, err, domain.ErrTagNameTaken)
+		got, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		assert.Empty(t, got.Folders)
+		assert.Empty(t, got.Tags)
+	})
+}
+
+func importedLibrary(t *testing.T) domain.Library {
+	t.Helper()
+
+	ids := testkit.NewSequentialIDs()
+
+	return domain.Library{
+		Folders:  []domain.Folder{testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "imported"})},
+		Tags:     []domain.Tag{testkit.Tag(t, testkit.TagSpec{ID: ids.NewTagID(), Name: "imported"})},
+		Snippets: nil,
+	}
+}
+
+func seedFolder(t *testing.T, database *sqlite.Database) {
+	t.Helper()
+
+	insertFolder(t, newFolderRepository(t, database, slog.New(slog.DiscardHandler)), testkit.FolderSpec{
+		ID: testkit.NewSequentialIDs().NewFolderID(), Name: "seeded",
+	})
+}
+
+func seedTag(t *testing.T, database *sqlite.Database) {
+	t.Helper()
+
+	insertTag(t, newTagRepository(t, database), testkit.NewSequentialIDs(), "seeded")
+}
+
+func seedSnippet(t *testing.T, database *sqlite.Database) {
+	t.Helper()
+
+	insertSnippet(
+		t,
+		newSnippetRepository(t, database),
+		testkit.NewSequentialIDs(),
+		testkit.SnippetSpec{Title: "seeded"},
+	)
+}
+
 func newLibraryRepository(t *testing.T, database *sqlite.Database, logger *slog.Logger) *sqlite.LibraryRepository {
 	t.Helper()
 

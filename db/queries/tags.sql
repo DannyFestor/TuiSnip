@@ -11,6 +11,9 @@ ON CONFLICT (id) DO NOTHING;
 SELECT id, name, name_key, created_at, updated_at
 FROM tags;
 
+-- name: CountTags :one
+SELECT COUNT(*) FROM tags;
+
 -- name: GetTag :one
 SELECT id, name, name_key, created_at, updated_at
 FROM tags

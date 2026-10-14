@@ -44,6 +44,13 @@
             "content": "flag.Parse()\n",
             "note": "Parses flags.",
             "noteAttributes": [],
+            "attachments": [
+              {
+                "uuid": "A77A0000-0000-4000-8000-000000000001",
+                "customName": "",
+                "file": {"filename": "usage.png", "bytes": 2048, "checksum": "e3b0c442"}
+              }
+            ],
             "dateCreated": "2024-03-16T08:00:00Z",
             "dateModified": "2024-03-16T08:00:00Z"
           },
@@ -64,6 +71,9 @@
         "folder": "8A1F0000-0000-4000-8000-000000000003",
         "tags": [],
         "pinned": false,
+        "gistIdentifier": "0123456789abcdef0123456789abcdef",
+        "githubHTMLURL": "https://gist.github.com/0123456789abcdef0123456789abcdef",
+        "githubUsername": "octocat",
         "dateCreated": "2024-05-01T09:30:00Z",
         "dateModified": "2024-05-01T09:30:00Z",
         "fragments": [

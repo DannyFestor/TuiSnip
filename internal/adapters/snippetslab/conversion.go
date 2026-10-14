@@ -25,6 +25,8 @@ func newConversion(ids IDGenerator, now time.Time) *conversion {
 		losses: domain.ImportLosses{
 			TrashedSnippets:   0,
 			LostPins:          nil,
+			LostGistLinks:     nil,
+			LostAttachments:   nil,
 			FolderFallbacks:   nil,
 			FragmentFallbacks: nil,
 		},
@@ -48,8 +50,16 @@ func (c *conversion) library(read contents) (domain.Library, error) {
 	return domain.Library{Folders: folders, Tags: tags, Snippets: snippets}, nil
 }
 
-func (c *conversion) recordLostPin(record snippetRecord, title value.Title) {
+func (c *conversion) recordLosses(record snippetRecord, title value.Title) {
 	if record.Pinned {
 		c.losses.LostPins = append(c.losses.LostPins, title)
+	}
+
+	if record.linkedToGist() {
+		c.losses.LostGistLinks = append(c.losses.LostGistLinks, title)
+	}
+
+	if record.attached() {
+		c.losses.LostAttachments = append(c.losses.LostAttachments, title)
 	}
 }

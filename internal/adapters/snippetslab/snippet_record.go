@@ -11,15 +11,16 @@ import (
 )
 
 type snippetRecord struct {
-	UUID         string           `json:"uuid"`
-	Title        string           `json:"title"`
-	Folder       string           `json:"folder"`
-	Tags         []string         `json:"tags"`
-	Pinned       bool             `json:"pinned"`
-	DateCreated  string           `json:"dateCreated"`
-	DateModified string           `json:"dateModified"`
-	DateDeleted  string           `json:"dateDeleted"`
-	Fragments    []fragmentRecord `json:"fragments"`
+	UUID           string           `json:"uuid"`
+	Title          string           `json:"title"`
+	Folder         string           `json:"folder"`
+	Tags           []string         `json:"tags"`
+	Pinned         bool             `json:"pinned"`
+	GistIdentifier string           `json:"gistIdentifier"`
+	DateCreated    string           `json:"dateCreated"`
+	DateModified   string           `json:"dateModified"`
+	DateDeleted    string           `json:"dateDeleted"`
+	Fragments      []fragmentRecord `json:"fragments"`
 }
 
 func (c *conversion) snippet(record snippetRecord) (domain.Snippet, error) {
@@ -47,7 +48,7 @@ func (c *conversion) snippet(record snippetRecord) (domain.Snippet, error) {
 		return domain.Snippet{}, record.named(err)
 	}
 
-	c.recordLostPin(record, title)
+	c.recordLosses(record, title)
 
 	return snippet, nil
 }
@@ -58,6 +59,14 @@ func liveSnippets(records []snippetRecord) []snippetRecord {
 
 func (r snippetRecord) trashed() bool {
 	return r.DateDeleted != ""
+}
+
+func (r snippetRecord) linkedToGist() bool {
+	return r.GistIdentifier != ""
+}
+
+func (r snippetRecord) attached() bool {
+	return slices.ContainsFunc(r.Fragments, fragmentRecord.attached)
 }
 
 func (r snippetRecord) named(err error) error {

@@ -34,10 +34,12 @@ func descriptionOf(records []fragmentRecord) (value.Description, error) {
 func labelledNotes(records []fragmentRecord) ([]labelledNote, error) {
 	notes := make([]labelledNote, 0, len(records))
 
-	for i, record := range records {
+	for index := range records {
+		record := &records[index]
+
 		text, err := plainNote(record.Note, record.NoteAttributes)
 		if err != nil {
-			return nil, fmt.Errorf("fragment %d: note: %w", i+1, err)
+			return nil, fmt.Errorf("fragment %d: note: %w", index+1, err)
 		}
 
 		if text != "" {

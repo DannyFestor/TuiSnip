@@ -119,6 +119,38 @@ func TestReader_Read(t *testing.T) {
 		assert.Equal(t, []value.Title{title(t, "pinned")}, losses.LostPins)
 	})
 
+	t.Run("names each Snippet linked to a Gist as having lost its Gist link", func(t *testing.T) {
+		t.Parallel()
+
+		path := exportFile(t, contents(nil, nil, []record{
+			snippetRecord(record{"title": "shared", "gistIdentifier": "0123456789abcdef0123456789abcdef"}),
+			snippetRecord(record{"title": "unshared", "gistIdentifier": nil}),
+			snippetRecord(record{"title": "never shared"}),
+		}))
+
+		_, losses := read(t, path)
+
+		assert.Equal(t, []value.Title{title(t, "shared")}, losses.LostGistLinks)
+	})
+
+	t.Run("names each Snippet with an attachment once as having lost its attachments", func(t *testing.T) {
+		t.Parallel()
+
+		attached := fragmentRecord(record{"attachments": []record{attachmentRecord(), attachmentRecord()}})
+		path := exportFile(t, contents(nil, nil, []record{
+			snippetRecord(record{"title": "screenshots", "fragments": []record{
+				fragmentRecord(nil), attached, attached,
+			}}),
+			snippetRecord(record{"title": "plain", "fragments": []record{
+				fragmentRecord(record{"attachments": []record{}}),
+			}}),
+		}))
+
+		_, losses := read(t, path)
+
+		assert.Equal(t, []value.Title{title(t, "screenshots")}, losses.LostAttachments)
+	})
+
 	lexers := []struct {
 		lexer string
 		want  string
@@ -556,6 +588,14 @@ func fragmentRecord(overrides record) record {
 		"dateCreated":  created,
 		"dateModified": created,
 	}, overrides)
+}
+
+func attachmentRecord() record {
+	return record{
+		"uuid":       "A77AC000-0000-4000-8000-000000000001",
+		"customName": "",
+		"file":       record{"filename": "screenshot.png", "bytes": 2048, "checksum": "e3b0c442"},
+	}
 }
 
 func overridden(defaults, overrides record) record {

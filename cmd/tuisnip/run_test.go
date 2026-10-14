@@ -113,6 +113,8 @@ func TestRun(t *testing.T) {
 			"Imported 1 Folder, 1 Tag, 2 Snippets, 4 Fragments\n"+
 			"Skipped 1 Snippet in the Trash\n"+
 			"Lost a pin: loop; parser\n"+
+			"Lost a Gist link: loop\n"+
+			"Lost an attachment: parser\n"+
 			"Fell back to plaintext:\n"+
 			"  Folder grammars: YaccLexer\n"+
 			"  Snippet parser, Fragment 2 (grammar.y): YaccLexer\n"+
@@ -330,6 +332,7 @@ func snippetsLabExport(t *testing.T) string {
     "snippets": [
       {
         "uuid": "S1", "title": "loop", "pinned": true, "tags": ["T1"],
+        "gistIdentifier": "0123456789abcdef0123456789abcdef",
         "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
         "fragments": [{"title": "Fragment", "language": "GoLexer", "content": "for {}",
           "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"}]
@@ -339,6 +342,7 @@ func snippetsLabExport(t *testing.T) string {
         "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
         "fragments": [
           {"title": "main.go", "language": "GoLexer", "content": "package main",
+            "attachments": [{"uuid": "A1", "file": {"filename": "diagram.png", "bytes": 2048}}],
             "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"},
           {"title": "grammar.y", "language": "YaccLexer", "content": "%%",
             "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"},

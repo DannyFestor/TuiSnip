@@ -51,7 +51,7 @@ _Avoid_: Label, keyword, category
 ### Retrieval
 
 **Search**:
-Finding Snippets by matching a query against their title, Description, Tags, Fragment titles, and Fragment content: fuzzily for the first four, as a literal substring for content.
+Finding Snippets outside the Trash by matching a query against their title, Description, Tags, Fragment titles, and Fragment content: fuzzily for the first four, as a literal substring for content.
 _Avoid_: Filter, find, query
 
 **Search hit**:
@@ -85,7 +85,7 @@ _Avoid_: Yank, export
 ### Moving data
 
 **Library**:
-Every Snippet, Folder, and Tag in the database, Tags no Snippet carries included. Export writes it whole, and an Import restores it.
+Every Snippet, Folder, and Tag in the database, Tags no Snippet carries and the Trash included. Export writes it whole, and an Import restores it.
 _Avoid_: Collection, database, store, everything
 
 **Export**:

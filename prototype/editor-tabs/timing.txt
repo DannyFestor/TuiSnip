@@ -1,0 +1,28 @@
+64 KiB Go           windowed=false document  lines   2748  keypress (Update+relex)  150.4ms  View   82.7ms  of which lex   67.4ms
+64 KiB Go           windowed=false line      lines   2748  keypress (Update+relex)  195.3ms  View  194.2ms  of which lex    0.0ms
+64 KiB Go           windowed=false off       lines   2748  keypress (Update+relex)   33.8ms  View   33.4ms  of which lex    0.0ms
+64 KiB Go           windowed=true  document  lines   2748  keypress (Update+relex)   74.4ms  View    7.2ms  of which lex   65.8ms
+64 KiB Go           windowed=true  line      lines   2748  keypress (Update+relex)   11.7ms  View   11.7ms  of which lex    0.0ms
+64 KiB Go           windowed=true  off       lines   2748  keypress (Update+relex)    5.3ms  View    5.0ms  of which lex    0.0ms
+256 KiB Go          windowed=false document  lines  10893  keypress (Update+relex)  577.2ms  View  317.1ms  of which lex  264.0ms
+256 KiB Go          windowed=false line      lines  10893  keypress (Update+relex)  740.8ms  View  743.0ms  of which lex    0.0ms
+256 KiB Go          windowed=false off       lines  10893  keypress (Update+relex)  130.4ms  View  135.0ms  of which lex    0.0ms
+256 KiB Go          windowed=true  document  lines  10893  keypress (Update+relex)  273.8ms  View   17.0ms  of which lex  251.0ms
+256 KiB Go          windowed=true  line      lines  10893  keypress (Update+relex)   23.1ms  View   21.4ms  of which lex    0.0ms
+256 KiB Go          windowed=true  off       lines  10893  keypress (Update+relex)   17.4ms  View   15.3ms  of which lex    0.0ms
+10,000 short lines  windowed=false document  lines  10001  keypress (Update+relex)  219.0ms  View  158.6ms  of which lex   71.7ms
+10,000 short lines  windowed=false line      lines  10001  keypress (Update+relex)  209.5ms  View  218.5ms  of which lex    0.0ms
+10,000 short lines  windowed=false off       lines  10001  keypress (Update+relex)  109.7ms  View  110.3ms  of which lex    0.0ms
+10,000 short lines  windowed=true  document  lines  10001  keypress (Update+relex)   81.0ms  View   12.1ms  of which lex   68.7ms
+10,000 short lines  windowed=true  line      lines  10001  keypress (Update+relex)   11.7ms  View   12.2ms  of which lex    0.0ms
+10,000 short lines  windowed=true  off       lines  10001  keypress (Update+relex)   10.9ms  View   11.1ms  of which lex    0.0ms
+60,000 short lines  windowed=false document  lines  60001  keypress (Update+relex) 1286.8ms  View  870.4ms  of which lex  403.2ms
+60,000 short lines  windowed=false line      lines  60001  keypress (Update+relex) 1347.9ms  View 1393.1ms  of which lex    0.0ms
+60,000 short lines  windowed=false off       lines  60001  keypress (Update+relex)  656.5ms  View  699.6ms  of which lex    0.0ms
+60,000 short lines  windowed=true  document  lines  60001  keypress (Update+relex)  464.0ms  View   62.3ms  of which lex  402.6ms
+60,000 short lines  windowed=true  line      lines  60001  keypress (Update+relex)   63.7ms  View   64.9ms  of which lex    0.0ms
+60,000 short lines  windowed=true  off       lines  60001  keypress (Update+relex)   61.7ms  View   61.7ms  of which lex    0.0ms
+64 KiB Go           stock bubbles v2.2.1, no highlighting, lines   2748  keypress   32.4ms  View   33.3ms
+256 KiB Go          stock bubbles v2.2.1, no highlighting, lines  10000  keypress  123.0ms  View  123.2ms
+10,000 short lines  stock bubbles v2.2.1, no highlighting, lines  10000  keypress  110.3ms  View  116.7ms
+60,000 short lines  stock bubbles v2.2.1, no highlighting, lines  10000  keypress  112.6ms  View  116.0ms

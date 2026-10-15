@@ -1,0 +1,38 @@
+package sample
+
+// Indentation below is real tabs. Press F8 to see them.
+
+import (
+	"fmt"
+	"net/http"
+)
+
+// Tab-aligned columns, the way people paste them (F3 flips tab stops and fixed width):
+// name	kind	size
+// a	file	12
+// longer-name	dir	4096
+// 日本語	wide	3
+// 🙂	emoji	1
+
+const (
+	Short	= 1	// one tab after a short name
+	MuchLongerName	= 2	// one tab after a long name
+)
+
+/*
+	A block comment spanning lines: F7 "line" mode can't know these lines are a comment.
+*/
+func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {	// a tab before this comment
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	for i := 0; i < 3; i++ {
+		fmt.Fprintf(w, "%d\t%s\n", i, `a raw string
+	with a tab inside it`)
+	}
+	  	// two spaces then a tab: mixed indentation
+		// two tabs
+}
+
+func veryLongLineThatWraps() string { return "a long line with	tabs	in	the	middle	so	that	soft	wrapping	has	to	measure	tabs	at	their	position	in	the	row" }

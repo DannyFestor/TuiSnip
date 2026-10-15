@@ -33,7 +33,7 @@ A named node in a strict tree that files Snippets. A Snippet is in at most one F
 _Avoid_: Group, category, directory, collection
 
 **Trash**:
-Where deleted Snippets and Folders wait, restorable, until permanently removed.
+Where deleted Snippets and Folders wait, restorable, until the user permanently deletes them. A deleted Folder waits with its whole subtree as one item, restored or permanently deleted together. Snippets in the Trash keep their Tags but don't count toward them.
 _Avoid_: Bin, recycle bin, archive, deleted items
 
 **Default Language**:

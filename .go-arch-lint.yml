@@ -14,6 +14,8 @@ excludeFiles:
 
 vendors:
   tui-framework:   { in: [ charm.land/**, github.com/charmbracelet/x/ansi ] }
+  text-width:      { in: [ github.com/mattn/go-runewidth, github.com/rivo/uniseg ] }
+  system-clipboard: { in: [ github.com/atotto/clipboard ] }
   highlighting:    { in: [ github.com/alecthomas/chroma/v2, github.com/alecthomas/chroma/v2/** ] }
   sqlite-driver:   { in: [ modernc.org/sqlite, modernc.org/sqlite/** ] }
   migrator:        { in: [ github.com/pressly/goose/v3, github.com/pressly/goose/v3/** ] }
@@ -94,7 +96,7 @@ deps:
 
   tui:
     mayDependOn: [ tui, app-snippet, app-folder, app-tag, app-browse, app-search ]
-    canUse: [ tui-framework, highlighting ]
+    canUse: [ tui-framework, text-width, system-clipboard, highlighting ]
 
   bootstrap:
     anyProjectDeps: true

@@ -2,10 +2,10 @@ package input
 
 import (
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 )
 
 func NewLine(prompt string, styles look.Styles) textinput.Model {

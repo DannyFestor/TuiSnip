@@ -7,27 +7,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Position is a location in the textarea's logical buffer: Row indexes a
-// logical (unwrapped) line, Col indexes a rune within that line. Col may
-// equal the line length, meaning "just past the last rune".
-type Position struct {
-	Row int
-	Col int
-}
-
-func (p Position) before(q Position) bool {
-	if p.Row != q.Row {
-		return p.Row < q.Row
-	}
-
-	return p.Col < q.Col
-}
-
-type Range struct {
-	Start Position
-	End   Position
-}
-
 type runeSpan struct {
 	from int
 	to   int

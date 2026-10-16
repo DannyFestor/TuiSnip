@@ -10,8 +10,6 @@ type Sanitizer struct {
 	replaceTab     []rune
 }
 
-type Option func(Sanitizer) Sanitizer
-
 func NewSanitizer(opts ...Option) *Sanitizer {
 	sanitizer := Sanitizer{
 		replaceNewLine: []rune("\n"),
@@ -22,22 +20,6 @@ func NewSanitizer(opts ...Option) *Sanitizer {
 	}
 
 	return &sanitizer
-}
-
-func ReplaceTabs(tabRepl string) Option {
-	return func(s Sanitizer) Sanitizer {
-		s.replaceTab = []rune(tabRepl)
-
-		return s
-	}
-}
-
-func ReplaceNewlines(nlRepl string) Option {
-	return func(s Sanitizer) Sanitizer {
-		s.replaceNewLine = []rune(nlRepl)
-
-		return s
-	}
 }
 
 // The rune array is modified in-place if possible. In that case, the

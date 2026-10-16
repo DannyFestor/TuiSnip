@@ -2,14 +2,8 @@ package memoization
 
 import (
 	"container/list"
-	"crypto/sha256"
-	"fmt"
 	"sync"
 )
-
-type Hasher interface {
-	Hash() string
-}
 
 type entry[T any] struct {
 	key   string
@@ -107,16 +101,4 @@ func (m *MemoCache[H, T]) add(hashedKey string, value T) {
 	}
 	element := m.evictionList.PushFront(newEntry)
 	m.cache[hashedKey] = element
-}
-
-type HString string
-
-func (h HString) Hash() string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(h)))
-}
-
-type HInt int
-
-func (h HInt) Hash() string {
-	return fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%d", h)))
 }

@@ -3,11 +3,9 @@ package textarea
 import (
 	"crypto/sha256"
 	"fmt"
-	"image/color"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
 	"charm.land/bubbles/v2/cursor"
@@ -38,81 +36,6 @@ const (
 
 	lineNumberGap = 2
 )
-
-type LineInfo struct {
-	Width        int
-	CharWidth    int
-	Height       int
-	StartColumn  int
-	ColumnOffset int
-	RowOffset    int
-	CharOffset   int
-}
-
-type PromptInfo struct {
-	LineNumber int
-	Focused    bool
-}
-
-type CursorStyle struct {
-	Color      color.Color
-	Shape      tea.CursorShape
-	Blink      bool
-	BlinkSpeed time.Duration
-}
-
-type Styles struct {
-	Focused StyleState
-	Blurred StyleState
-	Cursor  CursorStyle
-}
-
-type StyleState struct {
-	Base             lipgloss.Style
-	Text             lipgloss.Style
-	LineNumber       lipgloss.Style
-	CursorLineNumber lipgloss.Style
-	CursorLine       lipgloss.Style
-	EndOfBuffer      lipgloss.Style
-	Placeholder      lipgloss.Style
-	Prompt           lipgloss.Style
-	Selection        lipgloss.Style
-}
-
-func (s StyleState) computedCursorLine() lipgloss.Style {
-	return s.CursorLine.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedCursorLineNumber() lipgloss.Style {
-	return s.CursorLineNumber.
-		Inherit(s.CursorLine).
-		Inherit(s.Base).
-		Inline(true)
-}
-
-func (s StyleState) computedEndOfBuffer() lipgloss.Style {
-	return s.EndOfBuffer.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedLineNumber() lipgloss.Style {
-	return s.LineNumber.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedPlaceholder() lipgloss.Style {
-	return s.Placeholder.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedPrompt() lipgloss.Style {
-	return s.Prompt.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedText() lipgloss.Style {
-	return s.Text.Inherit(s.Base).Inline(true)
-}
-
-func (s StyleState) computedSelection() lipgloss.Style {
-	return s.Selection.Inherit(s.Text).Inherit(s.Base).Inline(true)
-}
 
 // line is the input to the text wrapping function. This is stored in a struct
 // so that it can be hashed and memoized.
@@ -249,51 +172,6 @@ func New() Model {
 	model.SetWidth(defaultWidth)
 
 	return model
-}
-
-func DefaultStyles(isDark bool) Styles {
-	lightDark := lipgloss.LightDark(isDark)
-
-	var styles Styles
-
-	styles.Focused = StyleState{
-		Base:             lipgloss.NewStyle(),
-		CursorLine:       lipgloss.NewStyle().Background(lightDark(lipgloss.Color("255"), lipgloss.Color("0"))),
-		CursorLineNumber: lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("240"), lipgloss.Color("240"))),
-		EndOfBuffer:      lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("254"), lipgloss.Color("0"))),
-		LineNumber:       lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("249"), lipgloss.Color("7"))),
-		Placeholder:      lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		Prompt:           lipgloss.NewStyle().Foreground(lipgloss.Color("7")),
-		Selection:        lipgloss.NewStyle().Background(lightDark(lipgloss.Color("253"), lipgloss.Color("8"))),
-		Text:             lipgloss.NewStyle(),
-	}
-	styles.Blurred = StyleState{
-		Base:             lipgloss.NewStyle(),
-		CursorLine:       lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("245"), lipgloss.Color("7"))),
-		CursorLineNumber: lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("249"), lipgloss.Color("7"))),
-		EndOfBuffer:      lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("254"), lipgloss.Color("0"))),
-		LineNumber:       lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("249"), lipgloss.Color("7"))),
-		Placeholder:      lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		Prompt:           lipgloss.NewStyle().Foreground(lipgloss.Color("7")),
-		Selection:        lipgloss.NewStyle().Background(lightDark(lipgloss.Color("253"), lipgloss.Color("8"))),
-		Text:             lipgloss.NewStyle().Foreground(lightDark(lipgloss.Color("245"), lipgloss.Color("7"))),
-	}
-	styles.Cursor = CursorStyle{
-		Color:      lipgloss.Color("7"),
-		Shape:      tea.CursorBlock,
-		Blink:      true,
-		BlinkSpeed: 0,
-	}
-
-	return styles
-}
-
-func DefaultLightStyles() Styles {
-	return DefaultStyles(false)
-}
-
-func DefaultDarkStyles() Styles {
-	return DefaultStyles(true)
 }
 
 func (m *Model) Styles() Styles {

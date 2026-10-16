@@ -46,6 +46,8 @@ The database is the last line of defence. It repeats every rule we know, except 
 | timestamps are sane | `created_at > 0`, `updated_at >= created_at` |
 | titles, Fragment titles, Folder names, Descriptions, and content are capped | `length(title) <= 200` on `snippets` and `fragments`, `length(name) <= 200` on `folders`, `length(description) <= 2000`, `length(CAST(content AS BLOB)) <= 262144` |
 | a Folder is not its own parent | `parent_id <> id` |
+| a Trash item was deleted after it was created | `deleted_at IS NULL OR deleted_at >= created_at` |
+| a former path is a JSON array, non-empty only on a detached Trash item | `json_valid(…) AND json_type(…) = 'array'`, and `json_array_length(…) = 0` unless `deleted_at` is set and `folder_id`/`parent_id` is NULL |
 
 A CHECK may be weaker than the domain rule, never stricter. A stricter CHECK would reject a value the domain accepted, and the user would get a failed save with no explanation. `trim` above is an example: SQLite removes only the characters listed, while `strings.TrimSpace` removes all Unicode whitespace.
 
@@ -71,7 +73,7 @@ SQLite's `length()` counts characters on `TEXT` and bytes on a `BLOB`, matching 
 ## Migrations
 
 - Files live in `db/migrations/`, embedded by `db/migrations/embed.go`. Only `internal/adapters/sqlite` may import that package.
-- Names are sequential: `00006_add_trash.sql`. Timestamped names are not used, because goose refuses a migration older than one already applied.
+- Names are sequential: `00007_add_trash.sql`. Timestamped names are not used, because goose refuses a migration older than one already applied.
 - One migration per table or per change. Indexes go in the migration of their table.
 - **Up only.** There are no `-- +goose Down` sections. The app only migrates forward. To undo something, write a new migration, and to recover data, restore a [backup](#backups).
 - Migrations are editable until the first release tag (v0.1). After that they're append-only, because an installed database has already applied them.
@@ -82,6 +84,9 @@ SQLite's `length()` counts characters on `TEXT` and bytes on a `BLOB`, matching 
 - One query file per table in `db/queries/` (`snippets.sql`, `fragments.sql`). A query that reads several tables goes in the file of the table it returns.
 - sqlc generates `internal/adapters/sqlite/sqlcgen/` from `sqlc.yaml` with `make generate-sql`. Never edit the output.
 - Queries arrive with the Action that needs them. The adapter method that runs them is shaped by the Action's capability interface, not by the table.
+- **Library reads go through the live views.** A read that leaves the Trash out selects from `live_snippets` and `live_folders`, never from `snippets` or `folders`, and joins `snippet_tag` to `live_snippets` rather than reading it alone. The views drop any row whose own `deleted_at`, or an ancestor Folder's, is set ([ADR 0005](../adr/0005-trash-is-a-soft-delete-read-through-live-views.md)). Export and the Import emptiness counts read the base tables, because the Library includes the Trash.
+- `queries_test.go` in the adapter enforces that rule. It fails when a query names `snippets`, `folders`, or `snippet_tag` after `FROM` or `JOIN` without an entry on its allowlist, and each entry gives a one-line reason: a write, a whole-Library read, the Folder cycle check (which guards the whole tree), or a `snippet_tag` join to `live_snippets`. The test also fails when a query allowlisted for that join loses it.
+- Each view selects every column of its table, so sqlc's `LiveSnippet` and `LiveFolder` have the same fields as `Snippet` and `Folder`, and the adapter converts a view row into a table row with a plain Go conversion. A column added to a table goes into its view too, or that conversion stops compiling.
 - `sqlc.yaml` maps every ID column to `sqltype.ID` and every timestamp column to `sqltype.Timestamp` with wildcard column overrides (`*.id`, `*.created_at`). A new ID or timestamp column with a different name needs its own override.
 - `sqltype` (`internal/adapters/sqlite/sqltype`) holds the `Scan`/`Value` types sqlc generates against. The standard library's `uuid.UUID` has neither method. A value that fails `Scan` becomes an error wrapping `domain.ErrCorruptRecord`.
 - `sqltype.ID` wraps a plain `uuid.UUID`, not the typed `domain.SnippetID`/`FolderID`. The adapter converts between them with `columnID` and `entityID[domain.SnippetID]`, which works because both share the `[16]byte` underlying type. A generic `sqltype.ID[E]` would need one sqlc override per typed column and can't name `domain`'s unexported entity types.

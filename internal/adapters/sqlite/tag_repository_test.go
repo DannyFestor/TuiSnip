@@ -256,6 +256,17 @@ func TestTagRepository_CountSnippets(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, count)
 	})
+
+	t.Run("counts no Snippets in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		count, err := newTagRepository(t, fixture.database).CountSnippets(t.Context(), fixture.tag.ID())
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
 }
 
 type tagFixture struct {

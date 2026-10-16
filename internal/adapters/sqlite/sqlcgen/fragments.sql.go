@@ -51,44 +51,6 @@ func (q *Queries) InsertFragment(ctx context.Context, arg InsertFragmentParams) 
 	return err
 }
 
-const listFragments = `-- name: ListFragments :many
-SELECT id, snippet_id, position, language, content, created_at, updated_at, title
-FROM fragments
-ORDER BY snippet_id, position
-`
-
-func (q *Queries) ListFragments(ctx context.Context) ([]Fragment, error) {
-	rows, err := q.db.QueryContext(ctx, listFragments)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Fragment{}
-	for rows.Next() {
-		var i Fragment
-		if err := rows.Scan(
-			&i.ID,
-			&i.SnippetID,
-			&i.Position,
-			&i.Language,
-			&i.Content,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listFragmentsBySnippet = `-- name: ListFragmentsBySnippet :many
 SELECT id, snippet_id, position, language, content, created_at, updated_at, title
 FROM fragments
@@ -132,8 +94,8 @@ const listFragmentsInFolder = `-- name: ListFragmentsInFolder :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
        fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
-JOIN snippets ON snippets.id = fragments.snippet_id
-WHERE snippets.folder_id IS ?1
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
+WHERE live_snippets.folder_id IS ?1
 ORDER BY fragments.snippet_id, fragments.position
 `
 
@@ -173,6 +135,7 @@ const listFragmentsWithTag = `-- name: ListFragmentsWithTag :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
        fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
 JOIN snippet_tag ON snippet_tag.snippet_id = fragments.snippet_id
 WHERE snippet_tag.tag_id = ?1
 ORDER BY fragments.snippet_id, fragments.position
@@ -180,6 +143,84 @@ ORDER BY fragments.snippet_id, fragments.position
 
 func (q *Queries) ListFragmentsWithTag(ctx context.Context, tagID sqltype.ID) ([]Fragment, error) {
 	rows, err := q.db.QueryContext(ctx, listFragmentsWithTag, tagID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Fragment{}
+	for rows.Next() {
+		var i Fragment
+		if err := rows.Scan(
+			&i.ID,
+			&i.SnippetID,
+			&i.Position,
+			&i.Language,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLibraryFragments = `-- name: ListLibraryFragments :many
+SELECT id, snippet_id, position, language, content, created_at, updated_at, title
+FROM fragments
+ORDER BY snippet_id, position
+`
+
+func (q *Queries) ListLibraryFragments(ctx context.Context) ([]Fragment, error) {
+	rows, err := q.db.QueryContext(ctx, listLibraryFragments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Fragment{}
+	for rows.Next() {
+		var i Fragment
+		if err := rows.Scan(
+			&i.ID,
+			&i.SnippetID,
+			&i.Position,
+			&i.Language,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveFragments = `-- name: ListLiveFragments :many
+SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
+       fragments.created_at, fragments.updated_at, fragments.title
+FROM fragments
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
+ORDER BY fragments.snippet_id, fragments.position
+`
+
+func (q *Queries) ListLiveFragments(ctx context.Context) ([]Fragment, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveFragments)
 	if err != nil {
 		return nil, err
 	}

@@ -3,12 +3,16 @@ INSERT INTO folders (id, parent_id, name, default_language, created_at, updated_
 VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetFolder :one
-SELECT id, parent_id, name, default_language, created_at, updated_at
-FROM folders
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM live_folders
 WHERE id = ?;
 
--- name: ListFolders :many
-SELECT id, parent_id, name, default_language, created_at, updated_at
+-- name: ListLiveFolders :many
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM live_folders;
+
+-- name: ListLibraryFolders :many
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
 FROM folders;
 
 -- name: CountFolders :one
@@ -16,19 +20,19 @@ SELECT COUNT(*) FROM folders;
 
 -- name: CountSubfolders :one
 WITH RECURSIVE subtree (id) AS (
-    SELECT folders.id FROM folders WHERE folders.id = sqlc.arg(id)
+    SELECT live_folders.id FROM live_folders WHERE live_folders.id = sqlc.arg(id)
     UNION ALL
-    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
 )
 SELECT COUNT(*) - 1 FROM subtree;
 
 -- name: CountSnippetsInSubtree :one
 WITH RECURSIVE subtree (id) AS (
-    SELECT folders.id FROM folders WHERE folders.id = sqlc.arg(id)
+    SELECT live_folders.id FROM live_folders WHERE live_folders.id = sqlc.arg(id)
     UNION ALL
-    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
 )
-SELECT COUNT(*) FROM snippets WHERE snippets.folder_id IN (SELECT subtree.id FROM subtree);
+SELECT COUNT(*) FROM live_snippets WHERE live_snippets.folder_id IN (SELECT subtree.id FROM subtree);
 
 -- name: DeleteFolder :execrows
 DELETE FROM folders

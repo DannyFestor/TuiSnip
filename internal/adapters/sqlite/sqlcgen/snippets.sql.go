@@ -24,7 +24,7 @@ func (q *Queries) CountSnippets(ctx context.Context) (int64, error) {
 
 const countSnippetsByFolder = `-- name: CountSnippetsByFolder :many
 SELECT folder_id, COUNT(*) AS snippet_count
-FROM snippets
+FROM live_snippets
 GROUP BY folder_id
 `
 
@@ -70,14 +70,14 @@ func (q *Queries) DeleteSnippet(ctx context.Context, id sqltype.ID) (int64, erro
 }
 
 const getSnippet = `-- name: GetSnippet :one
-SELECT id, folder_id, title, description, created_at, updated_at
-FROM snippets
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM live_snippets
 WHERE id = ?
 `
 
-func (q *Queries) GetSnippet(ctx context.Context, id sqltype.ID) (Snippet, error) {
+func (q *Queries) GetSnippet(ctx context.Context, id sqltype.ID) (LiveSnippet, error) {
 	row := q.db.QueryRowContext(ctx, getSnippet, id)
-	var i Snippet
+	var i LiveSnippet
 	err := row.Scan(
 		&i.ID,
 		&i.FolderID,
@@ -85,6 +85,8 @@ func (q *Queries) GetSnippet(ctx context.Context, id sqltype.ID) (Snippet, error
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.FormerFolderPath,
 	)
 	return i, err
 }
@@ -115,13 +117,13 @@ func (q *Queries) InsertSnippet(ctx context.Context, arg InsertSnippetParams) er
 	return err
 }
 
-const listSnippets = `-- name: ListSnippets :many
-SELECT id, folder_id, title, description, created_at, updated_at
+const listLibrarySnippets = `-- name: ListLibrarySnippets :many
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
 FROM snippets
 `
 
-func (q *Queries) ListSnippets(ctx context.Context) ([]Snippet, error) {
-	rows, err := q.db.QueryContext(ctx, listSnippets)
+func (q *Queries) ListLibrarySnippets(ctx context.Context) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listLibrarySnippets)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +138,45 @@ func (q *Queries) ListSnippets(ctx context.Context) ([]Snippet, error) {
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveSnippets = `-- name: ListLiveSnippets :many
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM live_snippets
+`
+
+func (q *Queries) ListLiveSnippets(ctx context.Context) ([]LiveSnippet, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveSnippets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LiveSnippet{}
+	for rows.Next() {
+		var i LiveSnippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -151,21 +192,21 @@ func (q *Queries) ListSnippets(ctx context.Context) ([]Snippet, error) {
 }
 
 const listSnippetsInFolderByCreated = `-- name: ListSnippetsInFolderByCreated :many
-SELECT id, folder_id, title, description, created_at, updated_at
-FROM snippets
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM live_snippets
 WHERE folder_id IS ?1
 ORDER BY created_at DESC, title COLLATE NOCASE, id
 `
 
-func (q *Queries) ListSnippetsInFolderByCreated(ctx context.Context, folderID *sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsInFolderByCreated(ctx context.Context, folderID *sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsInFolderByCreated, folderID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -173,6 +214,8 @@ func (q *Queries) ListSnippetsInFolderByCreated(ctx context.Context, folderID *s
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -188,21 +231,21 @@ func (q *Queries) ListSnippetsInFolderByCreated(ctx context.Context, folderID *s
 }
 
 const listSnippetsInFolderByTitle = `-- name: ListSnippetsInFolderByTitle :many
-SELECT id, folder_id, title, description, created_at, updated_at
-FROM snippets
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM live_snippets
 WHERE folder_id IS ?1
 ORDER BY title COLLATE NOCASE, id
 `
 
-func (q *Queries) ListSnippetsInFolderByTitle(ctx context.Context, folderID *sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsInFolderByTitle(ctx context.Context, folderID *sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsInFolderByTitle, folderID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -210,6 +253,8 @@ func (q *Queries) ListSnippetsInFolderByTitle(ctx context.Context, folderID *sql
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -225,21 +270,21 @@ func (q *Queries) ListSnippetsInFolderByTitle(ctx context.Context, folderID *sql
 }
 
 const listSnippetsInFolderByUpdated = `-- name: ListSnippetsInFolderByUpdated :many
-SELECT id, folder_id, title, description, created_at, updated_at
-FROM snippets
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM live_snippets
 WHERE folder_id IS ?1
 ORDER BY updated_at DESC, title COLLATE NOCASE, id
 `
 
-func (q *Queries) ListSnippetsInFolderByUpdated(ctx context.Context, folderID *sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsInFolderByUpdated(ctx context.Context, folderID *sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsInFolderByUpdated, folderID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -247,6 +292,8 @@ func (q *Queries) ListSnippetsInFolderByUpdated(ctx context.Context, folderID *s
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -262,22 +309,23 @@ func (q *Queries) ListSnippetsInFolderByUpdated(ctx context.Context, folderID *s
 }
 
 const listSnippetsWithTagByCreated = `-- name: ListSnippetsWithTagByCreated :many
-SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
-FROM snippets
-JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+SELECT live_snippets.id, live_snippets.folder_id, live_snippets.title, live_snippets.description,
+       live_snippets.created_at, live_snippets.updated_at, live_snippets.deleted_at, live_snippets.former_folder_path
+FROM live_snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = live_snippets.id
 WHERE snippet_tag.tag_id = ?1
-ORDER BY snippets.created_at DESC, snippets.title COLLATE NOCASE, snippets.id
+ORDER BY live_snippets.created_at DESC, live_snippets.title COLLATE NOCASE, live_snippets.id
 `
 
-func (q *Queries) ListSnippetsWithTagByCreated(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsWithTagByCreated(ctx context.Context, tagID sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByCreated, tagID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -285,6 +333,8 @@ func (q *Queries) ListSnippetsWithTagByCreated(ctx context.Context, tagID sqltyp
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -300,22 +350,23 @@ func (q *Queries) ListSnippetsWithTagByCreated(ctx context.Context, tagID sqltyp
 }
 
 const listSnippetsWithTagByTitle = `-- name: ListSnippetsWithTagByTitle :many
-SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
-FROM snippets
-JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+SELECT live_snippets.id, live_snippets.folder_id, live_snippets.title, live_snippets.description,
+       live_snippets.created_at, live_snippets.updated_at, live_snippets.deleted_at, live_snippets.former_folder_path
+FROM live_snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = live_snippets.id
 WHERE snippet_tag.tag_id = ?1
-ORDER BY snippets.title COLLATE NOCASE, snippets.id
+ORDER BY live_snippets.title COLLATE NOCASE, live_snippets.id
 `
 
-func (q *Queries) ListSnippetsWithTagByTitle(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsWithTagByTitle(ctx context.Context, tagID sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByTitle, tagID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -323,6 +374,8 @@ func (q *Queries) ListSnippetsWithTagByTitle(ctx context.Context, tagID sqltype.
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}
@@ -338,22 +391,23 @@ func (q *Queries) ListSnippetsWithTagByTitle(ctx context.Context, tagID sqltype.
 }
 
 const listSnippetsWithTagByUpdated = `-- name: ListSnippetsWithTagByUpdated :many
-SELECT snippets.id, snippets.folder_id, snippets.title, snippets.description, snippets.created_at, snippets.updated_at
-FROM snippets
-JOIN snippet_tag ON snippet_tag.snippet_id = snippets.id
+SELECT live_snippets.id, live_snippets.folder_id, live_snippets.title, live_snippets.description,
+       live_snippets.created_at, live_snippets.updated_at, live_snippets.deleted_at, live_snippets.former_folder_path
+FROM live_snippets
+JOIN snippet_tag ON snippet_tag.snippet_id = live_snippets.id
 WHERE snippet_tag.tag_id = ?1
-ORDER BY snippets.updated_at DESC, snippets.title COLLATE NOCASE, snippets.id
+ORDER BY live_snippets.updated_at DESC, live_snippets.title COLLATE NOCASE, live_snippets.id
 `
 
-func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltype.ID) ([]Snippet, error) {
+func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltype.ID) ([]LiveSnippet, error) {
 	rows, err := q.db.QueryContext(ctx, listSnippetsWithTagByUpdated, tagID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Snippet{}
+	items := []LiveSnippet{}
 	for rows.Next() {
-		var i Snippet
+		var i LiveSnippet
 		if err := rows.Scan(
 			&i.ID,
 			&i.FolderID,
@@ -361,6 +415,8 @@ func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltyp
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
 		); err != nil {
 			return nil, err
 		}

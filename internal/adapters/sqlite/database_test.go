@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,10 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
 const (
-	knownSchemaVersion = 6
+	knownSchemaVersion = 7
 	lockWaitInTest     = 200 * time.Millisecond
 )
 
@@ -52,7 +55,30 @@ func TestOpen(t *testing.T) {
 
 		require.NoError(t, openAndClose(t, path))
 
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema6.db"}, backupNames(t, path))
+	})
+
+	t.Run("migrates an existing database with every row live and unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		path := newDatabasePath(t)
+		migrateRawToPreviousSchema(t, path)
+
+		ids := testkit.NewSequentialIDs()
+		folderID := ids.NewFolderID()
+
+		insertRawFolder(t, path, folderID)
+		snippetID := insertRawSnippet(t, path, ids, folderID)
+
+		database := openDatabase(t, path)
+
+		folder, err := newFolderRepository(t, database, slog.New(slog.DiscardHandler)).Find(t.Context(), folderID)
+		require.NoError(t, err)
+		assert.Equal(t, rawFolder(t, folderID), folder)
+		snippet, err := newSnippetRepository(t, database).Find(t.Context(), snippetID)
+		require.NoError(t, err)
+		assert.Equal(t, "deploy", snippet.Title().String())
+		assert.Equal(t, folderID, snippet.FolderID())
 	})
 
 	t.Run("treats a file: prefixed Path as the plain path", func(t *testing.T) {
@@ -65,7 +91,7 @@ func TestOpen(t *testing.T) {
 
 		assert.FileExists(t, path+".lock")
 		assert.Equal(t, sqlite.BackupDir(path), sqlite.BackupDir("file:"+path))
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema6.db"}, backupNames(t, path))
 	})
 
 	t.Run("refuses to migrate when the backup fails", func(t *testing.T) {
@@ -79,7 +105,7 @@ func TestOpen(t *testing.T) {
 
 		require.NoError(t, os.Remove(sqlite.BackupDir(path)))
 		require.NoError(t, openAndClose(t, path))
-		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema5.db"}, backupNames(t, path))
+		assert.Equal(t, []string{"tuisnip-20261001T120000Z-schema6.db"}, backupNames(t, path))
 	})
 
 	t.Run("keeps the three newest backups and nothing else it did not write", func(t *testing.T) {
@@ -100,7 +126,7 @@ func TestOpen(t *testing.T) {
 			"notes.txt",
 			"tuisnip-20260301T090000Z-schema3.db",
 			"tuisnip-20260601T090000Z-schema3.db",
-			"tuisnip-20261001T120000Z-schema5.db",
+			"tuisnip-20261001T120000Z-schema6.db",
 		}, backupNames(t, path))
 	})
 
@@ -143,8 +169,48 @@ func TestOpen(t *testing.T) {
 		require.True(t, ok, "want NewerSchemaError, got %v", err)
 		assert.Equal(t, sqlite.NewerSchemaError{Database: 99, Known: knownSchemaVersion}, newer)
 		assert.Equal(t,
-			"The database was created by a newer TuiSnip (schema 99; this build knows 6). Upgrade TuiSnip.",
+			"The database was created by a newer TuiSnip (schema 99; this build knows 7). Upgrade TuiSnip.",
 			newer.Error(),
 		)
+	})
+}
+
+func insertRawSnippet(
+	t *testing.T, path string, ids *testkit.SequentialIDs, folderID domain.FolderID,
+) domain.SnippetID {
+	t.Helper()
+
+	snippetID := ids.NewSnippetID()
+	execRaw(
+		t,
+		path,
+		"INSERT INTO snippets (id, folder_id, title, created_at, updated_at) VALUES (?, ?, 'deploy', 1, 1)",
+		snippetID.String(),
+		folderID.String(),
+	)
+	execRaw(
+		t,
+		path,
+		"INSERT INTO fragments (id, snippet_id, position, language, content, created_at, updated_at) "+
+			"VALUES (?, ?, 0, 'Bash', 'make deploy', 1, 1)",
+		ids.NewFragmentID().String(),
+		snippetID.String(),
+	)
+
+	return snippetID
+}
+
+func rawFolder(t *testing.T, folderID domain.FolderID) domain.Folder {
+	t.Helper()
+
+	createdAt := time.Unix(0, 1).UTC()
+
+	return testkit.Folder(t, testkit.FolderSpec{
+		ID:              folderID,
+		Name:            "scripts",
+		ParentID:        domain.FolderID{},
+		DefaultLanguage: "Bash",
+		CreatedAt:       createdAt,
+		UpdatedAt:       createdAt,
 	})
 }

@@ -36,8 +36,8 @@ func (r *SnippetRepository) loadAll(ctx context.Context, selection snippetSelect
 
 	snippets := make([]domain.Snippet, 0, len(rows.snippets))
 
-	for _, row := range rows.snippets {
-		snippet, rebuildErr := r.rebuild(ctx, rows, row, slog.LevelWarn)
+	for index := range rows.snippets {
+		snippet, rebuildErr := r.rebuild(ctx, rows, rows.snippets[index], slog.LevelWarn)
 		if rebuildErr != nil {
 			continue
 		}

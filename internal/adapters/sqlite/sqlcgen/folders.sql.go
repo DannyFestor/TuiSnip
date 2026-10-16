@@ -24,11 +24,11 @@ func (q *Queries) CountFolders(ctx context.Context) (int64, error) {
 
 const countSnippetsInSubtree = `-- name: CountSnippetsInSubtree :one
 WITH RECURSIVE subtree (id) AS (
-    SELECT folders.id FROM folders WHERE folders.id = ?1
+    SELECT live_folders.id FROM live_folders WHERE live_folders.id = ?1
     UNION ALL
-    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
 )
-SELECT COUNT(*) FROM snippets WHERE snippets.folder_id IN (SELECT subtree.id FROM subtree)
+SELECT COUNT(*) FROM live_snippets WHERE live_snippets.folder_id IN (SELECT subtree.id FROM subtree)
 `
 
 func (q *Queries) CountSnippetsInSubtree(ctx context.Context, id sqltype.ID) (int64, error) {
@@ -40,9 +40,9 @@ func (q *Queries) CountSnippetsInSubtree(ctx context.Context, id sqltype.ID) (in
 
 const countSubfolders = `-- name: CountSubfolders :one
 WITH RECURSIVE subtree (id) AS (
-    SELECT folders.id FROM folders WHERE folders.id = ?1
+    SELECT live_folders.id FROM live_folders WHERE live_folders.id = ?1
     UNION ALL
-    SELECT folders.id FROM folders JOIN subtree ON folders.parent_id = subtree.id
+    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
 )
 SELECT COUNT(*) - 1 FROM subtree
 `
@@ -68,14 +68,14 @@ func (q *Queries) DeleteFolder(ctx context.Context, id sqltype.ID) (int64, error
 }
 
 const getFolder = `-- name: GetFolder :one
-SELECT id, parent_id, name, default_language, created_at, updated_at
-FROM folders
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM live_folders
 WHERE id = ?
 `
 
-func (q *Queries) GetFolder(ctx context.Context, id sqltype.ID) (Folder, error) {
+func (q *Queries) GetFolder(ctx context.Context, id sqltype.ID) (LiveFolder, error) {
 	row := q.db.QueryRowContext(ctx, getFolder, id)
-	var i Folder
+	var i LiveFolder
 	err := row.Scan(
 		&i.ID,
 		&i.ParentID,
@@ -83,6 +83,8 @@ func (q *Queries) GetFolder(ctx context.Context, id sqltype.ID) (Folder, error) 
 		&i.DefaultLanguage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.FormerParentPath,
 	)
 	return i, err
 }
@@ -145,13 +147,13 @@ func (q *Queries) ListDescendantFolderIDs(ctx context.Context, id *sqltype.ID) (
 	return items, nil
 }
 
-const listFolders = `-- name: ListFolders :many
-SELECT id, parent_id, name, default_language, created_at, updated_at
+const listLibraryFolders = `-- name: ListLibraryFolders :many
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
 FROM folders
 `
 
-func (q *Queries) ListFolders(ctx context.Context) ([]Folder, error) {
-	rows, err := q.db.QueryContext(ctx, listFolders)
+func (q *Queries) ListLibraryFolders(ctx context.Context) ([]Folder, error) {
+	rows, err := q.db.QueryContext(ctx, listLibraryFolders)
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +168,45 @@ func (q *Queries) ListFolders(ctx context.Context) ([]Folder, error) {
 			&i.DefaultLanguage,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerParentPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveFolders = `-- name: ListLiveFolders :many
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM live_folders
+`
+
+func (q *Queries) ListLiveFolders(ctx context.Context) ([]LiveFolder, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveFolders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LiveFolder{}
+	for rows.Next() {
+		var i LiveFolder
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.Name,
+			&i.DefaultLanguage,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerParentPath,
 		); err != nil {
 			return nil, err
 		}

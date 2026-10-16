@@ -82,6 +82,17 @@ func TestFolderRepository_List(t *testing.T) {
 		assert.Contains(t, logged.String(), `"folder_id":"`+corrupt.ID().String()+`"`)
 		assert.Contains(t, logged.String(), `"error":"`+domain.ErrCorruptRecord.Error())
 	})
+
+	t.Run("leaves out a Folder in the Trash and every Folder under it", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.folders(t).List(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Folder{fixture.liveFolder}, got)
+	})
 }
 
 func TestFolderRepository_Insert(t *testing.T) {
@@ -123,6 +134,31 @@ func TestFolderRepository_Find(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrNotFound)
 		assert.ErrorContains(t, err, "sqlite.FolderRepository.Find")
 	})
+
+	inTrash := []struct {
+		name   string
+		folder func(fixture trashFixture) domain.Folder
+	}{
+		{
+			name:   "reports a Folder in the Trash as not found",
+			folder: func(fixture trashFixture) domain.Folder { return fixture.trashedFolder },
+		},
+		{
+			name:   "reports a Folder under a Folder in the Trash as not found",
+			folder: func(fixture trashFixture) domain.Folder { return fixture.nestedFolder },
+		},
+	}
+	for _, tt := range inTrash {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			_, err := fixture.folders(t).Find(t.Context(), tt.folder(fixture).ID())
+
+			require.ErrorIs(t, err, domain.ErrNotFound)
+		})
+	}
 
 	t.Run("reports and logs a corrupt Folder", func(t *testing.T) {
 		t.Parallel()
@@ -201,6 +237,17 @@ func TestFolderRepository_CountSubfolders(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, got)
 	})
+
+	t.Run("counts no subfolders in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.folders(t).CountSubfolders(t.Context(), fixture.liveFolder.ID())
+
+		require.NoError(t, err)
+		assert.Zero(t, got)
+	})
 }
 
 func TestFolderRepository_CountSnippetsInSubtree(t *testing.T) {
@@ -226,6 +273,17 @@ func TestFolderRepository_CountSnippetsInSubtree(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, 3, got)
+	})
+
+	t.Run("counts no Snippets in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.folders(t).CountSnippetsInSubtree(t.Context(), fixture.liveFolder.ID())
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, got)
 	})
 }
 

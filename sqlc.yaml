@@ -25,3 +25,5 @@ sql:
             go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "Timestamp" }
           - column: "*.updated_at"
             go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "Timestamp" }
+          - column: "*.deleted_at"
+            go_type: { import: "github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype", type: "Timestamp", pointer: true }

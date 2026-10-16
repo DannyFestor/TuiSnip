@@ -33,7 +33,13 @@ WHERE id = ?;
 DELETE FROM tags
 WHERE id = ?;
 
--- name: ListSnippetTags :many
+-- name: ListLiveSnippetTags :many
+SELECT snippet_tag.snippet_id, sqlc.embed(tags)
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id;
+
+-- name: ListLibrarySnippetTags :many
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id;
@@ -42,17 +48,19 @@ JOIN tags ON tags.id = snippet_tag.tag_id;
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
 WHERE snippet_tag.snippet_id = ?;
 
 -- name: ListSnippetTagsInFolder :many
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
-JOIN snippets ON snippets.id = snippet_tag.snippet_id
-WHERE snippets.folder_id IS sqlc.narg(folder_id);
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+WHERE live_snippets.folder_id IS sqlc.narg(folder_id);
 
 -- name: ListSnippetTagsWithTag :many
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
 WHERE snippet_tag.snippet_id IN (SELECT carrying.snippet_id FROM snippet_tag AS carrying WHERE carrying.tag_id = sqlc.arg(tag_id));

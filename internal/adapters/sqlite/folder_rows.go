@@ -34,6 +34,19 @@ func folderFromRow(row sqlcgen.Folder) (domain.Folder, error) {
 	return folder, nil
 }
 
+func folderRowsOf(rows []sqlcgen.LiveFolder, err error) ([]sqlcgen.Folder, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	converted := make([]sqlcgen.Folder, 0, len(rows))
+	for index := range rows {
+		converted = append(converted, sqlcgen.Folder(rows[index]))
+	}
+
+	return converted, nil
+}
+
 func folderIDsOf(rows []sqltype.ID) []domain.FolderID {
 	ids := make([]domain.FolderID, 0, len(rows))
 	for _, row := range rows {

@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -10,6 +11,11 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
+
+type trashColumns struct {
+	deletedAt  *sqltype.Timestamp
+	formerPath string
+}
 
 func entryFromColumns[E domain.TrashItem](
 	entity E, deletedAt *sqltype.Timestamp, formerPath string,
@@ -51,37 +57,48 @@ func formerPathFromColumn(column string) (value.FolderPath, error) {
 	return path, nil
 }
 
-func formerPathColumn(mark domain.TrashMark) (string, error) {
+func trashColumnsOf(mark domain.TrashMark) (trashColumns, error) {
 	encoded, err := json.Marshal(mark.FormerPath().Strings())
 	if err != nil {
-		return "", fmt.Errorf("encode former path: %w", err)
+		return trashColumns{}, fmt.Errorf("encode former path: %w", err)
 	}
 
-	return string(encoded), nil
+	return trashColumns{deletedAt: new(sqltype.Timestamp(mark.DeletedAt())), formerPath: string(encoded)}, nil
 }
 
-func folderTrashMarkParams(id domain.FolderID, mark domain.TrashMark) (sqlcgen.SetFolderTrashMarkParams, error) {
-	formerPath, err := formerPathColumn(mark)
-	if err != nil {
-		return sqlcgen.SetFolderTrashMarkParams{}, err
-	}
-
+func folderTrashMarkParams(id domain.FolderID, columns trashColumns) sqlcgen.SetFolderTrashMarkParams {
 	return sqlcgen.SetFolderTrashMarkParams{
-		DeletedAt:        new(sqltype.Timestamp(mark.DeletedAt())),
-		FormerParentPath: formerPath,
+		DeletedAt:        columns.deletedAt,
+		FormerParentPath: columns.formerPath,
 		ID:               columnID(id),
-	}, nil
+	}
 }
 
-func snippetTrashMarkParams(id domain.SnippetID, mark domain.TrashMark) (sqlcgen.SetSnippetTrashMarkParams, error) {
-	formerPath, err := formerPathColumn(mark)
-	if err != nil {
-		return sqlcgen.SetSnippetTrashMarkParams{}, err
+func snippetTrashMarkParams(id domain.SnippetID, columns trashColumns) sqlcgen.SetSnippetTrashMarkParams {
+	return sqlcgen.SetSnippetTrashMarkParams{
+		DeletedAt:        columns.deletedAt,
+		FormerFolderPath: columns.formerPath,
+		ID:               columnID(id),
+	}
+}
+
+func markTrashed[I comparable, P any](
+	ctx context.Context,
+	marks map[I]domain.TrashMark,
+	paramsOf func(id I, columns trashColumns) P,
+	setMark func(ctx context.Context, params P) error,
+) error {
+	for id, mark := range marks {
+		columns, err := trashColumnsOf(mark)
+		if err != nil {
+			return err
+		}
+
+		err = setMark(ctx, paramsOf(id, columns))
+		if err != nil {
+			return fmt.Errorf("set trash mark: %w", err)
+		}
 	}
 
-	return sqlcgen.SetSnippetTrashMarkParams{
-		DeletedAt:        new(sqltype.Timestamp(mark.DeletedAt())),
-		FormerFolderPath: formerPath,
-		ID:               columnID(id),
-	}, nil
+	return nil
 }

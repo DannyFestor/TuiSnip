@@ -75,6 +75,8 @@ internal/
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
       tagrefusal/            how a Tag name that breaks a name rule is refused, shared by the Tag pane and the Tag editor
       textarea/              TuiSnip's fork of the Bubbles v2.2.1 textarea, the Content textarea of the edit overlay and Capture (ADR 0004)
+        runeutil/            the fork's copy of upstream's internal rune sanitiser
+        memoization/         the fork's copy of upstream's internal LRU cache for wrapped lines
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/

@@ -266,7 +266,6 @@ func TestLibrary_InTrash(t *testing.T) {
 
 		assert.Equal(t, []domain.Folder{trashed, nested}, got.Folders)
 		assert.Equal(t, []domain.Snippet{trashedSnippet, nestedSnippet, separatelyTrashed, detached}, got.Snippets)
-		assert.Empty(t, got.Tags)
 	})
 
 	t.Run("holds nothing when the Trash is empty", func(t *testing.T) {

@@ -24,25 +24,23 @@ func (l Library) InCreatedOrder() Library {
 	}
 }
 
-func (l Library) InTrash() Library {
+func (l Library) InTrash() TrashContents {
 	parentOf := l.parentOf()
 	trashedFolders := make(map[FolderID]bool, len(l.Folders))
 
 	for _, folder := range l.Folders {
-		trashedFolders[folder.ID()] = l.Trash.holdsFolderOrAncestor(folder.ID(), parentOf)
+		trashedFolders[folder.ID()] = l.trashesFolderOrAncestor(folder.ID(), parentOf)
 	}
 
-	return Library{
+	return TrashContents{
 		Folders: slices.DeleteFunc(slices.Clone(l.Folders), func(folder Folder) bool {
 			return !trashedFolders[folder.ID()]
 		}),
-		Tags: nil,
 		Snippets: slices.DeleteFunc(slices.Clone(l.Snippets), func(snippet Snippet) bool {
 			_, trashed := l.Trash.Snippets[snippet.ID()]
 
 			return !trashed && !trashedFolders[snippet.FolderID()]
 		}),
-		Trash: l.Trash,
 	}
 }
 
@@ -86,6 +84,20 @@ func (l Library) parentOf() map[FolderID]FolderID {
 	}
 
 	return parentOf
+}
+
+func (l Library) trashesFolderOrAncestor(folderID FolderID, parentOf map[FolderID]FolderID) bool {
+	visited := make(map[FolderID]bool)
+
+	for id := folderID; !id.IsNil() && !visited[id]; id = parentOf[id] {
+		if _, trashed := l.Trash.Folders[id]; trashed {
+			return true
+		}
+
+		visited[id] = true
+	}
+
+	return false
 }
 
 func (l Library) folderDepths() (map[FolderID]int, error) {

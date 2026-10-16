@@ -1,4 +1,4 @@
-package textarea
+package textarea_test
 
 import (
 	"fmt"
@@ -11,31 +11,33 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
 func TestVerticalScrolling(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetHeight(1)
-	textarea.SetWidth(20)
-	textarea.CharLimit = 100
+	t.Parallel()
 
-	textarea, _ = textarea.Update(nil)
+	model := newTextArea()
+	model.Prompt = ""
+	model.ShowLineNumbers = false
+	model.SetHeight(1)
+	model.SetWidth(20)
+	model.CharLimit = 100
+
+	model, _ = model.Update(nil)
 
 	input := "This is a really long line that should wrap around the text area."
 
-	for _, k := range input {
-		textarea, _ = textarea.Update(keyPress(k))
-	}
+	model = sendString(model, input)
 
-	view := textarea.View()
+	view := model.View()
 
 	// The view should contain the end of "line" of the input.
-	if !strings.Contains(view, "the text area.") {
-		t.Log(view)
-		t.Error("Text area did not render the input")
-	}
+	assert.Contains(t, view, "the text area.", "Text area did not render the input")
 
 	// But we should be able to scroll to see the next line.
 	// Let's scroll down for each line to view the full input.
@@ -46,173 +48,121 @@ func TestVerticalScrolling(t *testing.T) {
 		"the text area.",
 	}
 
-	textarea.viewport.GotoTop()
+	model.MoveToBegin()
 
 	for _, line := range lines {
-		view = textarea.View()
-		if !strings.Contains(view, line) {
-			t.Log(view)
-			t.Error("Text area did not render the correct scrolled input")
-		}
+		view = ansi.Strip(model.View())
+		assert.Contains(t, view, line, "Text area did not render the correct scrolled input")
 
-		textarea.viewport.ScrollDown(1)
+		model.CursorDown()
 	}
 }
 
 func TestWordWrapOverflowing(t *testing.T) {
+	t.Parallel()
+
 	// An interesting edge case is when the user enters many words that fill up
 	// the text area and then goes back up and inserts a few words which causes
 	// a cascading wrap and causes an overflow of the last line.
 	//
 	// In this case, we should not let the user insert more words if, after the
 	// entire wrap is complete, the last line is overflowing.
-	textarea := newTextArea()
+	model := newTextArea()
 
-	textarea.SetHeight(3)
-	textarea.SetWidth(20)
-	textarea.CharLimit = 500
+	model.SetHeight(3)
+	model.SetWidth(20)
+	model.CharLimit = 500
 
-	textarea, _ = textarea.Update(nil)
+	model, _ = model.Update(nil)
 
 	input := strings.TrimSuffix(strings.Repeat("Testing ", 8), " ")
-
-	for _, k := range input {
-		textarea, _ = textarea.Update(keyPress(k))
-		textarea.View()
-	}
+	model = sendStringViewing(model, input)
 
 	// We have essentially filled the text area with input.
 	// Let's see if we can cause wrapping to overflow the last line.
-	textarea.row = 0
-	textarea.col = 0
+	model.MoveToBegin()
 
-	input = "Testing"
+	model = sendStringViewing(model, "Testing")
 
-	for _, k := range input {
-		textarea, _ = textarea.Update(keyPress(k))
-		textarea.View()
-	}
-
-	lastLineWidth := textarea.LineInfo().Width
-	if lastLineWidth > 20 {
-		t.Log(lastLineWidth)
-		t.Log(textarea.View())
-		t.Fail()
-	}
+	assert.LessOrEqual(t, model.LineInfo().Width, 20, model.View())
 }
 
 func TestValueSoftWrap(t *testing.T) {
-	textarea := newTextArea()
-	textarea.SetWidth(16)
-	textarea.SetHeight(10)
-	textarea.CharLimit = 500
+	t.Parallel()
 
-	textarea, _ = textarea.Update(nil)
+	model := newTextArea()
+	model.SetWidth(16)
+	model.SetHeight(10)
+	model.CharLimit = 500
+
+	model, _ = model.Update(nil)
 
 	input := strings.TrimSuffix(strings.Repeat("Testing ", 8), " ")
+	model = sendStringViewing(model, input)
 
-	for _, k := range []rune(input) {
-		textarea, _ = textarea.Update(keyPress(k))
-		textarea.View()
-	}
-
-	value := textarea.Value()
-	if value != input {
-		t.Log(value)
-		t.Log(input)
-		t.Fatal("The text area does not have the correct value")
-	}
+	require.Equal(t, input, model.Value(), "The text area does not have the correct value")
 }
 
 func TestSetValue(t *testing.T) {
-	textarea := newTextArea()
-	textarea.SetValue(strings.Join([]string{"Foo", "Bar", "Baz"}, "\n"))
+	t.Parallel()
 
-	if textarea.row != 2 && textarea.col != 3 {
-		t.Log(textarea.row, textarea.col)
-		t.Fatal("Cursor Should be on row 2 column 3 after inserting 2 new lines")
-	}
+	model := newTextArea()
+	model.SetValue(strings.Join([]string{"Foo", "Bar", "Baz"}, "\n"))
 
-	value := textarea.Value()
-	if value != "Foo\nBar\nBaz" {
-		t.Fatal("Value should be Foo\nBar\nBaz")
-	}
+	require.Equal(t, 2, model.Line(), "Cursor Should be on row 2 column 3 after inserting 2 new lines")
+	require.Equal(t, 3, model.Column(), "Cursor Should be on row 2 column 3 after inserting 2 new lines")
+	require.Equal(t, "Foo\nBar\nBaz", model.Value())
 
 	// SetValue should reset text area
-	textarea.SetValue("Test")
+	model.SetValue("Test")
 
-	value = textarea.Value()
-	if value != "Test" {
-		t.Log(value)
-		t.Fatal("Text area was not reset when SetValue() was called")
-	}
+	require.Equal(t, "Test", model.Value(), "Text area was not reset when SetValue() was called")
 }
 
 func TestInsertString(t *testing.T) {
-	textarea := newTextArea()
+	t.Parallel()
+
+	model := newTextArea()
 
 	// Insert some text
-	input := "foo baz"
-
-	for _, k := range []rune(input) {
-		textarea, _ = textarea.Update(keyPress(k))
-	}
+	model = sendString(model, "foo baz")
 
 	// Put cursor in the middle of the text
-	textarea.col = 4
+	model.SetCursorColumn(4)
 
-	textarea.InsertString("bar ")
+	model.InsertString("bar ")
 
-	value := textarea.Value()
-	if value != "foo bar baz" {
-		t.Log(value)
-		t.Fatal("Expected insert string to insert bar between foo and baz")
-	}
+	require.Equal(t, "foo bar baz", model.Value(), "Expected insert string to insert bar between foo and baz")
 }
 
 func TestCanHandleEmoji(t *testing.T) {
-	textarea := newTextArea()
+	t.Parallel()
+
+	model := newTextArea()
 	input := "🧋"
 
-	for _, k := range []rune(input) {
-		textarea, _ = textarea.Update(keyPress(k))
-	}
+	model = sendString(model, input)
 
-	value := textarea.Value()
-	if value != input {
-		t.Log(value)
-		t.Fatal("Expected emoji to be inserted")
-	}
+	require.Equal(t, input, model.Value(), "Expected emoji to be inserted")
 
 	input = "🧋🧋🧋"
 
-	textarea.SetValue(input)
+	model.SetValue(input)
 
-	value = textarea.Value()
-	if value != input {
-		t.Log(value)
-		t.Fatal("Expected emoji to be inserted")
-	}
-
-	if textarea.col != 3 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the third character")
-	}
-
-	if charOffset := textarea.LineInfo().CharOffset; charOffset != 6 {
-		t.Log(charOffset)
-		t.Fatal("Expected cursor to be on the sixth character")
-	}
+	require.Equal(t, input, model.Value(), "Expected emoji to be inserted")
+	require.Equal(t, 3, model.Column(), "Expected cursor to be on the third character")
+	require.Equal(t, 6, model.LineInfo().CharOffset, "Expected cursor to be on the sixth character")
 }
 
 func TestVerticalNavigationKeepsCursorHorizontalPosition(t *testing.T) {
-	textarea := newTextArea()
-	textarea.SetWidth(20)
+	t.Parallel()
 
-	textarea.SetValue("你好你好" + "\n" + "Hello")
+	model := newTextArea()
+	model.SetWidth(20)
 
-	textarea.row = 0
-	textarea.col = 2
+	model.SetValue("你好你好" + "\n" + "Hello")
+
+	model = placeCursor(model, 0, 2)
 
 	// 你好|你好
 	// Hell|o
@@ -235,29 +185,30 @@ func TestVerticalNavigationKeepsCursorHorizontalPosition(t *testing.T) {
 	// This test ensures that the cursor is kept on the same visual column by
 	// ensuring that the column offset goes from 2 -> 4.
 
-	lineInfo := textarea.LineInfo()
-	if lineInfo.CharOffset != 4 || lineInfo.ColumnOffset != 2 {
-		t.Log(lineInfo.CharOffset)
-		t.Log(lineInfo.ColumnOffset)
-		t.Fatal(
-			"Expected cursor to be on the fourth character because there are two double width runes on the first line.",
-		)
-	}
+	lineInfo := model.LineInfo()
+	require.Equal(
+		t,
+		[]int{4, 2},
+		[]int{lineInfo.CharOffset, lineInfo.ColumnOffset},
+		"Expected cursor to be on the fourth character because there are two double width runes on the first line.",
+	)
 
-	downMsg := tea.KeyPressMsg{Code: tea.KeyDown}
-	textarea, _ = textarea.Update(downMsg)
+	model, _ = model.Update(keypress.Special(tea.KeyDown))
 
-	lineInfo = textarea.LineInfo()
-	if lineInfo.CharOffset != 4 || lineInfo.ColumnOffset != 4 {
-		t.Log(lineInfo.CharOffset)
-		t.Log(lineInfo.ColumnOffset)
-		t.Fatal("Expected cursor to be on the fourth character because we came down from the first line.")
-	}
+	lineInfo = model.LineInfo()
+	require.Equal(
+		t,
+		[]int{4, 4},
+		[]int{lineInfo.CharOffset, lineInfo.ColumnOffset},
+		"Expected cursor to be on the fourth character because we came down from the first line.",
+	)
 }
 
 func TestVerticalNavigationShouldRememberPositionWhileTraversing(t *testing.T) {
-	textarea := newTextArea()
-	textarea.SetWidth(40)
+	t.Parallel()
+
+	model := newTextArea()
+	model.SetWidth(40)
 
 	// Let's imagine we have a text area with the following content:
 	//
@@ -274,65 +225,76 @@ func TestVerticalNavigationShouldRememberPositionWhileTraversing(t *testing.T) {
 	// In other words, we should remember the last horizontal position while
 	// traversing vertically.
 
-	textarea.SetValue(strings.Join([]string{"Hello", "World", "This is a long line."}, "\n"))
+	model.SetValue(strings.Join([]string{"Hello", "World", "This is a long line."}, "\n"))
 
 	// We are at the end of the last line.
-	if textarea.col != 20 || textarea.row != 2 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 20th character of the last line")
-	}
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 2, Col: 20},
+		"Expected cursor to be on the 20th character of the last line",
+	)
 
 	// Let's go up.
-	upMsg := tea.KeyPressMsg{Code: tea.KeyUp}
-	textarea, _ = textarea.Update(upMsg)
+	upMsg := keypress.Special(tea.KeyUp)
+	model, _ = model.Update(upMsg)
 
 	// We should be at the end of the second line.
-	if textarea.col != 5 || textarea.row != 1 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 5th character of the second line")
-	}
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 1, Col: 5},
+		"Expected cursor to be on the 5th character of the second line",
+	)
 
 	// And, again.
-	textarea, _ = textarea.Update(upMsg)
+	model, _ = model.Update(upMsg)
 
 	// We should be at the end of the first line.
-	if textarea.col != 5 || textarea.row != 0 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 5th character of the first line")
-	}
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 0, Col: 5},
+		"Expected cursor to be on the 5th character of the first line",
+	)
 
 	// Let's go down, twice.
-	downMsg := tea.KeyPressMsg{Code: tea.KeyDown}
-	textarea, _ = textarea.Update(downMsg)
-	textarea, _ = textarea.Update(downMsg)
+	downMsg := keypress.Special(tea.KeyDown)
+	model, _ = model.Update(downMsg)
+	model, _ = model.Update(downMsg)
 
 	// We should be at the end of the last line.
-	if textarea.col != 20 || textarea.row != 2 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 20th character of the last line")
-	}
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 2, Col: 20},
+		"Expected cursor to be on the 20th character of the last line",
+	)
 
 	// Now, for correct behavior, if we move right or left, we should forget
 	// (reset) the saved horizontal position. Since we assume the user wants to
 	// keep the cursor where it is horizontally. This is how most text areas
 	// work.
 
-	textarea, _ = textarea.Update(upMsg)
-	leftMsg := tea.KeyPressMsg{Code: tea.KeyLeft}
-	textarea, _ = textarea.Update(leftMsg)
+	model, _ = model.Update(upMsg)
+	model, _ = model.Update(keypress.Special(tea.KeyLeft))
 
-	if textarea.col != 4 || textarea.row != 1 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 5th character of the second line")
-	}
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 1, Col: 4},
+		"Expected cursor to be on the 5th character of the second line",
+	)
 
 	// Going down now should keep us at the 4th column since we moved left and
 	// reset the horizontal position saved state.
-	textarea, _ = textarea.Update(downMsg)
-	if textarea.col != 4 || textarea.row != 2 {
-		t.Log(textarea.col)
-		t.Fatal("Expected cursor to be on the 4th character of the last line")
-	}
+	model, _ = model.Update(downMsg)
+	requireCursorAt(
+		t,
+		model,
+		textarea.Position{Row: 2, Col: 4},
+		"Expected cursor to be on the 4th character of the last line",
+	)
 }
 
 func TestView(t *testing.T) {
@@ -346,7 +308,7 @@ func TestView(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		modelFunc func(Model) Model
+		modelFunc func(textarea.Model) textarea.Model
 		want      want
 	}{
 		{
@@ -364,7 +326,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line")
 
 				return m
@@ -384,7 +346,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multiple lines",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line\nthe second line\nthe third line")
 
 				return m
@@ -404,7 +366,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line without line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line")
 				m.ShowLineNumbers = false
 
@@ -425,7 +387,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multipline lines without line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line\nthe second line\nthe third line")
 				m.ShowLineNumbers = false
 
@@ -446,7 +408,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line and custom end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line")
 				m.EndOfBufferCharacter = '*'
 
@@ -467,7 +429,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multiple lines and custom end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line\nthe second line\nthe third line")
 				m.EndOfBufferCharacter = '*'
 
@@ -488,7 +450,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line without line numbers and custom end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line")
 				m.ShowLineNumbers = false
 				m.EndOfBufferCharacter = '*'
@@ -510,7 +472,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multiple lines without line numbers and custom end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line\nthe second line\nthe third line")
 				m.ShowLineNumbers = false
 				m.EndOfBufferCharacter = '*'
@@ -532,7 +494,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line and custom prompt",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line")
 				m.Prompt = "* "
 
@@ -553,7 +515,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multiple lines and custom prompt",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetValue("the first line\nthe second line\nthe third line")
 				m.Prompt = "* "
 
@@ -574,7 +536,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "type single line",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				input := "foo"
 				m = sendString(m, input)
 
@@ -595,7 +557,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "type multiple lines",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				input := "foo\nbar\nbaz"
 				m = sendString(m, input)
 
@@ -616,7 +578,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "softwrap",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.Prompt = ""
 				m.SetWidth(5)
@@ -641,7 +603,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "single line character limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.CharLimit = 7
 
 				input := "foo bar baz"
@@ -664,7 +626,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "multiple lines character limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.CharLimit = 19
 
 				input := "foo bar baz\nfoo bar baz"
@@ -687,7 +649,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(10)
 
 				input := "12"
@@ -710,7 +672,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width max length text minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(10)
 
 				input := "123"
@@ -733,7 +695,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width max length text",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(10)
 
 				input := "1234"
@@ -756,7 +718,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width max length text plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(10)
 
 				input := "12345"
@@ -779,7 +741,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width set max width minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.MaxWidth = 10
 				m.SetWidth(11)
 
@@ -803,7 +765,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width set max width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.MaxWidth = 10
 				m.SetWidth(11)
 
@@ -827,7 +789,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width set max width plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.MaxWidth = 10
 				m.SetWidth(11)
 
@@ -851,7 +813,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width min width minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(6)
 
 				input := "123"
@@ -874,7 +836,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width min width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(7)
 
 				input := "123"
@@ -897,7 +859,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width min width no line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.SetWidth(0)
 
@@ -921,7 +883,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width min width no line numbers no prompt",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.Prompt = ""
 				m.SetWidth(0)
@@ -946,7 +908,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width min width plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(8)
 
 				input := "123"
@@ -969,7 +931,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers max length text minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.SetWidth(6)
 
@@ -993,7 +955,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers max length text",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.SetWidth(6)
 
@@ -1017,7 +979,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers max length text plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = false
 				m.SetWidth(6)
 
@@ -1041,7 +1003,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width with style",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1071,7 +1033,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width with style max width minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1101,7 +1063,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width with style max width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1131,7 +1093,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width with style max width plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1161,7 +1123,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers with style",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1192,7 +1154,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers with style max width minus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1223,7 +1185,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers with style max width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1254,7 +1216,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "set width without line numbers with style max width plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				s := m.Styles()
 				s.Focused.Base = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 				m.SetStyles(s)
@@ -1285,7 +1247,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder min width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetWidth(0)
 
 				return m
@@ -1303,7 +1265,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line"
 				m.ShowLineNumbers = false
 
@@ -1322,7 +1284,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line\nplaceholder the second line\nplaceholder the third line"
 				m.ShowLineNumbers = false
 
@@ -1341,7 +1303,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line with line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line"
 				m.ShowLineNumbers = true
 
@@ -1360,7 +1322,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines with line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line\nplaceholder the second line\nplaceholder the third line"
 				m.ShowLineNumbers = true
 
@@ -1379,7 +1341,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line with end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line"
 				m.ShowLineNumbers = false
 				m.EndOfBufferCharacter = '*'
@@ -1399,7 +1361,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines with end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line\nplaceholder the second line\nplaceholder the third line"
 				m.ShowLineNumbers = false
 				m.EndOfBufferCharacter = '*'
@@ -1419,7 +1381,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line with line numbers and end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line"
 				m.ShowLineNumbers = true
 				m.EndOfBufferCharacter = '*'
@@ -1439,7 +1401,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines with line numbers and end of buffer character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line\nplaceholder the second line\nplaceholder the third line"
 				m.ShowLineNumbers = true
 				m.EndOfBufferCharacter = '*'
@@ -1459,7 +1421,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line that is longer than the max width"
 				m.SetWidth(40)
 				m.ShowLineNumbers = false
@@ -1479,7 +1441,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line that is longer than the max width\nplaceholder the second line that is longer than the max width"
 				m.ShowLineNumbers = false
 				m.SetWidth(40)
@@ -1499,7 +1461,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width with line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line that is longer than the max width"
 				m.ShowLineNumbers = true
 				m.SetWidth(40)
@@ -1519,7 +1481,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width with line numbers",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "placeholder the first line that is longer than the max width\nplaceholder the second line that is longer than the max width"
 				m.ShowLineNumbers = true
 				m.SetWidth(40)
@@ -1539,7 +1501,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width at limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "123456789012345678"
 				m.ShowLineNumbers = false
 				m.SetWidth(20)
@@ -1559,7 +1521,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width at limit plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "1234567890123456789"
 				m.ShowLineNumbers = false
 				m.SetWidth(20)
@@ -1579,7 +1541,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width with line numbers at limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "12345678901234"
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
@@ -1599,7 +1561,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder single line that is longer than max width with line numbers at limit plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "123456789012345"
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
@@ -1619,7 +1581,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width at limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "123456789012345678\n123456789012345678"
 				m.ShowLineNumbers = false
 				m.SetWidth(20)
@@ -1639,7 +1601,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width at limit plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "1234567890123456789\n1234567890123456789"
 				m.ShowLineNumbers = false
 				m.SetWidth(20)
@@ -1659,7 +1621,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width with line numbers at limit",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "12345678901234\n12345678901234"
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
@@ -1679,7 +1641,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder multiple lines that are longer than max width with line numbers at limit plus one",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "123456789012345\n123456789012345"
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
@@ -1699,7 +1661,7 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "placeholder chinese character",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.Placeholder = "输入消息..."
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
@@ -1720,22 +1682,13 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page up moves to beginning when near top",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = true
 				m.SetHeight(4)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 3
-				m.col = 0
-				m.viewport.SetYOffset(0)
+				m = scrolledTo(m, 3, 0)
 				m.PageUp()
 
 				return m
@@ -1752,22 +1705,13 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page up snaps to first visible line when not on it",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = true
 				m.SetHeight(4)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 5
-				m.col = 0
-				m.viewport.SetYOffset(3)
+				m = scrolledTo(m, 5, 3)
 				m.PageUp()
 
 				return m
@@ -1784,22 +1728,13 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page up moves up by full page when on first visible line",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.ShowLineNumbers = true
 				m.SetHeight(3)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 5
-				m.col = 0
-				m.viewport.SetYOffset(5)
+				m = scrolledTo(m, 5, 5)
 				m.PageUp()
 
 				return m
@@ -1815,21 +1750,12 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page down moves to end when near bottom",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetHeight(3)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 8
-				m.col = 0
-				m.viewport.SetYOffset(7)
+				m = scrolledTo(m, 8, 7)
 				m.PageDown()
 
 				return m
@@ -1845,21 +1771,12 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page down snaps to last visible line when not on it",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetHeight(3)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 3
-				m.col = 0
-				m.viewport.SetYOffset(3)
+				m = scrolledTo(m, 3, 3)
 				m.PageDown()
 
 				return m
@@ -1875,21 +1792,12 @@ func TestView(t *testing.T) {
 		},
 		{
 			name: "page down moves down by full page when on last visible line",
-			modelFunc: func(m Model) Model {
+			modelFunc: func(m textarea.Model) textarea.Model {
 				m.SetHeight(3)
 				m.SetWidth(20)
+				m.SetValue(tenNumberedLines())
 
-				lines := make([]string, 10)
-				for i := range 10 {
-					lines[i] = fmt.Sprintf("Line %d", i+1)
-				}
-
-				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
-
-				m.row = 4
-				m.col = 0
-				m.viewport.SetYOffset(2)
+				m = scrolledTo(m, 4, 2)
 				m.PageDown()
 
 				return m
@@ -1909,31 +1817,22 @@ func TestView(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			textarea := newTextArea()
+			model := newTextArea()
 
 			if tt.modelFunc != nil {
-				textarea = tt.modelFunc(textarea)
+				model = tt.modelFunc(model)
 			}
 
-			view := stripString(textarea.View())
-			wantView := stripString(tt.want.view)
-
-			if view != wantView {
-				t.Fatalf("Want:\n%v\nGot:\n%v\n", wantView, view)
-			}
-
-			cursorRow := textarea.cursorLineNumber()
-
-			cursorCol := textarea.LineInfo().ColumnOffset
-			if tt.want.cursorRow != cursorRow || tt.want.cursorCol != cursorCol {
-				format := "Want cursor at row: %v, col: %v Got: row: %v col: %v\n"
-				t.Fatalf(format, tt.want.cursorRow, tt.want.cursorCol, cursorRow, cursorCol)
-			}
+			require.Equal(t, stripString(tt.want.view), stripString(model.View()))
+			assert.Equal(t, tt.want.cursorRow, textarea.CursorLineNumber(&model), "cursor row")
+			assert.Equal(t, tt.want.cursorCol, model.LineInfo().ColumnOffset, "cursor column")
 		})
 	}
 }
 
 func TestWordLeftStopsAtStart(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		value            string
@@ -1971,32 +1870,24 @@ func TestWordLeftStopsAtStart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			textarea := newTextArea()
-			textarea.SetValue(tt.value)
-			textarea.row = tt.row
-			textarea.col = tt.col
+			t.Parallel()
 
-			type position struct{ row, col int }
+			model := newTextArea()
+			model.SetValue(tt.value)
+			model = placeCursor(model, tt.row, tt.col)
 
-			done := make(chan position, 1)
+			done := make(chan textarea.Model, 1)
 
 			go func() {
-				textarea.wordLeft()
+				moved, _ := model.Update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModAlt})
 
-				done <- position{row: textarea.row, col: textarea.col}
+				done <- moved
 			}()
 
 			select {
 			case got := <-done:
-				if got.row != tt.wantRow || got.col != tt.wantCol {
-					t.Fatalf(
-						"expected cursor at row %d, col %d; got row %d, col %d",
-						tt.wantRow,
-						tt.wantCol,
-						got.row,
-						got.col,
-					)
-				}
+				assert.Equal(t, tt.wantRow, got.Line(), "cursor row")
+				assert.Equal(t, tt.wantCol, got.Column(), "cursor column")
 			case <-time.After(time.Second):
 				t.Fatal("wordLeft did not terminate")
 			}
@@ -2005,63 +1896,54 @@ func TestWordLeftStopsAtStart(t *testing.T) {
 }
 
 func TestWord(t *testing.T) {
-	textarea := newTextArea()
+	t.Parallel()
 
-	textarea.SetHeight(3)
-	textarea.SetWidth(20)
-	textarea.CharLimit = 500
+	typed := keypress.Typed("Word1 Word2 Word3 Word4")
+	navigation := []tea.KeyPressMsg{
+		{Code: tea.KeyLeft, Mod: tea.ModAlt, Text: "alt+left"},
+		{Code: tea.KeyLeft, Mod: tea.ModAlt, Text: "alt+left"},
+		{Code: tea.KeyRight, Text: "right"},
+	}
+	deletion := []tea.KeyPressMsg{
+		{Code: tea.KeyEnd, Text: "end"},
+		{Code: tea.KeyBackspace, Mod: tea.ModAlt, Text: "alt+backspace"},
+		{Code: tea.KeyBackspace, Mod: tea.ModAlt, Text: "alt+backspace"},
+		{Code: tea.KeyBackspace, Text: "backspace"},
+	}
 
-	textarea, _ = textarea.Update(nil)
+	tests := []struct {
+		name    string
+		presses [][]tea.KeyPressMsg
+		want    string
+	}{
+		{name: "regular input", presses: [][]tea.KeyPressMsg{typed}, want: "Word4"},
+		{name: "navigate", presses: [][]tea.KeyPressMsg{typed, navigation}, want: "Word3"},
+		{name: "delete", presses: [][]tea.KeyPressMsg{typed, navigation, deletion}, want: "Word2"},
+	}
 
-	t.Run("regular input", func(t *testing.T) {
-		input := "Word1 Word2 Word3 Word4"
-		for _, k := range input {
-			textarea, _ = textarea.Update(keyPress(k))
-			textarea.View()
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		expect := "Word4"
-		if word := textarea.Word(); word != expect {
-			t.Fatalf("Expected last word to be '%s', got '%s'", expect, word)
-		}
-	})
+			model := newTextArea()
 
-	t.Run("navigate", func(t *testing.T) {
-		for _, k := range []tea.KeyPressMsg{
-			{Code: tea.KeyLeft, Mod: tea.ModAlt, Text: "alt+left"},
-			{Code: tea.KeyLeft, Mod: tea.ModAlt, Text: "alt+left"},
-			{Code: tea.KeyRight, Text: "right"},
-		} {
-			textarea, _ = textarea.Update(k)
-			textarea.View()
-		}
+			model.SetHeight(3)
+			model.SetWidth(20)
+			model.CharLimit = 500
 
-		expect := "Word3"
-		if word := textarea.Word(); word != expect {
-			t.Fatalf("Expected last word to be '%s', got '%s'", expect, word)
-		}
-	})
+			model, _ = model.Update(nil)
 
-	t.Run("delete", func(t *testing.T) {
-		for _, k := range []tea.KeyPressMsg{
-			{Code: tea.KeyEnd, Text: "end"},
-			{Code: tea.KeyBackspace, Mod: tea.ModAlt, Text: "alt+backspace"},
-			{Code: tea.KeyBackspace, Mod: tea.ModAlt, Text: "alt+backspace"},
-			{Code: tea.KeyBackspace, Text: "backspace"},
-		} {
-			textarea, _ = textarea.Update(k)
-			textarea.View()
-		}
+			for _, presses := range tt.presses {
+				model = pressViewing(model, presses)
+			}
 
-		expect := "Word2"
-		if word := textarea.Word(); word != expect {
-			t.Fatalf("Expected last word to be '%s', got '%s'", expect, word)
-		}
-	})
+			assert.Equal(t, tt.want, model.Word())
+		})
+	}
 }
 
-func newDynamicTextArea(minH, maxH int) Model {
-	ta := New()
+func newDynamicTextArea(minH, maxH int) textarea.Model {
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.DynamicHeight = true
@@ -2075,243 +1957,195 @@ func newDynamicTextArea(minH, maxH int) Model {
 }
 
 func TestDynamicHeight_DefaultUnchanged(t *testing.T) {
+	t.Parallel()
+
 	ta := newTextArea()
 	ta.SetHeight(6)
 	ta.SetWidth(40)
 
-	for _, k := range "hello\nworld\n" {
-		ta, _ = ta.Update(keyPress(k))
-	}
+	ta = sendString(ta, "hello\nworld\n")
 
-	if ta.Height() != 6 {
-		t.Errorf("expected static height 6, got %d", ta.Height())
-	}
+	assert.Equal(t, 6, ta.Height(), "expected static height 6")
 }
 
 func TestDynamicHeight_GrowsOnNewline(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
-	ta, _ = ta.Update(keyPress('a'))
-	if ta.Height() != 1 {
-		t.Errorf("expected height 1 after single char, got %d", ta.Height())
-	}
+	ta, _ = ta.Update(keypress.Letter('a'))
+	assert.Equal(t, 1, ta.Height(), "expected height 1 after single char")
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	enter := keypress.Special(tea.KeyEnter)
 
 	ta, _ = ta.Update(enter)
-	if ta.Height() != 2 {
-		t.Errorf("expected height 2 after first newline, got %d", ta.Height())
-	}
+	assert.Equal(t, 2, ta.Height(), "expected height 2 after first newline")
 
 	ta, _ = ta.Update(enter)
-	if ta.Height() != 3 {
-		t.Errorf("expected height 3 after second newline, got %d", ta.Height())
-	}
+	assert.Equal(t, 3, ta.Height(), "expected height 3 after second newline")
 }
 
 func TestDynamicHeight_GrowsOnSoftWrap(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 	// width=20, so typing >20 chars should cause a soft wrap
-	input := "abcdefghijklmnopqrstuvwxyz"
-	for _, k := range input {
-		ta, _ = ta.Update(keyPress(k))
-	}
+	ta = sendString(ta, "abcdefghijklmnopqrstuvwxyz")
 
-	if ta.Height() < 2 {
-		t.Errorf("expected height >= 2 after soft wrap, got %d", ta.Height())
-	}
+	assert.GreaterOrEqual(t, ta.Height(), 2, "expected height >= 2 after soft wrap")
 }
 
 func TestDynamicHeight_ShrinksOnLineDeletion(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
-	ta, _ = ta.Update(keyPress('a'))
+	enter := keypress.Special(tea.KeyEnter)
+	ta, _ = ta.Update(keypress.Letter('a'))
 	ta, _ = ta.Update(enter)
-	ta, _ = ta.Update(keyPress('b'))
+	ta, _ = ta.Update(keypress.Letter('b'))
 	ta, _ = ta.Update(enter)
-	ta, _ = ta.Update(keyPress('c'))
+	ta, _ = ta.Update(keypress.Letter('c'))
 
-	if ta.Height() != 3 {
-		t.Fatalf("expected height 3 before deletion, got %d", ta.Height())
-	}
+	require.Equal(t, 3, ta.Height(), "expected height 3 before deletion")
 
 	// Backspace at start of line 3 merges with line 2
 	ta.CursorStart()
 
-	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
-	ta, _ = ta.Update(backspace)
+	ta, _ = ta.Update(keypress.Special(tea.KeyBackspace))
 
-	if ta.Height() != 2 {
-		t.Errorf("expected height 2 after line merge, got %d", ta.Height())
-	}
+	assert.Equal(t, 2, ta.Height(), "expected height 2 after line merge")
 }
 
 func TestDynamicHeight_RespectsMinHeight(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(5, 20)
 
-	ta, _ = ta.Update(keyPress('a'))
+	ta, _ = ta.Update(keypress.Letter('a'))
 
-	if ta.Height() != 5 {
-		t.Errorf("expected min height 5, got %d", ta.Height())
-	}
+	assert.Equal(t, 5, ta.Height(), "expected min height 5")
 }
 
 func TestDynamicHeight_RespectsMaxHeight(t *testing.T) {
-	ta := newDynamicTextArea(1, 5)
+	t.Parallel()
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta := typedLines(newDynamicTextArea(1, 5), 10)
 
-	for range 10 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
-
-	if ta.Height() != 5 {
-		t.Errorf("expected max height 5, got %d", ta.Height())
-	}
+	assert.Equal(t, 5, ta.Height(), "expected max height 5")
 }
 
 func TestDynamicHeight_GrowsOnPaste(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
 	paste := tea.PasteMsg{Content: "line1\nline2\nline3\nline4\nline5"}
 	ta, _ = ta.Update(paste)
 
-	if ta.Height() != 5 {
-		t.Errorf("expected height 5 after pasting 5 lines, got %d", ta.Height())
-	}
+	assert.Equal(t, 5, ta.Height(), "expected height 5 after pasting 5 lines")
 }
 
 func TestDynamicHeight_RecalculatesOnSetWidth(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 50)
 	ta.SetWidth(40)
 
 	// Insert a line that fits in 40 cols but wraps in 10 cols
 	ta.SetValue("abcdefghijklmnopqrstuvwxyz")
 
-	if ta.Height() != 1 {
-		t.Fatalf("expected height 1 at width 40, got %d", ta.Height())
-	}
+	require.Equal(t, 1, ta.Height(), "expected height 1 at width 40")
 
 	ta.SetWidth(10)
 
-	if ta.Height() < 3 {
-		t.Errorf("expected height >= 3 after narrowing to width 10, got %d", ta.Height())
-	}
+	assert.GreaterOrEqual(t, ta.Height(), 3, "expected height >= 3 after narrowing to width 10")
 }
 
 func TestDynamicHeight_RecalculatesOnSetValue(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
 	ta.SetValue("a\nb\nc\nd\ne")
 
-	if ta.Height() != 5 {
-		t.Errorf("expected height 5 after SetValue with 5 lines, got %d", ta.Height())
-	}
+	assert.Equal(t, 5, ta.Height(), "expected height 5 after SetValue with 5 lines")
 }
 
 func TestDynamicHeight_CursorPositionAfterGrow(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	enter := keypress.Special(tea.KeyEnter)
 
 	for i := range 5 {
-		ta, _ = ta.Update(keyPress(rune('a' + i)))
+		ta, _ = ta.Update(keypress.Letter(rune('a' + i)))
 		ta, _ = ta.Update(enter)
 	}
 
-	ta, _ = ta.Update(keyPress('f'))
+	ta, _ = ta.Update(keypress.Letter('f'))
 
 	// Cursor should be on the last line (row 5, 0-indexed)
-	if ta.Line() != 5 {
-		t.Errorf("expected cursor on row 5, got %d", ta.Line())
-	}
-
-	// Cursor visual line should be within the viewport
-	cursorLine := ta.cursorLineNumber()
-	minVisible := ta.viewport.YOffset()
-
-	maxVisible := minVisible + ta.viewport.Height() - 1
-	if cursorLine < minVisible || cursorLine > maxVisible {
-		t.Errorf("cursor line %d outside viewport [%d, %d]", cursorLine, minVisible, maxVisible)
-	}
+	assert.Equal(t, 5, ta.Line(), "expected cursor on row 5")
+	assertCursorVisible(t, &ta, "")
 }
 
 func TestDynamicHeight_CursorPositionAfterShrink(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	enter := keypress.Special(tea.KeyEnter)
 
 	for i := range 5 {
-		ta, _ = ta.Update(keyPress(rune('a' + i)))
+		ta, _ = ta.Update(keypress.Letter(rune('a' + i)))
 		ta, _ = ta.Update(enter)
 	}
 
-	ta, _ = ta.Update(keyPress('f'))
+	ta, _ = ta.Update(keypress.Letter('f'))
 
-	if ta.Height() != 6 {
-		t.Fatalf("expected height 6 before shrink, got %d", ta.Height())
-	}
+	require.Equal(t, 6, ta.Height(), "expected height 6 before shrink")
 
 	// Delete lines by backspacing
-	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
+	backspace := keypress.Special(tea.KeyBackspace)
 	ta, _ = ta.Update(backspace) // delete 'f'
 	ta, _ = ta.Update(backspace) // merge line 5 into 4
 	ta, _ = ta.Update(backspace) // delete 'e'
 	ta, _ = ta.Update(backspace) // merge line 4 into 3
 
-	cursorLine := ta.cursorLineNumber()
-	minVisible := ta.viewport.YOffset()
-
-	maxVisible := minVisible + ta.viewport.Height() - 1
-	if cursorLine < minVisible || cursorLine > maxVisible {
-		t.Errorf("cursor line %d outside viewport [%d, %d] after shrink", cursorLine, minVisible, maxVisible)
-	}
+	assertCursorVisible(t, &ta, "after shrink")
 }
 
 func TestDynamicHeight_CursorPositionAfterPaste(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 20)
 
 	paste := tea.PasteMsg{Content: "line1\nline2\nline3\nline4\nline5"}
 	ta, _ = ta.Update(paste)
 
 	// Cursor should be at the end of the last pasted line
-	if ta.Line() != 4 {
-		t.Errorf("expected cursor on row 4, got %d", ta.Line())
-	}
-
-	cursorLine := ta.cursorLineNumber()
-	minVisible := ta.viewport.YOffset()
-
-	maxVisible := minVisible + ta.viewport.Height() - 1
-	if cursorLine < minVisible || cursorLine > maxVisible {
-		t.Errorf("cursor line %d outside viewport [%d, %d] after paste", cursorLine, minVisible, maxVisible)
-	}
+	assert.Equal(t, 4, ta.Line(), "expected cursor on row 4")
+	assertCursorVisible(t, &ta, "after paste")
 }
 
 func TestMaxContentHeight_ScrollsBeyondMaxHeight(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 5)
 	ta.MaxContentHeight = 10
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta = typedLines(ta, 8)
 
-	for range 8 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
-
-	if ta.Height() != 5 {
-		t.Errorf("expected visible height capped at 5, got %d", ta.Height())
-	}
-
-	if ta.LineCount() != 9 {
-		t.Errorf("expected 9 logical lines, got %d", ta.LineCount())
-	}
+	assert.Equal(t, 5, ta.Height(), "expected visible height capped at 5")
+	assert.Equal(t, 9, ta.LineCount(), "expected 9 logical lines")
 }
 
 func TestMaxContentHeight_BlocksAtLimit(t *testing.T) {
-	ta := New()
+	t.Parallel()
+
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.MaxContentHeight = 5
@@ -2319,20 +2153,15 @@ func TestMaxContentHeight_BlocksAtLimit(t *testing.T) {
 	ta.Focus()
 	ta, _ = ta.Update(nil)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta = typedLines(ta, 10)
 
-	for range 10 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
-
-	if ta.totalVisualLines() > 5 {
-		t.Errorf("expected total visual lines <= 5, got %d", ta.totalVisualLines())
-	}
+	assert.LessOrEqual(t, textarea.TotalVisualLines(&ta), 5, "expected total visual lines <= 5")
 }
 
 func TestMaxContentHeight_BackwardCompat(t *testing.T) {
-	ta := New()
+	t.Parallel()
+
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.MaxHeight = 10
@@ -2340,20 +2169,15 @@ func TestMaxContentHeight_BackwardCompat(t *testing.T) {
 	ta.Focus()
 	ta, _ = ta.Update(nil)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta = typedLines(ta, 15)
 
-	for range 15 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
-
-	if ta.LineCount() > 10 {
-		t.Errorf("expected logical line count <= 10 (legacy behavior), got %d", ta.LineCount())
-	}
+	assert.LessOrEqual(t, ta.LineCount(), 10, "expected logical line count <= 10 (legacy behavior)")
 }
 
 func TestMaxContentHeight_WithoutDynamicHeight(t *testing.T) {
-	ta := New()
+	t.Parallel()
+
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.MaxContentHeight = 5
@@ -2362,46 +2186,29 @@ func TestMaxContentHeight_WithoutDynamicHeight(t *testing.T) {
 	ta.Focus()
 	ta, _ = ta.Update(nil)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta = typedLines(ta, 10)
 
-	for range 10 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
-
-	if ta.Height() != 3 {
-		t.Errorf("expected fixed height 3, got %d", ta.Height())
-	}
-
-	if ta.totalVisualLines() > 5 {
-		t.Errorf("expected content capped at 5 visual lines, got %d", ta.totalVisualLines())
-	}
+	assert.Equal(t, 3, ta.Height(), "expected fixed height 3")
+	assert.LessOrEqual(t, textarea.TotalVisualLines(&ta), 5, "expected content capped at 5 visual lines")
 }
 
 func TestMaxContentHeight_CursorVisibleWhileScrolling(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 5)
 	ta.MaxContentHeight = 10
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+	ta = typedLines(ta, 8)
 
-	for range 8 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
+	ta, _ = ta.Update(keypress.Letter('y'))
 
-	ta, _ = ta.Update(keyPress('y'))
-
-	cursorLine := ta.cursorLineNumber()
-	minVisible := ta.viewport.YOffset()
-
-	maxVisible := minVisible + ta.viewport.Height() - 1
-	if cursorLine < minVisible || cursorLine > maxVisible {
-		t.Errorf("cursor line %d outside viewport [%d, %d] while scrolling", cursorLine, minVisible, maxVisible)
-	}
+	assertCursorVisible(t, &ta, "while scrolling")
 }
 
 func TestMaxContentHeight_PasteCapped(t *testing.T) {
-	ta := New()
+	t.Parallel()
+
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.MaxContentHeight = 5
@@ -2412,122 +2219,171 @@ func TestMaxContentHeight_PasteCapped(t *testing.T) {
 	paste := tea.PasteMsg{Content: "1\n2\n3\n4\n5\n6\n7\n8\n9\n10"}
 	ta, _ = ta.Update(paste)
 
-	if ta.totalVisualLines() > 5 {
-		t.Errorf("expected paste capped at 5 visual lines, got %d", ta.totalVisualLines())
-	}
+	assert.LessOrEqual(t, textarea.TotalVisualLines(&ta), 5, "expected paste capped at 5 visual lines")
 }
 
 func TestDynamicHeight_ShrinksWhenScrolledAndLinesDeleted(t *testing.T) {
+	t.Parallel()
+
 	ta := newDynamicTextArea(1, 5)
 	ta.MaxContentHeight = 10
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
 	// Type 8 lines so we exceed MaxHeight (5) and start scrolling
-	for range 7 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
+	ta = typedLines(ta, 7)
 
-	ta, _ = ta.Update(keyPress('x'))
+	ta, _ = ta.Update(keypress.Letter('x'))
 
-	if ta.Height() != 5 {
-		t.Fatalf("expected height 5 (capped at MaxHeight), got %d", ta.Height())
-	}
-
-	if ta.LineCount() != 8 {
-		t.Fatalf("expected 8 lines, got %d", ta.LineCount())
-	}
+	require.Equal(t, 5, ta.Height(), "expected height 5 (capped at MaxHeight)")
+	require.Equal(t, 8, ta.LineCount(), "expected 8 lines")
 
 	// Now delete lines from the bottom by selecting all on current line and backspacing
-	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
-
-	for ta.LineCount() > 4 {
-		ta.CursorEnd()
-
-		for len(ta.value[ta.row]) > 0 {
-			ta, _ = ta.Update(backspace)
-		}
-
-		ta, _ = ta.Update(backspace) // merge with previous line
-	}
+	ta = deletedLinesDownTo(ta, 4)
 
 	// Now we have 4 lines, which is less than MaxHeight (5).
 	// Height should shrink to 4.
-	if ta.Height() != 4 {
-		t.Errorf("expected height to shrink to 4 (matching content), got %d", ta.Height())
-	}
-
-	if ta.viewport.YOffset() != 0 {
-		t.Errorf("expected yOffset 0 after shrinking, got %d", ta.viewport.YOffset())
-	}
+	assert.Equal(t, 4, ta.Height(), "expected height to shrink to 4 (matching content)")
+	assert.Equal(t, 0, ta.ScrollYOffset(), "expected yOffset 0 after shrinking")
 }
 
 func TestDynamicHeight_ShrinksWhenScrolledNoMaxContent(t *testing.T) {
+	t.Parallel()
+
 	// DynamicHeight with MaxHeight but no MaxContentHeight
 	ta := newDynamicTextArea(1, 99)
 
-	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
 	// Type 8 lines
-	for range 7 {
-		ta, _ = ta.Update(keyPress('x'))
-		ta, _ = ta.Update(enter)
-	}
+	ta = typedLines(ta, 7)
 
-	ta, _ = ta.Update(keyPress('x'))
+	ta, _ = ta.Update(keypress.Letter('x'))
 
-	if ta.Height() != 8 {
-		t.Fatalf("expected height 8, got %d", ta.Height())
-	}
+	require.Equal(t, 8, ta.Height(), "expected height 8")
 
 	// Manually set a smaller MaxHeight to simulate scrolling scenario
 	ta.MaxHeight = 5
 	ta, _ = ta.Update(nil)
 
 	// Now delete lines from the bottom
-	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
+	ta = deletedLinesDownTo(ta, 3)
 
-	for ta.LineCount() > 3 {
-		ta.CursorEnd()
-
-		for len(ta.value[ta.row]) > 0 {
-			ta, _ = ta.Update(backspace)
-		}
-
-		ta, _ = ta.Update(backspace)
-	}
-
-	if ta.Height() != 3 {
-		t.Errorf("expected height to shrink to 3 (matching content), got %d", ta.Height())
-	}
-
-	if ta.viewport.YOffset() != 0 {
-		t.Errorf("expected yOffset 0 after shrinking, got %d", ta.viewport.YOffset())
-	}
+	assert.Equal(t, 3, ta.Height(), "expected height to shrink to 3 (matching content)")
+	assert.Equal(t, 0, ta.ScrollYOffset(), "expected yOffset 0 after shrinking")
 }
 
-func newTextArea() Model {
-	textarea := New()
+func newTextArea() textarea.Model {
+	model := textarea.New()
 
-	textarea.Prompt = "> "
-	textarea.Placeholder = "Hello, World!"
+	model.Prompt = "> "
+	model.Placeholder = "Hello, World!"
 
-	textarea.Focus()
+	model.Focus()
 
-	textarea, _ = textarea.Update(nil)
+	model, _ = model.Update(nil)
 
-	return textarea
+	return model
 }
 
-func keyPress(key rune) tea.Msg {
-	return tea.KeyPressMsg{Code: key, Text: string(key)}
-}
-
-func sendString(m Model, str string) Model {
-	for _, k := range []rune(str) {
-		m, _ = m.Update(keyPress(k))
+func sendString(m textarea.Model, str string) textarea.Model {
+	for _, press := range keypress.Typed(str) {
+		m, _ = m.Update(press)
 	}
 
 	return m
+}
+
+func sendStringViewing(m textarea.Model, str string) textarea.Model {
+	return pressViewing(m, keypress.Typed(str))
+}
+
+func pressViewing(m textarea.Model, presses []tea.KeyPressMsg) textarea.Model {
+	for _, press := range presses {
+		m, _ = m.Update(press)
+		m.View()
+	}
+
+	return m
+}
+
+func typedLines(ta textarea.Model, count int) textarea.Model {
+	enter := keypress.Special(tea.KeyEnter)
+
+	for range count {
+		ta, _ = ta.Update(keypress.Letter('x'))
+		ta, _ = ta.Update(enter)
+	}
+
+	return ta
+}
+
+func deletedLinesDownTo(ta textarea.Model, lineCount int) textarea.Model {
+	backspace := keypress.Special(tea.KeyBackspace)
+
+	for ta.LineCount() > lineCount {
+		ta.CursorEnd()
+
+		for ta.Column() > 0 {
+			ta, _ = ta.Update(backspace)
+		}
+
+		ta, _ = ta.Update(backspace) // merge with previous line
+	}
+
+	return ta
+}
+
+func placeCursor(m textarea.Model, row, col int) textarea.Model {
+	m.MoveToBegin()
+
+	for range row {
+		m.CursorDown()
+	}
+
+	m.SetCursorColumn(col)
+
+	return m
+}
+
+func scrolledTo(m textarea.Model, row, yOffset int) textarea.Model {
+	m.MoveToBegin()
+	m.View()
+
+	bottomRow := yOffset + m.Height() - 1
+	for range bottomRow {
+		m.CursorDown()
+	}
+
+	for range bottomRow - row {
+		m.CursorUp()
+	}
+
+	return m
+}
+
+func tenNumberedLines() string {
+	const count = 10
+
+	lines := make([]string, count)
+	for i := range count {
+		lines[i] = fmt.Sprintf("Line %d", i+1)
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func requireCursorAt(t *testing.T, model textarea.Model, want textarea.Position, msg string) {
+	t.Helper()
+
+	require.Equal(t, want, textarea.Position{Row: model.Line(), Col: model.Column()}, msg)
+}
+
+func assertCursorVisible(t *testing.T, ta *textarea.Model, when string) {
+	t.Helper()
+
+	cursorLine := textarea.CursorLineNumber(ta)
+	minVisible := ta.ScrollYOffset()
+	maxVisible := minVisible + ta.Height() - 1
+
+	assert.GreaterOrEqual(t, cursorLine, minVisible, "cursor line above viewport %s", when)
+	assert.LessOrEqual(t, cursorLine, maxVisible, "cursor line below viewport %s", when)
 }
 
 func stripString(str string) string {
@@ -2547,394 +2403,299 @@ func stripString(str string) string {
 }
 
 func TestSelectionCharacterForward(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello world")
 
 	// Move cursor to start.
-	textarea.CursorStart()
+	model.CursorStart()
 
 	// Select "hello" by pressing shift+right 5 times.
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 5)
 
-	sel := textarea.SelectedText()
-	if sel != "hello" {
-		t.Errorf("Expected selection %q, got %q", "hello", sel)
-	}
-
-	if !textarea.HasSelection() {
-		t.Error("Expected selection to be active")
-	}
+	assert.Equal(t, "hello", model.SelectedText())
+	assert.True(t, model.HasSelection(), "Expected selection to be active")
 }
 
 func TestSelectionCharacterBackward(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello")
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello")
 
 	// Cursor is at end. Select "hello" backwards.
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	}
+	model = selectedLeft(model, 5)
 
-	sel := textarea.SelectedText()
-	if sel != "hello" {
-		t.Errorf("Expected selection %q, got %q", "hello", sel)
-	}
+	assert.Equal(t, "hello", model.SelectedText())
 }
 
 func TestSelectionWordForward(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world foo")
+	model := newSelectingTextArea(5)
 
-	textarea.CursorStart()
+	model = sendString(model, "hello world foo")
+
+	model.CursorStart()
 
 	// Select "hello" with alt+shift+right.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift | tea.ModAlt})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift | tea.ModAlt})
 
-	sel := textarea.SelectedText()
-	if sel != "hello" {
-		t.Errorf("Expected selection %q, got %q", "hello", sel)
-	}
+	assert.Equal(t, "hello", model.SelectedText())
 }
 
 func TestSelectionMultiLine(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(10)
+	t.Parallel()
 
-	textarea = sendString(textarea, "line one")
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	textarea = sendString(textarea, "line two")
+	model := newSelectingTextArea(10)
+
+	model = sendString(model, "line one")
+	model, _ = model.Update(keypress.Special(tea.KeyEnter))
+	model = sendString(model, "line two")
 
 	// Go to start.
-	textarea.MoveToBegin()
+	model.MoveToBegin()
 
 	// Select down one line.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
 
-	sel := textarea.SelectedText()
-	if sel != "line one\n" {
-		t.Errorf("Expected selection %q, got %q", "line one\n", sel)
-	}
+	assert.Equal(t, "line one\n", model.SelectedText())
 
 	// Now select to end of line two.
-	for range 8 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 8)
 
-	sel = textarea.SelectedText()
-	if sel != "line one\nline two" {
-		t.Errorf("Expected selection %q, got %q", "line one\nline two", sel)
-	}
+	assert.Equal(t, "line one\nline two", model.SelectedText())
 }
 
 func TestSelectAll(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(10)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
+	model := newSelectingTextArea(10)
 
-	textarea.SelectAll()
+	model = sendString(model, "hello world")
 
-	sel := textarea.SelectedText()
-	if sel != "hello world" {
-		t.Errorf("Expected selection %q, got %q", "hello world", sel)
-	}
+	model.SelectAll()
+
+	assert.Equal(t, "hello world", model.SelectedText())
 }
 
 func TestSelectionClearedOnMovement(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello")
+	model.CursorStart()
 
 	// Select some text.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if !textarea.HasSelection() {
-		t.Fatal("Expected selection to be active")
-	}
+	model = selectedRight(model, 1)
+	require.True(t, model.HasSelection(), "Expected selection to be active")
 
 	// Move without shift, selection should clear.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	if textarea.HasSelection() {
-		t.Error("Expected selection to be cleared after non-selection movement")
-	}
+	model, _ = model.Update(keypress.Special(tea.KeyRight))
+	assert.False(t, model.HasSelection(), "Expected selection to be cleared after non-selection movement")
 }
 
 func TestSelectionClearedOnType(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello")
+	model.CursorStart()
 
 	// Select some text.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if !textarea.HasSelection() {
-		t.Fatal("Expected selection to be active")
-	}
+	model = selectedRight(model, 1)
+	require.True(t, model.HasSelection(), "Expected selection to be active")
 
 	// Type a character, selection should clear.
-	textarea, _ = textarea.Update(keyPress('x'))
-	if textarea.HasSelection() {
-		t.Error("Expected selection to be cleared after typing")
-	}
+	model, _ = model.Update(keypress.Letter('x'))
+	assert.False(t, model.HasSelection(), "Expected selection to be cleared after typing")
 }
 
 func TestClearSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello")
-	textarea.SelectAll()
+	model := newSelectingTextArea(5)
 
-	if !textarea.HasSelection() {
-		t.Fatal("Expected selection to be active")
-	}
+	model = sendString(model, "hello")
+	model.SelectAll()
 
-	textarea.ClearSelection()
+	require.True(t, model.HasSelection(), "Expected selection to be active")
 
-	if textarea.HasSelection() {
-		t.Error("Expected selection to be cleared")
-	}
+	model.ClearSelection()
 
-	if sel := textarea.SelectedText(); sel != "" {
-		t.Errorf("Expected empty selection, got %q", sel)
-	}
+	assert.False(t, model.HasSelection(), "Expected selection to be cleared")
+	assert.Empty(t, model.SelectedText())
 }
 
 func TestSelectionRendering(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello")
+	model := newSelectingTextArea(5)
 
-	textarea.CursorStart()
+	model = sendString(model, "hello")
 
-	for range 3 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model.CursorStart()
+
+	model = selectedRight(model, 3)
 
 	// Render the view and check it doesn't panic.
-	view := textarea.View()
-	if view == "" {
-		t.Error("Expected non-empty view")
-	}
+	assert.NotEmpty(t, model.View())
 }
 
 func TestTypingReplacesSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello world")
+	model.CursorStart()
 
 	// Select "hello".
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 5)
 
-	if sel := textarea.SelectedText(); sel != "hello" {
-		t.Fatalf("Expected selection %q, got %q", "hello", sel)
-	}
+	require.Equal(t, "hello", model.SelectedText())
 
 	// Type 'X' — should replace selection.
-	textarea, _ = textarea.Update(keyPress('X'))
+	model, _ = model.Update(keypress.Letter('X'))
 
-	if got := textarea.Value(); got != "X world" {
-		t.Errorf("Expected %q, got %q", "X world", got)
-	}
-
-	if textarea.HasSelection() {
-		t.Error("Expected selection to be cleared after typing")
-	}
+	assert.Equal(t, "X world", model.Value())
+	assert.False(t, model.HasSelection(), "Expected selection to be cleared after typing")
 }
 
 func TestBackspaceDeletesSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello world")
+	model.CursorStart()
 
 	// Select "hello ".
-	for range 6 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 6)
 
 	// Press backspace — should delete selection.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model, _ = model.Update(keypress.Special(tea.KeyBackspace))
 
-	if got := textarea.Value(); got != "world" {
-		t.Errorf("Expected %q, got %q", "world", got)
-	}
-
-	if textarea.HasSelection() {
-		t.Error("Expected selection to be cleared")
-	}
+	assert.Equal(t, "world", model.Value())
+	assert.False(t, model.HasSelection(), "Expected selection to be cleared")
 }
 
 func TestDeleteForwardDeletesSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
 
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = sendString(model, "hello world")
+	model.CursorStart()
 
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	model = selectedRight(model, 5)
 
-	if got := textarea.Value(); got != " world" {
-		t.Errorf("Expected %q, got %q", " world", got)
-	}
+	model, _ = model.Update(keypress.Special(tea.KeyDelete))
+
+	assert.Equal(t, " world", model.Value())
 }
 
 func TestPasteReplacesSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(40)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
-	textarea.CursorStart()
+	model := newSelectingTextArea(5)
+	model.SetWidth(40)
+
+	model = sendString(model, "hello world")
+	model.CursorStart()
 
 	// Select "hello".
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 5)
 
-	// Simulate paste via internal message.
-	textarea, _ = textarea.Update(pasteMsg("REPLACED"))
+	model, _ = model.Update(tea.PasteMsg{Content: "REPLACED"})
 
-	if got := textarea.Value(); got != "REPLACED world" {
-		t.Errorf("Expected %q, got %q", "REPLACED world", got)
-	}
+	assert.Equal(t, "REPLACED world", model.Value())
 }
 
 func TestNewlineReplacesSelection(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(10)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
-	textarea.CursorStart()
+	model := newSelectingTextArea(10)
+
+	model = sendString(model, "hello world")
+	model.CursorStart()
 
 	// Select "hello ".
-	for range 6 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 6)
 
 	// Press enter — should replace selection with newline.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(keypress.Special(tea.KeyEnter))
 
-	if got := textarea.Value(); got != "\nworld" {
-		t.Errorf("Expected %q, got %q", "\nworld", got)
-	}
+	assert.Equal(t, "\nworld", model.Value())
 }
 
 func TestDeleteSelectionMultiLine(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(10)
+	t.Parallel()
 
-	textarea = sendString(textarea, "line one")
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	textarea = sendString(textarea, "line two")
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	textarea = sendString(textarea, "line three")
+	model := newSelectingTextArea(10)
+
+	model = sendString(model, "line one")
+	model, _ = model.Update(keypress.Special(tea.KeyEnter))
+	model = sendString(model, "line two")
+	model, _ = model.Update(keypress.Special(tea.KeyEnter))
+	model = sendString(model, "line three")
 
 	// Go to start and select through "line two\n".
-	textarea.MoveToBegin()
+	model.MoveToBegin()
 	// Move right through "line one\n" (9 chars).
-	for range 9 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 9)
 	// Move right through "line two\n" (9 chars).
-	for range 9 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	}
+	model = selectedRight(model, 9)
 
-	sel := textarea.SelectedText()
-	if sel != "line one\nline two\n" {
-		t.Fatalf("Expected selection %q, got %q", "line one\nline two\n", sel)
-	}
+	require.Equal(t, "line one\nline two\n", model.SelectedText())
 
 	// Delete the selection.
-	textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model, _ = model.Update(keypress.Special(tea.KeyBackspace))
 
-	if got := textarea.Value(); got != "line three" {
-		t.Errorf("Expected %q, got %q", "line three", got)
-	}
+	assert.Equal(t, "line three", model.Value())
 }
 
 func TestSelectionRangeOrdering(t *testing.T) {
-	textarea := newTextArea()
-	textarea.Prompt = ""
-	textarea.ShowLineNumbers = false
-	textarea.SetWidth(20)
-	textarea.SetHeight(5)
+	t.Parallel()
 
-	textarea = sendString(textarea, "hello world")
+	model := newSelectingTextArea(5)
+
+	model = sendString(model, "hello world")
 
 	// Select backwards from end.
-	for range 5 {
-		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	}
+	model = selectedLeft(model, 5)
 
 	// Selection should be "world" even though we selected backwards.
-	sel := textarea.SelectedText()
-	if sel != "world" {
-		t.Errorf("Expected selection %q, got %q", "world", sel)
+	assert.Equal(t, "world", model.SelectedText())
+}
+
+func newSelectingTextArea(height int) textarea.Model {
+	model := newTextArea()
+	model.Prompt = ""
+	model.ShowLineNumbers = false
+	model.SetWidth(20)
+	model.SetHeight(height)
+
+	return model
+}
+
+func selectedRight(m textarea.Model, count int) textarea.Model {
+	return pressed(m, tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}, count)
+}
+
+func selectedLeft(m textarea.Model, count int) textarea.Model {
+	return pressed(m, tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}, count)
+}
+
+func pressed(m textarea.Model, press tea.KeyPressMsg, count int) textarea.Model {
+	for range count {
+		m, _ = m.Update(press)
 	}
+
+	return m
 }

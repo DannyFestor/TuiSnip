@@ -15,7 +15,6 @@ type Position struct {
 	Col int
 }
 
-// before reports whether p sorts before q in the buffer.
 func (p Position) before(q Position) bool {
 	if p.Row != q.Row {
 		return p.Row < q.Row
@@ -118,7 +117,6 @@ func (m *Model) EndSelection() {
 	}
 }
 
-// SelectAll selects the entire buffer.
 func (m *Model) SelectAll() {
 	if len(m.value) == 0 {
 		return
@@ -132,7 +130,6 @@ func (m *Model) SelectAll() {
 	m.selecting = false
 }
 
-// ClearSelection removes the current selection, if any.
 func (m *Model) ClearSelection() {
 	m.hasSelection = false
 	m.selecting = false
@@ -140,7 +137,6 @@ func (m *Model) ClearSelection() {
 	m.selHead = Position{Row: 0, Col: 0}
 }
 
-// HasSelection reports whether a non-empty selection is active.
 func (m *Model) HasSelection() bool {
 	return m.hasSelection && m.selAnchor != m.selHead
 }
@@ -160,8 +156,6 @@ func (m *Model) Selection() (Range, bool) {
 	return Range{Start: start, End: end}, true
 }
 
-// SelectedText returns the selected text, with logical lines joined by "\n".
-// It returns the empty string when nothing is selected.
 func (m *Model) SelectedText() string {
 	selected, ok := m.Selection()
 	if !ok {
@@ -208,15 +202,12 @@ func (m *Model) gutterWidth() int {
 	return width
 }
 
-// selectFrom sets the selection anchor and head.
 func (m *Model) selectFrom(anchor, head Position) {
 	m.selAnchor = anchor
 	m.selHead = head
 	m.hasSelection = true
 }
 
-// moveCursorTo places the cursor at the given buffer position, clamped to the
-// buffer's bounds.
 func (m *Model) moveCursorTo(pos Position) {
 	if len(m.value) == 0 {
 		return

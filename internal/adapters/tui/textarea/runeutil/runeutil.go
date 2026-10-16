@@ -1,5 +1,3 @@
-// Package runeutil provides utility functions for tidying up incoming runes
-// from Key messages.
 package runeutil
 
 import (
@@ -7,17 +5,13 @@ import (
 	"unicode/utf8"
 )
 
-// Sanitizer is a helper for bubble widgets that want to process
-// Runes from input key messages.
 type Sanitizer struct {
 	replaceNewLine []rune
 	replaceTab     []rune
 }
 
-// Option is the type of option that can be passed to Sanitize().
 type Option func(Sanitizer) Sanitizer
 
-// NewSanitizer constructs a rune sanitizer.
 func NewSanitizer(opts ...Option) *Sanitizer {
 	sanitizer := Sanitizer{
 		replaceNewLine: []rune("\n"),
@@ -30,7 +24,6 @@ func NewSanitizer(opts ...Option) *Sanitizer {
 	return &sanitizer
 }
 
-// ReplaceTabs replaces tabs by the specified string.
 func ReplaceTabs(tabRepl string) Option {
 	return func(s Sanitizer) Sanitizer {
 		s.replaceTab = []rune(tabRepl)
@@ -39,7 +32,6 @@ func ReplaceTabs(tabRepl string) Option {
 	}
 }
 
-// ReplaceNewlines replaces newline characters by the specified string.
 func ReplaceNewlines(nlRepl string) Option {
 	return func(s Sanitizer) Sanitizer {
 		s.replaceNewLine = []rune(nlRepl)
@@ -48,10 +40,6 @@ func ReplaceNewlines(nlRepl string) Option {
 	}
 }
 
-// Sanitize removes control characters from runes in a KeyRunes
-// message, and optionally replaces newline/carriage return/tabs by a
-// specified character.
-//
 // The rune array is modified in-place if possible. In that case, the
 // returned slice is the original slice shortened after the control
 // characters have been removed/translated.
@@ -76,8 +64,7 @@ func (s *Sanitizer) write(out *sanitizedRunes, src int, char rune) {
 }
 
 type sanitizedRunes struct {
-	runes []rune
-	// dstrunes are where we are storing the result.
+	runes    []rune
 	dstrunes []rune
 	// copied indicates whether dstrunes is an alias of runes
 	// or a copy. We need a copy when dst moves past src.

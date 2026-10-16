@@ -201,7 +201,7 @@ func TestReader_Read(t *testing.T) {
 			document: document(t, []record{}, []record{tagRecord(nil)}, []record{
 				snippetRecord(record{"former_folder_path": []string{"scripts"}}),
 			}),
-			wantErr:     domain.ErrFormerPathNotDetached,
+			wantErr:     domain.ErrFormerPathOutsideTrash,
 			wantMessage: "snippet " + snippetID + ": ",
 		},
 		{

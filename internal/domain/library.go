@@ -15,6 +15,18 @@ type Library struct {
 	Trash    Trash
 }
 
+func NewLibrary(folders []LibraryEntry[Folder], tags []Tag, snippets []LibraryEntry[Snippet]) Library {
+	return Library{
+		Folders:  entitiesIn(folders),
+		Tags:     tags,
+		Snippets: entitiesIn(snippets),
+		Trash: Trash{
+			Folders:  marksIn(folders, Folder.ID),
+			Snippets: marksIn(snippets, Snippet.ID),
+		},
+	}
+}
+
 func (l Library) InCreatedOrder() Library {
 	return Library{
 		Folders:  slices.SortedFunc(slices.Values(l.Folders), byCreated(Folder.CreatedAt, Folder.ID)),

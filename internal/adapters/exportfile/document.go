@@ -106,15 +106,7 @@ func (d document) library() (domain.Library, error) {
 		return domain.Library{}, err
 	}
 
-	return domain.Library{
-		Folders:  entitiesIn(folderEntries),
-		Tags:     tags,
-		Snippets: entitiesIn(snippetEntries),
-		Trash: domain.Trash{
-			Folders:  marksIn(folderEntries, domain.Folder.ID),
-			Snippets: marksIn(snippetEntries, domain.Snippet.ID),
-		},
-	}, nil
+	return domain.NewLibrary(folderEntries, tags, snippetEntries), nil
 }
 
 func (h header) requireReadable() error {

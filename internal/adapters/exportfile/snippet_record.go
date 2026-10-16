@@ -19,26 +19,31 @@ func snippetRecordOf(trash domain.Trash) func(snippet domain.Snippet) snippetRec
 	}
 }
 
-func snippetBuilder(tags []domain.Tag) func(record snippetRecord) (trashEntry[domain.Snippet], error) {
+func snippetBuilder(tags []domain.Tag) func(record snippetRecord) (domain.LibraryEntry[domain.Snippet], error) {
 	tagsByID := make(map[domain.TagID]domain.Tag, len(tags))
 	for _, tag := range tags {
 		tagsByID[tag.ID()] = tag
 	}
 
-	return func(record snippetRecord) (trashEntry[domain.Snippet], error) {
+	return func(record snippetRecord) (domain.LibraryEntry[domain.Snippet], error) {
 		return record.entry(tagsByID)
 	}
 }
 
-func (r snippetRecord) entry(tagsByID map[domain.TagID]domain.Tag) (trashEntry[domain.Snippet], error) {
+func (r snippetRecord) entry(tagsByID map[domain.TagID]domain.Tag) (domain.LibraryEntry[domain.Snippet], error) {
 	snippet, err := r.snippet(tagsByID)
 	if err != nil {
-		return trashEntry[domain.Snippet]{}, err
+		return domain.LibraryEntry[domain.Snippet]{}, err
 	}
 
-	entry, err := entryOf(snippet, r.DeletedAt, r.FormerFolderPath)
+	trash, err := parseTrashFields(r.DeletedAt, r.FormerFolderPath)
 	if err != nil {
-		return trashEntry[domain.Snippet]{}, r.named(err)
+		return domain.LibraryEntry[domain.Snippet]{}, r.named(err)
+	}
+
+	entry, err := domain.NewLibraryEntry(snippet, trash.deletedAt, trash.formerPath)
+	if err != nil {
+		return domain.LibraryEntry[domain.Snippet]{}, r.named(err)
 	}
 
 	return entry, nil

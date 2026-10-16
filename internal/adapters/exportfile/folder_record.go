@@ -19,15 +19,20 @@ func folderRecordOf(trash domain.Trash) func(folder domain.Folder) folderRecord 
 	}
 }
 
-func (r folderRecord) entry() (trashEntry[domain.Folder], error) {
+func (r folderRecord) entry() (domain.LibraryEntry[domain.Folder], error) {
 	folder, err := r.folder()
 	if err != nil {
-		return trashEntry[domain.Folder]{}, err
+		return domain.LibraryEntry[domain.Folder]{}, err
 	}
 
-	entry, err := entryOf(folder, r.DeletedAt, r.FormerParentPath)
+	trash, err := parseTrashFields(r.DeletedAt, r.FormerParentPath)
 	if err != nil {
-		return trashEntry[domain.Folder]{}, r.named(err)
+		return domain.LibraryEntry[domain.Folder]{}, r.named(err)
+	}
+
+	entry, err := domain.NewLibraryEntry(folder, trash.deletedAt, trash.formerPath)
+	if err != nil {
+		return domain.LibraryEntry[domain.Folder]{}, r.named(err)
 	}
 
 	return entry, nil

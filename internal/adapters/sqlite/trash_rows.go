@@ -11,30 +11,28 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-type trashEntry[E any] struct {
-	entity  E
-	mark    domain.TrashMark
-	trashed bool
-}
-
 func entryFromColumns[E domain.TrashItem](
 	entity E, deletedAt *sqltype.Timestamp, formerPath string,
-) (trashEntry[E], error) {
-	if deletedAt == nil {
-		return trashEntry[E]{entity: entity, mark: domain.TrashMark{}, trashed: false}, nil
-	}
-
-	names, err := formerPathFromColumn(formerPath)
+) (domain.LibraryEntry[E], error) {
+	path, err := formerPathFromColumn(formerPath)
 	if err != nil {
-		return trashEntry[E]{}, corrupt(err)
+		return domain.LibraryEntry[E]{}, corrupt(err)
 	}
 
-	mark, err := domain.NewTrashMark(entity, time.Time(*deletedAt), names)
+	entry, err := domain.NewLibraryEntry(entity, timeOrZero(deletedAt), path)
 	if err != nil {
-		return trashEntry[E]{}, corrupt(err)
+		return domain.LibraryEntry[E]{}, corrupt(err)
 	}
 
-	return trashEntry[E]{entity: entity, mark: mark, trashed: true}, nil
+	return entry, nil
+}
+
+func timeOrZero(column *sqltype.Timestamp) time.Time {
+	if column == nil {
+		return time.Time{}
+	}
+
+	return time.Time(*column)
 }
 
 func formerPathFromColumn(column string) (value.FolderPath, error) {
@@ -86,25 +84,4 @@ func snippetTrashMarkParams(id domain.SnippetID, mark domain.TrashMark) (sqlcgen
 		FormerFolderPath: formerPath,
 		ID:               columnID(id),
 	}, nil
-}
-
-func entitiesIn[E any](entries []trashEntry[E]) []E {
-	entities := make([]E, 0, len(entries))
-	for _, entry := range entries {
-		entities = append(entities, entry.entity)
-	}
-
-	return entities
-}
-
-func marksIn[E any, I comparable](entries []trashEntry[E], id func(entity E) I) map[I]domain.TrashMark {
-	marks := make(map[I]domain.TrashMark)
-
-	for _, entry := range entries {
-		if entry.trashed {
-			marks[id(entry.entity)] = entry.mark
-		}
-	}
-
-	return marks
 }

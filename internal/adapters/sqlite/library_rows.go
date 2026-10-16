@@ -51,27 +51,19 @@ func (r libraryRows) rebuild(ctx context.Context, logger *slog.Logger) (domain.L
 		return domain.Library{}, err
 	}
 
-	return domain.Library{
-		Folders:  entitiesIn(folders),
-		Tags:     tags,
-		Snippets: entitiesIn(snippets),
-		Trash: domain.Trash{
-			Folders:  marksIn(folders, domain.Folder.ID),
-			Snippets: marksIn(snippets, domain.Snippet.ID),
-		},
-	}, nil
+	return domain.NewLibrary(folders, tags, snippets), nil
 }
 
-func (r libraryRows) snippetRebuilder() rowRebuilder[sqlcgen.Snippet, trashEntry[domain.Snippet]] {
-	return rowRebuilder[sqlcgen.Snippet, trashEntry[domain.Snippet]]{
+func (r libraryRows) snippetRebuilder() rowRebuilder[sqlcgen.Snippet, domain.LibraryEntry[domain.Snippet]] {
+	return rowRebuilder[sqlcgen.Snippet, domain.LibraryEntry[domain.Snippet]]{
 		kind: "snippet",
 		idAttr: func(row sqlcgen.Snippet) slog.Attr {
 			return slog.String(keySnippetID, entityID[domain.SnippetID](row.ID).String())
 		},
-		rebuild: func(row sqlcgen.Snippet) (trashEntry[domain.Snippet], error) {
+		rebuild: func(row sqlcgen.Snippet) (domain.LibraryEntry[domain.Snippet], error) {
 			snippet, err := snippetFromRows(row, r.snippets.fragments[row.ID], r.snippets.tags[row.ID])
 			if err != nil {
-				return trashEntry[domain.Snippet]{}, err
+				return domain.LibraryEntry[domain.Snippet]{}, err
 			}
 
 			return entryFromColumns(snippet, row.DeletedAt, row.FormerFolderPath)
@@ -79,16 +71,16 @@ func (r libraryRows) snippetRebuilder() rowRebuilder[sqlcgen.Snippet, trashEntry
 	}
 }
 
-func folderRebuilder() rowRebuilder[sqlcgen.Folder, trashEntry[domain.Folder]] {
-	return rowRebuilder[sqlcgen.Folder, trashEntry[domain.Folder]]{
+func folderRebuilder() rowRebuilder[sqlcgen.Folder, domain.LibraryEntry[domain.Folder]] {
+	return rowRebuilder[sqlcgen.Folder, domain.LibraryEntry[domain.Folder]]{
 		kind: "folder",
 		idAttr: func(row sqlcgen.Folder) slog.Attr {
 			return slog.String(keyFolderID, entityID[domain.FolderID](row.ID).String())
 		},
-		rebuild: func(row sqlcgen.Folder) (trashEntry[domain.Folder], error) {
+		rebuild: func(row sqlcgen.Folder) (domain.LibraryEntry[domain.Folder], error) {
 			folder, err := folderFromRow(row)
 			if err != nil {
-				return trashEntry[domain.Folder]{}, err
+				return domain.LibraryEntry[domain.Folder]{}, err
 			}
 
 			return entryFromColumns(folder, row.DeletedAt, row.FormerParentPath)

@@ -215,6 +215,8 @@ type Model struct {
 	// KeyMap encodes the keybindings recognized by the widget.
 	KeyMap KeyMap
 
+	keyActions []keyAction
+
 	// virtualCursor manages the virtual cursor.
 	virtualCursor cursor.Model
 
@@ -331,6 +333,7 @@ func New() Model {
 		useVirtualCursor:     true,
 		virtualCursor:        cursor.New(),
 		KeyMap:               DefaultKeyMap(),
+		keyActions:           newKeyActions(),
 		DynamicHeight:        false,
 		MinHeight:            0,
 		MaxContentHeight:     0,
@@ -777,12 +780,11 @@ func (m *Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	m.prepareForMsg()
 
-	outcome := m.handleMsg(msg)
-	if outcome.finished {
-		return *m, outcome.cmd
+	if m.handleMsg(msg).finished {
+		return *m, nil
 	}
 
-	return *m, m.refresh(msg, oldRow, oldCol, outcome.cmd)
+	return *m, m.refresh(msg, oldRow, oldCol)
 }
 
 // View renders the text area in its current state.
@@ -1331,8 +1333,8 @@ func (m *Model) handleMsg(msg tea.Msg) keyOutcome {
 }
 
 func (m *Model) handleKey(msg tea.KeyPressMsg) keyOutcome {
-	for _, action := range m.keyActions() {
-		if key.Matches(msg, action.binding) {
+	for _, action := range m.keyActions {
+		if key.Matches(msg, action.binding(&m.KeyMap)) {
 			return action.handle(m)
 		}
 	}
@@ -1343,43 +1345,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) keyOutcome {
 	}
 
 	return proceed()
-}
-
-func (m *Model) keyActions() []keyAction {
-	keys := m.KeyMap
-
-	return []keyAction{
-		{keys.DeleteAfterCursor, edit(deletingSelection((*Model).deleteToLineEnd))},
-		{keys.DeleteBeforeCursor, edit(deletingSelection((*Model).deleteToLineStart))},
-		{keys.DeleteCharacterBackward, edit(deletingSelection((*Model).deleteCharacterBackward))},
-		{keys.DeleteCharacterForward, edit(deletingSelection((*Model).deleteCharacterForward))},
-		{keys.DeleteWordBackward, edit(deletingSelection((*Model).deleteWordBackward))},
-		{keys.DeleteWordForward, edit(deletingSelection((*Model).deleteWordForward))},
-		{keys.InsertNewline, (*Model).insertNewline},
-		{keys.LineEnd, edit(moving((*Model).CursorEnd))},
-		{keys.LineStart, edit(moving((*Model).CursorStart))},
-		{keys.CharacterForward, edit(moving((*Model).characterRight))},
-		{keys.LineNext, edit(moving((*Model).CursorDown))},
-		{keys.WordForward, edit(moving((*Model).wordRight))},
-		{keys.CharacterBackward, edit(moving((*Model).characterLeft))},
-		{keys.LinePrevious, edit(moving((*Model).CursorUp))},
-		{keys.WordBackward, edit(moving((*Model).wordLeft))},
-		{keys.InputBegin, edit(moving((*Model).MoveToBegin))},
-		{keys.InputEnd, edit(moving((*Model).MoveToEnd))},
-		{keys.PageUp, edit(moving((*Model).PageUp))},
-		{keys.PageDown, edit(moving((*Model).PageDown))},
-		{keys.LowercaseWordForward, edit((*Model).lowercaseRight)},
-		{keys.UppercaseWordForward, edit((*Model).uppercaseRight)},
-		{keys.CapitalizeWordForward, edit((*Model).capitalizeRight)},
-		{keys.TransposeCharacterBackward, edit((*Model).transposeLeft)},
-		{keys.SelectCharacterForward, edit(extendingSelection((*Model).characterRight))},
-		{keys.SelectCharacterBackward, edit(extendingSelection((*Model).characterLeft))},
-		{keys.SelectWordForward, edit(extendingSelection((*Model).wordRight))},
-		{keys.SelectWordBackward, edit(extendingSelection((*Model).wordLeft))},
-		{keys.SelectLineUp, edit(extendingSelection((*Model).CursorUp))},
-		{keys.SelectLineDown, edit(extendingSelection((*Model).CursorDown))},
-		{keys.SelectAll, edit((*Model).SelectAll)},
-	}
 }
 
 func (m *Model) deleteToLineEnd() {
@@ -1453,7 +1418,7 @@ func (m *Model) insertNewline() keyOutcome {
 	m.deleteSelection()
 
 	if m.atContentLimit() {
-		return finishUpdate(nil)
+		return finishUpdate()
 	}
 
 	m.col = clamp(m.col, 0, len(m.value[m.row]))
@@ -1462,7 +1427,7 @@ func (m *Model) insertNewline() keyOutcome {
 	return proceed()
 }
 
-func (m *Model) refresh(msg tea.Msg, oldRow, oldCol int, keyCmd tea.Cmd) tea.Cmd {
+func (m *Model) refresh(msg tea.Msg, oldRow, oldCol int) tea.Cmd {
 	m.recalculateHeight()
 
 	// Make sure we set the content of the viewport before updating it.
@@ -1471,7 +1436,7 @@ func (m *Model) refresh(msg tea.Msg, oldRow, oldCol int, keyCmd tea.Cmd) tea.Cmd
 	scrolled, viewportCmd := m.viewport.Update(msg)
 	m.viewport = &scrolled
 
-	cmds := []tea.Cmd{keyCmd, viewportCmd}
+	cmds := []tea.Cmd{viewportCmd}
 	if m.useVirtualCursor {
 		cmds = append(cmds, m.updateVirtualCursor(msg, oldRow, oldCol))
 	}
@@ -1893,13 +1858,49 @@ func (m *Model) splitLine(row, col int) {
 }
 
 type keyOutcome struct {
-	cmd      tea.Cmd
 	finished bool
 }
 
+type bindingOf func(*KeyMap) key.Binding
+
 type keyAction struct {
-	binding key.Binding
+	binding bindingOf
 	handle  func(*Model) keyOutcome
+}
+
+func newKeyActions() []keyAction {
+	return []keyAction{
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteAfterCursor }, (*Model).deleteToLineEnd),
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteBeforeCursor }, (*Model).deleteToLineStart),
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteCharacterBackward }, (*Model).deleteCharacterBackward),
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteCharacterForward }, (*Model).deleteCharacterForward),
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteWordBackward }, (*Model).deleteWordBackward),
+		deleting(func(k *KeyMap) key.Binding { return k.DeleteWordForward }, (*Model).deleteWordForward),
+		{binding: func(k *KeyMap) key.Binding { return k.InsertNewline }, handle: (*Model).insertNewline},
+		moving(func(k *KeyMap) key.Binding { return k.LineEnd }, (*Model).CursorEnd),
+		moving(func(k *KeyMap) key.Binding { return k.LineStart }, (*Model).CursorStart),
+		moving(func(k *KeyMap) key.Binding { return k.CharacterForward }, (*Model).characterRight),
+		moving(func(k *KeyMap) key.Binding { return k.LineNext }, (*Model).CursorDown),
+		moving(func(k *KeyMap) key.Binding { return k.WordForward }, (*Model).wordRight),
+		moving(func(k *KeyMap) key.Binding { return k.CharacterBackward }, (*Model).characterLeft),
+		moving(func(k *KeyMap) key.Binding { return k.LinePrevious }, (*Model).CursorUp),
+		moving(func(k *KeyMap) key.Binding { return k.WordBackward }, (*Model).wordLeft),
+		moving(func(k *KeyMap) key.Binding { return k.InputBegin }, (*Model).MoveToBegin),
+		moving(func(k *KeyMap) key.Binding { return k.InputEnd }, (*Model).MoveToEnd),
+		moving(func(k *KeyMap) key.Binding { return k.PageUp }, (*Model).PageUp),
+		moving(func(k *KeyMap) key.Binding { return k.PageDown }, (*Model).PageDown),
+		editing(func(k *KeyMap) key.Binding { return k.LowercaseWordForward }, (*Model).lowercaseRight),
+		editing(func(k *KeyMap) key.Binding { return k.UppercaseWordForward }, (*Model).uppercaseRight),
+		editing(func(k *KeyMap) key.Binding { return k.CapitalizeWordForward }, (*Model).capitalizeRight),
+		editing(func(k *KeyMap) key.Binding { return k.TransposeCharacterBackward }, (*Model).transposeLeft),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectCharacterForward }, (*Model).characterRight),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectCharacterBackward }, (*Model).characterLeft),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectWordForward }, (*Model).wordRight),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectWordBackward }, (*Model).wordLeft),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectLineUp }, (*Model).CursorUp),
+		selecting(func(k *KeyMap) key.Binding { return k.SelectLineDown }, (*Model).CursorDown),
+		editing(func(k *KeyMap) key.Binding { return k.SelectAll }, (*Model).SelectAll),
+	}
 }
 
 type contentRenderer struct {
@@ -2026,23 +2027,26 @@ func (v *contentRenderer) writeEndOfBuffer() {
 }
 
 func proceed() keyOutcome {
-	return keyOutcome{cmd: nil, finished: false}
+	return keyOutcome{finished: false}
 }
 
-func finishUpdate(cmd tea.Cmd) keyOutcome {
-	return keyOutcome{cmd: cmd, finished: true}
+func finishUpdate() keyOutcome {
+	return keyOutcome{finished: true}
 }
 
-func edit(change func(*Model)) func(*Model) keyOutcome {
-	return func(model *Model) keyOutcome {
-		change(model)
+func editing(binding bindingOf, change func(*Model)) keyAction {
+	return keyAction{
+		binding: binding,
+		handle: func(model *Model) keyOutcome {
+			change(model)
 
-		return proceed()
+			return proceed()
+		},
 	}
 }
 
-func deletingSelection(remove func(*Model)) func(*Model) {
-	return func(model *Model) {
+func deleting(binding bindingOf, remove func(*Model)) keyAction {
+	return editing(binding, func(model *Model) {
 		if model.HasSelection() {
 			model.deleteSelection()
 
@@ -2050,22 +2054,22 @@ func deletingSelection(remove func(*Model)) func(*Model) {
 		}
 
 		remove(model)
-	}
+	})
 }
 
-func moving(move func(*Model)) func(*Model) {
-	return func(model *Model) {
+func moving(binding bindingOf, move func(*Model)) keyAction {
+	return editing(binding, func(model *Model) {
 		model.ClearSelection()
 		move(model)
-	}
+	})
 }
 
-func extendingSelection(move func(*Model)) func(*Model) {
-	return func(model *Model) {
+func selecting(binding bindingOf, move func(*Model)) keyAction {
+	return editing(binding, func(model *Model) {
 		model.startKeyboardSelection()
 		move(model)
 		model.updateKeyboardSelection()
-	}
+	})
 }
 
 func splitLines(runes []rune) [][]rune {

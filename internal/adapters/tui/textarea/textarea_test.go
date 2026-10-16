@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/MakeNowJust/heredoc"
@@ -2672,6 +2673,18 @@ func TestSelectionRangeOrdering(t *testing.T) {
 
 	// Selection should be "world" even though we selected backwards.
 	assert.Equal(t, "world", model.SelectedText())
+}
+
+func TestKeyMapRebindingAfterNew(t *testing.T) {
+	t.Parallel()
+
+	model := newTextArea()
+	model.KeyMap.LineStart = key.NewBinding(key.WithKeys("ctrl+z"))
+
+	model = sendString(model, "hello")
+	model, _ = model.Update(keypress.Ctrl('z'))
+
+	assert.Equal(t, 0, model.Column())
 }
 
 func newSelectingTextArea(height int) textarea.Model {

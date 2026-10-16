@@ -20,8 +20,6 @@ func NewContentArea(styles look.Styles) textarea.Model {
 	area := textarea.New()
 	area.Prompt = ""
 	area.MaxHeight = 0
-	area.KeyMap.Paste = withoutClipboardAccess(area.KeyMap.Paste)
-	area.KeyMap.CopySelection = withoutClipboardAccess(area.KeyMap.CopySelection)
 
 	return RestyledArea(area, styles)
 }

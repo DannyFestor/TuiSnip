@@ -18,7 +18,6 @@ type KeyMap struct {
 	LineStart               key.Binding
 	PageUp                  key.Binding
 	PageDown                key.Binding
-	Paste                   key.Binding
 	WordBackward            key.Binding
 	WordForward             key.Binding
 	InputBegin              key.Binding
@@ -37,7 +36,6 @@ type KeyMap struct {
 	SelectLineUp            key.Binding
 	SelectLineDown          key.Binding
 	SelectAll               key.Binding
-	CopySelection           key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -95,7 +93,6 @@ func (k *KeyMap) bindDeletion() {
 
 func (k *KeyMap) bindEditing() {
 	k.InsertNewline = key.NewBinding(key.WithKeys("enter", "ctrl+m"), key.WithHelp("enter", "insert newline"))
-	k.Paste = key.NewBinding(key.WithKeys("ctrl+v"), key.WithHelp("ctrl+v", "paste"))
 	k.CapitalizeWordForward = key.NewBinding(key.WithKeys("alt+c"), key.WithHelp("alt+c", "capitalize word forward"))
 	k.LowercaseWordForward = key.NewBinding(key.WithKeys("alt+l"), key.WithHelp("alt+l", "lowercase word forward"))
 	k.UppercaseWordForward = key.NewBinding(key.WithKeys("alt+u"), key.WithHelp("alt+u", "uppercase word forward"))
@@ -125,8 +122,4 @@ func (k *KeyMap) bindSelection() {
 	k.SelectLineUp = key.NewBinding(key.WithKeys("shift+up"), key.WithHelp("shift+up", "select line up"))
 	k.SelectLineDown = key.NewBinding(key.WithKeys("shift+down"), key.WithHelp("shift+down", "select line down"))
 	k.SelectAll = key.NewBinding(key.WithKeys("ctrl+g"), key.WithHelp("ctrl+g", "select all"))
-	k.CopySelection = key.NewBinding(
-		key.WithKeys("ctrl+shift+c"),
-		key.WithHelp("ctrl+shift+c", "copy selection"),
-	)
 }

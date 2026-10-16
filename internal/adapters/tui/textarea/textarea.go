@@ -17,7 +17,6 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/x/ansi"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
@@ -41,14 +40,6 @@ const (
 	trailingSpace = 2
 
 	lineNumberGap = 2
-)
-
-// Internal messages for clipboard operations.
-type (
-	pasteMsg   string
-	pasteError struct{ error }
-	copyMsg    string
-	copyError  struct{ error }
 )
 
 // LineInfo is a helper for keeping track of line information regarding
@@ -199,8 +190,6 @@ func (w line) Hash() string {
 
 // Model is the Bubble Tea model for this text area element.
 type Model struct {
-	Err error
-
 	// General settings.
 	cache *memoization.MemoCache[line, [][]rune]
 
@@ -330,7 +319,6 @@ func New() Model {
 	scroller.KeyMap = noKeys
 
 	model := Model{
-		Err:                  nil,
 		CharLimit:            defaultCharLimit,
 		MaxHeight:            defaultMaxHeight,
 		MaxWidth:             defaultMaxWidth,
@@ -418,23 +406,6 @@ func DefaultLightStyles() Styles {
 // DefaultDarkStyles returns the default styles for a dark background.
 func DefaultDarkStyles() Styles {
 	return DefaultStyles(true)
-}
-
-// Blink returns the blink command for the virtual cursor.
-func Blink() tea.Cmd {
-	return cursor.Blink
-}
-
-// Paste is a command for pasting from the clipboard into the text input.
-func Paste() tea.Cmd {
-	return func() tea.Msg {
-		str, err := clipboard.ReadAll()
-		if err != nil {
-			return pasteError{err}
-		}
-
-		return pasteMsg(str)
-	}
 }
 
 // Styles returns the current styles for the textarea.
@@ -868,43 +839,6 @@ func (m *Model) Cursor() *tea.Cursor {
 	c.Shape = m.styles.Cursor.Shape
 
 	return c
-}
-
-// DeleteSelection deletes the currently selected text, positions the cursor
-// at the start of the former selection, and clears the selection state. It
-// is a no-op when there is no active selection.
-func (m *Model) DeleteSelection() {
-	selected, ok := m.Selection()
-	if !ok {
-		return
-	}
-
-	start, end := selected.Start, selected.End
-	if start.Row == end.Row {
-		m.deleteWithinLine(start, end)
-	} else {
-		m.deleteAcrossLines(start, end)
-	}
-
-	m.ClearSelection()
-}
-
-// CopySelection copies the selected text to the clipboard and returns a
-// command that performs the copy. Returns nil if there is no selection.
-func (m *Model) CopySelection() tea.Cmd {
-	if !m.HasSelection() {
-		return nil
-	}
-
-	text := m.SelectedText()
-
-	return func() tea.Msg {
-		if err := clipboard.WriteAll(text); err != nil {
-			return copyError{err}
-		}
-
-		return copyMsg(text)
-	}
 }
 
 // updateVirtualCursorStyle sets styling on the virtual cursor based on the
@@ -1387,17 +1321,10 @@ func (m *Model) prepareForMsg() {
 func (m *Model) handleMsg(msg tea.Msg) keyOutcome {
 	switch msg := msg.(type) {
 	case tea.PasteMsg:
-		m.DeleteSelection()
+		m.deleteSelection()
 		m.insertRunesFromUserInput([]rune(msg.Content))
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
-	case pasteMsg:
-		m.DeleteSelection()
-		m.insertRunesFromUserInput([]rune(msg))
-	case pasteError:
-		m.Err = msg
-	case copyError:
-		m.Err = msg
 	}
 
 	return proceed()
@@ -1411,7 +1338,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) keyOutcome {
 	}
 
 	if msg.Text != "" {
-		m.DeleteSelection()
+		m.deleteSelection()
 		m.insertRunesFromUserInput([]rune(msg.Text))
 	}
 
@@ -1434,7 +1361,6 @@ func (m *Model) keyActions() []keyAction {
 		{keys.CharacterForward, edit(moving((*Model).characterRight))},
 		{keys.LineNext, edit(moving((*Model).CursorDown))},
 		{keys.WordForward, edit(moving((*Model).wordRight))},
-		{keys.Paste, (*Model).pasteFromClipboard},
 		{keys.CharacterBackward, edit(moving((*Model).characterLeft))},
 		{keys.LinePrevious, edit(moving((*Model).CursorUp))},
 		{keys.WordBackward, edit(moving((*Model).wordLeft))},
@@ -1453,7 +1379,6 @@ func (m *Model) keyActions() []keyAction {
 		{keys.SelectLineUp, edit(extendingSelection((*Model).CursorUp))},
 		{keys.SelectLineDown, edit(extendingSelection((*Model).CursorDown))},
 		{keys.SelectAll, edit((*Model).SelectAll)},
-		{keys.CopySelection, (*Model).copySelectionKey},
 	}
 }
 
@@ -1525,7 +1450,7 @@ func (m *Model) deleteWordForward() {
 }
 
 func (m *Model) insertNewline() keyOutcome {
-	m.DeleteSelection()
+	m.deleteSelection()
 
 	if m.atContentLimit() {
 		return finishUpdate(nil)
@@ -1535,16 +1460,6 @@ func (m *Model) insertNewline() keyOutcome {
 	m.splitLine(m.row, m.col)
 
 	return proceed()
-}
-
-func (m *Model) pasteFromClipboard() keyOutcome {
-	m.DeleteSelection()
-
-	return finishUpdate(Paste())
-}
-
-func (m *Model) copySelectionKey() keyOutcome {
-	return proceedWith(m.CopySelection())
 }
 
 func (m *Model) refresh(msg tea.Msg, oldRow, oldCol int, keyCmd tea.Cmd) tea.Cmd {
@@ -1747,6 +1662,22 @@ func (m *Model) firstPlaceholderLine(placeholder string, lineStyle lipgloss.Styl
 	return lineStyle.Render(m.virtualCursor.View()) +
 		lineStyle.Render(styles.computedPlaceholder().Render(rest)) +
 		lineStyle.Render(gap)
+}
+
+func (m *Model) deleteSelection() {
+	selected, ok := m.Selection()
+	if !ok {
+		return
+	}
+
+	start, end := selected.Start, selected.End
+	if start.Row == end.Row {
+		m.deleteWithinLine(start, end)
+	} else {
+		m.deleteAcrossLines(start, end)
+	}
+
+	m.ClearSelection()
 }
 
 func (m *Model) deleteWithinLine(start, end Position) {
@@ -2098,10 +2029,6 @@ func proceed() keyOutcome {
 	return keyOutcome{cmd: nil, finished: false}
 }
 
-func proceedWith(cmd tea.Cmd) keyOutcome {
-	return keyOutcome{cmd: cmd, finished: false}
-}
-
 func finishUpdate(cmd tea.Cmd) keyOutcome {
 	return keyOutcome{cmd: cmd, finished: true}
 }
@@ -2117,7 +2044,7 @@ func edit(change func(*Model)) func(*Model) keyOutcome {
 func deletingSelection(remove func(*Model)) func(*Model) {
 	return func(model *Model) {
 		if model.HasSelection() {
-			model.DeleteSelection()
+			model.deleteSelection()
 
 			return
 		}

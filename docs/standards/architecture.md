@@ -126,7 +126,7 @@ No other edges exist. In particular:
 
 - Concerns never import each other. When `folder.Delete` needs to remove Snippets, it declares its own interface, and `bootstrap` passes the same `sqlite.SnippetRepository` that `snippet` uses.
 - Driven adapters never import `app`. Go satisfies interfaces implicitly, so `sqlite.SnippetRepository` fits `snippet.CreateRepository` without importing `snippet`. `bootstrap` passing one into the other is the compile-time check.
-- Third-party modules are granted per component: `charm.land/**`, chroma, and the textarea fork's go-runewidth, uniseg, and atotto/clipboard to `tui`, `modernc.org/sqlite` and goose to `sqlite`. The TOML library and the fuzzy matcher get a `vendors` entry when they are chosen.
+- Third-party modules are granted per component: `charm.land/**`, chroma, and the textarea fork's go-runewidth and uniseg to `tui`, `modernc.org/sqlite` and goose to `sqlite`. The TOML library and the fuzzy matcher get a `vendors` entry when they are chosen.
 
 ## Actions
 

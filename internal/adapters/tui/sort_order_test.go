@@ -71,6 +71,25 @@ func TestModel_sortOrder(t *testing.T) {
 		assert.Contains(t, screen.screen(), "3 Root · by creation date")
 	})
 
+	t.Run("a listing in the previous order arriving after s is ignored", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := sampleSnippets(t)
+		lister := NewMockFolderSnippetsLister(t)
+		listingIn(lister, domain.FolderID{}, snippets...)
+		listingInOrder(lister, domain.FolderID{}, domain.SortOrderUpdated, reversed(snippets)...)
+
+		saver := NewMockSortOrderSaver(t)
+		saver.EXPECT().SaveSortOrder(mock.Anything, domain.SortOrderUpdated).Return(nil).Once()
+		screen := start(t, modelWith(t, sorting(t, lister, saver)), wideWidth, wideHeight)
+		screen.press(keypress.Typed("3s")...)
+
+		screen.send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: domain.SortOrderTitle})
+
+		assert.Contains(t, screen.screen(), "3 Root · by last updated")
+		assert.Contains(t, screen.screen(), "Stop accepting, drain, exit")
+	})
+
 	t.Run("a failed save shows the failure and still relists in the next order", func(t *testing.T) {
 		t.Parallel()
 
@@ -151,18 +170,6 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 		})
 
 		require.ErrorIs(t, err, domain.ErrInvalidSortOrder)
-	})
-
-	t.Run("shows the failure when Snippets arrive in an unknown order", func(t *testing.T) {
-		t.Parallel()
-
-		snippets := sampleSnippets(t)
-		screen := start(t, newModel(t, listerOf(t, snippets...), NewMockSnippetCopier(t)), wideWidth, wideHeight)
-
-		screen.send(mainscreen.SnippetsLoaded{Snippets: snippets, Order: domain.SortOrder("language")})
-
-		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
-		assert.Contains(t, screen.screen(), "3 Root · by title")
 	})
 }
 

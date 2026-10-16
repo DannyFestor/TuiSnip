@@ -398,6 +398,15 @@ func (m Model) sortCycled(asked outcome.SortCycleAsked) (Model, tea.Cmd) {
 	return next, tea.Batch(next.saveSortOrder(), next.loadSnippets(asked.Selection, asked.Selecting))
 }
 
+// Listings run concurrently, so one asked for before a sort cycle can arrive after the one asked for since.
+func (m Model) snippetsLoaded(loaded mainscreen.SnippetsLoaded) (Model, tea.Cmd) {
+	if loaded.Order != m.sortOrder {
+		return m, nil
+	}
+
+	return m.overlaysUpdated(loaded)
+}
+
 func (m Model) saveSortOrder() tea.Cmd {
 	order := m.sortOrder
 
@@ -437,6 +446,8 @@ func (m Model) pressed(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 
 func (m Model) overlaysUpdatedSharingArrivals(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case mainscreen.SnippetsLoaded:
+		return m.snippetsLoaded(msg)
 	case mainscreen.TreeLoaded:
 		return m.sharingArrival(msg, arrived.Tree{Tree: msg.Tree})
 	case mainscreen.TreeChanged:

@@ -45,13 +45,16 @@ func TestVerticalScrolling(t *testing.T) {
 		"should wrap around",
 		"the text area.",
 	}
+
 	textarea.viewport.GotoTop()
+
 	for _, line := range lines {
 		view = textarea.View()
 		if !strings.Contains(view, line) {
 			t.Log(view)
 			t.Error("Text area did not render the correct scrolled input")
 		}
+
 		textarea.viewport.ScrollDown(1)
 	}
 }
@@ -71,7 +74,7 @@ func TestWordWrapOverflowing(t *testing.T) {
 
 	textarea, _ = textarea.Update(nil)
 
-	input := "Testing Testing Testing Testing Testing Testing Testing Testing"
+	input := strings.TrimSuffix(strings.Repeat("Testing ", 8), " ")
 
 	for _, k := range input {
 		textarea, _ = textarea.Update(keyPress(k))
@@ -106,7 +109,7 @@ func TestValueSoftWrap(t *testing.T) {
 
 	textarea, _ = textarea.Update(nil)
 
-	input := "Testing Testing Testing Testing Testing Testing Testing Testing"
+	input := strings.TrimSuffix(strings.Repeat("Testing ", 8), " ")
 
 	for _, k := range []rune(input) {
 		textarea, _ = textarea.Update(keyPress(k))
@@ -137,6 +140,7 @@ func TestSetValue(t *testing.T) {
 
 	// SetValue should reset text area
 	textarea.SetValue("Test")
+
 	value = textarea.Value()
 	if value != "Test" {
 		t.Log(value)
@@ -205,7 +209,7 @@ func TestVerticalNavigationKeepsCursorHorizontalPosition(t *testing.T) {
 	textarea := newTextArea()
 	textarea.SetWidth(20)
 
-	textarea.SetValue(strings.Join([]string{"你好你好", "Hello"}, "\n"))
+	textarea.SetValue("你好你好" + "\n" + "Hello")
 
 	textarea.row = 0
 	textarea.col = 2
@@ -1394,7 +1398,7 @@ func TestView(t *testing.T) {
 			},
 		},
 		{
-			name: "placeholder multiple lines with with end of buffer character",
+			name: "placeholder multiple lines with end of buffer character",
 			modelFunc: func(m Model) Model {
 				m.Placeholder = "placeholder the first line\nplaceholder the second line\nplaceholder the third line"
 				m.ShowLineNumbers = false
@@ -1699,6 +1703,7 @@ func TestView(t *testing.T) {
 				m.Placeholder = "输入消息..."
 				m.ShowLineNumbers = true
 				m.SetWidth(20)
+
 				return m
 			},
 			want: want{
@@ -1724,6 +1729,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1755,6 +1761,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1786,6 +1793,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1815,6 +1823,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1844,6 +1853,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1873,6 +1883,7 @@ func TestView(t *testing.T) {
 				for i := range 10 {
 					lines[i] = fmt.Sprintf("Line %d", i+1)
 				}
+
 				m.SetValue(strings.Join(lines, "\n"))
 				m.viewport.SetContent(m.view()) // force setting of viewport content.
 
@@ -1912,6 +1923,7 @@ func TestView(t *testing.T) {
 			}
 
 			cursorRow := textarea.cursorLineNumber()
+
 			cursorCol := textarea.LineInfo().ColumnOffset
 			if tt.want.cursorRow != cursorRow || tt.want.cursorCol != cursorCol {
 				format := "Want cursor at row: %v, col: %v Got: row: %v col: %v\n"
@@ -1965,9 +1977,12 @@ func TestWordLeftStopsAtStart(t *testing.T) {
 			textarea.col = tt.col
 
 			type position struct{ row, col int }
+
 			done := make(chan position, 1)
+
 			go func() {
 				textarea.wordLeft()
+
 				done <- position{row: textarea.row, col: textarea.col}
 			}()
 
@@ -2055,6 +2070,7 @@ func newDynamicTextArea(minH, maxH int) Model {
 	ta.SetWidth(20)
 	ta.Focus()
 	ta, _ = ta.Update(nil)
+
 	return ta
 }
 
@@ -2081,6 +2097,7 @@ func TestDynamicHeight_GrowsOnNewline(t *testing.T) {
 	}
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	ta, _ = ta.Update(enter)
 	if ta.Height() != 2 {
 		t.Errorf("expected height 2 after first newline, got %d", ta.Height())
@@ -2121,6 +2138,7 @@ func TestDynamicHeight_ShrinksOnLineDeletion(t *testing.T) {
 
 	// Backspace at start of line 3 merges with line 2
 	ta.CursorStart()
+
 	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
 	ta, _ = ta.Update(backspace)
 
@@ -2143,6 +2161,7 @@ func TestDynamicHeight_RespectsMaxHeight(t *testing.T) {
 	ta := newDynamicTextArea(1, 5)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 10 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
@@ -2196,10 +2215,12 @@ func TestDynamicHeight_CursorPositionAfterGrow(t *testing.T) {
 	ta := newDynamicTextArea(1, 20)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for i := range 5 {
 		ta, _ = ta.Update(keyPress(rune('a' + i)))
 		ta, _ = ta.Update(enter)
 	}
+
 	ta, _ = ta.Update(keyPress('f'))
 
 	// Cursor should be on the last line (row 5, 0-indexed)
@@ -2210,6 +2231,7 @@ func TestDynamicHeight_CursorPositionAfterGrow(t *testing.T) {
 	// Cursor visual line should be within the viewport
 	cursorLine := ta.cursorLineNumber()
 	minVisible := ta.viewport.YOffset()
+
 	maxVisible := minVisible + ta.viewport.Height() - 1
 	if cursorLine < minVisible || cursorLine > maxVisible {
 		t.Errorf("cursor line %d outside viewport [%d, %d]", cursorLine, minVisible, maxVisible)
@@ -2220,10 +2242,12 @@ func TestDynamicHeight_CursorPositionAfterShrink(t *testing.T) {
 	ta := newDynamicTextArea(1, 20)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for i := range 5 {
 		ta, _ = ta.Update(keyPress(rune('a' + i)))
 		ta, _ = ta.Update(enter)
 	}
+
 	ta, _ = ta.Update(keyPress('f'))
 
 	if ta.Height() != 6 {
@@ -2239,6 +2263,7 @@ func TestDynamicHeight_CursorPositionAfterShrink(t *testing.T) {
 
 	cursorLine := ta.cursorLineNumber()
 	minVisible := ta.viewport.YOffset()
+
 	maxVisible := minVisible + ta.viewport.Height() - 1
 	if cursorLine < minVisible || cursorLine > maxVisible {
 		t.Errorf("cursor line %d outside viewport [%d, %d] after shrink", cursorLine, minVisible, maxVisible)
@@ -2258,6 +2283,7 @@ func TestDynamicHeight_CursorPositionAfterPaste(t *testing.T) {
 
 	cursorLine := ta.cursorLineNumber()
 	minVisible := ta.viewport.YOffset()
+
 	maxVisible := minVisible + ta.viewport.Height() - 1
 	if cursorLine < minVisible || cursorLine > maxVisible {
 		t.Errorf("cursor line %d outside viewport [%d, %d] after paste", cursorLine, minVisible, maxVisible)
@@ -2269,6 +2295,7 @@ func TestMaxContentHeight_ScrollsBeyondMaxHeight(t *testing.T) {
 	ta.MaxContentHeight = 10
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 8 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
@@ -2293,6 +2320,7 @@ func TestMaxContentHeight_BlocksAtLimit(t *testing.T) {
 	ta, _ = ta.Update(nil)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 10 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
@@ -2313,6 +2341,7 @@ func TestMaxContentHeight_BackwardCompat(t *testing.T) {
 	ta, _ = ta.Update(nil)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 15 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
@@ -2334,6 +2363,7 @@ func TestMaxContentHeight_WithoutDynamicHeight(t *testing.T) {
 	ta, _ = ta.Update(nil)
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 10 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
@@ -2353,14 +2383,17 @@ func TestMaxContentHeight_CursorVisibleWhileScrolling(t *testing.T) {
 	ta.MaxContentHeight = 10
 
 	enter := tea.KeyPressMsg{Code: tea.KeyEnter}
+
 	for range 8 {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
 	}
+
 	ta, _ = ta.Update(keyPress('y'))
 
 	cursorLine := ta.cursorLineNumber()
 	minVisible := ta.viewport.YOffset()
+
 	maxVisible := minVisible + ta.viewport.Height() - 1
 	if cursorLine < minVisible || cursorLine > maxVisible {
 		t.Errorf("cursor line %d outside viewport [%d, %d] while scrolling", cursorLine, minVisible, maxVisible)
@@ -2394,22 +2427,27 @@ func TestDynamicHeight_ShrinksWhenScrolledAndLinesDeleted(t *testing.T) {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
 	}
+
 	ta, _ = ta.Update(keyPress('x'))
 
 	if ta.Height() != 5 {
 		t.Fatalf("expected height 5 (capped at MaxHeight), got %d", ta.Height())
 	}
+
 	if ta.LineCount() != 8 {
 		t.Fatalf("expected 8 lines, got %d", ta.LineCount())
 	}
 
 	// Now delete lines from the bottom by selecting all on current line and backspacing
 	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
+
 	for ta.LineCount() > 4 {
 		ta.CursorEnd()
+
 		for len(ta.value[ta.row]) > 0 {
 			ta, _ = ta.Update(backspace)
 		}
+
 		ta, _ = ta.Update(backspace) // merge with previous line
 	}
 
@@ -2418,6 +2456,7 @@ func TestDynamicHeight_ShrinksWhenScrolledAndLinesDeleted(t *testing.T) {
 	if ta.Height() != 4 {
 		t.Errorf("expected height to shrink to 4 (matching content), got %d", ta.Height())
 	}
+
 	if ta.viewport.YOffset() != 0 {
 		t.Errorf("expected yOffset 0 after shrinking, got %d", ta.viewport.YOffset())
 	}
@@ -2433,6 +2472,7 @@ func TestDynamicHeight_ShrinksWhenScrolledNoMaxContent(t *testing.T) {
 		ta, _ = ta.Update(keyPress('x'))
 		ta, _ = ta.Update(enter)
 	}
+
 	ta, _ = ta.Update(keyPress('x'))
 
 	if ta.Height() != 8 {
@@ -2445,17 +2485,21 @@ func TestDynamicHeight_ShrinksWhenScrolledNoMaxContent(t *testing.T) {
 
 	// Now delete lines from the bottom
 	backspace := tea.KeyPressMsg{Code: tea.KeyBackspace}
+
 	for ta.LineCount() > 3 {
 		ta.CursorEnd()
+
 		for len(ta.value[ta.row]) > 0 {
 			ta, _ = ta.Update(backspace)
 		}
+
 		ta, _ = ta.Update(backspace)
 	}
 
 	if ta.Height() != 3 {
 		t.Errorf("expected height to shrink to 3 (matching content), got %d", ta.Height())
 	}
+
 	if ta.viewport.YOffset() != 0 {
 		t.Errorf("expected yOffset 0 after shrinking, got %d", ta.viewport.YOffset())
 	}
@@ -2491,6 +2535,7 @@ func stripString(str string) string {
 	ss := strings.Split(s, "\n")
 
 	var lines []string
+
 	for _, l := range ss {
 		trim := strings.TrimRightFunc(l, unicode.IsSpace)
 		if trim != "" {
@@ -2699,6 +2744,7 @@ func TestSelectionRendering(t *testing.T) {
 	textarea = sendString(textarea, "hello")
 
 	textarea.CursorStart()
+
 	for range 3 {
 		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	}
@@ -2724,6 +2770,7 @@ func TestTypingReplacesSelection(t *testing.T) {
 	for range 5 {
 		textarea, _ = textarea.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	}
+
 	if sel := textarea.SelectedText(); sel != "hello" {
 		t.Fatalf("Expected selection %q, got %q", "hello", sel)
 	}
@@ -2734,6 +2781,7 @@ func TestTypingReplacesSelection(t *testing.T) {
 	if got := textarea.Value(); got != "X world" {
 		t.Errorf("Expected %q, got %q", "X world", got)
 	}
+
 	if textarea.HasSelection() {
 		t.Error("Expected selection to be cleared after typing")
 	}
@@ -2760,6 +2808,7 @@ func TestBackspaceDeletesSelection(t *testing.T) {
 	if got := textarea.Value(); got != "world" {
 		t.Errorf("Expected %q, got %q", "world", got)
 	}
+
 	if textarea.HasSelection() {
 		t.Error("Expected selection to be cleared")
 	}

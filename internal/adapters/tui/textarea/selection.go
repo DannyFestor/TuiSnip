@@ -20,6 +20,7 @@ func (p Position) before(q Position) bool {
 	if p.Row != q.Row {
 		return p.Row < q.Row
 	}
+
 	return p.Col < q.Col
 }
 
@@ -31,6 +32,7 @@ func (m Model) gutterWidth() int {
 	if m.ShowLineNumbers {
 		w += len(strconv.Itoa(m.MaxHeight)) + 2
 	}
+
 	return w
 }
 
@@ -41,14 +43,18 @@ func runeIndexForColumn(runes []rune, col int) int {
 	if col <= 0 {
 		return 0
 	}
+
 	w := 0
+
 	for i, r := range runes {
 		rWidth := ansi.StringWidth(string(r))
 		if w+rWidth > col {
 			return i
 		}
+
 		w += rWidth
 	}
+
 	return len(runes)
 }
 
@@ -70,29 +76,32 @@ func (m Model) PositionAt(x, y int) Position {
 		return Position{}
 	}
 
-	contentX := x - m.gutterWidth()
-	if contentX < 0 {
-		contentX = 0
-	}
+	contentX := max(x-m.gutterWidth(), 0)
 
 	display := 0
+
 	for row, line := range m.value {
 		wrapped := m.memoizedWrap(line, m.width)
 		if len(wrapped) == 0 {
 			wrapped = [][]rune{{}}
 		}
+
 		base := 0
+
 		for _, wrappedLine := range wrapped {
 			if display == targetLine {
 				col := base + runeIndexForColumn(wrappedLine, contentX)
+
 				return Position{Row: row, Col: clamp(col, 0, len(line))}
 			}
+
 			base += len(wrappedLine)
 			display++
 		}
 	}
 
 	lastRow := len(m.value) - 1
+
 	return Position{Row: lastRow, Col: len(m.value[lastRow])}
 }
 
@@ -116,6 +125,7 @@ func (m *Model) ExtendSelection(x, y int) {
 	if !m.selecting {
 		return
 	}
+
 	pos := m.PositionAt(x, y)
 	m.selHead = pos
 	m.hasSelection = true
@@ -137,6 +147,7 @@ func (m *Model) SelectAll() {
 	if len(m.value) == 0 {
 		return
 	}
+
 	lastRow := len(m.value) - 1
 	m.selectFrom(
 		Position{Row: 0, Col: 0},
@@ -164,10 +175,12 @@ func (m Model) Selection() (start, end Position, ok bool) {
 	if !m.HasSelection() {
 		return Position{}, Position{}, false
 	}
+
 	start, end = m.selAnchor, m.selHead
 	if end.before(start) {
 		start, end = end, start
 	}
+
 	return start, end, true
 }
 
@@ -181,10 +194,12 @@ func (m Model) SelectedText() string {
 
 	if start.Row == end.Row {
 		line := m.value[start.Row]
+
 		return string(line[clamp(start.Col, 0, len(line)):clamp(end.Col, 0, len(line))])
 	}
 
 	var b strings.Builder
+
 	for row := start.Row; row <= end.Row; row++ {
 		line := m.value[row]
 		switch row {
@@ -195,10 +210,12 @@ func (m Model) SelectedText() string {
 		default:
 			b.WriteString(string(line))
 		}
+
 		if row < end.Row {
 			b.WriteRune('\n')
 		}
 	}
+
 	return b.String()
 }
 
@@ -215,6 +232,7 @@ func (m *Model) moveCursorTo(pos Position) {
 	if len(m.value) == 0 {
 		return
 	}
+
 	row := clamp(pos.Row, 0, len(m.value)-1)
 	m.row = row
 	m.col = clamp(pos.Col, 0, len(m.value[row]))
@@ -235,14 +253,17 @@ func (m Model) selectionSpanFor(row, base, length int) (from, to int, ok bool) {
 	if row == start.Row {
 		rowFrom = clamp(start.Col, 0, lineLen)
 	}
+
 	if row == end.Row {
 		rowTo = clamp(end.Col, 0, lineLen)
 	}
 
 	from = max(rowFrom, base)
+
 	to = min(rowTo, base+length)
 	if from >= to {
 		return 0, 0, false
 	}
+
 	return from - base, to - base, true
 }

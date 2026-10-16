@@ -9,6 +9,7 @@ import (
 
 func newSelectionTextarea(t *testing.T, value string) Model {
 	t.Helper()
+
 	ta := New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
@@ -16,6 +17,7 @@ func newSelectionTextarea(t *testing.T, value string) Model {
 	ta.SetHeight(6)
 	ta.Focus()
 	ta.SetValue(value)
+
 	return ta
 }
 
@@ -41,6 +43,7 @@ func TestPositionAt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			if got := ta.PositionAt(tt.x, tt.y); got != tt.want {
 				t.Errorf("PositionAt(%d, %d) = %+v, want %+v", tt.x, tt.y, got, tt.want)
 			}
@@ -62,9 +65,11 @@ func TestPositionAtAccountsForGutter(t *testing.T) {
 	if got := ta.PositionAt(2, 0); got != (Position{Row: 0, Col: 0}) {
 		t.Errorf("first text cell = %+v, want row 0 col 0", got)
 	}
+
 	if got := ta.PositionAt(5, 0); got != (Position{Row: 0, Col: 3}) {
 		t.Errorf("fourth text cell = %+v, want row 0 col 3", got)
 	}
+
 	if got := ta.PositionAt(0, 0); got != (Position{Row: 0, Col: 0}) {
 		t.Errorf("click in gutter = %+v, want row 0 col 0", got)
 	}
@@ -81,6 +86,7 @@ func TestSelectedTextSingleLine(t *testing.T) {
 	if !ta.HasSelection() {
 		t.Fatal("expected an active selection")
 	}
+
 	if got, want := ta.SelectedText(), "hello"; got != want {
 		t.Errorf("SelectedText() = %q, want %q", got, want)
 	}
@@ -115,6 +121,7 @@ func TestSelectedTextBackwardDrag(t *testing.T) {
 	if got, want := backward.SelectedText(), forward.SelectedText(); got != want {
 		t.Errorf("backward drag = %q, want %q (same as forward)", got, want)
 	}
+
 	if got, want := backward.SelectedText(), "e\ntwo\nt"; got != want {
 		t.Errorf("SelectedText() = %q, want %q", got, want)
 	}
@@ -130,6 +137,7 @@ func TestClickWithoutDragMakesNoSelection(t *testing.T) {
 	if ta.HasSelection() {
 		t.Error("a click without a drag must not leave a selection")
 	}
+
 	if got := ta.SelectedText(); got != "" {
 		t.Errorf("SelectedText() = %q, want empty", got)
 	}
@@ -153,14 +161,17 @@ func TestClearSelectionAPI(t *testing.T) {
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
+
 	if !ta.HasSelection() {
 		t.Fatal("expected a selection to clear")
 	}
 
 	ta.ClearSelection()
+
 	if ta.HasSelection() {
 		t.Error("HasSelection() = true after ClearSelection()")
 	}
+
 	if got := ta.SelectedText(); got != "" {
 		t.Errorf("SelectedText() = %q, want empty", got)
 	}
@@ -184,6 +195,7 @@ func TestKeyPressClearsSelection(t *testing.T) {
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
+
 	if !ta.HasSelection() {
 		t.Fatal("expected a selection before typing")
 	}
@@ -231,6 +243,7 @@ func TestSelectionSurvivesSoftWrap(t *testing.T) {
 	if pos.Row != 0 {
 		t.Fatalf("soft wrap must stay on logical row 0, got row %d", pos.Row)
 	}
+
 	if pos.Col != 10 {
 		t.Errorf("second visual row starts at col 10, got %d", pos.Col)
 	}
@@ -256,9 +269,11 @@ func TestSelectionEmptyBuffer(t *testing.T) {
 	if ta.HasSelection() {
 		t.Error("empty buffer must not report a selection")
 	}
+
 	if got := ta.SelectedText(); got != "" {
 		t.Errorf("SelectedText() = %q, want empty", got)
 	}
+
 	_ = ta.View()
 }
 
@@ -274,9 +289,11 @@ func TestSelectionRange(t *testing.T) {
 	if !ok {
 		t.Fatal("expected a selection")
 	}
+
 	if start != (Position{Row: 0, Col: 0}) {
 		t.Errorf("start = %+v, want row 0 col 0", start)
 	}
+
 	if end != (Position{Row: 0, Col: 5}) {
 		t.Errorf("end = %+v, want row 0 col 5", end)
 	}

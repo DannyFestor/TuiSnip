@@ -320,6 +320,7 @@ type line struct {
 // Hash returns a hash of the line.
 func (w line) Hash() string {
 	v := fmt.Sprintf("%s:%d", string(w.runes), w.width)
+
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(v)))
 }
 
@@ -389,7 +390,7 @@ type Model struct {
 	styles Styles
 
 	// useVirtualCursor determines whether or not to use the virtual cursor.
-	// Use [SetVirtualCursor] and [VirtualCursor] to work with this this
+	// Use [SetVirtualCursor] and [VirtualCursor] to work with this
 	// value publicly.
 	useVirtualCursor bool
 
@@ -431,7 +432,7 @@ type Model struct {
 	viewport *viewport.Model
 
 	// rune sanitizer for input.
-	rsan runeutil.Sanitizer
+	rsan *runeutil.Sanitizer
 
 	// Selection anchor and head. The anchor is where the selection began;
 	// the head follows the pointer. Either may sort before the other — use
@@ -488,6 +489,7 @@ func DefaultStyles(isDark bool) Styles {
 	lightDark := lipgloss.LightDark(isDark)
 
 	var s Styles
+
 	s.Focused = StyleState{
 		Base:             lipgloss.NewStyle(),
 		CursorLine:       lipgloss.NewStyle().Background(lightDark(lipgloss.Color("255"), lipgloss.Color("0"))),
@@ -515,6 +517,7 @@ func DefaultStyles(isDark bool) Styles {
 		Shape: tea.CursorBlock,
 		Blink: true,
 	}
+
 	return s
 }
 
@@ -555,6 +558,7 @@ func (m *Model) SetVirtualCursor(v bool) {
 func (m *Model) updateVirtualCursorStyle() {
 	if !m.useVirtualCursor {
 		m.virtualCursor.SetMode(cursor.CursorHide)
+
 		return
 	}
 
@@ -566,9 +570,12 @@ func (m *Model) updateVirtualCursorStyle() {
 		if m.styles.Cursor.BlinkSpeed > 0 {
 			m.virtualCursor.BlinkSpeed = m.styles.Cursor.BlinkSpeed
 		}
+
 		m.virtualCursor.SetMode(cursor.CursorBlink)
+
 		return
 	}
+
 	m.virtualCursor.SetMode(cursor.CursorStatic)
 }
 
@@ -613,7 +620,9 @@ func (m *Model) insertRunesFromUserInput(runes []rune) {
 
 	// Split the input into lines.
 	var lines [][]rune
+
 	lstart := 0
+
 	for i := range runes {
 		if runes[i] == '\n' {
 			// Queue a line to become a new row in the text area below.
@@ -624,6 +633,7 @@ func (m *Model) insertRunesFromUserInput(runes []rune) {
 			lstart = i + 1
 		}
 	}
+
 	if lstart <= len(runes) {
 		// The last line did not end with a newline character.
 		// Take it now.
@@ -643,6 +653,7 @@ func (m *Model) insertRunesFromUserInput(runes []rune) {
 		for len(lines) > 1 && m.visualLinesForInsert(lines) > budget {
 			lines = lines[:len(lines)-1]
 		}
+
 		if m.visualLinesForInsert(lines) > budget {
 			return
 		}
@@ -768,6 +779,7 @@ func (m *Model) setCursorLineRelative(delta int) {
 				// Move the cursor to the start of the next virtual line.
 				m.col = min(li.StartColumn+li.Width+trailingSpace, len(m.value[m.row])-1)
 			}
+
 			li = m.LineInfo()
 		}
 	} else {
@@ -780,6 +792,7 @@ func (m *Model) setCursorLineRelative(delta int) {
 				// Move the cursor to the end of the previous line.
 				m.col = li.StartColumn - trailingSpace
 			}
+
 			li = m.LineInfo()
 		}
 	}
@@ -789,6 +802,7 @@ func (m *Model) setCursorLineRelative(delta int) {
 
 	if nli.Width <= 0 {
 		m.repositionView()
+
 		return
 	}
 
@@ -797,9 +811,11 @@ func (m *Model) setCursorLineRelative(delta int) {
 		if m.row >= len(m.value) || m.col >= len(m.value[m.row]) || offset >= nli.CharWidth-1 {
 			break
 		}
+
 		offset += rw.RuneWidth(m.value[m.row][m.col])
 		m.col++
 	}
+
 	m.repositionView()
 }
 
@@ -843,6 +859,7 @@ func (m Model) activeStyle() *StyleState {
 	if m.focus {
 		return &m.styles.Focused
 	}
+
 	return &m.styles.Blurred
 }
 
@@ -850,6 +867,7 @@ func (m Model) activeStyle() *StyleState {
 // receive keyboard input and the cursor will be hidden.
 func (m *Model) Focus() tea.Cmd {
 	m.focus = true
+
 	return m.virtualCursor.Focus()
 }
 
@@ -907,12 +925,13 @@ func (m *Model) Word() string {
 }
 
 // san initializes or retrieves the rune sanitizer.
-func (m *Model) san() runeutil.Sanitizer {
+func (m *Model) san() *runeutil.Sanitizer {
 	if m.rsan == nil {
 		// Textinput has all its input on a single line so collapse
 		// newlines/tabs to single spaces.
 		m.rsan = runeutil.NewSanitizer()
 	}
+
 	return m.rsan
 }
 
@@ -939,9 +958,11 @@ func (m *Model) transposeLeft() {
 	if m.col == 0 || len(m.value[m.row]) < 2 {
 		return
 	}
+
 	if m.col >= len(m.value[m.row]) {
 		m.SetCursorColumn(m.col - 1)
 	}
+
 	m.value[m.row][m.col-1], m.value[m.row][m.col] = m.value[m.row][m.col], m.value[m.row][m.col-1]
 	if m.col < len(m.value[m.row]) {
 		m.SetCursorColumn(m.col + 1)
@@ -961,6 +982,7 @@ func (m *Model) deleteWordLeft() {
 	oldCol := m.col
 
 	m.SetCursorColumn(m.col - 1)
+
 	for unicode.IsSpace(m.value[m.row][m.col]) {
 		if m.col <= 0 {
 			break
@@ -977,6 +999,7 @@ func (m *Model) deleteWordLeft() {
 				// keep the previous space
 				m.SetCursorColumn(m.col + 1)
 			}
+
 			break
 		}
 	}
@@ -1037,10 +1060,12 @@ func (m *Model) characterLeft(insideLine bool) {
 	if m.col == 0 && m.row != 0 {
 		m.row--
 		m.CursorEnd()
+
 		if !insideLine {
 			return
 		}
 	}
+
 	if m.col > 0 {
 		m.SetCursorColumn(m.col - 1)
 	}
@@ -1053,9 +1078,11 @@ func (m *Model) wordLeft() {
 	for {
 		oldRow, oldCol := m.row, m.col
 		m.characterLeft(true /* insideLine */)
+
 		if m.row == oldRow && m.col == oldCol {
 			return
 		}
+
 		if m.col < len(m.value[m.row]) && !unicode.IsSpace(m.value[m.row][m.col]) {
 			break
 		}
@@ -1065,6 +1092,7 @@ func (m *Model) wordLeft() {
 		if unicode.IsSpace(m.value[m.row][m.col-1]) {
 			break
 		}
+
 		m.SetCursorColumn(m.col - 1)
 	}
 }
@@ -1083,16 +1111,20 @@ func (m *Model) doWordRight(fn func(charIdx, pos int)) {
 			// End of text.
 			break
 		}
+
 		m.characterRight()
 	}
 
 	charIdx := 0
+
 	for m.col < len(m.value[m.row]) {
 		if unicode.IsSpace(m.value[m.row][m.col]) {
 			break
 		}
+
 		fn(charIdx, m.col)
 		m.SetCursorColumn(m.col + 1)
+
 		charIdx++
 	}
 }
@@ -1158,6 +1190,7 @@ func (m Model) LineInfo() LineInfo {
 
 		counter += len(line)
 	}
+
 	return LineInfo{}
 }
 
@@ -1165,6 +1198,7 @@ func (m Model) LineInfo() LineInfo {
 // scrolling behavior.
 func (m *Model) repositionView() {
 	minimum := m.viewport.YOffset()
+
 	maximum := minimum + m.viewport.Height() - 1
 	if row := m.cursorLineNumber(); row < minimum {
 		m.viewport.ScrollUp(minimum - row)
@@ -1198,6 +1232,7 @@ func (m *Model) PageUp() {
 	// If not on the first visible line, snap to it.
 	if offset := m.viewport.YOffset() - m.cursorLineNumber(); offset < 0 {
 		m.setCursorLineRelative(offset)
+
 		return
 	}
 
@@ -1211,6 +1246,7 @@ func (m *Model) PageDown() {
 	// If not on the last visible line, snap to it.
 	if offset := m.cursorLineNumber() - m.viewport.YOffset(); offset < m.height-1 {
 		m.setCursorLineRelative(m.height - 1 - offset)
+
 		return
 	}
 
@@ -1303,6 +1339,7 @@ func (m *Model) SetHeight(h int) {
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if !m.focus {
 		m.virtualCursor.Blur()
+
 		return m, nil
 	}
 
@@ -1328,35 +1365,47 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.DeleteAfterCursor):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			m.col = clamp(m.col, 0, len(m.value[m.row]))
 			if m.col >= len(m.value[m.row]) {
 				m.mergeLineBelow(m.row)
+
 				break
 			}
+
 			m.deleteAfterCursor()
 		case key.Matches(msg, m.KeyMap.DeleteBeforeCursor):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			m.col = clamp(m.col, 0, len(m.value[m.row]))
 			if m.col <= 0 {
 				m.mergeLineAbove(m.row)
+
 				break
 			}
+
 			m.deleteBeforeCursor()
 		case key.Matches(msg, m.KeyMap.DeleteCharacterBackward):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			m.col = clamp(m.col, 0, len(m.value[m.row]))
 			if m.col <= 0 {
 				m.mergeLineAbove(m.row)
+
 				break
 			}
+
 			if len(m.value[m.row]) > 0 {
 				m.value[m.row] = append(m.value[m.row][:max(0, m.col-1)], m.value[m.row][m.col:]...)
 				if m.col > 0 {
@@ -1366,41 +1415,55 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.DeleteCharacterForward):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			if len(m.value[m.row]) > 0 && m.col < len(m.value[m.row]) {
 				m.value[m.row] = slices.Delete(m.value[m.row], m.col, m.col+1)
 			}
+
 			if m.col >= len(m.value[m.row]) {
 				m.mergeLineBelow(m.row)
+
 				break
 			}
 		case key.Matches(msg, m.KeyMap.DeleteWordBackward):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			if m.col <= 0 {
 				m.mergeLineAbove(m.row)
+
 				break
 			}
+
 			m.deleteWordLeft()
 		case key.Matches(msg, m.KeyMap.DeleteWordForward):
 			if m.HasSelection() {
 				m.deleteSelection()
+
 				break
 			}
+
 			m.col = clamp(m.col, 0, len(m.value[m.row]))
 			if m.col >= len(m.value[m.row]) {
 				m.mergeLineBelow(m.row)
+
 				break
 			}
+
 			m.deleteWordRight()
 		case key.Matches(msg, m.KeyMap.InsertNewline):
 			m.deleteSelection()
+
 			if m.atContentLimit() {
 				return m, nil
 			}
+
 			m.col = clamp(m.col, 0, len(m.value[m.row]))
 			m.splitLine(m.row, m.col)
 		case key.Matches(msg, m.KeyMap.LineEnd):
@@ -1420,6 +1483,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.wordRight()
 		case key.Matches(msg, m.KeyMap.Paste):
 			m.deleteSelection()
+
 			return m, Paste
 		case key.Matches(msg, m.KeyMap.CharacterBackward):
 			m.ClearSelection()
@@ -1486,6 +1550,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if msg.Text == "" {
 				break
 			}
+
 			m.deleteSelection()
 			m.insertRunesFromUserInput([]rune(msg.Text))
 		}
@@ -1508,6 +1573,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	m.viewport.SetContent(view)
 	vp, cmd := m.viewport.Update(msg)
 	m.viewport = &vp
+
 	cmds = append(cmds, cmd)
 
 	if m.useVirtualCursor {
@@ -1520,6 +1586,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.virtualCursor.IsBlinked = false
 			cmd = m.virtualCursor.Blink()
 		}
+
 		cmds = append(cmds, cmd)
 	}
 
@@ -1532,6 +1599,7 @@ func (m *Model) view() string {
 	if len(m.Value()) == 0 && m.row == 0 && m.col == 0 && m.Placeholder != "" {
 		return m.placeholderView()
 	}
+
 	m.virtualCursor.TextStyle = m.activeStyle().computedCursorLine()
 
 	var (
@@ -1544,6 +1612,7 @@ func (m *Model) view() string {
 	)
 
 	displayLine := 0
+
 	for l, line := range m.value {
 		wrappedLines := m.memoizedWrap(line, m.width)
 
@@ -1561,9 +1630,11 @@ func (m *Model) view() string {
 		for wl, wrappedLine := range wrappedLines {
 			prompt := m.promptView(displayLine)
 			s.WriteString(style.Render(prompt))
+
 			displayLine++
 
 			var ln string
+
 			if m.ShowLineNumbers {
 				if wl == 0 { // normal line
 					isCursorLine := m.row == l
@@ -1603,6 +1674,7 @@ func (m *Model) view() string {
 				s.WriteString(style.Render(string(wrappedLine[selTo:])))
 			} else if m.row == l && lineInfo.RowOffset == wl {
 				s.WriteString(style.Render(string(wrappedLine[:lineInfo.ColumnOffset])))
+
 				if m.col >= len(line) && lineInfo.CharOffset >= m.width {
 					m.virtualCursor.SetChar(" ")
 					s.WriteString(m.virtualCursor.View())
@@ -1614,9 +1686,12 @@ func (m *Model) view() string {
 			} else {
 				s.WriteString(style.Render(string(wrappedLine)))
 			}
+
 			wrappedBase += len(wrappedLine)
+
 			s.WriteString(style.Render(strings.Repeat(" ", max(0, padding))))
 			s.WriteRune('\n')
+
 			newLines++
 		}
 	}
@@ -1647,6 +1722,7 @@ func (m Model) View() string {
 	m.viewport.SetContent(m.view())
 	view := m.viewport.View()
 	styles := m.activeStyle()
+
 	return styles.Base.Render(view)
 }
 
@@ -1658,6 +1734,7 @@ func (m Model) promptView(displayLine int) (prompt string) {
 			LineNumber: displayLine,
 			Focused:    m.focus,
 		})
+
 		width := lipgloss.Width(prompt)
 		if width < m.promptWidth {
 			prompt = fmt.Sprintf("%*s%s", m.promptWidth-width, "", prompt)
@@ -1687,6 +1764,7 @@ func (m Model) lineNumberView(n int, isCursorLine bool) (str string) {
 
 	// XXX: is textStyle really necessary here?
 	textStyle := m.activeStyle().computedText()
+
 	lineNumberStyle := m.activeStyle().computedLineNumber()
 	if isCursorLine {
 		textStyle = m.activeStyle().computedCursorLine()
@@ -1736,6 +1814,7 @@ func (m Model) placeholderView() string {
 			switch {
 			case i == 0:
 				ln = i + 1
+
 				fallthrough
 			case len(plines) > i:
 				s.WriteString(m.lineNumberView(ln, isLineNumber))
@@ -1779,6 +1858,7 @@ func (m Model) placeholderView() string {
 	}
 
 	m.viewport.SetContent(s.String())
+
 	return styles.Base.Render(m.viewport.View())
 }
 
@@ -1826,6 +1906,7 @@ func (m Model) Cursor() *tea.Cursor {
 	c.Blink = m.styles.Cursor.Blink
 	c.Color = m.styles.Cursor.Color
 	c.Shape = m.styles.Cursor.Shape
+
 	return c
 }
 
@@ -1882,11 +1963,14 @@ func (m *Model) CopySelection() tea.Cmd {
 	if !m.HasSelection() {
 		return nil
 	}
+
 	text := m.SelectedText()
+
 	return func() tea.Msg {
 		if err := clipboard.WriteAll(text); err != nil {
 			return copyErrMsg{err}
 		}
+
 		return copyMsg(text)
 	}
 }
@@ -1897,6 +1981,7 @@ func (m *Model) startKeyboardSelection() {
 	if !m.hasSelection {
 		m.selAnchor = Position{Row: m.row, Col: m.col}
 	}
+
 	m.hasSelection = true
 	m.selHead = Position{Row: m.row, Col: m.col}
 }
@@ -1912,8 +1997,10 @@ func (m Model) memoizedWrap(runes []rune, width int) [][]rune {
 	if v, ok := m.cache.Get(input); ok {
 		return v
 	}
+
 	v := wrap(runes, width)
 	m.cache.Set(input, v)
+
 	return v
 }
 
@@ -1926,7 +2013,9 @@ func (m Model) cursorLineNumber() int {
 		// into.
 		line += len(m.memoizedWrap(m.value[i], m.width))
 	}
+
 	line += m.LineInfo().RowOffset
+
 	return line
 }
 
@@ -1937,6 +2026,7 @@ func (m *Model) totalVisualLines() int {
 	for _, line := range m.value {
 		n += len(m.memoizedWrap(line, m.width))
 	}
+
 	return n
 }
 
@@ -1946,15 +2036,19 @@ func (m *Model) recalculateHeight() {
 	if !m.DynamicHeight {
 		return
 	}
+
 	minH := max(m.MinHeight, minHeight)
 	total := m.totalVisualLines()
+
 	h := max(total, minH)
 	if m.MaxHeight > 0 {
 		h = min(h, m.MaxHeight)
 	}
+
 	if maxOffset := total - h; m.viewport.YOffset() > maxOffset {
 		m.viewport.SetYOffset(max(0, maxOffset))
 	}
+
 	m.SetHeight(h)
 }
 
@@ -1966,6 +2060,7 @@ func (m *Model) atContentLimit() bool {
 	if m.MaxContentHeight > 0 {
 		return m.totalVisualLines() >= m.MaxContentHeight
 	}
+
 	return m.MaxHeight > 0 && len(m.value) >= m.MaxHeight
 }
 
@@ -1984,9 +2079,11 @@ func (m *Model) visualLinesForInsert(lines [][]rune) int {
 	merged := make([]rune, m.col+len(lines[0]))
 	copy(merged, m.value[m.row][:m.col])
 	copy(merged[m.col:], lines[0])
+
 	if len(lines) == 1 {
 		merged = append(merged, m.value[m.row][m.col:]...)
 	}
+
 	delta := len(m.memoizedWrap(merged, m.width)) - currentRowVisual
 
 	// Each additional line is a new logical line.
@@ -1994,6 +2091,7 @@ func (m *Model) visualLinesForInsert(lines [][]rune) int {
 		if i == len(lines)-1 {
 			content = append(content, m.value[m.row][m.col:]...)
 		}
+
 		delta += len(m.memoizedWrap(content, m.width))
 	}
 
@@ -2066,6 +2164,7 @@ func Paste() tea.Msg {
 	if err != nil {
 		return pasteErrMsg{err}
 	}
+
 	return pasteMsg(str)
 }
 
@@ -2088,6 +2187,7 @@ func wrap(runes []rune, width int) [][]rune {
 		if spaces > 0 { //nolint:nestif
 			if uniseg.StringWidth(string(lines[row]))+uniseg.StringWidth(string(word))+spaces > width {
 				row++
+
 				lines = append(lines, []rune{})
 				lines[row] = append(lines[row], word...)
 				lines[row] = append(lines[row], repeatSpaces(spaces)...)
@@ -2108,8 +2208,10 @@ func wrap(runes []rune, width int) [][]rune {
 				// line because the current word fills up the entire line.
 				if len(lines[row]) > 0 {
 					row++
+
 					lines = append(lines, []rune{})
 				}
+
 				lines[row] = append(lines[row], word...)
 				word = nil
 			}
@@ -2143,12 +2245,15 @@ func numDigits(n int) int {
 	if n == 0 {
 		return 1
 	}
+
 	count := 0
+
 	num := abs(n)
 	for num > 0 {
 		count++
 		num /= 10
 	}
+
 	return count
 }
 
@@ -2156,6 +2261,7 @@ func clamp(v, low, high int) int {
 	if high < low {
 		low, high = high, low
 	}
+
 	return min(high, max(low, v))
 }
 
@@ -2163,5 +2269,6 @@ func abs(n int) int {
 	if n < 0 {
 		return -n
 	}
+
 	return n
 }

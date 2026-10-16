@@ -1,11 +1,13 @@
-package memoization
+package memoization_test
 
 import (
 	"encoding/binary"
-	"fmt"
-	"os"
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea/memoization"
 )
 
 type actionType int
@@ -15,9 +17,11 @@ const (
 	get
 )
 
+const fuzzCacheCapacity = 10
+
 type cacheAction struct {
 	actionType    actionType
-	key           HString
+	key           memoization.HString
 	value         any
 	expectedValue any
 }
@@ -29,6 +33,8 @@ type testCase struct {
 }
 
 func TestCache(t *testing.T) {
+	t.Parallel()
+
 	tests := []testCase{
 		{
 			name:     "TestNewMemoCache",
@@ -58,51 +64,51 @@ func TestCache(t *testing.T) {
 			name:     "TestSetNilValue",
 			capacity: 10,
 			actions: []cacheAction{
-				{actionType: set, key: HString("nilKey"), value: nil},
-				{actionType: get, key: HString("nilKey"), expectedValue: nil},
+				{actionType: set, key: "nilKey", value: nil},
+				{actionType: get, key: "nilKey", expectedValue: nil},
 			},
 		},
 		{
 			name:     "TestGetAfterEviction",
 			capacity: 2,
 			actions: []cacheAction{
-				{actionType: set, key: HString("1"), value: 1},
-				{actionType: set, key: HString("2"), value: 2},
-				{actionType: set, key: HString("3"), value: 3},
-				{actionType: get, key: HString("1"), expectedValue: nil},
-				{actionType: get, key: HString("2"), expectedValue: 2},
+				{actionType: set, key: "1", value: 1},
+				{actionType: set, key: "2", value: 2},
+				{actionType: set, key: "3", value: 3},
+				{actionType: get, key: "1", expectedValue: nil},
+				{actionType: get, key: "2", expectedValue: 2},
 			},
 		},
 		{
 			name:     "TestGetAfterLRU",
 			capacity: 2,
 			actions: []cacheAction{
-				{actionType: set, key: HString("1"), value: 1},
-				{actionType: set, key: HString("2"), value: 2},
-				{actionType: get, key: HString("1"), expectedValue: 1},
-				{actionType: set, key: HString("3"), value: 3},
-				{actionType: get, key: HString("1"), expectedValue: 1},
-				{actionType: get, key: HString("3"), expectedValue: 3},
-				{actionType: get, key: HString("2"), expectedValue: nil},
+				{actionType: set, key: "1", value: 1},
+				{actionType: set, key: "2", value: 2},
+				{actionType: get, key: "1", expectedValue: 1},
+				{actionType: set, key: "3", value: 3},
+				{actionType: get, key: "1", expectedValue: 1},
+				{actionType: get, key: "3", expectedValue: 3},
+				{actionType: get, key: "2", expectedValue: nil},
 			},
 		},
 		{
 			name:     "TestLRU_Capacity3",
 			capacity: 3,
 			actions: []cacheAction{
-				{actionType: set, key: HString("1"), value: 1},
-				{actionType: set, key: HString("2"), value: 2},
-				{actionType: set, key: HString("3"), value: 3},
-				{actionType: get, key: HString("1"), expectedValue: 1}, // Accessing key "1"
+				{actionType: set, key: "1", value: 1},
+				{actionType: set, key: "2", value: 2},
+				{actionType: set, key: "3", value: 3},
+				{actionType: get, key: "1", expectedValue: 1}, // Accessing key "1"
 				{
 					actionType: set,
-					key:        HString("4"),
+					key:        "4",
 					value:      4,
 				}, // Should evict key "2" since "1" was recently accessed
-				{actionType: get, key: HString("2"), expectedValue: nil},
-				{actionType: get, key: HString("1"), expectedValue: 1},
-				{actionType: get, key: HString("3"), expectedValue: 3},
-				{actionType: get, key: HString("4"), expectedValue: 4},
+				{actionType: get, key: "2", expectedValue: nil},
+				{actionType: get, key: "1", expectedValue: 1},
+				{actionType: get, key: "3", expectedValue: 3},
+				{actionType: get, key: "4", expectedValue: 4},
 			},
 		},
 		// Test LRU behavior with varying accesses
@@ -110,34 +116,41 @@ func TestCache(t *testing.T) {
 			name:     "TestLRU_VaryingAccesses",
 			capacity: 3,
 			actions: []cacheAction{
-				{actionType: set, key: HString("1"), value: 1},
-				{actionType: set, key: HString("2"), value: 2},
-				{actionType: set, key: HString("3"), value: 3},
-				{actionType: get, key: HString("1"), expectedValue: 1}, // Accessing key "1"
-				{actionType: get, key: HString("2"), expectedValue: 2}, // Accessing key "2"
-				{actionType: set, key: HString("4"), value: 4},         // Should evict key "3"
-				{actionType: get, key: HString("3"), expectedValue: nil},
-				{actionType: get, key: HString("1"), expectedValue: 1},
-				{actionType: get, key: HString("2"), expectedValue: 2},
-				{actionType: get, key: HString("4"), expectedValue: 4},
+				{actionType: set, key: "1", value: 1},
+				{actionType: set, key: "2", value: 2},
+				{actionType: set, key: "3", value: 3},
+				{actionType: get, key: "1", expectedValue: 1}, // Accessing key "1"
+				{actionType: get, key: "2", expectedValue: 2}, // Accessing key "2"
+				{actionType: set, key: "4", value: 4},         // Should evict key "3"
+				{actionType: get, key: "3", expectedValue: nil},
+				{actionType: get, key: "1", expectedValue: 1},
+				{actionType: get, key: "2", expectedValue: 2},
+				{actionType: get, key: "4", expectedValue: 4},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cache := NewMemoCache[HString, any](tt.capacity)
+			t.Parallel()
+
+			cache := memoization.NewMemoCache[memoization.HString, any](tt.capacity)
 			for _, action := range tt.actions {
-				switch action.actionType {
-				case set:
-					cache.Set(action.key, action.value)
-				case get:
-					if got, _ := cache.Get(action.key); got != action.expectedValue {
-						t.Errorf("Get() = %v, want %v", got, action.expectedValue)
-					}
-				}
+				applyCacheAction(t, cache, action)
 			}
 		})
+	}
+}
+
+func applyCacheAction(t *testing.T, cache *memoization.MemoCache[memoization.HString, any], action cacheAction) {
+	t.Helper()
+
+	switch action.actionType {
+	case set:
+		cache.Set(action.key, action.value)
+	case get:
+		got, _ := cache.Get(action.key)
+		assert.Equal(t, action.expectedValue, got, "Get(%v)", action.key)
 	}
 }
 
@@ -157,96 +170,114 @@ func FuzzCache(f *testing.F) {
 			t.Skip() // Skip the test if the input is less than 1 byte
 		}
 
-		cache := NewMemoCache[HInt, int](10) // Initialize a cache with the initial size
+		run := fuzzRun{t: t, in: in, next: 0, cache: nil, model: nil}
+		run.reset(fuzzCacheCapacity)
 
-		expectedValues := make(map[HInt]int) // Map to store expected key-value pairs
-		accessOrder := make([]HInt, 0)       // Slice to store the order of keys accessed
-
-		for i := 0; i < len(in); {
-			opCode := in[i] % 4 // Determine the operation: Set, Get, or Reset (added case for Reset)
-			i++
-
-			switch opCode {
-			case 0, 1: // Set operation
-				if i+3 > len(in) {
-					t.Skip() // Not enough input to continue, so skip
-				}
-
-				key := HInt(binary.BigEndian.Uint16(in[i : i+2]))
-				value := int(in[i+2])
-				i += 3
-
-				// If the key is already in accessOrder, we remove it and append it again later
-				for index, accessedKey := range accessOrder {
-					if accessedKey == key {
-						accessOrder = slices.Delete(accessOrder, index, index+1)
-						break
-					}
-				}
-
-				cache.Set(key, value) // Set the value in the cache
-				expectedValues[key] = value
-				accessOrder = append(accessOrder, key) // Add the key to the access order slice
-
-				// If we exceeded the cache size, we need to evict the least recently used item
-				if len(accessOrder) > cache.Capacity() {
-					evictedKey := accessOrder[0]
-					accessOrder = accessOrder[1:]
-					delete(expectedValues, evictedKey) // Remove the evicted key from expected values
-				}
-
-			case 2: // Get operation
-				if i >= len(in) {
-					t.Skip() // Not enough input to continue, so skip
-				}
-
-				key := HInt(in[i])
-				i++
-
-				expectedValue, ok := expectedValues[key]
-				if !ok {
-					// If the key is not found, it means it was either evicted or never added
-					expectedValue = 0 // The zero value, depends on your cache implementation
-				} else {
-					// If the key was accessed, move it to the end of the accessOrder to represent recent use
-					for index, accessedKey := range accessOrder {
-						if accessedKey == key {
-							accessOrder = slices.Delete(accessOrder, index, index+1)
-							accessOrder = append(accessOrder, key)
-							break
-						}
-					}
-				}
-
-				if got, _ := cache.Get(key); got != expectedValue {
-					fmt.Fprintf(
-						os.Stderr,
-						"cache: capacity: %d, hashable: %v, cache: %v\n",
-						cache.capacity,
-						cache.hashableItems,
-						cache.cache,
-					)
-					t.Fatalf("Get(%v) = %v, want %v", key, got, expectedValue) // The values do not match
-				}
-			case 3: // Reset operation
-				if i >= len(in) {
-					t.Skip() // Not enough input to continue, so skip
-				}
-
-				newCacheSize := int(in[i]) // Read the new cache size from the input
-				i++
-
-				if newCacheSize == 0 {
-					t.Skip() // If the size is zero, we skip this test
-				}
-
-				// Create a new cache with the specified size
-				cache = NewMemoCache[HInt, int](newCacheSize)
-
-				// clear and reinitialize the expected values
-				expectedValues = make(map[HInt]int)
-				accessOrder = make([]HInt, 0)
-			}
+		for run.next < len(in) {
+			run.step()
 		}
 	})
+}
+
+type fuzzRun struct {
+	t     *testing.T
+	in    []byte
+	next  int
+	cache *memoization.MemoCache[memoization.HInt, int]
+	model *lruModel
+}
+
+func (r *fuzzRun) step() {
+	opCode := r.take(1)[0] % 4 // Determine the operation: Set, Get, or Reset (added case for Reset)
+
+	switch opCode {
+	case 0, 1:
+		r.set()
+	case 2:
+		r.get()
+	case 3:
+		r.resize()
+	}
+}
+
+func (r *fuzzRun) take(length int) []byte {
+	if r.next+length > len(r.in) {
+		r.t.Skip() // Not enough input to continue, so skip
+	}
+
+	taken := r.in[r.next : r.next+length]
+	r.next += length
+
+	return taken
+}
+
+func (r *fuzzRun) set() {
+	args := r.take(3)
+	key := memoization.HInt(binary.BigEndian.Uint16(args[:2]))
+	value := int(args[2])
+
+	r.cache.Set(key, value)
+	r.model.set(key, value, r.cache.Capacity())
+}
+
+func (r *fuzzRun) get() {
+	key := memoization.HInt(r.take(1)[0])
+	expectedValue := r.model.get(key)
+
+	if got, _ := r.cache.Get(key); got != expectedValue {
+		r.t.Fatalf("Get(%v) = %v, want %v", key, got, expectedValue) // The values do not match
+	}
+}
+
+func (r *fuzzRun) resize() {
+	newCacheSize := int(r.take(1)[0]) // Read the new cache size from the input
+	if newCacheSize == 0 {
+		r.t.Skip() // If the size is zero, we skip this test
+	}
+
+	r.reset(newCacheSize)
+}
+
+func (r *fuzzRun) reset(capacity int) {
+	r.cache = memoization.NewMemoCache[memoization.HInt, int](capacity)
+	r.model = &lruModel{expectedValues: make(map[memoization.HInt]int), accessOrder: make([]memoization.HInt, 0)}
+}
+
+type lruModel struct {
+	expectedValues map[memoization.HInt]int
+	accessOrder    []memoization.HInt
+}
+
+func (m *lruModel) set(key memoization.HInt, value, capacity int) {
+	m.forget(key)
+	m.expectedValues[key] = value
+	m.accessOrder = append(m.accessOrder, key)
+
+	// If we exceeded the cache size, we need to evict the least recently used item
+	if len(m.accessOrder) > capacity {
+		evictedKey := m.accessOrder[0]
+		m.accessOrder = m.accessOrder[1:]
+
+		delete(m.expectedValues, evictedKey)
+	}
+}
+
+func (m *lruModel) get(key memoization.HInt) int {
+	expectedValue, ok := m.expectedValues[key]
+	if ok {
+		m.forget(key)
+		m.accessOrder = append(m.accessOrder, key)
+	}
+
+	return expectedValue
+}
+
+func (m *lruModel) forget(key memoization.HInt) {
+	for index, accessedKey := range m.accessOrder {
+		if accessedKey == key {
+			m.accessOrder = slices.Delete(m.accessOrder, index, index+1)
+
+			return
+		}
+	}
 }

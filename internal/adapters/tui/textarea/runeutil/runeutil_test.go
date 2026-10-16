@@ -1,11 +1,16 @@
-package runeutil
+package runeutil_test
 
 import (
 	"testing"
-	"unicode/utf8"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea/runeutil"
 )
 
 func TestSanitize(t *testing.T) {
+	t.Parallel()
+
 	td := []struct {
 		input, output string
 	}{
@@ -26,19 +31,10 @@ func TestSanitize(t *testing.T) {
 	}
 
 	for _, tc := range td {
-		runes := make([]rune, 0, len(tc.input))
-		b := []byte(tc.input)
-		for i, w := 0, 0; i < len(b); i += w {
-			var r rune
-			r, w = utf8.DecodeRune(b[i:])
-			runes = append(runes, r)
-		}
-		t.Logf("input runes: %+v", runes)
-		s := NewSanitizer(ReplaceNewlines("XX"), ReplaceTabs(""))
-		result := s.Sanitize(runes)
-		rs := string(result)
-		if tc.output != rs {
-			t.Errorf("%q: expected %q, got %q (%+v)", tc.input, tc.output, rs, result)
-		}
+		sanitizer := runeutil.NewSanitizer(runeutil.ReplaceNewlines("XX"), runeutil.ReplaceTabs(""))
+
+		result := sanitizer.Sanitize([]rune(tc.input))
+
+		assert.Equal(t, tc.output, string(result), "input %q", tc.input)
 	}
 }

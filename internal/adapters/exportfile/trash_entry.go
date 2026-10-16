@@ -20,14 +20,14 @@ func entryOf[E domain.TrashItem](entity E, deletedAt *string, formerPath []strin
 	}
 
 	deleted, dateErr := parseTimestamp(*deletedAt)
-	names, namesErr := entitiesOf(formerPath, value.NewFolderName)
+	path, pathErr := value.NewFolderPath(formerPath)
 
-	err := errors.Join(dateErr, namesErr)
+	err := errors.Join(dateErr, pathErr)
 	if err != nil {
 		return trashEntry[E]{}, err
 	}
 
-	mark, err := domain.NewTrashMark(entity, deleted, names)
+	mark, err := domain.NewTrashMark(entity, deleted, path)
 	if err != nil {
 		return trashEntry[E]{}, fmt.Errorf("trash mark: %w", err)
 	}
@@ -45,7 +45,7 @@ func deletedAtOf[I comparable](marks map[I]domain.TrashMark, id I) *string {
 }
 
 func formerPathOf[I comparable](marks map[I]domain.TrashMark, id I) []string {
-	return recordsOf(marks[id].FormerPath(), value.FolderName.String)
+	return marks[id].FormerPath().Strings()
 }
 
 func requireLive(formerPath []string) error {

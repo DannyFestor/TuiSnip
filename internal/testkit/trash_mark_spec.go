@@ -20,13 +20,8 @@ type TrashMarkSpec struct {
 func TrashMark(tb testing.TB, spec TrashMarkSpec) domain.TrashMark {
 	tb.Helper()
 
-	formerPath := make([]value.FolderName, 0, len(spec.FormerPath))
-	for _, raw := range spec.FormerPath {
-		name, err := value.NewFolderName(raw)
-		require.NoError(tb, err)
-
-		formerPath = append(formerPath, name)
-	}
+	formerPath, err := value.NewFolderPath(spec.FormerPath)
+	require.NoError(tb, err)
 
 	mark, err := domain.NewTrashMark(spec.Item, cmp.Or(spec.DeletedAt, spec.Item.CreatedAt()), formerPath)
 	require.NoError(tb, err)

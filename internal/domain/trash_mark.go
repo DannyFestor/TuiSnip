@@ -3,7 +3,6 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -16,10 +15,10 @@ type TrashItem interface {
 
 type TrashMark struct {
 	deletedAt  time.Time
-	formerPath []value.FolderName
+	formerPath value.FolderPath
 }
 
-func NewTrashMark(item TrashItem, deletedAt time.Time, formerPath []value.FolderName) (TrashMark, error) {
+func NewTrashMark(item TrashItem, deletedAt time.Time, formerPath value.FolderPath) (TrashMark, error) {
 	err := errors.Join(
 		requireStorable(deletedAt),
 		requireDeletedAfterCreate(item.CreatedAt(), deletedAt),
@@ -29,15 +28,15 @@ func NewTrashMark(item TrashItem, deletedAt time.Time, formerPath []value.Folder
 		return TrashMark{}, fmt.Errorf("domain.NewTrashMark: %w", err)
 	}
 
-	return TrashMark{deletedAt: deletedAt, formerPath: pathCopy(formerPath)}, nil
+	return TrashMark{deletedAt: deletedAt, formerPath: formerPath}, nil
 }
 
 func (m TrashMark) DeletedAt() time.Time {
 	return m.deletedAt
 }
 
-func (m TrashMark) FormerPath() []value.FolderName {
-	return pathCopy(m.formerPath)
+func (m TrashMark) FormerPath() value.FolderPath {
+	return m.formerPath
 }
 
 func requireDeletedAfterCreate(createdAt, deletedAt time.Time) error {
@@ -48,16 +47,8 @@ func requireDeletedAfterCreate(createdAt, deletedAt time.Time) error {
 	return nil
 }
 
-func pathCopy(path []value.FolderName) []value.FolderName {
-	if len(path) == 0 {
-		return nil
-	}
-
-	return slices.Clone(path)
-}
-
-func requireDetached(item TrashItem, formerPath []value.FolderName) error {
-	if len(formerPath) > 0 && !item.AtRoot() {
+func requireDetached(item TrashItem, formerPath value.FolderPath) error {
+	if !formerPath.IsEmpty() && !item.AtRoot() {
 		return ErrFormerPathNotDetached
 	}
 

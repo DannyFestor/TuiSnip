@@ -37,34 +37,24 @@ func entryFromColumns[E domain.TrashItem](
 	return trashEntry[E]{entity: entity, mark: mark, trashed: true}, nil
 }
 
-func formerPathFromColumn(column string) ([]value.FolderName, error) {
+func formerPathFromColumn(column string) (value.FolderPath, error) {
 	var raw []string
 
 	err := json.Unmarshal([]byte(column), &raw)
 	if err != nil {
-		return nil, fmt.Errorf("decode former path: %w", err)
+		return value.FolderPath{}, fmt.Errorf("decode former path: %w", err)
 	}
 
-	names := make([]value.FolderName, 0, len(raw))
-	for _, name := range raw {
-		parsed, nameErr := value.NewFolderName(name)
-		if nameErr != nil {
-			return nil, fmt.Errorf("former path: %w", nameErr)
-		}
-
-		names = append(names, parsed)
+	path, err := value.NewFolderPath(raw)
+	if err != nil {
+		return value.FolderPath{}, fmt.Errorf("former path: %w", err)
 	}
 
-	return names, nil
+	return path, nil
 }
 
 func formerPathColumn(mark domain.TrashMark) (string, error) {
-	raw := make([]string, 0, len(mark.FormerPath()))
-	for _, name := range mark.FormerPath() {
-		raw = append(raw, name.String())
-	}
-
-	encoded, err := json.Marshal(raw)
+	encoded, err := json.Marshal(mark.FormerPath().Strings())
 	if err != nil {
 		return "", fmt.Errorf("encode former path: %w", err)
 	}

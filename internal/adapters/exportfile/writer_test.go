@@ -59,12 +59,24 @@ func TestWriter_Write(t *testing.T) {
 			Folders:  []domain.Folder{parent, child},
 			Tags:     []domain.Tag{tag},
 			Snippets: []domain.Snippet{filed, atRoot},
+			Trash: domain.Trash{
+				Folders: map[domain.FolderID]domain.TrashMark{
+					parent.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+						Item: parent, DeletedAt: time.Date(2026, time.March, 3, 18, 0, 0, 5, tokyo),
+					}),
+				},
+				Snippets: map[domain.SnippetID]domain.TrashMark{
+					atRoot.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+						Item: atRoot, FormerPath: []string{"scripts", "a/b"},
+					}),
+				},
+			},
 		})
 
 		require.NoError(t, err)
 		assert.Equal(t, `{
   "format": "tuisnip-export",
-  "version": 1,
+  "version": 2,
   "folders": [
     {
       "id": "`+parent.ID().String()+`",
@@ -72,7 +84,9 @@ func TestWriter_Write(t *testing.T) {
       "name": "scripts",
       "default_language": "Bash",
       "created_at": "2026-03-01T09:30:00.123456789Z",
-      "updated_at": "2026-03-01T09:30:00.123456789Z"
+      "updated_at": "2026-03-01T09:30:00.123456789Z",
+      "deleted_at": "2026-03-03T09:00:00.000000005Z",
+      "former_parent_path": []
     },
     {
       "id": "`+child.ID().String()+`",
@@ -80,7 +94,9 @@ func TestWriter_Write(t *testing.T) {
       "name": "go",
       "default_language": "Go",
       "created_at": "2026-03-01T09:30:00.123456789Z",
-      "updated_at": "2026-03-02T09:00:00.000000000Z"
+      "updated_at": "2026-03-02T09:00:00.000000000Z",
+      "deleted_at": null,
+      "former_parent_path": []
     }
   ],
   "tags": [
@@ -119,7 +135,9 @@ func TestWriter_Write(t *testing.T) {
           "created_at": "2026-03-01T09:30:00.123456789Z",
           "updated_at": "2026-03-02T09:00:00.000000000Z"
         }
-      ]
+      ],
+      "deleted_at": null,
+      "former_folder_path": []
     },
     {
       "id": "`+atRoot.ID().String()+`",
@@ -138,6 +156,11 @@ func TestWriter_Write(t *testing.T) {
           "created_at": "2026-03-02T09:00:00.000000000Z",
           "updated_at": "2026-03-02T09:00:00.000000000Z"
         }
+      ],
+      "deleted_at": "2026-03-02T09:00:00.000000000Z",
+      "former_folder_path": [
+        "scripts",
+        "a/b"
       ]
     }
   ]
@@ -155,7 +178,7 @@ func TestWriter_Write(t *testing.T) {
 		//nolint:testifylint // encoded-compare: the exact bytes are the format, not only the JSON they decode to
 		assert.Equal(t, `{
   "format": "tuisnip-export",
-  "version": 1,
+  "version": 2,
   "folders": [],
   "tags": [],
   "snippets": []

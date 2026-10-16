@@ -12,6 +12,7 @@ type Library struct {
 	Folders  []Folder
 	Tags     []Tag
 	Snippets []Snippet
+	Trash    Trash
 }
 
 func (l Library) InCreatedOrder() Library {
@@ -19,6 +20,29 @@ func (l Library) InCreatedOrder() Library {
 		Folders:  slices.SortedFunc(slices.Values(l.Folders), byCreated(Folder.CreatedAt, Folder.ID)),
 		Tags:     slices.SortedFunc(slices.Values(l.Tags), byCreated(Tag.CreatedAt, Tag.ID)),
 		Snippets: slices.SortedFunc(slices.Values(l.Snippets), byCreated(Snippet.CreatedAt, Snippet.ID)),
+		Trash:    l.Trash,
+	}
+}
+
+func (l Library) InTrash() Library {
+	parentOf := l.parentOf()
+	trashedFolders := make(map[FolderID]bool, len(l.Folders))
+
+	for _, folder := range l.Folders {
+		trashedFolders[folder.ID()] = l.Trash.holdsFolderOrAncestor(folder.ID(), parentOf)
+	}
+
+	return Library{
+		Folders: slices.DeleteFunc(slices.Clone(l.Folders), func(folder Folder) bool {
+			return !trashedFolders[folder.ID()]
+		}),
+		Tags: nil,
+		Snippets: slices.DeleteFunc(slices.Clone(l.Snippets), func(snippet Snippet) bool {
+			_, trashed := l.Trash.Snippets[snippet.ID()]
+
+			return !trashed && !trashedFolders[snippet.FolderID()]
+		}),
+		Trash: l.Trash,
 	}
 }
 
@@ -52,15 +76,20 @@ func (l Library) ReusingTags(stored []Tag) Library {
 		snippets = append(snippets, l.Snippets[i].Retagged(byName.reused(l.Snippets[i].Tags())))
 	}
 
-	return Library{Folders: l.Folders, Tags: byName.unmatched(l.Tags), Snippets: snippets}
+	return Library{Folders: l.Folders, Tags: byName.unmatched(l.Tags), Snippets: snippets, Trash: l.Trash}
 }
 
-func (l Library) folderDepths() (map[FolderID]int, error) {
+func (l Library) parentOf() map[FolderID]FolderID {
 	parentOf := make(map[FolderID]FolderID, len(l.Folders))
 	for _, folder := range l.Folders {
 		parentOf[folder.ID()] = folder.ParentID()
 	}
 
+	return parentOf
+}
+
+func (l Library) folderDepths() (map[FolderID]int, error) {
+	parentOf := l.parentOf()
 	depths := make(map[FolderID]int, len(l.Folders))
 
 	var errs []error

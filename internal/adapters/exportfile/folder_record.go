@@ -1,53 +1,34 @@
 package exportfile
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/DannyFestor/TuiSnip/internal/domain"
-	"github.com/DannyFestor/TuiSnip/internal/domain/value"
-)
+import "github.com/DannyFestor/TuiSnip/internal/domain"
 
 type folderRecord struct {
-	ID              string  `json:"id"`
-	ParentID        *string `json:"parent_id"`
-	Name            string  `json:"name"`
-	DefaultLanguage string  `json:"default_language"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	folderRecordV1
+
+	DeletedAt        *string  `json:"deleted_at"`
+	FormerParentPath []string `json:"former_parent_path"`
 }
 
-func folderRecordOf(folder domain.Folder) folderRecord {
-	return folderRecord{
-		ID:              folder.ID().String(),
-		ParentID:        folderReference(folder, domain.Folder.AtRoot, domain.Folder.ParentID),
-		Name:            folder.Name().String(),
-		DefaultLanguage: folder.DefaultLanguage().String(),
-		CreatedAt:       timestampOf(folder.CreatedAt()),
-		UpdatedAt:       timestampOf(folder.UpdatedAt()),
+func folderRecordOf(trash domain.Trash) func(folder domain.Folder) folderRecord {
+	return func(folder domain.Folder) folderRecord {
+		return folderRecord{
+			folderRecordV1:   folderRecordV1Of(folder),
+			DeletedAt:        deletedAtOf(trash.Folders, folder.ID()),
+			FormerParentPath: formerPathOf(trash.Folders, folder.ID()),
+		}
 	}
 }
 
-func (r folderRecord) folder() (domain.Folder, error) {
-	id, idErr := parseID[domain.FolderID](r.ID)
-	parentID, parentErr := parseFolderReference(r.ParentID)
-	name, nameErr := value.NewFolderName(r.Name)
-	language, languageErr := value.NewLanguage(r.DefaultLanguage)
-	stamped, datesErr := parseDates(r.CreatedAt, r.UpdatedAt)
-
-	err := errors.Join(idErr, parentErr, nameErr, languageErr, datesErr)
+func (r folderRecord) entry() (trashEntry[domain.Folder], error) {
+	folder, err := r.folder()
 	if err != nil {
-		return domain.Folder{}, r.named(err)
+		return trashEntry[domain.Folder]{}, err
 	}
 
-	folder, err := domain.NewFolder(id, name, parentID, language, stamped.created, stamped.updated)
+	entry, err := entryOf(folder, r.DeletedAt, r.FormerParentPath)
 	if err != nil {
-		return domain.Folder{}, r.named(err)
+		return trashEntry[domain.Folder]{}, r.named(err)
 	}
 
-	return folder, nil
-}
-
-func (r folderRecord) named(err error) error {
-	return fmt.Errorf("folder %s: %w", r.ID, err)
+	return entry, nil
 }

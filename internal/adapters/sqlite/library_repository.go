@@ -132,7 +132,55 @@ func insertLibrary(ctx context.Context, queries *sqlcgen.Queries, library domain
 		return err
 	}
 
-	return insertSnippets(ctx, queries, library.Snippets)
+	err = insertSnippets(ctx, queries, library.Snippets)
+	if err != nil {
+		return err
+	}
+
+	err = markTrashedFolders(ctx, queries, library.Trash.Folders)
+	if err != nil {
+		return err
+	}
+
+	return markTrashedSnippets(ctx, queries, library.Trash.Snippets)
+}
+
+func markTrashedFolders(
+	ctx context.Context,
+	queries *sqlcgen.Queries,
+	marks map[domain.FolderID]domain.TrashMark,
+) error {
+	for id, mark := range marks {
+		params, err := folderTrashMarkParams(id, mark)
+		if err != nil {
+			return err
+		}
+
+		err = queries.SetFolderTrashMark(ctx, params)
+		if err != nil {
+			return fmt.Errorf("mark folder trashed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func markTrashedSnippets(
+	ctx context.Context, queries *sqlcgen.Queries, marks map[domain.SnippetID]domain.TrashMark,
+) error {
+	for id, mark := range marks {
+		params, err := snippetTrashMarkParams(id, mark)
+		if err != nil {
+			return err
+		}
+
+		err = queries.SetSnippetTrashMark(ctx, params)
+		if err != nil {
+			return fmt.Errorf("mark snippet trashed: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func insertFolders(ctx context.Context, queries *sqlcgen.Queries, folders []domain.Folder) error {

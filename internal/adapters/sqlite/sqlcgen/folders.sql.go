@@ -240,6 +240,23 @@ func (q *Queries) MoveFolder(ctx context.Context, arg MoveFolderParams) (int64, 
 	return result.RowsAffected()
 }
 
+const setFolderTrashMark = `-- name: SetFolderTrashMark :exec
+UPDATE folders
+SET deleted_at = ?, former_parent_path = ?
+WHERE id = ?
+`
+
+type SetFolderTrashMarkParams struct {
+	DeletedAt        *sqltype.Timestamp
+	FormerParentPath string
+	ID               sqltype.ID
+}
+
+func (q *Queries) SetFolderTrashMark(ctx context.Context, arg SetFolderTrashMarkParams) error {
+	_, err := q.db.ExecContext(ctx, setFolderTrashMark, arg.DeletedAt, arg.FormerParentPath, arg.ID)
+	return err
+}
+
 const updateFolder = `-- name: UpdateFolder :execrows
 UPDATE folders
 SET name = ?, default_language = ?, updated_at = ?

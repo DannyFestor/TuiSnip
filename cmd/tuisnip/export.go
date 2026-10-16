@@ -17,7 +17,7 @@ func exportLibrary(ctx context.Context, app *bootstrap.App, operands []string, s
 		return fmt.Errorf("export: %w", err)
 	}
 
-	_, err = io.WriteString(stdout, "Exported "+countsPhrase(counts)+" to "+path+"\n")
+	_, err = io.WriteString(stdout, "Exported "+countsPhrase(counts)+" to "+path+"\n"+trashLine(counts.InTrash))
 	if err != nil {
 		return fmt.Errorf("print export report: %w", err)
 	}

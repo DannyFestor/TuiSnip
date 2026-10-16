@@ -59,6 +59,42 @@ func TestLibraryRepository_Load(t *testing.T) {
 			[]domain.Folder{fixture.liveFolder, fixture.trashedFolder, fixture.nestedFolder}, got.Folders)
 		assert.ElementsMatch(t,
 			[]domain.Snippet{fixture.liveSnippet, fixture.trashedSnippet, fixture.nestedSnippet}, got.Snippets)
+		assert.Equal(t, domain.Trash{
+			Folders: map[domain.FolderID]domain.TrashMark{
+				fixture.trashedFolder.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+					Item: fixture.trashedFolder, DeletedAt: fixture.trashedFolder.UpdatedAt(),
+				}),
+			},
+			Snippets: map[domain.SnippetID]domain.TrashMark{
+				fixture.trashedSnippet.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+					Item: fixture.trashedSnippet, DeletedAt: fixture.trashedSnippet.UpdatedAt(),
+				}),
+			},
+		}, got.Trash)
+	})
+
+	t.Run("loads the path a detached Trash item was in", func(t *testing.T) {
+		t.Parallel()
+
+		path := newDatabasePath(t)
+		database := openDatabase(t, path)
+		detached := insertSnippet(
+			t,
+			newSnippetRepository(t, database),
+			testkit.NewSequentialIDs(),
+			testkit.SnippetSpec{},
+		)
+		execRaw(t, path, `UPDATE snippets SET deleted_at = updated_at, former_folder_path = '["scripts","a/b"]'
+			WHERE id = ?`, detached.ID().String())
+
+		got, err := newLibraryRepository(t, database, slog.New(slog.DiscardHandler)).Load(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, map[domain.SnippetID]domain.TrashMark{
+			detached.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+				Item: detached, DeletedAt: detached.UpdatedAt(), FormerPath: []string{"scripts", "a/b"},
+			}),
+		}, got.Trash.Snippets)
 	})
 
 	t.Run("loads an empty Library", func(t *testing.T) {
@@ -147,6 +183,46 @@ func TestLibraryRepository_InsertIntoEmpty(t *testing.T) {
 		assert.ElementsMatch(t, []domain.Folder{parent, child}, got.Folders)
 		assert.ElementsMatch(t, []domain.Tag{carried, unused}, got.Tags)
 		assert.ElementsMatch(t, []domain.Snippet{filed, atRoot}, got.Snippets)
+	})
+
+	t.Run("inserts the Trash, a detached item and an item inside a trashed Folder included", func(t *testing.T) {
+		t.Parallel()
+
+		database := openDatabase(t, newDatabasePath(t))
+		ids := testkit.NewSequentialIDs()
+		trashed := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "scripts"})
+		inside := testkit.Snippet(t, testkit.SnippetSpec{
+			ID:        ids.NewSnippetID(),
+			FolderID:  trashed.ID(),
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
+		})
+		detached := testkit.Snippet(t, testkit.SnippetSpec{
+			ID: ids.NewSnippetID(), Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID()}},
+		})
+		trash := domain.Trash{
+			Folders: map[domain.FolderID]domain.TrashMark{
+				trashed.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: trashed}),
+			},
+			Snippets: map[domain.SnippetID]domain.TrashMark{
+				inside.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: inside}),
+				detached.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+					Item: detached, FormerPath: []string{"gone", "a/b"},
+				}),
+			},
+		}
+		repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
+
+		err := repository.InsertIntoEmpty(t.Context(), domain.Library{
+			Folders:  []domain.Folder{trashed},
+			Tags:     nil,
+			Snippets: []domain.Snippet{inside, detached},
+			Trash:    trash,
+		})
+
+		require.NoError(t, err)
+		got, err := repository.Load(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, trash, got.Trash)
 	})
 
 	refusals := []struct {

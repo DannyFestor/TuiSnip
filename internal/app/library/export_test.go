@@ -62,6 +62,46 @@ func TestExport_Run(t *testing.T) {
 		assert.Equal(t, library.Counts{Folders: 2, Tags: 1, Snippets: 2, Fragments: 2}, got)
 	})
 
+	t.Run("counts the Trash in the totals and apart, everything inside a trashed Folder included", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		trashed := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID()})
+		nested := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), ParentID: trashed.ID()})
+		inside := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: nested.ID()})
+		separate := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID()})
+		live := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID()})
+		loaded := domain.Library{
+			Folders:  []domain.Folder{trashed, nested},
+			Tags:     nil,
+			Snippets: []domain.Snippet{inside, separate, live},
+			Trash: domain.Trash{
+				Folders: map[domain.FolderID]domain.TrashMark{
+					trashed.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: trashed}),
+				},
+				Snippets: map[domain.SnippetID]domain.TrashMark{
+					separate.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: separate}),
+				},
+			},
+		}
+		loader := NewMockLoader(t)
+		loader.EXPECT().Load(mock.Anything).Return(loaded, nil)
+
+		writer := NewMockWriter(t)
+		writer.EXPECT().Write(mock.Anything, exportPath, mock.AnythingOfType("domain.Library")).Return(nil)
+
+		got, err := newExport(t, loader, writer).Run(t.Context(), library.ExportInput{Path: exportPath})
+
+		require.NoError(t, err)
+		assert.Equal(t, library.Counts{
+			Folders:   2,
+			Tags:      0,
+			Snippets:  3,
+			Fragments: 3,
+			InTrash:   library.TrashCounts{Folders: 2, Snippets: 2},
+		}, got)
+	})
+
 	t.Run("writes nothing when the Library can't be loaded", func(t *testing.T) {
 		t.Parallel()
 

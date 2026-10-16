@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	formatMarker  = "tuisnip-export"
-	formatVersion = 1
-	indent        = "  "
+	formatMarker       = "tuisnip-export"
+	formatVersion      = 2
+	firstFormatVersion = 1
+	indent             = "  "
 )
 
 type document struct {
@@ -32,9 +33,9 @@ func documentOf(library domain.Library) document {
 	return document{
 		Format:   formatMarker,
 		Version:  formatVersion,
-		Folders:  recordsOf(library.Folders, folderRecordOf),
+		Folders:  recordsOf(library.Folders, folderRecordOf(library.Trash)),
 		Tags:     recordsOf(library.Tags, tagRecordOf),
-		Snippets: recordsOf(library.Snippets, snippetRecordOf),
+		Snippets: recordsOf(library.Snippets, snippetRecordOf(library.Trash)),
 	}
 }
 
@@ -70,36 +71,50 @@ func decodeDocument(data []byte) (document, error) {
 		return document{}, err
 	}
 
-	return decodeStrictly(data)
+	if marked.Version == firstFormatVersion {
+		older, decodeErr := decodeStrictly[documentV1](data)
+
+		return older.upgraded(), decodeErr
+	}
+
+	return decodeStrictly[document](data)
 }
 
 // An unknown field is refused because a mistyped key, such as "parent-id", would
 // otherwise drop its value without a word and import the record changed.
-func decodeStrictly(data []byte) (document, error) {
-	var decoded document
+func decodeStrictly[D document | documentV1](data []byte) (D, error) {
+	var decoded D
 
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&decoded)
 	if err != nil {
-		return document{}, fmt.Errorf("decode export: %w", err)
+		return decoded, fmt.Errorf("decode export: %w", err)
 	}
 
 	return decoded, nil
 }
 
 func (d document) library() (domain.Library, error) {
-	folders, foldersErr := entitiesOf(d.Folders, folderRecord.folder)
+	folderEntries, foldersErr := entitiesOf(d.Folders, folderRecord.entry)
 	tags, tagsErr := entitiesOf(d.Tags, tagRecord.tag)
-	snippets, snippetsErr := entitiesOf(d.Snippets, snippetBuilder(tags))
+	snippetEntries, snippetsErr := entitiesOf(d.Snippets, snippetBuilder(tags))
 
 	err := errors.Join(foldersErr, tagsErr, snippetsErr)
 	if err != nil {
 		return domain.Library{}, err
 	}
 
-	return domain.Library{Folders: folders, Tags: tags, Snippets: snippets}, nil
+	return domain.Library{
+		Folders:  entitiesIn(folderEntries),
+		Tags:     tags,
+		Snippets: entitiesIn(snippetEntries),
+		Trash: domain.Trash{
+			Folders:  marksIn(folderEntries, domain.Folder.ID),
+			Snippets: marksIn(snippetEntries, domain.Snippet.ID),
+		},
+	}, nil
 }
 
 func (h header) requireReadable() error {
@@ -108,7 +123,7 @@ func (h header) requireReadable() error {
 		return ErrNotAnExport
 	case h.Version > formatVersion:
 		return fmt.Errorf("version %d: %w", h.Version, ErrNewerVersion)
-	case h.Version != formatVersion:
+	case h.Version < firstFormatVersion:
 		return fmt.Errorf("version %d: %w", h.Version, ErrUnknownVersion)
 	}
 

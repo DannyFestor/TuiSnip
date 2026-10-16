@@ -2,10 +2,10 @@ package input
 
 import (
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 )
 
 func NewLine(prompt string, styles look.Styles) textinput.Model {
@@ -20,8 +20,6 @@ func NewContentArea(styles look.Styles) textarea.Model {
 	area := textarea.New()
 	area.Prompt = ""
 	area.MaxHeight = 0
-	area.KeyMap.Paste = withoutClipboardAccess(area.KeyMap.Paste)
-	area.KeyMap.CopySelection = withoutClipboardAccess(area.KeyMap.CopySelection)
 
 	return RestyledArea(area, styles)
 }

@@ -74,6 +74,9 @@ internal/
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
       tagrefusal/            how a Tag name that breaks a name rule is refused, shared by the Tag pane and the Tag editor
+      textarea/              TuiSnip's fork of the Bubbles v2.2.1 textarea, the Content textarea of the edit overlay and Capture (ADR 0004)
+        runeutil/            the fork's copy of upstream's internal rune sanitiser
+        memoization/         the fork's copy of upstream's internal LRU cache for wrapped lines
   bootstrap/                 composition root
   testkit/                   fixed Clock, sequential IDs, entity builders; imported only by tests
 test/
@@ -125,7 +128,7 @@ No other edges exist. In particular:
 
 - Concerns never import each other. When `folder.Delete` needs to remove Snippets, it declares its own interface, and `bootstrap` passes the same `sqlite.SnippetRepository` that `snippet` uses.
 - Driven adapters never import `app`. Go satisfies interfaces implicitly, so `sqlite.SnippetRepository` fits `snippet.CreateRepository` without importing `snippet`. `bootstrap` passing one into the other is the compile-time check.
-- Third-party modules are granted per component: `charm.land/**` and chroma to `tui`, `modernc.org/sqlite` and goose to `sqlite`. The TOML library and the fuzzy matcher get a `vendors` entry when they are chosen.
+- Third-party modules are granted per component: `charm.land/**`, chroma, and the textarea fork's go-runewidth and uniseg to `tui`, `modernc.org/sqlite` and goose to `sqlite`. The TOML library and the fuzzy matcher get a `vendors` entry when they are chosen.
 
 ## Actions
 

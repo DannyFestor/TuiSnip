@@ -3,8 +3,9 @@ package editoverlay
 import (
 	"strings"
 
-	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 )
 
 const indentLevel = "    "

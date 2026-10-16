@@ -47,6 +47,20 @@ func TestLibraryRepository_Load(t *testing.T) {
 		assert.ElementsMatch(t, []domain.Snippet{filed, atRoot}, got.Snippets)
 	})
 
+	t.Run("loads the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := newLibraryRepository(t, fixture.database, slog.New(slog.DiscardHandler)).Load(t.Context())
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t,
+			[]domain.Folder{fixture.liveFolder, fixture.trashedFolder, fixture.nestedFolder}, got.Folders)
+		assert.ElementsMatch(t,
+			[]domain.Snippet{fixture.liveSnippet, fixture.trashedSnippet, fixture.nestedSnippet}, got.Snippets)
+	})
+
 	t.Run("loads an empty Library", func(t *testing.T) {
 		t.Parallel()
 
@@ -137,18 +151,21 @@ func TestLibraryRepository_InsertIntoEmpty(t *testing.T) {
 
 	refusals := []struct {
 		name string
-		seed func(t *testing.T, database *sqlite.Database)
+		seed func(t *testing.T, path string, database *sqlite.Database)
 	}{
 		{name: "refuses a Library holding a Folder and writes nothing", seed: seedFolder},
 		{name: "refuses a Library holding a Tag and writes nothing", seed: seedTag},
 		{name: "refuses a Library holding a Snippet and writes nothing", seed: seedSnippet},
+		{name: "refuses a Library holding only a Folder in the Trash and writes nothing", seed: seedTrashedFolder},
+		{name: "refuses a Library holding only a Snippet in the Trash and writes nothing", seed: seedTrashedSnippet},
 	}
 	for _, tt := range refusals {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			database := openDatabase(t, newDatabasePath(t))
-			tt.seed(t, database)
+			path := newDatabasePath(t)
+			database := openDatabase(t, path)
+			tt.seed(t, path, database)
 			repository := newLibraryRepository(t, database, slog.New(slog.DiscardHandler))
 			before, err := repository.Load(t.Context())
 			require.NoError(t, err)
@@ -268,24 +285,48 @@ func importedLibrary(t *testing.T) domain.Library {
 	}
 }
 
-func seedFolder(t *testing.T, database *sqlite.Database) {
+func seedFolder(t *testing.T, _ string, database *sqlite.Database) {
 	t.Helper()
 
-	insertFolder(t, newFolderRepository(t, database, slog.New(slog.DiscardHandler)), testkit.FolderSpec{
-		ID: testkit.NewSequentialIDs().NewFolderID(), Name: "seeded",
-	})
+	insertSeededFolder(t, database)
 }
 
-func seedTag(t *testing.T, database *sqlite.Database) {
+func seedTag(t *testing.T, _ string, database *sqlite.Database) {
 	t.Helper()
 
 	insertTag(t, newTagRepository(t, database), testkit.NewSequentialIDs(), "seeded")
 }
 
-func seedSnippet(t *testing.T, database *sqlite.Database) {
+func seedSnippet(t *testing.T, _ string, database *sqlite.Database) {
 	t.Helper()
 
-	insertSnippet(
+	insertSeededSnippet(t, database)
+}
+
+func seedTrashedFolder(t *testing.T, path string, database *sqlite.Database) {
+	t.Helper()
+
+	trashRawFolder(t, path, insertSeededFolder(t, database).ID())
+}
+
+func seedTrashedSnippet(t *testing.T, path string, database *sqlite.Database) {
+	t.Helper()
+
+	trashRawSnippet(t, path, insertSeededSnippet(t, database).ID())
+}
+
+func insertSeededFolder(t *testing.T, database *sqlite.Database) domain.Folder {
+	t.Helper()
+
+	return insertFolder(t, newFolderRepository(t, database, slog.New(slog.DiscardHandler)), testkit.FolderSpec{
+		ID: testkit.NewSequentialIDs().NewFolderID(), Name: "seeded",
+	})
+}
+
+func insertSeededSnippet(t *testing.T, database *sqlite.Database) domain.Snippet {
+	t.Helper()
+
+	return insertSnippet(
 		t,
 		newSnippetRepository(t, database),
 		testkit.NewSequentialIDs(),

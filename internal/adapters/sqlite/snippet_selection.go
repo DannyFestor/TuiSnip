@@ -11,7 +11,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-type snippetListing[A any] func(ctx context.Context, arg A) ([]sqlcgen.Snippet, error)
+type snippetListing[A any] func(ctx context.Context, arg A) ([]sqlcgen.LiveSnippet, error)
 
 type orderedListings[A any] struct {
 	byTitle   snippetListing[A]
@@ -39,7 +39,7 @@ func snippetByID(id domain.SnippetID) snippetSelection {
 				return nil, fmt.Errorf("get snippet: %w", err)
 			}
 
-			return []sqlcgen.Snippet{row}, nil
+			return []sqlcgen.Snippet{sqlcgen.Snippet(row)}, nil
 		},
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
 			return queries.ListFragmentsBySnippet(ctx, column)
@@ -50,16 +50,30 @@ func snippetByID(id domain.SnippetID) snippetSelection {
 	}
 }
 
-func allSnippets() snippetSelection {
+func liveSnippets() snippetSelection {
 	return snippetSelection{
 		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
-			return queries.ListSnippets(ctx)
+			return snippetRowsOf(queries.ListLiveSnippets(ctx))
 		},
 		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
-			return queries.ListFragments(ctx)
+			return queries.ListLiveFragments(ctx)
 		},
 		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
-			return queries.ListSnippetTags(ctx)
+			return snippetTagRowsOf(queries.ListLiveSnippetTags(ctx))
+		},
+	}
+}
+
+func librarySnippets() snippetSelection {
+	return snippetSelection{
+		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
+			return queries.ListLibrarySnippets(ctx)
+		},
+		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
+			return queries.ListLibraryFragments(ctx)
+		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return queries.ListLibrarySnippetTags(ctx)
 		},
 	}
 }
@@ -114,7 +128,7 @@ func (l orderedListings[A]) run(ctx context.Context, order domain.SortOrder, arg
 		return nil, err
 	}
 
-	return listing(ctx, arg)
+	return snippetRowsOf(listing(ctx, arg))
 }
 
 func (l orderedListings[A]) by(order domain.SortOrder) (snippetListing[A], error) {

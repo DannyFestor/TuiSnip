@@ -75,7 +75,7 @@ func (r *SnippetRepository) Find(ctx context.Context, id domain.SnippetID) (doma
 }
 
 func (r *SnippetRepository) List(ctx context.Context) ([]domain.Snippet, error) {
-	snippets, err := r.loadAll(ctx, allSnippets())
+	snippets, err := r.loadAll(ctx, liveSnippets())
 	if err != nil {
 		return nil, fmt.Errorf("sqlite.SnippetRepository.List: %w", err)
 	}

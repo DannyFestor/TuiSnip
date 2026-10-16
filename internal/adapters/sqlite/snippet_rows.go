@@ -41,6 +41,19 @@ func snippetFromRows(
 	return snippet, nil
 }
 
+func snippetRowsOf(rows []sqlcgen.LiveSnippet, err error) ([]sqlcgen.Snippet, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	converted := make([]sqlcgen.Snippet, 0, len(rows))
+	for index := range rows {
+		converted = append(converted, sqlcgen.Snippet(rows[index]))
+	}
+
+	return converted, nil
+}
+
 func fragmentsBySnippet(rows []sqlcgen.Fragment) map[sqltype.ID][]sqlcgen.Fragment {
 	grouped := make(map[sqltype.ID][]sqlcgen.Fragment, len(rows))
 	for index := range rows {

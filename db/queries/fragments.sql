@@ -12,7 +12,14 @@ FROM fragments
 WHERE snippet_id = ?
 ORDER BY position;
 
--- name: ListFragments :many
+-- name: ListLiveFragments :many
+SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
+       fragments.created_at, fragments.updated_at, fragments.title
+FROM fragments
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
+ORDER BY fragments.snippet_id, fragments.position;
+
+-- name: ListLibraryFragments :many
 SELECT id, snippet_id, position, language, content, created_at, updated_at, title
 FROM fragments
 ORDER BY snippet_id, position;
@@ -21,14 +28,15 @@ ORDER BY snippet_id, position;
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
        fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
-JOIN snippets ON snippets.id = fragments.snippet_id
-WHERE snippets.folder_id IS sqlc.narg(folder_id)
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
+WHERE live_snippets.folder_id IS sqlc.narg(folder_id)
 ORDER BY fragments.snippet_id, fragments.position;
 
 -- name: ListFragmentsWithTag :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
        fragments.created_at, fragments.updated_at, fragments.title
 FROM fragments
+JOIN live_snippets ON live_snippets.id = fragments.snippet_id
 JOIN snippet_tag ON snippet_tag.snippet_id = fragments.snippet_id
 WHERE snippet_tag.tag_id = sqlc.arg(tag_id)
 ORDER BY fragments.snippet_id, fragments.position;

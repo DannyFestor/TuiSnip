@@ -10,7 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-type snippetTagRow = sqlcgen.ListSnippetTagsRow
+type snippetTagRow = sqlcgen.ListLibrarySnippetTagsRow
 
 type snippetTagRowShape interface {
 	~struct {

@@ -9,12 +9,14 @@ import (
 )
 
 type Folder struct {
-	ID              sqltype.ID
-	ParentID        *sqltype.ID
-	Name            string
-	DefaultLanguage string
-	CreatedAt       sqltype.Timestamp
-	UpdatedAt       sqltype.Timestamp
+	ID               sqltype.ID
+	ParentID         *sqltype.ID
+	Name             string
+	DefaultLanguage  string
+	CreatedAt        sqltype.Timestamp
+	UpdatedAt        sqltype.Timestamp
+	DeletedAt        *sqltype.Timestamp
+	FormerParentPath string
 }
 
 type Fragment struct {
@@ -28,13 +30,37 @@ type Fragment struct {
 	Title     string
 }
 
+type LiveFolder struct {
+	ID               sqltype.ID
+	ParentID         *sqltype.ID
+	Name             string
+	DefaultLanguage  string
+	CreatedAt        sqltype.Timestamp
+	UpdatedAt        sqltype.Timestamp
+	DeletedAt        *sqltype.Timestamp
+	FormerParentPath string
+}
+
+type LiveSnippet struct {
+	ID               sqltype.ID
+	FolderID         *sqltype.ID
+	Title            string
+	Description      string
+	CreatedAt        sqltype.Timestamp
+	UpdatedAt        sqltype.Timestamp
+	DeletedAt        *sqltype.Timestamp
+	FormerFolderPath string
+}
+
 type Snippet struct {
-	ID          sqltype.ID
-	FolderID    *sqltype.ID
-	Title       string
-	Description string
-	CreatedAt   sqltype.Timestamp
-	UpdatedAt   sqltype.Timestamp
+	ID               sqltype.ID
+	FolderID         *sqltype.ID
+	Title            string
+	Description      string
+	CreatedAt        sqltype.Timestamp
+	UpdatedAt        sqltype.Timestamp
+	DeletedAt        *sqltype.Timestamp
+	FormerFolderPath string
 }
 
 type SnippetTag struct {

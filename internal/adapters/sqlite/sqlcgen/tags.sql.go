@@ -103,6 +103,89 @@ func (q *Queries) InsertTagUnlessStored(ctx context.Context, arg InsertTagUnless
 	return err
 }
 
+const listLibrarySnippetTags = `-- name: ListLibrarySnippetTags :many
+SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+`
+
+type ListLibrarySnippetTagsRow struct {
+	SnippetID sqltype.ID
+	Tag       Tag
+}
+
+func (q *Queries) ListLibrarySnippetTags(ctx context.Context) ([]ListLibrarySnippetTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLibrarySnippetTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLibrarySnippetTagsRow{}
+	for rows.Next() {
+		var i ListLibrarySnippetTagsRow
+		if err := rows.Scan(
+			&i.SnippetID,
+			&i.Tag.ID,
+			&i.Tag.Name,
+			&i.Tag.NameKey,
+			&i.Tag.CreatedAt,
+			&i.Tag.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveSnippetTags = `-- name: ListLiveSnippetTags :many
+SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+`
+
+type ListLiveSnippetTagsRow struct {
+	SnippetID sqltype.ID
+	Tag       Tag
+}
+
+func (q *Queries) ListLiveSnippetTags(ctx context.Context) ([]ListLiveSnippetTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveSnippetTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLiveSnippetTagsRow{}
+	for rows.Next() {
+		var i ListLiveSnippetTagsRow
+		if err := rows.Scan(
+			&i.SnippetID,
+			&i.Tag.ID,
+			&i.Tag.Name,
+			&i.Tag.NameKey,
+			&i.Tag.CreatedAt,
+			&i.Tag.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOtherTagsWithNameKey = `-- name: ListOtherTagsWithNameKey :many
 SELECT id, name, name_key, created_at, updated_at
 FROM tags
@@ -143,51 +226,11 @@ func (q *Queries) ListOtherTagsWithNameKey(ctx context.Context, arg ListOtherTag
 	return items, nil
 }
 
-const listSnippetTags = `-- name: ListSnippetTags :many
-SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
-FROM snippet_tag
-JOIN tags ON tags.id = snippet_tag.tag_id
-`
-
-type ListSnippetTagsRow struct {
-	SnippetID sqltype.ID
-	Tag       Tag
-}
-
-func (q *Queries) ListSnippetTags(ctx context.Context) ([]ListSnippetTagsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSnippetTags)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListSnippetTagsRow{}
-	for rows.Next() {
-		var i ListSnippetTagsRow
-		if err := rows.Scan(
-			&i.SnippetID,
-			&i.Tag.ID,
-			&i.Tag.Name,
-			&i.Tag.NameKey,
-			&i.Tag.CreatedAt,
-			&i.Tag.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listSnippetTagsBySnippet = `-- name: ListSnippetTagsBySnippet :many
 SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
 WHERE snippet_tag.snippet_id = ?
 `
 
@@ -230,8 +273,8 @@ const listSnippetTagsInFolder = `-- name: ListSnippetTagsInFolder :many
 SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
-JOIN snippets ON snippets.id = snippet_tag.snippet_id
-WHERE snippets.folder_id IS ?1
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+WHERE live_snippets.folder_id IS ?1
 `
 
 type ListSnippetTagsInFolderRow struct {
@@ -273,6 +316,7 @@ const listSnippetTagsWithTag = `-- name: ListSnippetTagsWithTag :many
 SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
 WHERE snippet_tag.snippet_id IN (SELECT carrying.snippet_id FROM snippet_tag AS carrying WHERE carrying.tag_id = ?1)
 `
 

@@ -7,14 +7,16 @@ DELETE FROM snippet_tag
 WHERE snippet_id = ?;
 
 -- name: CountSnippetsByTag :many
-SELECT tag_id, COUNT(*) AS snippet_count
+SELECT snippet_tag.tag_id, COUNT(*) AS snippet_count
 FROM snippet_tag
-GROUP BY tag_id;
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+GROUP BY snippet_tag.tag_id;
 
 -- name: CountSnippetsWithTag :one
 SELECT COUNT(*)
 FROM snippet_tag
-WHERE tag_id = ?;
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+WHERE snippet_tag.tag_id = ?;
 
 -- name: MoveSnippetTags :exec
 INSERT OR IGNORE INTO snippet_tag (snippet_id, tag_id)

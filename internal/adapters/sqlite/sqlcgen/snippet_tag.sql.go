@@ -12,9 +12,10 @@ import (
 )
 
 const countSnippetsByTag = `-- name: CountSnippetsByTag :many
-SELECT tag_id, COUNT(*) AS snippet_count
+SELECT snippet_tag.tag_id, COUNT(*) AS snippet_count
 FROM snippet_tag
-GROUP BY tag_id
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+GROUP BY snippet_tag.tag_id
 `
 
 type CountSnippetsByTagRow struct {
@@ -48,7 +49,8 @@ func (q *Queries) CountSnippetsByTag(ctx context.Context) ([]CountSnippetsByTagR
 const countSnippetsWithTag = `-- name: CountSnippetsWithTag :one
 SELECT COUNT(*)
 FROM snippet_tag
-WHERE tag_id = ?
+JOIN live_snippets ON live_snippets.id = snippet_tag.snippet_id
+WHERE snippet_tag.tag_id = ?
 `
 
 func (q *Queries) CountSnippetsWithTag(ctx context.Context, tagID sqltype.ID) (int64, error) {

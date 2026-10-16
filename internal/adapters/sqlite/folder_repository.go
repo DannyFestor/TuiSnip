@@ -32,7 +32,11 @@ func (r *FolderRepository) Insert(ctx context.Context, folder domain.Folder) err
 }
 
 func (r *FolderRepository) Find(ctx context.Context, id domain.FolderID) (domain.Folder, error) {
-	get := func(queries *sqlcgen.Queries) (sqlcgen.Folder, error) { return queries.GetFolder(ctx, columnID(id)) }
+	get := func(queries *sqlcgen.Queries) (sqlcgen.Folder, error) {
+		row, err := queries.GetFolder(ctx, columnID(id))
+
+		return sqlcgen.Folder(row), err
+	}
 
 	folder, err := findRebuilt(ctx, r.db, get, r.rebuild)
 	if err != nil {
@@ -139,7 +143,7 @@ func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
 	err := inReadTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
 		var listErr error
 
-		rows, listErr = queries.ListFolders(ctx)
+		rows, listErr = folderRowsOf(queries.ListLiveFolders(ctx))
 		if listErr != nil {
 			return fmt.Errorf("list folders: %w", listErr)
 		}
@@ -156,8 +160,8 @@ func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
 func (r *FolderRepository) rebuildAll(ctx context.Context, rows []sqlcgen.Folder) []domain.Folder {
 	folders := make([]domain.Folder, 0, len(rows))
 
-	for _, row := range rows {
-		folder, err := r.rebuild(ctx, row, slog.LevelWarn)
+	for index := range rows {
+		folder, err := r.rebuild(ctx, rows[index], slog.LevelWarn)
 		if err != nil {
 			continue
 		}

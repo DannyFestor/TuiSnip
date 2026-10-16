@@ -85,6 +85,79 @@ func insertRawFolder(t *testing.T, path string, folderID domain.FolderID) {
 	)
 }
 
+func trashRawFolder(t *testing.T, path string, folderID domain.FolderID) {
+	t.Helper()
+
+	execRaw(t, path, "UPDATE folders SET deleted_at = updated_at WHERE id = ?", folderID.String())
+}
+
+func trashRawSnippet(t *testing.T, path string, snippetID domain.SnippetID) {
+	t.Helper()
+
+	execRaw(t, path, "UPDATE snippets SET deleted_at = updated_at WHERE id = ?", snippetID.String())
+}
+
+type trashFixture struct {
+	database       *sqlite.Database
+	tag            domain.Tag
+	liveFolder     domain.Folder
+	trashedFolder  domain.Folder
+	nestedFolder   domain.Folder
+	liveSnippet    domain.Snippet
+	trashedSnippet domain.Snippet
+	nestedSnippet  domain.Snippet
+}
+
+func newTrashFixture(t *testing.T) trashFixture {
+	t.Helper()
+
+	path := newDatabasePath(t)
+	database := openDatabase(t, path)
+	ids := testkit.NewSequentialIDs()
+	tag := insertTag(t, newTagRepository(t, database), ids, "go")
+	folders := newFolderRepository(t, database, slog.New(slog.DiscardHandler))
+	liveFolder := insertFolder(t, folders, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "live"})
+	trashedFolder := insertFolder(t, folders, testkit.FolderSpec{
+		ID: ids.NewFolderID(), Name: "trashed", ParentID: liveFolder.ID(),
+	})
+	nestedFolder := insertFolder(t, folders, testkit.FolderSpec{
+		ID: ids.NewFolderID(), Name: "nested", ParentID: trashedFolder.ID(),
+	})
+	snippets := newSnippetRepository(t, database)
+	tagged := func(title string, folderID domain.FolderID) domain.Snippet {
+		return insertSnippet(t, snippets, ids, testkit.SnippetSpec{
+			Title: title, FolderID: folderID, Tags: []domain.Tag{tag},
+		})
+	}
+	fixture := trashFixture{
+		database:       database,
+		tag:            tag,
+		liveFolder:     liveFolder,
+		trashedFolder:  trashedFolder,
+		nestedFolder:   nestedFolder,
+		liveSnippet:    tagged("live", liveFolder.ID()),
+		trashedSnippet: tagged("trashed", liveFolder.ID()),
+		nestedSnippet:  tagged("nested", nestedFolder.ID()),
+	}
+
+	trashRawFolder(t, path, trashedFolder.ID())
+	trashRawSnippet(t, path, fixture.trashedSnippet.ID())
+
+	return fixture
+}
+
+func (f trashFixture) folders(t *testing.T) *sqlite.FolderRepository {
+	t.Helper()
+
+	return newFolderRepository(t, f.database, slog.New(slog.DiscardHandler))
+}
+
+func (f trashFixture) snippets(t *testing.T) *sqlite.SnippetRepository {
+	t.Helper()
+
+	return newSnippetRepository(t, f.database)
+}
+
 func migrateRawToPreviousSchema(t *testing.T, path string) {
 	t.Helper()
 

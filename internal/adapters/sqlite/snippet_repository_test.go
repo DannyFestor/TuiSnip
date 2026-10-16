@@ -91,6 +91,31 @@ func TestSnippetRepository_Find(t *testing.T) {
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
+
+	inTrash := []struct {
+		name    string
+		snippet func(fixture trashFixture) domain.Snippet
+	}{
+		{
+			name:    "reports a Snippet in the Trash as not found",
+			snippet: func(fixture trashFixture) domain.Snippet { return fixture.trashedSnippet },
+		},
+		{
+			name:    "reports a Snippet under a Folder in the Trash as not found",
+			snippet: func(fixture trashFixture) domain.Snippet { return fixture.nestedSnippet },
+		},
+	}
+	for _, tt := range inTrash {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			_, err := fixture.snippets(t).Find(t.Context(), tt.snippet(fixture).ID())
+
+			require.ErrorIs(t, err, domain.ErrNotFound)
+		})
+	}
 }
 
 func TestSnippetRepository_Insert(t *testing.T) {
@@ -501,6 +526,17 @@ func TestSnippetRepository_List(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
+
+	t.Run("leaves out the Snippets in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.snippets(t).List(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Snippet{fixture.liveSnippet}, got)
+	})
 }
 
 func TestSnippetRepository_ListInFolder(t *testing.T) {
@@ -524,7 +560,7 @@ func TestSnippetRepository_ListInFolder(t *testing.T) {
 		assert.Equal(t, []domain.Snippet{apple, zebra}, got)
 	})
 
-	for _, order := range []domain.SortOrder{domain.SortOrderTitle, domain.SortOrderUpdated, domain.SortOrderCreated} {
+	for _, order := range sortOrders() {
 		t.Run("returns only the Snippets inside the Folder by "+order.String(), func(t *testing.T) {
 			t.Parallel()
 
@@ -552,6 +588,30 @@ func TestSnippetRepository_ListInFolder(t *testing.T) {
 		repository := newSnippetRepository(t, openDatabase(t, newDatabasePath(t)))
 
 		got, err := repository.ListInFolder(t.Context(), domain.FolderID{}, domain.SortOrderTitle)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	for _, order := range sortOrders() {
+		t.Run("leaves out a Snippet in the Trash by "+order.String(), func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			got, err := fixture.snippets(t).ListInFolder(t.Context(), fixture.liveFolder.ID(), order)
+
+			require.NoError(t, err)
+			assert.Equal(t, []domain.Snippet{fixture.liveSnippet}, got)
+		})
+	}
+
+	t.Run("returns no Snippets for a Folder under a Folder in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.snippets(t).ListInFolder(t.Context(), fixture.nestedFolder.ID(), domain.SortOrderTitle)
 
 		require.NoError(t, err)
 		assert.Empty(t, got)
@@ -641,7 +701,7 @@ func TestSnippetRepository_ListInFolder_SortOrder(t *testing.T) {
 func TestSnippetRepository_ListWithTag(t *testing.T) {
 	t.Parallel()
 
-	for _, order := range []domain.SortOrder{domain.SortOrderTitle, domain.SortOrderUpdated, domain.SortOrderCreated} {
+	for _, order := range sortOrders() {
 		t.Run("returns the Snippets carrying the Tag across Folders by "+order.String(), func(t *testing.T) {
 			t.Parallel()
 
@@ -707,25 +767,57 @@ func TestSnippetRepository_ListWithTag(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
+
+	for _, order := range sortOrders() {
+		t.Run("leaves out the Snippets in the Trash by "+order.String(), func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			got, err := fixture.snippets(t).ListWithTag(t.Context(), fixture.tag.ID(), order)
+
+			require.NoError(t, err)
+			assert.Equal(t, []domain.Snippet{fixture.liveSnippet}, got)
+		})
+	}
 }
 
 func TestSnippetRepository_CountByTag(t *testing.T) {
 	t.Parallel()
 
-	database := openDatabase(t, newDatabasePath(t))
-	repository := newSnippetRepository(t, database)
-	tags := newTagRepository(t, database)
-	ids := testkit.NewSequentialIDs()
-	golang := insertTag(t, tags, ids, "go")
-	docker := insertTag(t, tags, ids, "docker")
-	insertTag(t, tags, ids, "unused")
-	insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
-	insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
+	t.Run("counts the Snippets carrying each Tag", func(t *testing.T) {
+		t.Parallel()
 
-	got, err := repository.CountByTag(t.Context())
+		database := openDatabase(t, newDatabasePath(t))
+		repository := newSnippetRepository(t, database)
+		tags := newTagRepository(t, database)
+		ids := testkit.NewSequentialIDs()
+		golang := insertTag(t, tags, ids, "go")
+		docker := insertTag(t, tags, ids, "docker")
+		insertTag(t, tags, ids, "unused")
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang, docker}})
+		insertSnippet(t, repository, ids, testkit.SnippetSpec{Tags: []domain.Tag{golang}})
 
-	require.NoError(t, err)
-	assert.Equal(t, map[domain.TagID]int{golang.ID(): 2, docker.ID(): 1}, got)
+		got, err := repository.CountByTag(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, map[domain.TagID]int{golang.ID(): 2, docker.ID(): 1}, got)
+	})
+
+	t.Run("counts no Snippets in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.snippets(t).CountByTag(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, map[domain.TagID]int{fixture.tag.ID(): 1}, got)
+	})
+}
+
+func sortOrders() []domain.SortOrder {
+	return []domain.SortOrder{domain.SortOrderTitle, domain.SortOrderUpdated, domain.SortOrderCreated}
 }
 
 func titlesOf(snippets []domain.Snippet) []string {
@@ -767,6 +859,17 @@ func TestSnippetRepository_CountByFolder(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+
+	t.Run("counts no Snippets in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.snippets(t).CountByFolder(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, map[domain.FolderID]int{fixture.liveFolder.ID(): 1}, got)
 	})
 }
 

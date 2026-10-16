@@ -23,7 +23,7 @@ type rowRebuilder[R, E any] struct {
 }
 
 func selectLibraryRows(ctx context.Context, queries *sqlcgen.Queries) (libraryRows, error) {
-	folders, err := queries.ListFolders(ctx)
+	folders, err := queries.ListLibraryFolders(ctx)
 	if err != nil {
 		return libraryRows{}, fmt.Errorf("list folders: %w", err)
 	}
@@ -33,7 +33,7 @@ func selectLibraryRows(ctx context.Context, queries *sqlcgen.Queries) (libraryRo
 		return libraryRows{}, fmt.Errorf("list tags: %w", err)
 	}
 
-	snippets, err := allSnippets().selectRows(ctx, queries)
+	snippets, err := librarySnippets().selectRows(ctx, queries)
 	if err != nil {
 		return libraryRows{}, err
 	}

@@ -3,7 +3,7 @@ package exportfile
 import "github.com/DannyFestor/TuiSnip/internal/domain"
 
 type folderRecord struct {
-	folderRecordV1
+	folderFields
 
 	DeletedAt        *string  `json:"deleted_at"`
 	FormerParentPath []string `json:"former_parent_path"`
@@ -12,7 +12,7 @@ type folderRecord struct {
 func folderRecordOf(trash domain.Trash) func(folder domain.Folder) folderRecord {
 	return func(folder domain.Folder) folderRecord {
 		return folderRecord{
-			folderRecordV1:   folderRecordV1Of(folder),
+			folderFields:     folderFieldsOf(folder),
 			DeletedAt:        deletedAtOf(trash.Folders, folder.ID()),
 			FormerParentPath: formerPathOf(trash.Folders, folder.ID()),
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-type snippetRecordV1 struct {
+type snippetFields struct {
 	ID          string           `json:"id"`
 	FolderID    *string          `json:"folder_id"`
 	Title       string           `json:"title"`
@@ -19,8 +19,8 @@ type snippetRecordV1 struct {
 	Fragments   []fragmentRecord `json:"fragments"`
 }
 
-func snippetRecordV1Of(snippet domain.Snippet) snippetRecordV1 {
-	return snippetRecordV1{
+func snippetFieldsOf(snippet domain.Snippet) snippetFields {
+	return snippetFields{
 		ID:          snippet.ID().String(),
 		FolderID:    folderReference(snippet, domain.Snippet.AtRoot, domain.Snippet.FolderID),
 		Title:       snippet.Title().String(),
@@ -32,36 +32,32 @@ func snippetRecordV1Of(snippet domain.Snippet) snippetRecordV1 {
 	}
 }
 
-func (r snippetRecordV1) upgraded() snippetRecord {
-	return snippetRecord{snippetRecordV1: r, DeletedAt: nil, FormerFolderPath: []string{}}
-}
-
-func (r snippetRecordV1) snippet(tagsByID map[domain.TagID]domain.Tag) (domain.Snippet, error) {
-	id, idErr := parseID[domain.SnippetID](r.ID)
-	folderID, folderErr := parseFolderReference(r.FolderID)
-	title, titleErr := value.NewTitle(r.Title)
-	description, descriptionErr := value.NewDescription(r.Description)
-	fragments, fragmentsErr := entitiesOf(r.Fragments, fragmentRecord.fragment)
-	tags, tagsErr := entitiesOf(r.TagIDs, carriedTag(tagsByID))
-	stamped, datesErr := parseDates(r.CreatedAt, r.UpdatedAt)
+func (f snippetFields) snippet(tagsByID map[domain.TagID]domain.Tag) (domain.Snippet, error) {
+	id, idErr := parseID[domain.SnippetID](f.ID)
+	folderID, folderErr := parseFolderReference(f.FolderID)
+	title, titleErr := value.NewTitle(f.Title)
+	description, descriptionErr := value.NewDescription(f.Description)
+	fragments, fragmentsErr := entitiesOf(f.Fragments, fragmentRecord.fragment)
+	tags, tagsErr := entitiesOf(f.TagIDs, carriedTag(tagsByID))
+	stamped, datesErr := parseDates(f.CreatedAt, f.UpdatedAt)
 
 	err := errors.Join(idErr, folderErr, titleErr, descriptionErr, fragmentsErr, tagsErr, datesErr)
 	if err != nil {
-		return domain.Snippet{}, r.named(err)
+		return domain.Snippet{}, f.named(err)
 	}
 
 	snippet, err := domain.NewSnippet(
 		id, title, description, folderID, fragments, tags, stamped.created, stamped.updated,
 	)
 	if err != nil {
-		return domain.Snippet{}, r.named(err)
+		return domain.Snippet{}, f.named(err)
 	}
 
 	return snippet, nil
 }
 
-func (r snippetRecordV1) named(err error) error {
-	return fmt.Errorf("snippet %s: %w", r.ID, err)
+func (f snippetFields) named(err error) error {
+	return fmt.Errorf("snippet %s: %w", f.ID, err)
 }
 
 func carriedTag(tagsByID map[domain.TagID]domain.Tag) func(rawID string) (domain.Tag, error) {

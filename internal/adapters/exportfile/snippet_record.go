@@ -3,7 +3,7 @@ package exportfile
 import "github.com/DannyFestor/TuiSnip/internal/domain"
 
 type snippetRecord struct {
-	snippetRecordV1
+	snippetFields
 
 	DeletedAt        *string  `json:"deleted_at"`
 	FormerFolderPath []string `json:"former_folder_path"`
@@ -12,7 +12,7 @@ type snippetRecord struct {
 func snippetRecordOf(trash domain.Trash) func(snippet domain.Snippet) snippetRecord {
 	return func(snippet domain.Snippet) snippetRecord {
 		return snippetRecord{
-			snippetRecordV1:  snippetRecordV1Of(snippet),
+			snippetFields:    snippetFieldsOf(snippet),
 			DeletedAt:        deletedAtOf(trash.Snippets, snippet.ID()),
 			FormerFolderPath: formerPathOf(trash.Snippets, snippet.ID()),
 		}

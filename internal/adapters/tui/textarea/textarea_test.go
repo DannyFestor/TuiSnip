@@ -1731,7 +1731,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 3
 				m.col = 0
@@ -1763,7 +1763,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 5
 				m.col = 0
@@ -1795,7 +1795,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 5
 				m.col = 0
@@ -1825,7 +1825,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 8
 				m.col = 0
@@ -1855,7 +1855,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 3
 				m.col = 0
@@ -1885,7 +1885,7 @@ func TestView(t *testing.T) {
 				}
 
 				m.SetValue(strings.Join(lines, "\n"))
-				m.viewport.SetContent(m.view()) // force setting of viewport content.
+				m.viewport.SetContent(m.contentView()) // force setting of viewport content.
 
 				m.row = 4
 				m.col = 0

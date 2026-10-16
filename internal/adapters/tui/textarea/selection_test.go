@@ -1,16 +1,21 @@
-package textarea
+package textarea_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
+	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
-func newSelectionTextarea(t *testing.T, value string) Model {
+func newSelectionTextarea(t *testing.T, value string) textarea.Model {
 	t.Helper()
 
-	ta := New()
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.SetWidth(20)
@@ -29,24 +34,22 @@ func TestPositionAt(t *testing.T) {
 	tests := []struct {
 		name string
 		x, y int
-		want Position
+		want textarea.Position
 	}{
-		{"origin", 0, 0, Position{Row: 0, Col: 0}},
-		{"mid first line", 3, 0, Position{Row: 0, Col: 3}},
-		{"start second line", 0, 1, Position{Row: 1, Col: 0}},
-		{"mid second line", 2, 1, Position{Row: 1, Col: 2}},
-		{"past end of line clamps to line end", 40, 0, Position{Row: 0, Col: 5}},
-		{"negative y clamps to buffer start", 0, -3, Position{Row: 0, Col: 0}},
-		{"below last line clamps to buffer end", 0, 50, Position{Row: 1, Col: 5}},
+		{"origin", 0, 0, textarea.Position{Row: 0, Col: 0}},
+		{"mid first line", 3, 0, textarea.Position{Row: 0, Col: 3}},
+		{"start second line", 0, 1, textarea.Position{Row: 1, Col: 0}},
+		{"mid second line", 2, 1, textarea.Position{Row: 1, Col: 2}},
+		{"past end of line clamps to line end", 40, 0, textarea.Position{Row: 0, Col: 5}},
+		{"negative y clamps to buffer start", 0, -3, textarea.Position{Row: 0, Col: 0}},
+		{"below last line clamps to buffer end", 0, 50, textarea.Position{Row: 1, Col: 5}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := ta.PositionAt(tt.x, tt.y); got != tt.want {
-				t.Errorf("PositionAt(%d, %d) = %+v, want %+v", tt.x, tt.y, got, tt.want)
-			}
+			assert.Equal(t, tt.want, ta.PositionAt(tt.x, tt.y), "PositionAt(%d, %d)", tt.x, tt.y)
 		})
 	}
 }
@@ -54,7 +57,7 @@ func TestPositionAt(t *testing.T) {
 func TestPositionAtAccountsForGutter(t *testing.T) {
 	t.Parallel()
 
-	ta := New()
+	ta := textarea.New()
 	ta.Prompt = "> "
 	ta.ShowLineNumbers = false
 	ta.SetWidth(20)
@@ -62,17 +65,9 @@ func TestPositionAtAccountsForGutter(t *testing.T) {
 	ta.Focus()
 	ta.SetValue("hello")
 
-	if got := ta.PositionAt(2, 0); got != (Position{Row: 0, Col: 0}) {
-		t.Errorf("first text cell = %+v, want row 0 col 0", got)
-	}
-
-	if got := ta.PositionAt(5, 0); got != (Position{Row: 0, Col: 3}) {
-		t.Errorf("fourth text cell = %+v, want row 0 col 3", got)
-	}
-
-	if got := ta.PositionAt(0, 0); got != (Position{Row: 0, Col: 0}) {
-		t.Errorf("click in gutter = %+v, want row 0 col 0", got)
-	}
+	assert.Equal(t, textarea.Position{Row: 0, Col: 0}, ta.PositionAt(2, 0), "first text cell")
+	assert.Equal(t, textarea.Position{Row: 0, Col: 3}, ta.PositionAt(5, 0), "fourth text cell")
+	assert.Equal(t, textarea.Position{Row: 0, Col: 0}, ta.PositionAt(0, 0), "click in gutter")
 }
 
 func TestSelectedTextSingleLine(t *testing.T) {
@@ -83,13 +78,8 @@ func TestSelectedTextSingleLine(t *testing.T) {
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
 
-	if !ta.HasSelection() {
-		t.Fatal("expected an active selection")
-	}
-
-	if got, want := ta.SelectedText(), "hello"; got != want {
-		t.Errorf("SelectedText() = %q, want %q", got, want)
-	}
+	require.True(t, ta.HasSelection(), "expected an active selection")
+	assert.Equal(t, "hello", ta.SelectedText())
 }
 
 func TestSelectedTextAcrossLines(t *testing.T) {
@@ -100,9 +90,7 @@ func TestSelectedTextAcrossLines(t *testing.T) {
 	ta.ExtendSelection(1, 2)
 	ta.EndSelection()
 
-	if got, want := ta.SelectedText(), "e\ntwo\nt"; got != want {
-		t.Errorf("SelectedText() = %q, want %q", got, want)
-	}
+	assert.Equal(t, "e\ntwo\nt", ta.SelectedText())
 }
 
 func TestSelectedTextBackwardDrag(t *testing.T) {
@@ -118,13 +106,8 @@ func TestSelectedTextBackwardDrag(t *testing.T) {
 	backward.ExtendSelection(2, 0)
 	backward.EndSelection()
 
-	if got, want := backward.SelectedText(), forward.SelectedText(); got != want {
-		t.Errorf("backward drag = %q, want %q (same as forward)", got, want)
-	}
-
-	if got, want := backward.SelectedText(), "e\ntwo\nt"; got != want {
-		t.Errorf("SelectedText() = %q, want %q", got, want)
-	}
+	assert.Equal(t, forward.SelectedText(), backward.SelectedText(), "backward drag must match the forward one")
+	assert.Equal(t, "e\ntwo\nt", backward.SelectedText())
 }
 
 func TestClickWithoutDragMakesNoSelection(t *testing.T) {
@@ -134,13 +117,8 @@ func TestClickWithoutDragMakesNoSelection(t *testing.T) {
 	ta.BeginSelection(3, 0)
 	ta.EndSelection()
 
-	if ta.HasSelection() {
-		t.Error("a click without a drag must not leave a selection")
-	}
-
-	if got := ta.SelectedText(); got != "" {
-		t.Errorf("SelectedText() = %q, want empty", got)
-	}
+	assert.False(t, ta.HasSelection(), "a click without a drag must not leave a selection")
+	assert.Empty(t, ta.SelectedText())
 }
 
 func TestExtendSelectionRequiresBegin(t *testing.T) {
@@ -149,9 +127,7 @@ func TestExtendSelectionRequiresBegin(t *testing.T) {
 	ta := newSelectionTextarea(t, "hello world")
 	ta.ExtendSelection(5, 0)
 
-	if ta.HasSelection() {
-		t.Error("ExtendSelection without BeginSelection must not select")
-	}
+	assert.False(t, ta.HasSelection(), "ExtendSelection without BeginSelection must not select")
 }
 
 func TestClearSelectionAPI(t *testing.T) {
@@ -162,19 +138,12 @@ func TestClearSelectionAPI(t *testing.T) {
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
 
-	if !ta.HasSelection() {
-		t.Fatal("expected a selection to clear")
-	}
+	require.True(t, ta.HasSelection(), "expected a selection to clear")
 
 	ta.ClearSelection()
 
-	if ta.HasSelection() {
-		t.Error("HasSelection() = true after ClearSelection()")
-	}
-
-	if got := ta.SelectedText(); got != "" {
-		t.Errorf("SelectedText() = %q, want empty", got)
-	}
+	assert.False(t, ta.HasSelection(), "HasSelection() = true after ClearSelection()")
+	assert.Empty(t, ta.SelectedText())
 }
 
 func TestSelectAllAPI(t *testing.T) {
@@ -183,9 +152,7 @@ func TestSelectAllAPI(t *testing.T) {
 	ta := newSelectionTextarea(t, "one\ntwo")
 	ta.SelectAll()
 
-	if got, want := ta.SelectedText(), "one\ntwo"; got != want {
-		t.Errorf("SelectedText() = %q, want %q", got, want)
-	}
+	assert.Equal(t, "one\ntwo", ta.SelectedText())
 }
 
 func TestKeyPressClearsSelection(t *testing.T) {
@@ -196,15 +163,11 @@ func TestKeyPressClearsSelection(t *testing.T) {
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
 
-	if !ta.HasSelection() {
-		t.Fatal("expected a selection before typing")
-	}
+	require.True(t, ta.HasSelection(), "expected a selection before typing")
 
-	ta, _ = ta.Update(keyPress('x'))
+	ta, _ = ta.Update(keypress.Letter('x'))
 
-	if ta.HasSelection() {
-		t.Error("selection must be cleared by keyboard input")
-	}
+	assert.False(t, ta.HasSelection(), "selection must be cleared by keyboard input")
 }
 
 func TestSelectionRendersWithSelectionStyle(t *testing.T) {
@@ -219,19 +182,14 @@ func TestSelectionRendersWithSelectionStyle(t *testing.T) {
 	ta.EndSelection()
 	selected := ta.View()
 
-	if plain == selected {
-		t.Fatal("view must change when a selection is active")
-	}
-
-	if got, want := strings.TrimSpace(ansi.Strip(selected)), strings.TrimSpace(ansi.Strip(plain)); got != want {
-		t.Errorf("stripped view changed: got %q, want %q", got, want)
-	}
+	require.NotEqual(t, plain, selected, "view must change when a selection is active")
+	assert.Equal(t, strings.TrimSpace(ansi.Strip(plain)), strings.TrimSpace(ansi.Strip(selected)))
 }
 
 func TestSelectionSurvivesSoftWrap(t *testing.T) {
 	t.Parallel()
 
-	ta := New()
+	ta := textarea.New()
 	ta.Prompt = ""
 	ta.ShowLineNumbers = false
 	ta.SetWidth(10)
@@ -240,21 +198,14 @@ func TestSelectionSurvivesSoftWrap(t *testing.T) {
 	ta.SetValue("aaaaabbbbbccccc")
 
 	pos := ta.PositionAt(0, 1)
-	if pos.Row != 0 {
-		t.Fatalf("soft wrap must stay on logical row 0, got row %d", pos.Row)
-	}
-
-	if pos.Col != 10 {
-		t.Errorf("second visual row starts at col 10, got %d", pos.Col)
-	}
+	require.Equal(t, 0, pos.Row, "soft wrap must stay on logical row 0")
+	assert.Equal(t, 10, pos.Col, "second visual row starts at col 10")
 
 	ta.BeginSelection(0, 1)
 	ta.ExtendSelection(5, 1)
 	ta.EndSelection()
 
-	if got, want := ta.SelectedText(), "ccccc"; got != want {
-		t.Errorf("SelectedText() = %q, want %q", got, want)
-	}
+	assert.Equal(t, "ccccc", ta.SelectedText())
 }
 
 func TestSelectionEmptyBuffer(t *testing.T) {
@@ -266,13 +217,8 @@ func TestSelectionEmptyBuffer(t *testing.T) {
 	ta.EndSelection()
 	ta.SelectAll()
 
-	if ta.HasSelection() {
-		t.Error("empty buffer must not report a selection")
-	}
-
-	if got := ta.SelectedText(); got != "" {
-		t.Errorf("SelectedText() = %q, want empty", got)
-	}
+	assert.False(t, ta.HasSelection(), "empty buffer must not report a selection")
+	assert.Empty(t, ta.SelectedText())
 
 	_ = ta.View()
 }
@@ -285,16 +231,8 @@ func TestSelectionRange(t *testing.T) {
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
 
-	start, end, ok := ta.Selection()
-	if !ok {
-		t.Fatal("expected a selection")
-	}
-
-	if start != (Position{Row: 0, Col: 0}) {
-		t.Errorf("start = %+v, want row 0 col 0", start)
-	}
-
-	if end != (Position{Row: 0, Col: 5}) {
-		t.Errorf("end = %+v, want row 0 col 5", end)
-	}
+	selected, ok := ta.Selection()
+	require.True(t, ok, "expected a selection")
+	assert.Equal(t, textarea.Position{Row: 0, Col: 0}, selected.Start)
+	assert.Equal(t, textarea.Position{Row: 0, Col: 5}, selected.End)
 }

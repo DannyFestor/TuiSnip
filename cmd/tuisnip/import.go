@@ -17,7 +17,7 @@ func importLibrary(ctx context.Context, app *bootstrap.App, operands []string, s
 		return fmt.Errorf("import: %w", withEmptyLibraryHint(err))
 	}
 
-	_, err = io.WriteString(stdout, "Imported "+countsPhrase(counts)+"\n")
+	_, err = io.WriteString(stdout, "Imported "+countsPhrase(counts)+"\n"+trashLine(counts.InTrash))
 	if err != nil {
 		return fmt.Errorf("print import report: %w", err)
 	}

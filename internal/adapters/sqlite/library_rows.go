@@ -51,28 +51,40 @@ func (r libraryRows) rebuild(ctx context.Context, logger *slog.Logger) (domain.L
 		return domain.Library{}, err
 	}
 
-	return domain.Library{Folders: folders, Tags: tags, Snippets: snippets}, nil
+	return domain.NewLibrary(folders, tags, snippets), nil
 }
 
-func (r libraryRows) snippetRebuilder() rowRebuilder[sqlcgen.Snippet, domain.Snippet] {
-	return rowRebuilder[sqlcgen.Snippet, domain.Snippet]{
+func (r libraryRows) snippetRebuilder() rowRebuilder[sqlcgen.Snippet, domain.LibraryEntry[domain.Snippet]] {
+	return rowRebuilder[sqlcgen.Snippet, domain.LibraryEntry[domain.Snippet]]{
 		kind: "snippet",
 		idAttr: func(row sqlcgen.Snippet) slog.Attr {
 			return slog.String(keySnippetID, entityID[domain.SnippetID](row.ID).String())
 		},
-		rebuild: func(row sqlcgen.Snippet) (domain.Snippet, error) {
-			return snippetFromRows(row, r.snippets.fragments[row.ID], r.snippets.tags[row.ID])
+		rebuild: func(row sqlcgen.Snippet) (domain.LibraryEntry[domain.Snippet], error) {
+			snippet, err := snippetFromRows(row, r.snippets.fragments[row.ID], r.snippets.tags[row.ID])
+			if err != nil {
+				return domain.LibraryEntry[domain.Snippet]{}, err
+			}
+
+			return entryFromColumns(snippet, row.DeletedAt, row.FormerFolderPath)
 		},
 	}
 }
 
-func folderRebuilder() rowRebuilder[sqlcgen.Folder, domain.Folder] {
-	return rowRebuilder[sqlcgen.Folder, domain.Folder]{
+func folderRebuilder() rowRebuilder[sqlcgen.Folder, domain.LibraryEntry[domain.Folder]] {
+	return rowRebuilder[sqlcgen.Folder, domain.LibraryEntry[domain.Folder]]{
 		kind: "folder",
 		idAttr: func(row sqlcgen.Folder) slog.Attr {
 			return slog.String(keyFolderID, entityID[domain.FolderID](row.ID).String())
 		},
-		rebuild: folderFromRow,
+		rebuild: func(row sqlcgen.Folder) (domain.LibraryEntry[domain.Folder], error) {
+			folder, err := folderFromRow(row)
+			if err != nil {
+				return domain.LibraryEntry[domain.Folder]{}, err
+			}
+
+			return entryFromColumns(folder, row.DeletedAt, row.FormerParentPath)
+		},
 	}
 }
 

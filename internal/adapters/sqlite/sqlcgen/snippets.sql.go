@@ -450,6 +450,23 @@ func (q *Queries) MoveSnippet(ctx context.Context, arg MoveSnippetParams) (int64
 	return result.RowsAffected()
 }
 
+const setSnippetTrashMark = `-- name: SetSnippetTrashMark :exec
+UPDATE snippets
+SET deleted_at = ?, former_folder_path = ?
+WHERE id = ?
+`
+
+type SetSnippetTrashMarkParams struct {
+	DeletedAt        *sqltype.Timestamp
+	FormerFolderPath string
+	ID               sqltype.ID
+}
+
+func (q *Queries) SetSnippetTrashMark(ctx context.Context, arg SetSnippetTrashMarkParams) error {
+	_, err := q.db.ExecContext(ctx, setSnippetTrashMark, arg.DeletedAt, arg.FormerFolderPath, arg.ID)
+	return err
+}
+
 const updateSnippet = `-- name: UpdateSnippet :execrows
 UPDATE snippets
 SET title = ?1, description = ?2, updated_at = ?3

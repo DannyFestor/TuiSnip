@@ -132,7 +132,17 @@ func insertLibrary(ctx context.Context, queries *sqlcgen.Queries, library domain
 		return err
 	}
 
-	return insertSnippets(ctx, queries, library.Snippets)
+	err = insertSnippets(ctx, queries, library.Snippets)
+	if err != nil {
+		return err
+	}
+
+	err = markTrashed(ctx, library.Trash.Folders, folderTrashMarkParams, queries.SetFolderTrashMark)
+	if err != nil {
+		return err
+	}
+
+	return markTrashed(ctx, library.Trash.Snippets, snippetTrashMarkParams, queries.SetSnippetTrashMark)
 }
 
 func insertFolders(ctx context.Context, queries *sqlcgen.Queries, folders []domain.Folder) error {

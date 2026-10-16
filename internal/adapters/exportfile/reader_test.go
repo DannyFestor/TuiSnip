@@ -27,6 +27,7 @@ const (
 	missingID  = "0194c3a0-0000-7000-8000-0000000000ff"
 	createdAt  = "2026-03-01T09:30:00.123456789Z"
 	updatedAt  = "2026-03-02T09:00:00.000000000Z"
+	deletedAt  = "2026-03-03T09:00:00.000000005Z"
 )
 
 type record = map[string]any
@@ -61,10 +62,22 @@ func TestReader_Read(t *testing.T) {
 			UpdatedAt: updated,
 		})
 		atRoot := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), CreatedAt: updated})
+		detached := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), CreatedAt: updated})
 		written := domain.Library{
 			Folders:  []domain.Folder{parent, child},
 			Tags:     []domain.Tag{tag},
-			Snippets: []domain.Snippet{filed, atRoot},
+			Snippets: []domain.Snippet{filed, atRoot, detached},
+			Trash: domain.Trash{
+				Folders: map[domain.FolderID]domain.TrashMark{
+					child.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: child, DeletedAt: updated}),
+				},
+				Snippets: map[domain.SnippetID]domain.TrashMark{
+					filed.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: filed}),
+					detached.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+						Item: detached, FormerPath: []string{"scripts", "a/b"},
+					}),
+				},
+			},
 		}
 		path := filepath.Join(t.TempDir(), exportName)
 		require.NoError(t, exportfile.NewWriter().Write(t.Context(), path, written))
@@ -89,6 +102,44 @@ func TestReader_Read(t *testing.T) {
 		assert.Equal(t, "loop", got.Snippets[0].Title().String())
 	})
 
+	t.Run("reads a version 1 Export as a Library with an empty Trash", func(t *testing.T) {
+		t.Parallel()
+
+		path := exportFile(t, versionOneDocument(
+			t,
+			[]record{versionOne(folderRecord(nil))},
+			[]record{tagRecord(nil)},
+			[]record{versionOne(snippetRecord(record{"folder_id": folderID}))},
+		))
+
+		got, err := exportfile.NewReader().Read(t.Context(), path)
+
+		require.NoError(t, err)
+		require.Len(t, got.Folders, 1)
+		require.Len(t, got.Snippets, 1)
+		assert.Equal(t, got.Folders[0].ID(), got.Snippets[0].FolderID())
+		assert.Empty(t, got.InTrash().Folders)
+		assert.Empty(t, got.InTrash().Snippets)
+	})
+
+	t.Run("reads a Trash item kept in a Folder the Trash holds", func(t *testing.T) {
+		t.Parallel()
+
+		path := exportFile(t, document(
+			t,
+			[]record{folderRecord(record{"deleted_at": deletedAt})},
+			[]record{tagRecord(nil)},
+			[]record{snippetRecord(record{"folder_id": folderID, "deleted_at": deletedAt})},
+		))
+
+		got, err := exportfile.NewReader().Read(t.Context(), path)
+
+		require.NoError(t, err)
+		require.Len(t, got.Trash.Folders, 1)
+		require.Len(t, got.Trash.Snippets, 1)
+		assert.Equal(t, deletedAt, got.Trash.Snippets[got.Snippets[0].ID()].DeletedAt().Format(time.RFC3339Nano))
+	})
+
 	refusals := []struct {
 		name        string
 		document    string
@@ -103,9 +154,73 @@ func TestReader_Read(t *testing.T) {
 		},
 		{
 			name:        "refuses a newer version and asks for an upgrade",
-			document:    `{"format": "tuisnip-export", "version": 2, "added_later": []}`,
+			document:    `{"format": "tuisnip-export", "version": 3, "added_later": []}`,
 			wantErr:     exportfile.ErrNewerVersion,
 			wantMessage: "upgrade TuiSnip",
+		},
+		{
+			name: "refuses a version 1 Export carrying a field only version 2 has",
+			document: versionOneDocument(
+				t,
+				[]record{overridden(versionOne(folderRecord(nil)), record{"deleted_at": nil})},
+				[]record{},
+				[]record{},
+			),
+			wantErr:     nil,
+			wantMessage: `unknown field "deleted_at"`,
+		},
+		{
+			name: "refuses a Snippet deleted before it was created and names it",
+			document: document(t, []record{}, []record{tagRecord(nil)}, []record{
+				snippetRecord(record{"deleted_at": "2026-02-28T09:00:00.000000000Z"}),
+			}),
+			wantErr:     domain.ErrDeletedBeforeCreate,
+			wantMessage: "snippet " + snippetID + ": ",
+		},
+		{
+			name: "refuses a Folder deleted before it was created and names it",
+			document: document(
+				t,
+				[]record{folderRecord(record{"deleted_at": "2026-02-28T09:00:00.000000000Z"})},
+				[]record{},
+				[]record{},
+			),
+			wantErr:     domain.ErrDeletedBeforeCreate,
+			wantMessage: "folder " + folderID + ": ",
+		},
+		{
+			name: "refuses a deletion date it can't parse and names the Folder",
+			document: document(
+				t, []record{folderRecord(record{"deleted_at": "yesterday"})}, []record{}, []record{},
+			),
+			wantErr:     nil,
+			wantMessage: "folder " + folderID + ": ",
+		},
+		{
+			name: "refuses a former path on a Snippet outside the Trash and names it",
+			document: document(t, []record{}, []record{tagRecord(nil)}, []record{
+				snippetRecord(record{"former_folder_path": []string{"scripts"}}),
+			}),
+			wantErr:     domain.ErrFormerPathOutsideTrash,
+			wantMessage: "snippet " + snippetID + ": ",
+		},
+		{
+			name: "refuses a former path on a Trash item still in its Folder and names it",
+			document: document(t, []record{folderRecord(nil)}, []record{tagRecord(nil)}, []record{
+				snippetRecord(record{
+					"folder_id": folderID, "deleted_at": deletedAt, "former_folder_path": []string{"scripts"},
+				}),
+			}),
+			wantErr:     domain.ErrFormerPathNotDetached,
+			wantMessage: "snippet " + snippetID + ": ",
+		},
+		{
+			name: "refuses a blank Folder name in a former path and names the Folder",
+			document: document(t, []record{
+				folderRecord(record{"deleted_at": deletedAt, "former_parent_path": []string{" "}}),
+			}, []record{}, []record{}),
+			wantErr:     value.ErrBlankFolderName,
+			wantMessage: "folder " + folderID + ": ",
 		},
 		{
 			name:        "refuses a version it never wrote",
@@ -215,26 +330,53 @@ func exportFile(t *testing.T, contents string) string {
 func document(t *testing.T, folders, tags, snippets []record) string {
 	t.Helper()
 
-	encoded, err := json.Marshal(record{
+	return encoded(t, documentRecord(folders, tags, snippets))
+}
+
+func versionOneDocument(t *testing.T, folders, tags, snippets []record) string {
+	t.Helper()
+
+	return encoded(t, overridden(documentRecord(folders, tags, snippets), record{"version": 1}))
+}
+
+func documentRecord(folders, tags, snippets []record) record {
+	return record{
 		"format":   "tuisnip-export",
-		"version":  1,
+		"version":  2,
 		"folders":  folders,
 		"tags":     tags,
 		"snippets": snippets,
-	})
+	}
+}
+
+func encoded(t *testing.T, document record) string {
+	t.Helper()
+
+	data, err := json.Marshal(document)
 	require.NoError(t, err)
 
-	return string(encoded)
+	return string(data)
+}
+
+func versionOne(versionTwo record) record {
+	withoutTrash := maps.Clone(versionTwo)
+	for _, field := range []string{"deleted_at", "former_parent_path", "former_folder_path"} {
+		delete(withoutTrash, field)
+	}
+
+	return withoutTrash
 }
 
 func folderRecord(overrides record) record {
 	return overridden(record{
-		"id":               folderID,
-		"parent_id":        nil,
-		"name":             "scripts",
-		"default_language": "Bash",
-		"created_at":       createdAt,
-		"updated_at":       updatedAt,
+		"id":                 folderID,
+		"parent_id":          nil,
+		"name":               "scripts",
+		"default_language":   "Bash",
+		"created_at":         createdAt,
+		"updated_at":         updatedAt,
+		"deleted_at":         nil,
+		"former_parent_path": []string{},
 	}, overrides)
 }
 
@@ -244,14 +386,16 @@ func tagRecord(overrides record) record {
 
 func snippetRecord(overrides record) record {
 	return overridden(record{
-		"id":          snippetID,
-		"folder_id":   nil,
-		"title":       "loop",
-		"description": "",
-		"tag_ids":     []string{tagID},
-		"created_at":  createdAt,
-		"updated_at":  updatedAt,
-		"fragments":   []record{fragmentRecord(nil)},
+		"id":                 snippetID,
+		"folder_id":          nil,
+		"title":              "loop",
+		"description":        "",
+		"tag_ids":            []string{tagID},
+		"created_at":         createdAt,
+		"updated_at":         updatedAt,
+		"fragments":          []record{fragmentRecord(nil)},
+		"deleted_at":         nil,
+		"former_folder_path": []string{},
 	}, overrides)
 }
 

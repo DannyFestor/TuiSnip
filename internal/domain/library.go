@@ -12,6 +12,19 @@ type Library struct {
 	Folders  []Folder
 	Tags     []Tag
 	Snippets []Snippet
+	Trash    Trash
+}
+
+func NewLibrary(folders []LibraryEntry[Folder], tags []Tag, snippets []LibraryEntry[Snippet]) Library {
+	return Library{
+		Folders:  entitiesIn(folders),
+		Tags:     tags,
+		Snippets: entitiesIn(snippets),
+		Trash: Trash{
+			Folders:  marksIn(folders, Folder.ID),
+			Snippets: marksIn(snippets, Snippet.ID),
+		},
+	}
 }
 
 func (l Library) InCreatedOrder() Library {
@@ -19,6 +32,27 @@ func (l Library) InCreatedOrder() Library {
 		Folders:  slices.SortedFunc(slices.Values(l.Folders), byCreated(Folder.CreatedAt, Folder.ID)),
 		Tags:     slices.SortedFunc(slices.Values(l.Tags), byCreated(Tag.CreatedAt, Tag.ID)),
 		Snippets: slices.SortedFunc(slices.Values(l.Snippets), byCreated(Snippet.CreatedAt, Snippet.ID)),
+		Trash:    l.Trash,
+	}
+}
+
+func (l Library) InTrash() TrashContents {
+	parentOf := l.parentOf()
+	trashedFolders := make(map[FolderID]bool, len(l.Folders))
+
+	for _, folder := range l.Folders {
+		trashedFolders[folder.ID()] = l.trashesFolderOrAncestor(folder.ID(), parentOf)
+	}
+
+	return TrashContents{
+		Folders: slices.DeleteFunc(slices.Clone(l.Folders), func(folder Folder) bool {
+			return !trashedFolders[folder.ID()]
+		}),
+		Snippets: slices.DeleteFunc(slices.Clone(l.Snippets), func(snippet Snippet) bool {
+			_, trashed := l.Trash.Snippets[snippet.ID()]
+
+			return !trashed && !trashedFolders[snippet.FolderID()]
+		}),
 	}
 }
 
@@ -52,15 +86,34 @@ func (l Library) ReusingTags(stored []Tag) Library {
 		snippets = append(snippets, l.Snippets[i].Retagged(byName.reused(l.Snippets[i].Tags())))
 	}
 
-	return Library{Folders: l.Folders, Tags: byName.unmatched(l.Tags), Snippets: snippets}
+	return Library{Folders: l.Folders, Tags: byName.unmatched(l.Tags), Snippets: snippets, Trash: l.Trash}
 }
 
-func (l Library) folderDepths() (map[FolderID]int, error) {
+func (l Library) parentOf() map[FolderID]FolderID {
 	parentOf := make(map[FolderID]FolderID, len(l.Folders))
 	for _, folder := range l.Folders {
 		parentOf[folder.ID()] = folder.ParentID()
 	}
 
+	return parentOf
+}
+
+func (l Library) trashesFolderOrAncestor(folderID FolderID, parentOf map[FolderID]FolderID) bool {
+	visited := make(map[FolderID]bool)
+
+	for id := folderID; !id.IsNil() && !visited[id]; id = parentOf[id] {
+		if _, trashed := l.Trash.Folders[id]; trashed {
+			return true
+		}
+
+		visited[id] = true
+	}
+
+	return false
+}
+
+func (l Library) folderDepths() (map[FolderID]int, error) {
+	parentOf := l.parentOf()
 	depths := make(map[FolderID]int, len(l.Folders))
 
 	var errs []error

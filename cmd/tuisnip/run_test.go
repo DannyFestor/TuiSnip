@@ -103,6 +103,43 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, "Imported 0 Folders, 1 Tag, 0 Snippets\n", got.stdout)
 	})
 
+	t.Run("imports an Export holding the Trash and reports the Trash on a second line", func(t *testing.T) {
+		t.Parallel()
+
+		got := runWith(t, t.TempDir(), "import", exportHoldingOnlyTrash(t))
+
+		assert.Equal(t, exitOK, got.code, got.stderr)
+		assert.Equal(t, "Imported 1 Folder, 0 Tags, 2 Snippets\nIn the Trash: 1 Folder, 2 Snippets\n", got.stdout)
+	})
+
+	t.Run("exports the Trash and reports it on a second line", func(t *testing.T) {
+		t.Parallel()
+
+		home := t.TempDir()
+		require.Equal(t, exitOK, runWith(t, home, "import", exportHoldingOnlyTrash(t)).code)
+		target := filepath.Join(t.TempDir(), "backup.json")
+
+		got := runWith(t, home, "export", target)
+
+		assert.Equal(t, exitOK, got.code, got.stderr)
+		assert.Equal(t,
+			"Exported 1 Folder, 0 Tags, 2 Snippets to "+target+"\nIn the Trash: 1 Folder, 2 Snippets\n",
+			got.stdout)
+	})
+
+	t.Run("refuses to import into a Library holding only Trash items", func(t *testing.T) {
+		t.Parallel()
+
+		home := t.TempDir()
+		require.Equal(t, exitOK, runWith(t, home, "import", exportHoldingOnlyTrash(t)).code)
+
+		got := runWith(t, home, "import", exportHoldingOneTag(t))
+
+		assert.Equal(t, exitFailure, got.code)
+		assert.Empty(t, got.stdout)
+		assert.Contains(t, got.stderr, "tuisnip --paths")
+	})
+
 	t.Run("imports a SnippetsLab export and prints the closing report", func(t *testing.T) {
 		t.Parallel()
 
@@ -315,6 +352,76 @@ func exportHoldingOneTag(t *testing.T) string {
     }
   ],
   "snippets": []
+}
+`), 0o600))
+
+	return path
+}
+
+func exportHoldingOnlyTrash(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "backup.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{
+  "format": "tuisnip-export",
+  "version": 2,
+  "folders": [
+    {
+      "id": "0194c3a0-0000-7000-8000-000000000001",
+      "parent_id": null,
+      "name": "scripts",
+      "default_language": "Bash",
+      "created_at": "2026-03-01T09:30:00.123456789Z",
+      "updated_at": "2026-03-01T09:30:00.123456789Z",
+      "deleted_at": "2026-03-03T09:00:00.000000000Z",
+      "former_parent_path": []
+    }
+  ],
+  "tags": [],
+  "snippets": [
+    {
+      "id": "0194c3a0-0000-7000-8000-000000000003",
+      "folder_id": "0194c3a0-0000-7000-8000-000000000001",
+      "title": "loop",
+      "description": "",
+      "tag_ids": [],
+      "created_at": "2026-03-01T09:30:00.123456789Z",
+      "updated_at": "2026-03-01T09:30:00.123456789Z",
+      "fragments": [
+        {
+          "id": "0194c3a0-0000-7000-8000-000000000004",
+          "title": "",
+          "language": "Bash",
+          "content": "ls\n",
+          "created_at": "2026-03-01T09:30:00.123456789Z",
+          "updated_at": "2026-03-01T09:30:00.123456789Z"
+        }
+      ],
+      "deleted_at": null,
+      "former_folder_path": []
+    },
+    {
+      "id": "0194c3a0-0000-7000-8000-000000000005",
+      "folder_id": null,
+      "title": "note",
+      "description": "",
+      "tag_ids": [],
+      "created_at": "2026-03-01T09:30:00.123456789Z",
+      "updated_at": "2026-03-01T09:30:00.123456789Z",
+      "fragments": [
+        {
+          "id": "0194c3a0-0000-7000-8000-000000000006",
+          "title": "",
+          "language": "plaintext",
+          "content": "remember",
+          "created_at": "2026-03-01T09:30:00.123456789Z",
+          "updated_at": "2026-03-01T09:30:00.123456789Z"
+        }
+      ],
+      "deleted_at": "2026-03-02T09:00:00.000000000Z",
+      "former_folder_path": ["gone"]
+    }
+  ]
 }
 `), 0o600))
 

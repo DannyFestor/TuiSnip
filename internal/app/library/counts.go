@@ -7,6 +7,7 @@ type Counts struct {
 	Tags      int
 	Snippets  int
 	Fragments int
+	InTrash   TrashCounts
 }
 
 func countsOf(library domain.Library) Counts {
@@ -20,5 +21,6 @@ func countsOf(library domain.Library) Counts {
 		Tags:      len(library.Tags),
 		Snippets:  len(library.Snippets),
 		Fragments: fragments,
+		InTrash:   trashCountsOf(library),
 	}
 }

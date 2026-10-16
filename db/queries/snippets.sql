@@ -78,3 +78,8 @@ WHERE id = ?;
 UPDATE snippets
 SET folder_id = ?
 WHERE id = ?;
+
+-- name: SetSnippetTrashMark :exec
+UPDATE snippets
+SET deleted_at = ?, former_folder_path = ?
+WHERE id = ?;

@@ -229,6 +229,59 @@ func TestLibrary_ReusingTags(t *testing.T) {
 	})
 }
 
+func TestLibrary_InTrash(t *testing.T) {
+	t.Parallel()
+
+	t.Run("holds every Trash item and everything inside a trashed Folder", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		live := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID()})
+		trashed := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), ParentID: live.ID()})
+		nested := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), ParentID: trashed.ID()})
+		liveSnippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: live.ID()})
+		trashedSnippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: live.ID()})
+		nestedSnippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: nested.ID()})
+		separatelyTrashed := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: trashed.ID()})
+		detached := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID()})
+		library := domain.Library{
+			Folders:  []domain.Folder{live, trashed, nested},
+			Tags:     nil,
+			Snippets: []domain.Snippet{liveSnippet, trashedSnippet, nestedSnippet, separatelyTrashed, detached},
+			Trash: domain.Trash{
+				Folders: map[domain.FolderID]domain.TrashMark{
+					trashed.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: trashed}),
+				},
+				Snippets: map[domain.SnippetID]domain.TrashMark{
+					trashedSnippet.ID():    testkit.TrashMark(t, testkit.TrashMarkSpec{Item: trashedSnippet}),
+					separatelyTrashed.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{Item: separatelyTrashed}),
+					detached.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+						Item: detached, FormerPath: []string{"gone"},
+					}),
+				},
+			},
+		}
+
+		got := library.InTrash()
+
+		assert.Equal(t, []domain.Folder{trashed, nested}, got.Folders)
+		assert.Equal(t, []domain.Snippet{trashedSnippet, nestedSnippet, separatelyTrashed, detached}, got.Snippets)
+	})
+
+	t.Run("holds nothing when the Trash is empty", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		folder := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID()})
+		snippet := testkit.Snippet(t, testkit.SnippetSpec{ID: ids.NewSnippetID(), FolderID: folder.ID()})
+
+		got := domain.Library{Folders: []domain.Folder{folder}, Snippets: []domain.Snippet{snippet}}.InTrash()
+
+		assert.Empty(t, got.Folders)
+		assert.Empty(t, got.Snippets)
+	})
+}
+
 func earlier() time.Time {
 	return time.Date(2026, time.March, 1, 9, 0, 0, 0, time.UTC)
 }

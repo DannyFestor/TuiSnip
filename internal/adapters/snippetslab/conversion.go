@@ -47,7 +47,12 @@ func (c *conversion) library(read contents) (domain.Library, error) {
 		return domain.Library{}, err
 	}
 
-	return domain.Library{Folders: folders, Tags: tags, Snippets: snippets}, nil
+	return domain.Library{
+		Folders:  folders,
+		Tags:     tags,
+		Snippets: snippets,
+		Trash:    domain.Trash{Folders: nil, Snippets: nil},
+	}, nil
 }
 
 func (c *conversion) recordLosses(record snippetRecord, title value.Title) {

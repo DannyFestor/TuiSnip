@@ -152,7 +152,7 @@ func TestImportOfANewerExportVersionIsRefused(t *testing.T) {
 
 	_, source := testapp.Start(t, testapp.RecordingTool)
 	path := filepath.Join(t.TempDir(), "source.json")
-	edited := strings.Replace(string(exported(t, source, path)), `"version": 1`, `"version": 2`, 1)
+	edited := strings.Replace(string(exported(t, source, path)), `"version": 2`, `"version": 3`, 1)
 	require.NoError(t, os.WriteFile(path, []byte(edited), 0o600))
 	_, target := testapp.Start(t, testapp.RecordingTool)
 

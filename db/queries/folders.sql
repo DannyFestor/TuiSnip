@@ -55,3 +55,8 @@ SELECT subtree.id FROM subtree;
 UPDATE folders
 SET parent_id = ?
 WHERE id = ?;
+
+-- name: SetFolderTrashMark :exec
+UPDATE folders
+SET deleted_at = ?, former_parent_path = ?
+WHERE id = ?;

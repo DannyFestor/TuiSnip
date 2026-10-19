@@ -982,14 +982,15 @@ func TestScreen_newSnippet(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), "Editing")
 	})
 
-	t.Run("captured content with tabs opens read-only in the selected Folder's Default Language", func(t *testing.T) {
+	t.Run("captured content with tabs opens editable in the selected Folder's Default Language", func(t *testing.T) {
 		t.Parallel()
 
 		screen, _ := inFolderOf(t, goFolder(t))
 
 		screen.Send(mainscreen.Captured{Content: "if x {\n\treturn\n}\n"})
 
-		assert.Contains(t, screen.Screen(), "Contains tabs")
+		assert.Contains(t, screen.Screen(), "    return")
+		assert.NotContains(t, screen.Screen(), "read-only")
 		assert.Contains(t, screen.Screen(), "Language       Go")
 	})
 }

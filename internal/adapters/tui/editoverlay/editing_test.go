@@ -21,8 +21,7 @@ import (
 
 const (
 	tabbedContent   = "if x {\n\treturn\n}\n"
-	readOnlyNotice  = "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)"
-	unboundReadOnly = "Contains tabs: read-only here"
+	unboundReadOnly = "Longer than 10,000 lines: read-only here"
 
 	changedElsewhereTitle = "Changed elsewhere"
 	reloadQuestion        = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
@@ -53,32 +52,32 @@ func TestEditing_View(t *testing.T) {
 		assert.Contains(t, screen.Screen(), unsavedTitle)
 	})
 
-	t.Run("shows content with a tab read-only and names the external editor key", func(t *testing.T) {
+	t.Run("opens content with a tab editable and runs the tab to the next tab stop", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editingStored(t, storedSnippet(t, tabbedContent))
 
-		assert.Contains(t, screen.Screen(), readOnlyNotice)
+		assert.Contains(t, screen.Screen(), contentEntryHint)
 		assert.Contains(t, screen.Screen(), "    return")
-		assert.NotContains(t, screen.Screen(), contentEntryHint)
+		assert.NotContains(t, screen.Screen(), "read-only")
 	})
 
-	t.Run("names the configured external editor key", func(t *testing.T) {
+	t.Run("names the configured external editor key on read-only content", func(t *testing.T) {
 		t.Parallel()
 
 		keys := testsettings.Default(t).Keys
 		keys[binding.ScopeContent][binding.OpenInEditor] = []string{"ctrl+o"}
-		screen := editingStoredWith(t, keys, storedSnippet(t, tabbedContent))
+		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
 
-		assert.Contains(t, screen.Screen(), "Contains tabs: read-only here, edit with ctrl+o ($EDITOR)")
+		assert.Contains(t, screen.Screen(), "Longer than 10,000 lines: read-only here, edit with ctrl+o ($EDITOR)")
 	})
 
-	t.Run("names no key when the external editor is unbound", func(t *testing.T) {
+	t.Run("names no key on read-only content when the external editor is unbound", func(t *testing.T) {
 		t.Parallel()
 
 		keys := testsettings.Default(t).Keys
 		keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
-		screen := editingStoredWith(t, keys, storedSnippet(t, tabbedContent))
+		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
 
 		assert.Contains(t, screen.Screen(), unboundReadOnly)
 		assert.NotContains(t, screen.Screen(), "edit with")
@@ -89,12 +88,12 @@ func TestEditing_View(t *testing.T) {
 
 		keys := testsettings.Default(t).Keys
 		light := look.NewStyles(look.SchemeLight)
-		screen := editingStoredWith(t, keys, storedSnippet(t, tabbedContent))
+		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
 		screen.Press(keypress.Letter('x'))
 
 		screen.Send(look.Restyled{Styles: light})
 
-		styledFromStart := editingStoredStyled(t, keys, light, storedSnippet(t, tabbedContent))
+		styledFromStart := editingStoredStyled(t, keys, light, storedSnippet(t, linesOf(10_001)))
 		styledFromStart.Press(keypress.Letter('x'))
 		assert.Contains(t, screen.Screen(), unsavedTitle)
 		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
@@ -118,17 +117,33 @@ func TestEditing_save(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
-	t.Run("keeps read-only content byte for byte", func(t *testing.T) {
+	t.Run("keeps content with tabs byte for byte when it is saved unchanged", func(t *testing.T) {
 		t.Parallel()
 
 		stored := storedSnippet(t, tabbedContent)
 		screen := editingStored(t, stored)
-		screen.Press(keypress.Typed(" all")...)
 		screen.Press(enterContent()...)
-		screen.Press(keypress.Typed("lost")...)
+		screen.Press(keypress.Special(tea.KeyDown), keypress.Special(tea.KeyRight), keypress.Special(tea.KeyUp))
 		screen.Press(save())
 
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune all", tabbedContent)}
+		assert.NotContains(t, screen.Screen(), unsavedTitle)
+
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", tabbedContent)}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+	})
+
+	t.Run("keeps the tabs of content edited around them", func(t *testing.T) {
+		t.Parallel()
+
+		stored := storedSnippet(t, tabbedContent)
+		screen := editingStored(t, stored)
+		screen.Press(enterContent()...)
+		screen.Press(keypress.Special(tea.KeyUp), keypress.Special(tea.KeyUp), keypress.Special(tea.KeyRight))
+		screen.Press(keypress.Typed("x")...)
+		screen.Send(tea.PasteMsg{Content: "\ty"})
+		screen.Press(save())
+
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", "if x {\n\tx\tyreturn\n}\n")}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
@@ -207,7 +222,6 @@ func TestEditing_readOnlyContent(t *testing.T) {
 		{name: "indent leaves it unchanged", sent: keypress.Special(tea.KeyTab)},
 		{name: "dedent leaves it unchanged", sent: shiftTab()},
 		{name: "a paste leaves it unchanged", sent: tea.PasteMsg{Content: "pasted"}},
-		{name: "a paste with tabs leaves it unchanged", sent: tea.PasteMsg{Content: "\tpasted"}},
 		{name: "a paste over 10,000 lines leaves it unchanged", sent: tea.PasteMsg{Content: linesOf(10_001)}},
 	}
 
@@ -215,13 +229,14 @@ func TestEditing_readOnlyContent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			stored := storedSnippet(t, tabbedContent)
+			overlong := linesOf(10_001)
+			stored := storedSnippet(t, overlong)
 			screen := editingStored(t, stored)
 			screen.Press(enterContent()...)
 			screen.Send(tt.sent)
 			screen.Press(save())
 
-			want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", tabbedContent)}
+			want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", overlong)}
 			assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 		})
 	}

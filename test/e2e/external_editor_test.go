@@ -46,7 +46,8 @@ func TestExternalEditFromEditOverlayKeepsTabs(t *testing.T) {
 	screen.waitForFrame(rootTitle)
 
 	screen.press(keypress.Letter('3'), keypress.Letter('e'), keypress.Ctrl('e'))
-	screen.waitForFrame(readOnlyNotice)
+	screen.waitForFrame(unsavedOverlay)
+	screen.waitForFrame("    return")
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame(listHintsShown)
 

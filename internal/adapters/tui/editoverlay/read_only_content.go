@@ -1,18 +1,11 @@
 package editoverlay
 
 import (
-	"strings"
-
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-const (
-	tabbedNotice   = "Contains tabs: read-only here"
-	overlongNotice = "Longer than 10,000 lines: read-only here"
-)
-
-type uneditableCheck func(content string) (notice string)
+const overlongNotice = "Longer than 10,000 lines: read-only here"
 
 type readOnlyContent struct {
 	notice      string
@@ -25,38 +18,14 @@ func editableContent() readOnlyContent {
 	return readOnlyContent{notice: "", content: "", language: value.Language{}, highlighted: ""}
 }
 
-func readOnlyIfUneditable(content string, language value.Language, codeStyle string) readOnlyContent {
-	return readOnlyIf(content, language, codeStyle, noticeIfTabbed, noticeIfOverlong)
-}
-
-func readOnlyIf(
-	content string, language value.Language, codeStyle string, checks ...uneditableCheck,
-) readOnlyContent {
-	for _, check := range checks {
-		if notice := check(content); notice != "" {
-			held := readOnlyContent{notice: notice, content: content, language: language, highlighted: ""}
-
-			return held.highlightedIn(codeStyle)
-		}
+func readOnlyIfOverlong(content string, language value.Language, codeStyle string) readOnlyContent {
+	if !overflowsEmptyContent(content) {
+		return editableContent()
 	}
 
-	return editableContent()
-}
+	held := readOnlyContent{notice: overlongNotice, content: content, language: language, highlighted: ""}
 
-func noticeIfTabbed(content string) string {
-	if strings.Contains(content, tabCharacter) {
-		return tabbedNotice
-	}
-
-	return ""
-}
-
-func noticeIfOverlong(content string) string {
-	if overflowsEmptyContent(content) {
-		return overlongNotice
-	}
-
-	return ""
+	return held.highlightedIn(codeStyle)
 }
 
 func (r readOnlyContent) held() bool {

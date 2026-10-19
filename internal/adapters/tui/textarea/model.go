@@ -720,8 +720,10 @@ func (m *Model) moveToCharOffset(charOffset int) {
 			break
 		}
 
-		next := offset + tabstop.WidthFrom(m.value[m.row][m.col:m.col+1], offset)
-		if next > charOffset && m.value[m.row][m.col] == '\t' {
+		char := m.value[m.row][m.col]
+
+		next := offset + tabstop.RuneCellsAt(char, offset)
+		if next > charOffset && tabstop.IsTab(char) {
 			break
 		}
 
@@ -1556,7 +1558,7 @@ func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.St
 	// in an extra space at the end of the line which can look off when
 	// the cursor line is showing.
 	if tabstop.WidthFrom(segment.runes, 0) > model.width {
-		segment.runes = withoutTrailingSpace(segment.runes)
+		segment.runes = withoutTrailingWhitespace(segment.runes)
 	}
 
 	v.writeSegmentText(segment, style)
@@ -1567,7 +1569,7 @@ func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.St
 	return wrappedLength
 }
 
-func withoutTrailingSpace(runes []rune) []rune {
+func withoutTrailingWhitespace(runes []rune) []rune {
 	if len(runes) > 0 && unicode.IsSpace(runes[len(runes)-1]) {
 		return runes[:len(runes)-1]
 	}
@@ -1729,7 +1731,7 @@ func (w *wrapping) add(char rune) {
 }
 
 func (w *wrapping) placeWordAnd(space rune) {
-	if w.widthWith(w.word, []rune{space}) > w.width {
+	if len(w.lines[w.row]) > 0 && w.widthWith(w.word, []rune{space}) > w.width {
 		w.startLine()
 	}
 

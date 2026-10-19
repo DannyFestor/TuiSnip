@@ -12,24 +12,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
-func newSelectionTextarea(t *testing.T, value string) textarea.Model {
-	t.Helper()
-
-	ta := textarea.New()
-	ta.Prompt = ""
-	ta.ShowLineNumbers = false
-	ta.SetWidth(20)
-	ta.SetHeight(6)
-	ta.Focus()
-	ta.SetValue(value)
-
-	return ta
-}
-
 func TestPositionAt(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello\nworld")
+	ta := newPlainTextarea(t, "hello\nworld")
 
 	tests := []struct {
 		name string
@@ -73,7 +59,7 @@ func TestPositionAtAccountsForGutter(t *testing.T) {
 func TestSelectedTextSingleLine(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
@@ -85,7 +71,7 @@ func TestSelectedTextSingleLine(t *testing.T) {
 func TestSelectedTextAcrossLines(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "one\ntwo\nthree")
+	ta := newPlainTextarea(t, "one\ntwo\nthree")
 	ta.BeginSelection(2, 0)
 	ta.ExtendSelection(1, 2)
 	ta.EndSelection()
@@ -96,12 +82,12 @@ func TestSelectedTextAcrossLines(t *testing.T) {
 func TestSelectedTextBackwardDrag(t *testing.T) {
 	t.Parallel()
 
-	forward := newSelectionTextarea(t, "one\ntwo\nthree")
+	forward := newPlainTextarea(t, "one\ntwo\nthree")
 	forward.BeginSelection(2, 0)
 	forward.ExtendSelection(1, 2)
 	forward.EndSelection()
 
-	backward := newSelectionTextarea(t, "one\ntwo\nthree")
+	backward := newPlainTextarea(t, "one\ntwo\nthree")
 	backward.BeginSelection(1, 2)
 	backward.ExtendSelection(2, 0)
 	backward.EndSelection()
@@ -113,7 +99,7 @@ func TestSelectedTextBackwardDrag(t *testing.T) {
 func TestClickWithoutDragMakesNoSelection(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.BeginSelection(3, 0)
 	ta.EndSelection()
 
@@ -124,7 +110,7 @@ func TestClickWithoutDragMakesNoSelection(t *testing.T) {
 func TestExtendSelectionRequiresBegin(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.ExtendSelection(5, 0)
 
 	assert.False(t, ta.HasSelection(), "ExtendSelection without BeginSelection must not select")
@@ -133,7 +119,7 @@ func TestExtendSelectionRequiresBegin(t *testing.T) {
 func TestClearSelectionAPI(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
@@ -149,7 +135,7 @@ func TestClearSelectionAPI(t *testing.T) {
 func TestSelectAllAPI(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "one\ntwo")
+	ta := newPlainTextarea(t, "one\ntwo")
 	ta.SelectAll()
 
 	assert.Equal(t, "one\ntwo", ta.SelectedText())
@@ -158,7 +144,7 @@ func TestSelectAllAPI(t *testing.T) {
 func TestKeyPressClearsSelection(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
@@ -173,7 +159,7 @@ func TestKeyPressClearsSelection(t *testing.T) {
 func TestSelectionRendersWithSelectionStyle(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 
 	plain := ta.View()
 
@@ -211,7 +197,7 @@ func TestSelectionSurvivesSoftWrap(t *testing.T) {
 func TestSelectionEmptyBuffer(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "")
+	ta := newPlainTextarea(t, "")
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 3)
 	ta.EndSelection()
@@ -226,7 +212,7 @@ func TestSelectionEmptyBuffer(t *testing.T) {
 func TestSelectionRange(t *testing.T) {
 	t.Parallel()
 
-	ta := newSelectionTextarea(t, "hello world")
+	ta := newPlainTextarea(t, "hello world")
 	ta.BeginSelection(0, 0)
 	ta.ExtendSelection(5, 0)
 	ta.EndSelection()
@@ -235,4 +221,43 @@ func TestSelectionRange(t *testing.T) {
 	require.True(t, ok, "expected a selection")
 	assert.Equal(t, textarea.Position{Row: 0, Col: 0}, selected.Start)
 	assert.Equal(t, textarea.Position{Row: 0, Col: 5}, selected.End)
+}
+
+func TestModel_SelectedText_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("gives the tab back from a keyboard selection and draws it at the tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb")
+		area.CursorStart()
+
+		area = selectedRight(area, 3)
+
+		assert.Equal(t, "a\tb", area.SelectedText())
+		assert.Equal(t, "a   b", viewRows(&area)[0])
+	})
+
+	t.Run("gives the tab back from a mouse drag ending on the cell after it", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tbc")
+		area.BeginSelection(0, 0)
+		area.ExtendSelection(5, 0)
+		area.EndSelection()
+
+		assert.Equal(t, "a\tb", area.SelectedText())
+	})
+}
+
+func TestModel_PositionAt_tabs(t *testing.T) {
+	t.Parallel()
+
+	area := newPlainTextarea(t, "a\tb")
+
+	for cell := 1; cell < 4; cell++ {
+		assert.Equal(t, textarea.Position{Row: 0, Col: 1}, area.PositionAt(cell, 0), "cell %d", cell)
+	}
+
+	assert.Equal(t, textarea.Position{Row: 0, Col: 2}, area.PositionAt(4, 0))
 }

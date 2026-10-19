@@ -2712,3 +2712,127 @@ func pressed(m textarea.Model, press tea.KeyPressMsg, count int) textarea.Model 
 
 	return m
 }
+
+func TestModel_Value_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("keeps loaded tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "\tif x {\n\t\treturn\n\t}")
+
+		assert.Equal(t, "\tif x {\n\t\treturn\n\t}", area.Value())
+	})
+
+	t.Run("keeps inserted tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "")
+		area.InsertString("a\tb")
+
+		assert.Equal(t, "a\tb", area.Value())
+	})
+
+	t.Run("keeps pasted tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "")
+		area, _ = area.Update(tea.PasteMsg{Content: "a\tb\n\tc"})
+
+		assert.Equal(t, "a\tb\n\tc", area.Value())
+	})
+}
+
+func TestModel_View_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("runs a tab to the next tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb\nabc\td\n\t\te")
+
+		assert.Equal(t, []string{"a   b", "abc d", "        e"}, viewRows(&area)[:3])
+	})
+
+	t.Run("wraps a line with tabs at the tab-aware width", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "\t\t\t\tword\tnext")
+
+		assert.Equal(t, []string{"", "word    next"}, viewRows(&area)[:2])
+		assert.Equal(t, "\t\t\t\tword\tnext", area.Value())
+	})
+
+	t.Run("keeps a word on its row when only the tab after it overflows", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "top\nabcdefgh\tx")
+		area.SetWidth(10)
+
+		assert.Equal(t, []string{"top", "abcdefgh", "x"}, viewRows(&area)[:3])
+	})
+
+	t.Run("covers the whole tab with the reverse-video cursor block", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tx")
+		area.MoveToBegin()
+		area, _ = area.Update(keypress.Special(tea.KeyRight))
+
+		firstRow, _, _ := strings.Cut(area.View(), "\n")
+
+		assert.Contains(t, firstRow, "\x1b[7m   \x1b[m")
+	})
+}
+
+func TestModel_Update_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("left from after a tab lands before it in one press", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb")
+		area.SetCursorColumn(2)
+
+		area, _ = area.Update(keypress.Special(tea.KeyLeft))
+
+		assert.Equal(t, 1, area.Column())
+	})
+
+	t.Run("right from before a tab lands after it in one press", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb")
+		area.SetCursorColumn(1)
+
+		area, _ = area.Update(keypress.Special(tea.KeyRight))
+
+		assert.Equal(t, 2, area.Column())
+	})
+
+	t.Run("down lands on the tab covering the cell column and keeps it", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "abcdef\n\tx\nabcdef")
+		area.MoveToBegin()
+		area.SetCursorColumn(2)
+
+		area, _ = area.Update(keypress.Special(tea.KeyDown))
+		onTab := area.Column()
+		area, _ = area.Update(keypress.Special(tea.KeyDown))
+
+		assert.Equal(t, 0, onTab)
+		assert.Equal(t, 2, area.Column())
+	})
+
+	t.Run("up from after a tab keeps the cell column", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "abcdef\n\tx")
+		area.SetCursorColumn(1)
+
+		area, _ = area.Update(keypress.Special(tea.KeyUp))
+
+		assert.Equal(t, 4, area.Column())
+	})
+}

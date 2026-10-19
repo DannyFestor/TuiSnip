@@ -23,7 +23,7 @@ func ExpandFrom(runes []rune, column int) string {
 	chunkStart := 0
 
 	for index, r := range runes {
-		if r != tab {
+		if !IsTab(r) {
 			continue
 		}
 

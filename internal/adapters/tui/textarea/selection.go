@@ -239,8 +239,8 @@ func runeIndexForColumn(runes []rune, col int) int {
 
 	width := 0
 
-	for i := range runes {
-		width += tabstop.WidthFrom(runes[i:i+1], width)
+	for i, r := range runes {
+		width += tabstop.RuneCellsAt(r, width)
 		if width > col {
 			return i
 		}

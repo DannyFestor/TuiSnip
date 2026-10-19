@@ -33,3 +33,33 @@ func TestWidthFrom(t *testing.T) {
 		})
 	}
 }
+
+func TestRuneCellsAt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		r      rune
+		column int
+		want   int
+	}{
+		{name: "counts a narrow rune as one cell", r: 'a', column: 3, want: 1},
+		{name: "counts a wide rune as two cells", r: '界', column: 1, want: 2},
+		{name: "runs a tab at a tab stop to the next stop", r: '\t', column: 4, want: 4},
+		{name: "runs a tab between stops to the next stop", r: '\t', column: 5, want: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, tabstop.RuneCellsAt(tt.r, tt.column))
+		})
+	}
+}
+
+func TestIsTab(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, tabstop.IsTab('\t'))
+	assert.False(t, tabstop.IsTab(' '))
+}

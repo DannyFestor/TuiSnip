@@ -108,6 +108,7 @@ func TestRestyledArea(t *testing.T) {
 
 	light := look.NewStyles(look.SchemeLight)
 	restyled := input.RestyledArea(input.NewContentArea(look.NewStyles(look.SchemeDark)), light)
+	fresh := input.NewContentArea(light)
 
-	assert.Equal(t, input.NewContentArea(light).View(), restyled.View())
+	assert.Equal(t, fresh.View(), restyled.View())
 }

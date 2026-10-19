@@ -135,7 +135,7 @@ func (p Pane) ShownFragment() (domain.Fragment, bool) {
 func (p Pane) Copying() (outcome.CopyRequested, bool) {
 	fragment, ok := p.ShownFragment()
 
-	return outcome.CopyRequested{ID: p.snippet.ID(), FragmentID: fragment.ID()}, ok
+	return outcome.CopyRequested{ID: p.snippet.ID(), FragmentID: fragment.ID(), Title: p.snippet.Title().String()}, ok
 }
 
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {

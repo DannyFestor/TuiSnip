@@ -48,3 +48,16 @@ WHERE id = ?;
 UPDATE folders
 SET deleted_at = ?, former_parent_path = ?
 WHERE id = ?;
+
+-- name: GetFolderTrashItem :one
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM folders
+WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: CountFolderTrashItems :one
+SELECT COUNT(*) FROM folders WHERE deleted_at IS NOT NULL;
+
+-- name: RestoreFolder :exec
+UPDATE folders
+SET deleted_at = NULL, parent_id = ?, former_parent_path = '[]'
+WHERE id = ?;

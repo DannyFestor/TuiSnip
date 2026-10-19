@@ -50,6 +50,45 @@ func snippetByID(id domain.SnippetID) snippetSelection {
 	}
 }
 
+func snippetTrashItem(id domain.SnippetID) snippetSelection {
+	column := columnID(id)
+
+	return snippetSelection{
+		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
+			row, err := queries.GetSnippetTrashItem(ctx, column)
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, nil
+			}
+
+			if err != nil {
+				return nil, fmt.Errorf("get snippet trash item: %w", err)
+			}
+
+			return []sqlcgen.Snippet{row}, nil
+		},
+		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
+			return queries.ListFragmentsBySnippet(ctx, column)
+		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return snippetTagRowsOf(queries.ListSnippetTrashItemTags(ctx, column))
+		},
+	}
+}
+
+func trashSnippets() snippetSelection {
+	return snippetSelection{
+		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {
+			return queries.ListTrashSnippets(ctx)
+		},
+		fragments: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Fragment, error) {
+			return queries.ListTrashFragments(ctx)
+		},
+		tags: func(ctx context.Context, queries *sqlcgen.Queries) ([]snippetTagRow, error) {
+			return snippetTagRowsOf(queries.ListTrashSnippetTags(ctx))
+		},
+	}
+}
+
 func liveSnippets() snippetSelection {
 	return snippetSelection{
 		snippets: func(ctx context.Context, queries *sqlcgen.Queries) ([]sqlcgen.Snippet, error) {

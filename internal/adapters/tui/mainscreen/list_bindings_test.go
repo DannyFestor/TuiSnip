@@ -26,6 +26,7 @@ func TestScreen_duplicate(t *testing.T) {
 
 		assert.Equal(t, []outcome.Outcome{outcome.SnippetDuplicateRequested{
 			Input:     snippet.DuplicateInput{SnippetID: snippets[1].ID()},
+			Title:     snippets[1].Title().String(),
 			Selection: browseselection.Selection{},
 		}}, screen.Outcomes())
 	})
@@ -45,6 +46,7 @@ func TestScreen_duplicate(t *testing.T) {
 
 		assert.Contains(t, screen.Outcomes(), outcome.SnippetDuplicateRequested{
 			Input:     snippet.DuplicateInput{SnippetID: filedIn(t, sample.Go.ID()).ID()},
+			Title:     filedIn(t, sample.Go.ID()).Title().String(),
 			Selection: browseselection.InFolder(sample.Go.ID()),
 		})
 	})

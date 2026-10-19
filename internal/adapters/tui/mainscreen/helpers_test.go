@@ -187,7 +187,11 @@ func severalFragmentsSnippet(t *testing.T) domain.Snippet {
 }
 
 func copyRequestedFor(stored domain.Snippet, index int) outcome.CopyRequested {
-	return outcome.CopyRequested{ID: stored.ID(), FragmentID: stored.Fragments()[index].ID()}
+	return outcome.CopyRequested{
+		ID:         stored.ID(),
+		FragmentID: stored.Fragments()[index].ID(),
+		Title:      stored.Title().String(),
+	}
 }
 
 func lines(driver *overlaytest.Driver) []string {

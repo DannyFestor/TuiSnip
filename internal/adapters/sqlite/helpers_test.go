@@ -98,6 +98,7 @@ func trashRawSnippet(t *testing.T, path string, snippetID domain.SnippetID) {
 }
 
 type trashFixture struct {
+	path           string
 	database       *sqlite.Database
 	ids            *testkit.SequentialIDs
 	tag            domain.Tag
@@ -131,6 +132,7 @@ func newTrashFixture(t *testing.T) trashFixture {
 		})
 	}
 	fixture := trashFixture{
+		path:           path,
 		database:       database,
 		ids:            ids,
 		tag:            tag,

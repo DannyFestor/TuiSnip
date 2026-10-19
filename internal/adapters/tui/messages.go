@@ -17,7 +17,6 @@ type treeFailedMsg struct {
 
 type copyFinishedMsg struct {
 	result snippet.CopyResult
-	err    error
 }
 
 type captureFinishedMsg struct {

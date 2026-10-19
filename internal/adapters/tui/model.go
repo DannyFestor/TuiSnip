@@ -18,7 +18,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/savegate"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
-	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
@@ -229,7 +228,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.overlaysUpdatedSharingArrivals(msg)
 	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg, snippetsChangedMsg:
 		return m.reloadedAfter(msg)
-	case operationFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
+	case operationFailedMsg, itemActionFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
 		return m.failedWith(msg)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
@@ -287,6 +286,8 @@ func (m Model) failedWith(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case operationFailedMsg:
 		return m.failed(msg.operation, msg.err)
+	case itemActionFailedMsg:
+		return m.itemActionFailed(msg)
 	case listFailedMsg:
 		return m.failed(operationList, msg.err)
 	case treeFailedMsg:
@@ -511,7 +512,7 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		outcome.SnippetMoveRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
-		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked:
+		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked, outcome.ReloadAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
@@ -552,6 +553,8 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.reloadSelecting(reported.Selection, reported.ID)
 	case outcome.SnippetReloaded:
 		return m, m.reloadSelecting(reported.Selection, reported.ID)
+	case outcome.ReloadAsked:
+		return m, m.reloadSelecting(reported.Selection, reported.Selecting)
 	case outcome.SnippetRevealed:
 		return m, m.loadSnippetsShowing(browseselection.InFolder(reported.FolderID), reported.ID, reported.FragmentID)
 	case outcome.FolderSelected:
@@ -603,75 +606,6 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.editExternally(reported)
 	default:
 		return m.runSnippetListChange(reported)
-	}
-}
-
-func (m Model) runSnippetListChange(reported outcome.Outcome) tea.Cmd {
-	switch reported := reported.(type) {
-	case outcome.SnippetDuplicateRequested:
-		return m.duplicateSnippet(reported.Input, reported.Selection)
-	case outcome.SnippetDeleteRequested:
-		return m.deleteSnippet(reported)
-	case outcome.SnippetMoveRequested:
-		return m.moveSnippet(reported.Input, reported.Selection, reported.Selecting)
-	default:
-		return nil
-	}
-}
-
-func (m Model) duplicateSnippet(in snippet.DuplicateInput, selection browseselection.Selection) tea.Cmd {
-	return func() tea.Msg {
-		duplicate, err := m.duplicator.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationDuplicate, err: err}
-		}
-
-		return snippetsChangedMsg{selection: selection, selecting: duplicate.ID(), status: ""}
-	}
-}
-
-func (m Model) deleteSnippet(requested outcome.SnippetDeleteRequested) tea.Cmd {
-	return func() tea.Msg {
-		err := m.deleter.Run(m.ctx, requested.Input)
-		if err != nil {
-			return operationFailedMsg{operation: operationDeleteSnippet, err: err}
-		}
-
-		return snippetsChangedMsg{
-			selection: requested.Selection,
-			selecting: requested.Selecting,
-			status:    movedToTrashText(snippetNoun, requested.Title),
-		}
-	}
-}
-
-func (m Model) moveSnippet(
-	in snippet.MoveInput, selection browseselection.Selection, selecting domain.SnippetID,
-) tea.Cmd {
-	return func() tea.Msg {
-		_, err := m.mover.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationMoveSnippet, err: err}
-		}
-
-		return snippetsChangedMsg{selection: selection, selecting: selecting, status: ""}
-	}
-}
-
-func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
-	switch reported := reported.(type) {
-	case outcome.FolderCreateRequested:
-		return m.createFolder(reported.Input)
-	case outcome.FolderRenameRequested:
-		return m.renameFolder(reported.Input)
-	case outcome.FolderDeleteRequested:
-		return m.deleteFolder(reported)
-	case outcome.DefaultLanguageRequested:
-		return m.setFolderDefaultLanguage(reported.Input)
-	case outcome.FolderMoveRequested:
-		return m.moveFolder(reported.Input)
-	default:
-		return nil
 	}
 }
 
@@ -734,64 +668,6 @@ func (m Model) deleteTag(in tag.DeleteInput) tea.Cmd {
 	}
 }
 
-func (m Model) createFolder(in folder.CreateInput) tea.Cmd {
-	return func() tea.Msg {
-		created, err := m.folderCreator.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationCreateFolder, err: err}
-		}
-
-		return folderTreeChangedMsg{selecting: created.ID(), status: ""}
-	}
-}
-
-func (m Model) deleteFolder(requested outcome.FolderDeleteRequested) tea.Cmd {
-	return func() tea.Msg {
-		err := m.folderDeleter.Run(m.ctx, requested.Input)
-		if err != nil {
-			return operationFailedMsg{operation: operationDeleteFolder, err: err}
-		}
-
-		return folderTreeChangedMsg{
-			selecting: requested.ParentID,
-			status:    movedToTrashText(folderNoun, requested.Name),
-		}
-	}
-}
-
-func (m Model) moveFolder(in folder.MoveInput) tea.Cmd {
-	return func() tea.Msg {
-		moved, err := m.folderMover.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationMoveFolder, err: err}
-		}
-
-		return folderTreeChangedMsg{selecting: moved.ID(), status: ""}
-	}
-}
-
-func (m Model) renameFolder(in folder.RenameInput) tea.Cmd {
-	return func() tea.Msg {
-		_, err := m.folderRenamer.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationRenameFolder, err: err}
-		}
-
-		return folderEditedMsg{}
-	}
-}
-
-func (m Model) setFolderDefaultLanguage(in folder.SetDefaultLanguageInput) tea.Cmd {
-	return func() tea.Msg {
-		_, err := m.defaultLanguageSetter.Run(m.ctx, in)
-		if err != nil {
-			return operationFailedMsg{operation: operationSetDefaultLanguage, err: err}
-		}
-
-		return folderEditedMsg{}
-	}
-}
-
 func (m Model) querySnippets(text string) tea.Cmd {
 	query := search.QueryInput{Text: text}
 
@@ -810,16 +686,15 @@ func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
 
 	return func() tea.Msg {
 		result, err := m.copier.Run(m.ctx, in)
+		if err != nil {
+			return itemActionFailedMsg{operation: operationCopy, err: err, gone: goneItem(snippetNoun, requested.Title)}
+		}
 
-		return copyFinishedMsg{result: result, err: err}
+		return copyFinishedMsg{result: result}
 	}
 }
 
 func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {
-	if msg.err != nil {
-		return m.failed(operationCopy, msg.err)
-	}
-
 	text, err := deliveryText(msg.result.Delivery)
 	if err != nil {
 		return m.failed(operationCopy, err)

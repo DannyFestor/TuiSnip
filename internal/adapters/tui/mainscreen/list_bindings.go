@@ -44,6 +44,7 @@ func (s Screen) duplicateAsked() outcome.Step {
 
 	return outcome.Stay(s).Passing(outcome.SnippetDuplicateRequested{
 		Input:     snippet.DuplicateInput{SnippetID: selected.ID()},
+		Title:     selected.Title().String(),
 		Selection: s.selection(),
 	})
 }

@@ -44,7 +44,9 @@ func TestScreen_moveFolder(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.FolderMoveRequested{
-			Input: folder.MoveInput{FolderID: sample.Go.ID(), ParentID: sample.Docker.ID()},
+			Input:      folder.MoveInput{FolderID: sample.Go.ID(), ParentID: sample.Docker.ID()},
+			Name:       "go",
+			TargetName: "docker",
 		}, lastOutcomeOf[outcome.FolderMoveRequested](t, screen.Outcomes()))
 		assert.Equal(t, folderHints, screen.Hints())
 	})
@@ -58,7 +60,9 @@ func TestScreen_moveFolder(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.FolderMoveRequested{
-			Input: folder.MoveInput{FolderID: sample.Tests.ID(), ParentID: sample.Go.ID()},
+			Input:      folder.MoveInput{FolderID: sample.Tests.ID(), ParentID: sample.Go.ID()},
+			Name:       "testing",
+			TargetName: "go",
 		}, lastOutcomeOf[outcome.FolderMoveRequested](t, screen.Outcomes()))
 	})
 
@@ -124,9 +128,11 @@ func TestScreen_moveSnippet(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input:     snippet.MoveInput{SnippetID: snippets[0].ID(), FolderID: sample.Docker.ID()},
-			Selection: browseselection.InFolder(domain.FolderID{}),
-			Selecting: snippets[1].ID(),
+			Input:      snippet.MoveInput{SnippetID: snippets[0].ID(), FolderID: sample.Docker.ID()},
+			Title:      snippets[0].Title().String(),
+			TargetName: "docker",
+			Selection:  browseselection.InFolder(domain.FolderID{}),
+			Selecting:  snippets[1].ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 
@@ -141,9 +147,11 @@ func TestScreen_moveSnippet(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input:     snippet.MoveInput{SnippetID: snippets[1].ID(), FolderID: sample.Docker.ID()},
-			Selection: browseselection.InFolder(domain.FolderID{}),
-			Selecting: snippets[0].ID(),
+			Input:      snippet.MoveInput{SnippetID: snippets[1].ID(), FolderID: sample.Docker.ID()},
+			Title:      snippets[1].Title().String(),
+			TargetName: "docker",
+			Selection:  browseselection.InFolder(domain.FolderID{}),
+			Selecting:  snippets[0].ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 
@@ -156,9 +164,11 @@ func TestScreen_moveSnippet(t *testing.T) {
 		screen.Press(keypress.Letter('3'), keypress.Letter('m'), keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input:     snippet.MoveInput{SnippetID: moving.ID(), FolderID: domain.FolderID{}},
-			Selection: browseselection.InFolder(domain.FolderID{}),
-			Selecting: moving.ID(),
+			Input:      snippet.MoveInput{SnippetID: moving.ID(), FolderID: domain.FolderID{}},
+			Title:      moving.Title().String(),
+			TargetName: "Root",
+			Selection:  browseselection.InFolder(domain.FolderID{}),
+			Selecting:  moving.ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 
@@ -183,9 +193,11 @@ func TestScreen_moveSnippet(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, outcome.SnippetMoveRequested{
-			Input:     snippet.MoveInput{SnippetID: moving.ID(), FolderID: sample.Docker.ID()},
-			Selection: browseselection.WithTag(tags[0].Tag.ID()),
-			Selecting: moving.ID(),
+			Input:      snippet.MoveInput{SnippetID: moving.ID(), FolderID: sample.Docker.ID()},
+			Title:      moving.Title().String(),
+			TargetName: "docker",
+			Selection:  browseselection.WithTag(tags[0].Tag.ID()),
+			Selecting:  moving.ID(),
 		}, lastOutcomeOf[outcome.SnippetMoveRequested](t, screen.Outcomes()))
 	})
 

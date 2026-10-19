@@ -32,6 +32,7 @@ components:
   app-browse:  { in: internal/app/browse/** }
   app-search:  { in: internal/app/search/** }
   app-library: { in: internal/app/library/** }
+  app-trash:   { in: internal/app/trash/** }
 
   sqlite:      { in: internal/adapters/sqlite/** }
   migrations:  { in: db/migrations }
@@ -70,6 +71,7 @@ deps:
   app-browse:  { mayDependOn: [ app-browse ] }
   app-search:  { mayDependOn: [ app-search ] }
   app-library: { mayDependOn: [ app-library ] }
+  app-trash:   { mayDependOn: [ app-trash ] }
 
   sqlite:
     mayDependOn: [ sqlite, migrations ]
@@ -95,7 +97,7 @@ deps:
   logging:     { mayDependOn: [ logging ] }
 
   tui:
-    mayDependOn: [ tui, app-snippet, app-folder, app-tag, app-browse, app-search ]
+    mayDependOn: [ tui, app-snippet, app-folder, app-tag, app-browse, app-search, app-trash ]
     canUse: [ tui-framework, text-width, highlighting ]
 
   bootstrap:

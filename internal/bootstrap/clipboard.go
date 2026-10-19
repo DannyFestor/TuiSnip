@@ -18,6 +18,25 @@ func clipboardOptionsFrom(options Options, logger *slog.Logger) clipboard.Option
 	}
 }
 
+type copies struct {
+	live    *snippet.Copy
+	trashed *snippet.Copy
+}
+
+func newCopies(settings config.Copy, clipboardOptions clipboard.Options, repos repositories) (copies, error) {
+	live, err := newCopy(settings, clipboardOptions, repos.snippets)
+	if err != nil {
+		return copies{}, err
+	}
+
+	trashed, err := newCopy(settings, clipboardOptions, repos.trash)
+	if err != nil {
+		return copies{}, err
+	}
+
+	return copies{live: live, trashed: trashed}, nil
+}
+
 func newCopy(settings config.Copy, clipboardOptions clipboard.Options, finder snippet.Finder) (*snippet.Copy, error) {
 	switch settings.Clipboard {
 	case config.ClipboardBackendAuto:

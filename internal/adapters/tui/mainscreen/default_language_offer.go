@@ -18,6 +18,7 @@ func defaultLanguageOffer(filed domain.Folder, curated []value.Language) languag
 		Picked: func(picked value.Language) outcome.Outcome {
 			return outcome.DefaultLanguageRequested{
 				Input: folder.SetDefaultLanguageInput{FolderID: filed.ID(), Language: picked.String()},
+				Name:  filed.Name().String(),
 			}
 		},
 	}

@@ -37,6 +37,15 @@ func (p Paths) Short(id domain.FolderID) string {
 	return strings.Join(p.namesOf(id), separator)
 }
 
+func (p Paths) Name(id domain.FolderID) string {
+	names := p.namesOf(id)
+	if len(names) == 0 {
+		return Root
+	}
+
+	return names[len(names)-1]
+}
+
 func (p Paths) namesOf(id domain.FolderID) []string {
 	if id.IsNil() {
 		return nil

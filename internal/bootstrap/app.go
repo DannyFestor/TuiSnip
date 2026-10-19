@@ -9,7 +9,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/DannyFestor/TuiSnip/internal/adapters/clipboard"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/config"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/logging"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/memsearch"
@@ -25,6 +24,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/search"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 )
 
 type App struct {
@@ -35,6 +35,7 @@ type App struct {
 	Delete                   *snippet.Delete
 	Move                     *snippet.Move
 	Copy                     *snippet.Copy
+	CopyFromTrash            *snippet.Copy
 	Query                    *search.Query
 	SnippetsInFolder         *browse.SnippetsInFolder
 	FolderTree               *browse.FolderTree
@@ -49,6 +50,8 @@ type App struct {
 	RenameTag                *tag.Rename
 	PreviewDeleteTag         *tag.PreviewDelete
 	DeleteTag                *tag.Delete
+	ListTrash                *trash.List
+	Restore                  *trash.Restore
 	Export                   *library.Export
 	Import                   *library.Import
 	ImportSnippetsLab        *library.ImportSnippetsLab
@@ -197,6 +200,7 @@ type repositories struct {
 	folders  *sqlite.FolderRepository
 	tags     *sqlite.TagRepository
 	library  *sqlite.LibraryRepository
+	trash    *sqlite.TrashRepository
 }
 
 func openRepositories(database *sqlite.Database, logger *slog.Logger) repositories {
@@ -205,38 +209,35 @@ func openRepositories(database *sqlite.Database, logger *slog.Logger) repositori
 		folders:  sqlite.NewFolderRepository(database, logger),
 		tags:     sqlite.NewTagRepository(database, logger),
 		library:  sqlite.NewLibraryRepository(database, logger),
+		trash:    sqlite.NewTrashRepository(database, logger),
 	}
 }
 
 func newActions(cfg config.Config, options Options, repos repositories, logger *slog.Logger) (*App, error) {
 	clipboardOptions := clipboardOptionsFrom(options, logger)
 
-	copyAction, err := newCopy(cfg.Copy, clipboardOptions, repos.snippets)
-	if err != nil {
-		return nil, err
-	}
-
-	snippets, snippetsErr := newSnippetActions(repos.snippets)
-	capture, captureErr := snippet.NewCapture(clipboard.NewNative(clipboardOptions))
+	snippets, snippetsErr := newSnippetActions(repos, cfg.Copy, clipboardOptions)
 	query, queryErr := search.NewQuery(memsearch.NewIndex(repos.snippets))
 	browsing, browseErr := newBrowseActions(repos)
 	folders, foldersErr := newFolderActions(repos.folders)
 	tags, tagsErr := newTagActions(repos.tags)
+	trashing, trashErr := newTrashActions(repos.trash)
 	libraries, librariesErr := newLibraryActions(repos.library)
 
-	err = errors.Join(snippetsErr, captureErr, queryErr, browseErr, foldersErr, tagsErr, librariesErr)
+	err := errors.Join(snippetsErr, queryErr, browseErr, foldersErr, tagsErr, trashErr, librariesErr)
 	if err != nil {
 		return nil, fmt.Errorf("build Actions: %w", err)
 	}
 
 	return &App{
 		Create:                   snippets.create,
-		Capture:                  capture,
+		Capture:                  snippets.capture,
 		Update:                   snippets.update,
 		Duplicate:                snippets.duplicate,
 		Delete:                   snippets.remove,
 		Move:                     snippets.move,
-		Copy:                     copyAction,
+		Copy:                     snippets.copies.live,
+		CopyFromTrash:            snippets.copies.trashed,
 		Query:                    query,
 		SnippetsInFolder:         browsing.snippetsInFolder,
 		FolderTree:               browsing.folderTree,
@@ -251,6 +252,8 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		RenameTag:                tags.rename,
 		PreviewDeleteTag:         tags.previewDelete,
 		DeleteTag:                tags.delete,
+		ListTrash:                trashing.list,
+		Restore:                  trashing.restore,
 		Export:                   libraries.export,
 		Import:                   libraries.importExport,
 		ImportSnippetsLab:        libraries.importSnippetsLab,

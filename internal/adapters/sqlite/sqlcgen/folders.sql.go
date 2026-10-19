@@ -11,6 +11,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countFolderTrashItems = `-- name: CountFolderTrashItems :one
+SELECT COUNT(*) FROM folders WHERE deleted_at IS NOT NULL
+`
+
+func (q *Queries) CountFolderTrashItems(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countFolderTrashItems)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countFolders = `-- name: CountFolders :one
 SELECT COUNT(*) FROM folders
 `
@@ -31,6 +42,28 @@ WHERE id = ?
 func (q *Queries) GetFolder(ctx context.Context, id sqltype.ID) (LiveFolder, error) {
 	row := q.db.QueryRowContext(ctx, getFolder, id)
 	var i LiveFolder
+	err := row.Scan(
+		&i.ID,
+		&i.ParentID,
+		&i.Name,
+		&i.DefaultLanguage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.FormerParentPath,
+	)
+	return i, err
+}
+
+const getFolderTrashItem = `-- name: GetFolderTrashItem :one
+SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
+FROM folders
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+func (q *Queries) GetFolderTrashItem(ctx context.Context, id sqltype.ID) (Folder, error) {
+	row := q.db.QueryRowContext(ctx, getFolderTrashItem, id)
+	var i Folder
 	err := row.Scan(
 		&i.ID,
 		&i.ParentID,
@@ -204,6 +237,22 @@ func (q *Queries) MoveFolder(ctx context.Context, arg MoveFolderParams) (int64, 
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const restoreFolder = `-- name: RestoreFolder :exec
+UPDATE folders
+SET deleted_at = NULL, parent_id = ?, former_parent_path = '[]'
+WHERE id = ?
+`
+
+type RestoreFolderParams struct {
+	ParentID *sqltype.ID
+	ID       sqltype.ID
+}
+
+func (q *Queries) RestoreFolder(ctx context.Context, arg RestoreFolderParams) error {
+	_, err := q.db.ExecContext(ctx, restoreFolder, arg.ParentID, arg.ID)
+	return err
 }
 
 const setFolderTrashMark = `-- name: SetFolderTrashMark :exec

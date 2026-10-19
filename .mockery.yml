@@ -26,6 +26,10 @@ packages:
       RenameRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
+  github.com/DannyFestor/TuiSnip/internal/app/trash:
+    interfaces:
+      Loader: {}
+      RestoreRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -34,6 +38,7 @@ packages:
       SnippetLister: {}
       FolderLister: {}
       SnippetCounter: {}
+      TrashItemCounter: {}
       TagLister: {}
       TagSnippetCounter: {}
       TagSnippetLister: {}

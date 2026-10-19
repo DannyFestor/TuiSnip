@@ -872,7 +872,8 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "qn/2", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "qn/2", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 
@@ -886,7 +887,8 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 
@@ -1527,7 +1529,8 @@ func TestScreen_help(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "?", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "?", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 }
@@ -1549,6 +1552,7 @@ func TestScreen_defaultLanguage(t *testing.T) {
 
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(outcome.DefaultLanguageRequested{
 			Input: folder.SetDefaultLanguageInput{FolderID: sample.Docker.ID(), Language: "plaintext"},
+			Name:  "docker",
 		}))
 		assert.Equal(t, folderHints, screen.Hints())
 	})

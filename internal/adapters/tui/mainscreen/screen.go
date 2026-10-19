@@ -80,6 +80,8 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return s.tagDeletePreviewed(msg.Preview)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
+	case GoneElsewhereShown:
+		return s.goneElsewhereShown(msg.Text)
 	case Captured:
 		return s.captured(msg.Content)
 	case pointer.Clicked, pointer.Wheeled:
@@ -398,10 +400,18 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
-	next, pruned := s.panes.withTree(tree)
+func (s Screen) goneElsewhereShown(text string) outcome.Step {
+	listed, _ := s.panes.list.Selected()
 
-	return outcome.Stay(s.withPanes(next)).Passing(pruned...)
+	return outcome.Stay(s.withStatus(text)).
+		Passing(outcome.ReloadAsked{Selection: s.selection(), Selecting: listed.ID()})
+}
+
+func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
+	withTree, pruned := s.panes.withTree(tree)
+	next := s.withPanes(withTree)
+
+	return outcome.Stay(next).Passing(pruned...).Passing(s.selectionChangeTo(next)...)
 }
 
 func (s Screen) treeChanged(msg TreeChanged) outcome.Step {

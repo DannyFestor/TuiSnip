@@ -13,9 +13,9 @@ func requireLiveFolder(ctx context.Context, queries *sqlcgen.Queries, id domain.
 		return nil
 	}
 
-	live, err := queries.IsFolderLive(ctx, columnID(id))
+	live, err := folderIsLive(ctx, queries, id)
 	if err != nil {
-		return fmt.Errorf("check folder is live: %w", err)
+		return err
 	}
 
 	if !live {
@@ -23,4 +23,13 @@ func requireLiveFolder(ctx context.Context, queries *sqlcgen.Queries, id domain.
 	}
 
 	return nil
+}
+
+func folderIsLive(ctx context.Context, queries *sqlcgen.Queries, id domain.FolderID) (bool, error) {
+	live, err := queries.IsFolderLive(ctx, columnID(id))
+	if err != nil {
+		return false, fmt.Errorf("check folder is live: %w", err)
+	}
+
+	return live, nil
 }

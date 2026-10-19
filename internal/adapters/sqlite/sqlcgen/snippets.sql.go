@@ -11,6 +11,17 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 )
 
+const countSnippetTrashItems = `-- name: CountSnippetTrashItems :one
+SELECT COUNT(*) FROM snippets WHERE deleted_at IS NOT NULL
+`
+
+func (q *Queries) CountSnippetTrashItems(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSnippetTrashItems)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSnippets = `-- name: CountSnippets :one
 SELECT COUNT(*) FROM snippets
 `
@@ -65,6 +76,28 @@ WHERE id = ?
 func (q *Queries) GetSnippet(ctx context.Context, id sqltype.ID) (LiveSnippet, error) {
 	row := q.db.QueryRowContext(ctx, getSnippet, id)
 	var i LiveSnippet
+	err := row.Scan(
+		&i.ID,
+		&i.FolderID,
+		&i.Title,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.FormerFolderPath,
+	)
+	return i, err
+}
+
+const getSnippetTrashItem = `-- name: GetSnippetTrashItem :one
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM snippets
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+func (q *Queries) GetSnippetTrashItem(ctx context.Context, id sqltype.ID) (Snippet, error) {
+	row := q.db.QueryRowContext(ctx, getSnippetTrashItem, id)
+	var i Snippet
 	err := row.Scan(
 		&i.ID,
 		&i.FolderID,
@@ -418,6 +451,44 @@ func (q *Queries) ListSnippetsWithTagByUpdated(ctx context.Context, tagID sqltyp
 	return items, nil
 }
 
+const listTrashSnippets = `-- name: ListTrashSnippets :many
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM snippets
+WHERE snippets.id NOT IN (SELECT live_snippets.id FROM live_snippets)
+`
+
+func (q *Queries) ListTrashSnippets(ctx context.Context) ([]Snippet, error) {
+	rows, err := q.db.QueryContext(ctx, listTrashSnippets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Snippet{}
+	for rows.Next() {
+		var i Snippet
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.FormerFolderPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const moveSnippet = `-- name: MoveSnippet :execrows
 UPDATE snippets
 SET folder_id = ?
@@ -435,6 +506,22 @@ func (q *Queries) MoveSnippet(ctx context.Context, arg MoveSnippetParams) (int64
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const restoreSnippet = `-- name: RestoreSnippet :exec
+UPDATE snippets
+SET deleted_at = NULL, folder_id = ?, former_folder_path = '[]'
+WHERE id = ?
+`
+
+type RestoreSnippetParams struct {
+	FolderID *sqltype.ID
+	ID       sqltype.ID
+}
+
+func (q *Queries) RestoreSnippet(ctx context.Context, arg RestoreSnippetParams) error {
+	_, err := q.db.ExecContext(ctx, restoreSnippet, arg.FolderID, arg.ID)
+	return err
 }
 
 const setSnippetTrashMark = `-- name: SetSnippetTrashMark :exec

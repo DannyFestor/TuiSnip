@@ -13,11 +13,13 @@ type snippetMove struct {
 	selection browseselection.Selection
 }
 
-func (m snippetMove) requested(picked domain.FolderID) outcome.SnippetMoveRequested {
+func (m snippetMove) requested(picked domain.FolderID, pickedName string) outcome.SnippetMoveRequested {
 	return outcome.SnippetMoveRequested{
-		Input:     snippet.MoveInput{SnippetID: m.moving.ID(), FolderID: picked},
-		Selection: m.selection,
-		Selecting: m.selectedAfter(picked).ID(),
+		Input:      snippet.MoveInput{SnippetID: m.moving.ID(), FolderID: picked},
+		Title:      m.moving.Title().String(),
+		TargetName: pickedName,
+		Selection:  m.selection,
+		Selecting:  m.selectedAfter(picked).ID(),
 	}
 }
 

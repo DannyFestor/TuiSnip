@@ -38,7 +38,7 @@ func New(keys binding.Keys, styles look.Styles, collapsed []domain.FolderID) Pan
 		global:        keys.For(binding.ScopeGlobal),
 		keys:          keys.For(binding.ScopeFolders),
 		styles:        styles,
-		tree:          browse.Tree{RootSnippetCount: 0, Folders: nil},
+		tree:          browse.Tree{RootSnippetCount: 0, Folders: nil, TrashCount: 0},
 		collapsed:     collapsedSetOf(collapsed),
 		rows:          nil,
 		cursor:        move.Cursor{},
@@ -153,7 +153,10 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	case p.keys.Matches(msg, binding.NewFolder):
 		return p.newFolderStarted()
 	case p.keys.Matches(msg, binding.Rename) && !p.Selected().IsNil():
-		return p.startedNaming(renamedFolder{folderID: p.Selected()}, p.selectedRow().name)
+		return p.startedNaming(
+			renamedFolder{folderID: p.Selected(), current: p.selectedRow().name},
+			p.selectedRow().name,
+		)
 	case p.keys.Matches(msg, binding.Delete) && !p.Selected().IsNil():
 		return p, []outcome.Outcome{p.deleteRequested()}, nil
 	case p.keys.Matches(msg, binding.Collapse) && p.selectedRow().collapsible:
@@ -201,7 +204,7 @@ func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
 
 // A Folder created inside a collapsed one would be hidden, and the cursor could not land on it.
 func (p Pane) newFolderStarted() (Pane, []outcome.Outcome, tea.Cmd) {
-	parent := newFolder{parentID: p.Selected()}
+	parent := newFolder{parentID: p.Selected(), parentName: p.selectedRow().name}
 	if !p.collapsed.has(parent.parentID) {
 		return p.startedNaming(parent, "")
 	}

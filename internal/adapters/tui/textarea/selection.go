@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/x/ansi"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tabstop"
 )
 
 type runeSpan struct {
@@ -239,13 +239,11 @@ func runeIndexForColumn(runes []rune, col int) int {
 
 	width := 0
 
-	for i, r := range runes {
-		rWidth := ansi.StringWidth(string(r))
-		if width+rWidth > col {
+	for i := range runes {
+		width += tabstop.WidthFrom(runes[i:i+1], width)
+		if width > col {
 			return i
 		}
-
-		width += rWidth
 	}
 
 	return len(runes)

@@ -36,6 +36,20 @@ func TestPopup_View(t *testing.T) {
 		assert.Contains(t, screen.Screen(), firstContent)
 	})
 
+	t.Run("previews a tab in the Content running to the next tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		ids := testkit.NewSequentialIDs()
+		tabbed := testkit.Snippet(t, testkit.SnippetSpec{
+			ID:        ids.NewSnippetID(),
+			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Content: "a\tb"}},
+		})
+
+		screen := searchingIn(t, []domain.Snippet{tabbed})
+
+		assert.Contains(t, screen.Screen(), "1 │ a   b")
+	})
+
 	t.Run("says when nothing matches", func(t *testing.T) {
 		t.Parallel()
 

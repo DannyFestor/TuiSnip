@@ -8,12 +8,12 @@ import (
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tabstop"
 )
 
-const tabAsSpaces = "    "
-
 func Highlight(content, language, codeStyle string) string {
-	plain := strings.ReplaceAll(strings.TrimSuffix(content, "\n"), "\t", tabAsSpaces)
+	plain := tabstop.Expand(strings.TrimSuffix(content, "\n"))
 
 	iterator, err := tokenise(plain, language)
 	if err != nil {

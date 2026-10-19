@@ -31,11 +31,19 @@ func TestHighlight(t *testing.T) {
 		assert.Equal(t, "plain words", ansi.Strip(got))
 	})
 
-	t.Run("shows tabs as four spaces and drops the final newline", func(t *testing.T) {
+	t.Run("runs tabs to the next tab stop and drops the final newline", func(t *testing.T) {
 		t.Parallel()
 
 		got := look.Highlight("if x {\n\treturn\n}\n", "Go", codeStyle)
 
 		assert.Equal(t, "if x {\n    return\n}", ansi.Strip(got))
+	})
+
+	t.Run("runs a tab after one cell to cell 4", func(t *testing.T) {
+		t.Parallel()
+
+		got := look.Highlight("a\tb", "NoSuchLanguage", codeStyle)
+
+		assert.Equal(t, "a   b", ansi.Strip(got))
 	})
 }

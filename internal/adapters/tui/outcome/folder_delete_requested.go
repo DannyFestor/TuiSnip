@@ -7,6 +7,7 @@ import (
 
 type FolderDeleteRequested struct {
 	Input    folder.DeleteInput
+	Name     string
 	ParentID domain.FolderID
 }
 

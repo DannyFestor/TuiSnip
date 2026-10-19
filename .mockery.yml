@@ -12,14 +12,13 @@ packages:
       ClipboardReader: {}
       UpdateRepository: {}
       DuplicateRepository: {}
-      Deleter: {}
+      Trasher: {}
       MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
       EditRepository: {}
-      PreviewDeleteRepository: {}
-      Deleter: {}
+      Trasher: {}
       MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/tag:
     interfaces:
@@ -62,7 +61,6 @@ packages:
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}
-      FolderDeletePreviewer: {}
       FolderDeleter: {}
       FolderDefaultLanguageSetter: {}
       FolderMover: {}

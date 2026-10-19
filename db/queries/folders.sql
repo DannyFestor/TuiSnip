@@ -18,25 +18,13 @@ FROM folders;
 -- name: CountFolders :one
 SELECT COUNT(*) FROM folders;
 
--- name: CountSubfolders :one
-WITH RECURSIVE subtree (id) AS (
-    SELECT live_folders.id FROM live_folders WHERE live_folders.id = sqlc.arg(id)
-    UNION ALL
-    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
-)
-SELECT COUNT(*) - 1 FROM subtree;
+-- name: TrashFolder :execrows
+UPDATE folders
+SET deleted_at = sqlc.arg(deleted_at)
+WHERE folders.id = sqlc.arg(id) AND folders.id IN (SELECT live_folders.id FROM live_folders);
 
--- name: CountSnippetsInSubtree :one
-WITH RECURSIVE subtree (id) AS (
-    SELECT live_folders.id FROM live_folders WHERE live_folders.id = sqlc.arg(id)
-    UNION ALL
-    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
-)
-SELECT COUNT(*) FROM live_snippets WHERE live_snippets.folder_id IN (SELECT subtree.id FROM subtree);
-
--- name: DeleteFolder :execrows
-DELETE FROM folders
-WHERE id = ?;
+-- name: IsFolderLive :one
+SELECT EXISTS (SELECT 1 FROM live_folders WHERE live_folders.id = sqlc.arg(id));
 
 -- name: UpdateFolder :execrows
 UPDATE folders

@@ -8,6 +8,7 @@ import (
 
 type SnippetDeleteRequested struct {
 	Input     snippet.DeleteInput
+	Title     string
 	Selection browseselection.Selection
 	Selecting domain.SnippetID
 }

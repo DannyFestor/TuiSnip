@@ -43,12 +43,12 @@ func (r *SnippetRepository) Update(ctx context.Context, snippet domain.Snippet, 
 	return nil
 }
 
-func (r *SnippetRepository) Delete(ctx context.Context, id domain.SnippetID) error {
+func (r *SnippetRepository) Trash(ctx context.Context, id domain.SnippetID, deletedAt time.Time) error {
 	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
-		return deleteSnippet(ctx, queries, id)
+		return trashSnippet(ctx, queries, id, deletedAt)
 	})
 	if err != nil {
-		return fmt.Errorf("sqlite.SnippetRepository.Delete: %w", err)
+		return fmt.Errorf("sqlite.SnippetRepository.Trash: %w", err)
 	}
 
 	return nil
@@ -166,13 +166,13 @@ func replaceFragments(ctx context.Context, queries *sqlcgen.Queries, snippet dom
 	return insertFragments(ctx, queries, snippet)
 }
 
-func deleteSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID) error {
-	deleted, err := queries.DeleteSnippet(ctx, columnID(id))
+func trashSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.SnippetID, deletedAt time.Time) error {
+	trashed, err := queries.TrashSnippet(ctx, trashSnippetParams(id, deletedAt))
 	if err != nil {
-		return fmt.Errorf("delete snippet: %w", err)
+		return fmt.Errorf("trash snippet: %w", err)
 	}
 
-	if deleted == 0 {
+	if trashed == 0 {
 		return domain.ErrNotFound
 	}
 
@@ -180,6 +180,11 @@ func deleteSnippet(ctx context.Context, queries *sqlcgen.Queries, id domain.Snip
 }
 
 func moveSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
+	err := requireLiveFolder(ctx, queries, snippet.FolderID())
+	if err != nil {
+		return err
+	}
+
 	moved, err := queries.MoveSnippet(ctx, moveSnippetParams(snippet))
 	if err != nil {
 		return fmt.Errorf("move snippet: %w", err)
@@ -205,7 +210,12 @@ func whyNotUpdated(ctx context.Context, queries *sqlcgen.Queries, id domain.Snip
 }
 
 func insertSnippet(ctx context.Context, queries *sqlcgen.Queries, snippet domain.Snippet) error {
-	err := queries.InsertSnippet(ctx, insertSnippetParams(snippet))
+	err := requireLiveFolder(ctx, queries, snippet.FolderID())
+	if err != nil {
+		return err
+	}
+
+	err = queries.InsertSnippet(ctx, insertSnippetParams(snippet))
 	if err != nil {
 		return fmt.Errorf("insert snippet: %w", err)
 	}

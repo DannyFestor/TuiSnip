@@ -1,6 +1,8 @@
 package sqlite
 
 import (
+	"time"
+
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
@@ -22,6 +24,10 @@ func moveFolderParams(folder domain.Folder) sqlcgen.MoveFolderParams {
 		ParentID: folderColumn(folder.ParentID()),
 		ID:       columnID(folder.ID()),
 	}
+}
+
+func trashFolderParams(id domain.FolderID, deletedAt time.Time) sqlcgen.TrashFolderParams {
+	return sqlcgen.TrashFolderParams{DeletedAt: new(sqltype.Timestamp(deletedAt)), ID: columnID(id)}
 }
 
 func updateFolderParams(folder domain.Folder) sqlcgen.UpdateFolderParams {

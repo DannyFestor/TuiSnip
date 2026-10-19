@@ -42,7 +42,6 @@ type App struct {
 	SnippetsWithTag          *browse.SnippetsWithTag
 	CreateFolder             *folder.Create
 	RenameFolder             *folder.Rename
-	PreviewDeleteFolder      *folder.PreviewDelete
 	DeleteFolder             *folder.Delete
 	SetFolderDefaultLanguage *folder.SetDefaultLanguage
 	MoveFolder               *folder.Move
@@ -158,7 +157,6 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		Searcher:                    app.Query,
 		FolderCreator:               app.CreateFolder,
 		FolderRenamer:               app.RenameFolder,
-		FolderDeletePreviewer:       app.PreviewDeleteFolder,
 		FolderDeleter:               app.DeleteFolder,
 		FolderDefaultLanguageSetter: app.SetFolderDefaultLanguage,
 		FolderMover:                 app.MoveFolder,
@@ -246,7 +244,6 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		SnippetsWithTag:          browsing.snippetsWithTag,
 		CreateFolder:             folders.create,
 		RenameFolder:             folders.rename,
-		PreviewDeleteFolder:      folders.previewDelete,
 		DeleteFolder:             folders.remove,
 		SetFolderDefaultLanguage: folders.setDefaultLanguage,
 		MoveFolder:               folders.move,

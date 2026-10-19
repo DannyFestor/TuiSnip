@@ -22,51 +22,6 @@ func (q *Queries) CountFolders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const countSnippetsInSubtree = `-- name: CountSnippetsInSubtree :one
-WITH RECURSIVE subtree (id) AS (
-    SELECT live_folders.id FROM live_folders WHERE live_folders.id = ?1
-    UNION ALL
-    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
-)
-SELECT COUNT(*) FROM live_snippets WHERE live_snippets.folder_id IN (SELECT subtree.id FROM subtree)
-`
-
-func (q *Queries) CountSnippetsInSubtree(ctx context.Context, id sqltype.ID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSnippetsInSubtree, id)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countSubfolders = `-- name: CountSubfolders :one
-WITH RECURSIVE subtree (id) AS (
-    SELECT live_folders.id FROM live_folders WHERE live_folders.id = ?1
-    UNION ALL
-    SELECT live_folders.id FROM live_folders JOIN subtree ON live_folders.parent_id = subtree.id
-)
-SELECT COUNT(*) - 1 FROM subtree
-`
-
-func (q *Queries) CountSubfolders(ctx context.Context, id sqltype.ID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSubfolders, id)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
-const deleteFolder = `-- name: DeleteFolder :execrows
-DELETE FROM folders
-WHERE id = ?
-`
-
-func (q *Queries) DeleteFolder(ctx context.Context, id sqltype.ID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteFolder, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const getFolder = `-- name: GetFolder :one
 SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
 FROM live_folders
@@ -113,6 +68,17 @@ func (q *Queries) InsertFolder(ctx context.Context, arg InsertFolderParams) erro
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const isFolderLive = `-- name: IsFolderLive :one
+SELECT EXISTS (SELECT 1 FROM live_folders WHERE live_folders.id = ?1)
+`
+
+func (q *Queries) IsFolderLive(ctx context.Context, id sqltype.ID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isFolderLive, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listDescendantFolderIDs = `-- name: ListDescendantFolderIDs :many
@@ -255,6 +221,25 @@ type SetFolderTrashMarkParams struct {
 func (q *Queries) SetFolderTrashMark(ctx context.Context, arg SetFolderTrashMarkParams) error {
 	_, err := q.db.ExecContext(ctx, setFolderTrashMark, arg.DeletedAt, arg.FormerParentPath, arg.ID)
 	return err
+}
+
+const trashFolder = `-- name: TrashFolder :execrows
+UPDATE folders
+SET deleted_at = ?1
+WHERE folders.id = ?2 AND folders.id IN (SELECT live_folders.id FROM live_folders)
+`
+
+type TrashFolderParams struct {
+	DeletedAt *sqltype.Timestamp
+	ID        sqltype.ID
+}
+
+func (q *Queries) TrashFolder(ctx context.Context, arg TrashFolderParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, trashFolder, arg.DeletedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateFolder = `-- name: UpdateFolder :execrows

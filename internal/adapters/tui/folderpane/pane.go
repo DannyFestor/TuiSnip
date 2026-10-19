@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -154,7 +155,7 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	case p.keys.Matches(msg, binding.Rename) && !p.Selected().IsNil():
 		return p.startedNaming(renamedFolder{folderID: p.Selected()}, p.selectedRow().name)
 	case p.keys.Matches(msg, binding.Delete) && !p.Selected().IsNil():
-		return p, []outcome.Outcome{outcome.FolderDeleteAsked{ID: p.Selected()}}, nil
+		return p, []outcome.Outcome{p.deleteRequested()}, nil
 	case p.keys.Matches(msg, binding.Collapse) && p.selectedRow().collapsible:
 		next, outcomes := p.withCollapsed(p.collapsed.toggled(p.Selected()))
 
@@ -162,6 +163,16 @@ func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	}
 
 	return p.moved(msg)
+}
+
+func (p Pane) deleteRequested() outcome.FolderDeleteRequested {
+	selected := p.selectedRow().folder
+
+	return outcome.FolderDeleteRequested{
+		Input:    folder.DeleteInput{FolderID: selected.ID()},
+		Name:     selected.Name().String(),
+		ParentID: selected.ParentID(),
+	}
 }
 
 func (p Pane) clicked(click pointer.Clicked) (Pane, []outcome.Outcome, tea.Cmd) {

@@ -10,6 +10,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
@@ -272,15 +273,19 @@ func TestPane_DefaultLanguageOf(t *testing.T) {
 func TestPane_UpdateDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("asks to delete the Folder under the cursor", func(t *testing.T) {
+	t.Run("asks to delete the Folder under the cursor, naming it and its parent", func(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		pane := pressed(samplePane(t, sample), keypress.Letter('j'))
+		pane := pressed(samplePane(t, sample), keypress.Letter('j'), keypress.Letter('j'), keypress.Letter('j'))
 
 		_, outcomes, _ := pane.Update(keypress.Letter('d'))
 
-		assert.Equal(t, []outcome.Outcome{outcome.FolderDeleteAsked{ID: sample.Docker.ID()}}, outcomes)
+		assert.Equal(t, []outcome.Outcome{outcome.FolderDeleteRequested{
+			Input:    folder.DeleteInput{FolderID: sample.Tests.ID()},
+			Name:     "testing",
+			ParentID: sample.Go.ID(),
+		}}, outcomes)
 	})
 
 	t.Run("leaves the Root alone", func(t *testing.T) {

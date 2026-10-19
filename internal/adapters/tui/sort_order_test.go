@@ -152,7 +152,6 @@ func TestModel_rejectedSortOrder(t *testing.T) {
 			Searcher:                    NewMockSnippetSearcher(t),
 			FolderCreator:               NewMockFolderCreator(t),
 			FolderRenamer:               NewMockFolderRenamer(t),
-			FolderDeletePreviewer:       NewMockFolderDeletePreviewer(t),
 			FolderDeleter:               NewMockFolderDeleter(t),
 			FolderDefaultLanguageSetter: NewMockFolderDefaultLanguageSetter(t),
 			FolderMover:                 NewMockFolderMover(t),

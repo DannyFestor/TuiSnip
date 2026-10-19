@@ -47,7 +47,7 @@ func TestDuplicateMatchesTheOriginalInEveryFieldButIDsAndTimestamps(t *testing.T
 	assert.Equal(t, original, testapp.StoredSnippet(t, app, original.ID()))
 }
 
-func TestDeletingASnippetLeavesItsTagsInPlace(t *testing.T) {
+func TestDeletingASnippetKeepsItsTagsButNotTheirCount(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)

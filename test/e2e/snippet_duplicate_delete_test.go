@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	rootTitleInRowAndHeader     = 2
-	rootTitleInTwoRowsAndHeader = 3
-	rootTitleDeleteQuestion     = `Permanently delete Snippet "Prune at the Root"? This cannot be undone. [y/N]`
-	emptySnippetListHint        = "No Snippets here."
+	rootTitleInRowHeaderAndStatus = 3
+	rootTitleInTwoRowsAndHeader   = 3
+	rootTitleMovedToTrash         = `Moved Snippet "Prune at the Root" to the Trash`
+	emptySnippetListHint          = "No Snippets here."
 )
 
 func TestDuplicateAndDeleteSnippets(t *testing.T) {
@@ -32,14 +32,10 @@ func TestDuplicateAndDeleteSnippets(t *testing.T) {
 	screen.waitForCount(rootTitle, rootTitleInTwoRowsAndHeader)
 
 	screen.press(keypress.Letter('d'))
-	screen.waitForFrame(rootTitleDeleteQuestion)
-	screen.press(keypress.Letter('n'))
-	screen.waitForCount(rootTitle, rootTitleInTwoRowsAndHeader)
+	screen.waitForFrame(rootTitleMovedToTrash)
+	screen.waitForCount(rootTitle, rootTitleInRowHeaderAndStatus)
 
-	screen.press(keypress.Letter('d'), keypress.Letter('y'))
-	screen.waitForCount(rootTitle, rootTitleInRowAndHeader)
-
-	screen.press(keypress.Letter('d'), keypress.Letter('y'))
+	screen.press(keypress.Letter('d'))
 	screen.waitForFrame(emptySnippetListHint)
 }
 

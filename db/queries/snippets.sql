@@ -70,9 +70,10 @@ UPDATE snippets
 SET title = sqlc.arg(title), description = sqlc.arg(description), updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(loaded_updated_at);
 
--- name: DeleteSnippet :execrows
-DELETE FROM snippets
-WHERE id = ?;
+-- name: TrashSnippet :execrows
+UPDATE snippets
+SET deleted_at = sqlc.arg(deleted_at)
+WHERE snippets.id = sqlc.arg(id) AND snippets.id IN (SELECT live_snippets.id FROM live_snippets);
 
 -- name: MoveSnippet :execrows
 UPDATE snippets

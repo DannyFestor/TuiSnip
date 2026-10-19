@@ -3,6 +3,8 @@ package sqlite_test
 import (
 	"bytes"
 	"log/slog"
+	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -15,10 +17,9 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
-const rawTagID = "0190a000-0000-7000-8000-0000000000aa"
-
 type subtreeFixture struct {
 	path       string
+	database   *sqlite.Database
 	folders    *sqlite.FolderRepository
 	snippets   *sqlite.SnippetRepository
 	snippetIDs *testkit.SequentialIDs
@@ -105,7 +106,34 @@ func TestFolderRepository_Insert(t *testing.T) {
 		ids := testkit.NewSequentialIDs()
 		orphan := testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), ParentID: ids.NewFolderID()})
 
-		require.Error(t, repository.Insert(t.Context(), orphan))
+		require.ErrorIs(t, repository.Insert(t.Context(), orphan), domain.ErrFolderGone)
+	})
+
+	t.Run("refuses a Folder under a parent in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		placed := testkit.Folder(
+			t,
+			testkit.FolderSpec{ID: fixture.ids.NewFolderID(), ParentID: fixture.trashedFolder.ID()},
+		)
+
+		err := fixture.folders(t).Insert(t.Context(), placed)
+
+		require.ErrorIs(t, err, domain.ErrFolderGone)
+		assert.ErrorContains(t, err, "sqlite.FolderRepository.Insert")
+	})
+
+	t.Run("refuses a Folder under a parent inside a Folder in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		placed := testkit.Folder(
+			t,
+			testkit.FolderSpec{ID: fixture.ids.NewFolderID(), ParentID: fixture.nestedFolder.ID()},
+		)
+
+		require.ErrorIs(t, fixture.folders(t).Insert(t.Context(), placed), domain.ErrFolderGone)
 	})
 }
 
@@ -213,89 +241,15 @@ func TestFolderRepository_Update(t *testing.T) {
 	})
 }
 
-func TestFolderRepository_CountSubfolders(t *testing.T) {
+func TestFolderRepository_Trash(t *testing.T) {
 	t.Parallel()
 
-	t.Run("counts the subfolders at every depth", func(t *testing.T) {
+	t.Run("hides the Folder's whole subtree and marks only the Folder", func(t *testing.T) {
 		t.Parallel()
 
 		fixture := newSubtreeFixture(t)
 
-		got, err := fixture.folders.CountSubfolders(t.Context(), fixture.goID)
-
-		require.NoError(t, err)
-		assert.Equal(t, 2, got)
-	})
-
-	t.Run("counts no subfolders under a Folder without children", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newSubtreeFixture(t)
-
-		got, err := fixture.folders.CountSubfolders(t.Context(), fixture.dockerID)
-
-		require.NoError(t, err)
-		assert.Zero(t, got)
-	})
-
-	t.Run("counts no subfolders in the Trash", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newTrashFixture(t)
-
-		got, err := fixture.folders(t).CountSubfolders(t.Context(), fixture.liveFolder.ID())
-
-		require.NoError(t, err)
-		assert.Zero(t, got)
-	})
-}
-
-func TestFolderRepository_CountSnippetsInSubtree(t *testing.T) {
-	t.Parallel()
-
-	t.Run("counts the Snippets in the Folder and every subfolder", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newSubtreeFixture(t)
-
-		got, err := fixture.folders.CountSnippetsInSubtree(t.Context(), fixture.goID)
-
-		require.NoError(t, err)
-		assert.Equal(t, 4, got)
-	})
-
-	t.Run("counts only the subtree below a nested Folder", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newSubtreeFixture(t)
-
-		got, err := fixture.folders.CountSnippetsInSubtree(t.Context(), fixture.testingID)
-
-		require.NoError(t, err)
-		assert.Equal(t, 3, got)
-	})
-
-	t.Run("counts no Snippets in the Trash", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newTrashFixture(t)
-
-		got, err := fixture.folders(t).CountSnippetsInSubtree(t.Context(), fixture.liveFolder.ID())
-
-		require.NoError(t, err)
-		assert.Equal(t, 1, got)
-	})
-}
-
-func TestFolderRepository_Delete(t *testing.T) {
-	t.Parallel()
-
-	t.Run("removes every subfolder and Snippet in the subtree and nothing else", func(t *testing.T) {
-		t.Parallel()
-
-		fixture := newSubtreeFixture(t)
-
-		require.NoError(t, fixture.folders.Delete(t.Context(), fixture.goID))
+		require.NoError(t, fixture.folders.Trash(t.Context(), fixture.goID, trashedAt()))
 
 		folders, err := fixture.folders.List(t.Context())
 		require.NoError(t, err)
@@ -305,36 +259,47 @@ func TestFolderRepository_Delete(t *testing.T) {
 		snippets, err := fixture.snippets.List(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, fixture.kept, snippets)
+
+		library := loadedLibrary(t, fixture.database)
+		assert.Len(t, library.Folders, 4)
+		assert.Len(t, library.Snippets, 6)
+		assert.Equal(t, []domain.FolderID{fixture.goID}, slices.Collect(maps.Keys(library.Trash.Folders)))
+		assert.WithinDuration(t, trashedAt(), library.Trash.Folders[fixture.goID].DeletedAt(), 0)
+		assert.Empty(t, library.Trash.Snippets)
 	})
 
-	t.Run("deletes Snippets that carry Tags", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name    string
+		missing func(fixture trashFixture) domain.FolderID
+	}{
+		{
+			name: "reports a Folder already in the Trash as not found",
+			missing: func(fixture trashFixture) domain.FolderID {
+				return fixture.trashedFolder.ID()
+			},
+		},
+		{
+			name: "reports a Folder under one in the Trash as not found",
+			missing: func(fixture trashFixture) domain.FolderID {
+				return fixture.nestedFolder.ID()
+			},
+		},
+		{name: "reports a missing Folder as not found", missing: func(trashFixture) domain.FolderID {
+			return testkit.NewSequentialIDs().NewFolderID()
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		fixture := newSubtreeFixture(t)
-		tagged := insertSnippet(
-			t,
-			fixture.snippets,
-			fixture.snippetIDs,
-			testkit.SnippetSpec{FolderID: fixture.testingID},
-		)
-		insertRawTag(t, fixture.path, tagged.ID())
+			fixture := newTrashFixture(t)
 
-		require.NoError(t, fixture.folders.Delete(t.Context(), fixture.goID))
+			err := fixture.folders(t).Trash(t.Context(), tt.missing(fixture), trashedAt())
 
-		_, err := fixture.snippets.Find(t.Context(), tagged.ID())
-		assert.ErrorIs(t, err, domain.ErrNotFound)
-	})
-
-	t.Run("reports a missing Folder as not found", func(t *testing.T) {
-		t.Parallel()
-
-		repository := newFolderRepository(t, openDatabase(t, newDatabasePath(t)), slog.New(slog.DiscardHandler))
-
-		err := repository.Delete(t.Context(), testkit.NewSequentialIDs().NewFolderID())
-
-		require.ErrorIs(t, err, domain.ErrNotFound)
-		assert.ErrorContains(t, err, "sqlite.FolderRepository.Delete")
-	})
+			require.ErrorIs(t, err, domain.ErrNotFound)
+			assert.ErrorContains(t, err, "sqlite.FolderRepository.Trash")
+		})
+	}
 }
 
 func TestFolderRepository_ListDescendantIDs(t *testing.T) {
@@ -376,9 +341,18 @@ func TestFolderRepository_Move(t *testing.T) {
 
 		assert.Equal(t, moved, fixture.find(t, fixture.testingID))
 		assert.Equal(t, fixture.testingID, fixture.find(t, fixture.mocksID).ParentID())
-		count, err := fixture.folders.CountSnippetsInSubtree(t.Context(), fixture.dockerID)
-		require.NoError(t, err)
-		assert.Equal(t, 4, count)
+	})
+
+	t.Run("refuses a move under a Folder in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		root := insertFolder(t, fixture.folders(t), testkit.FolderSpec{ID: fixture.ids.NewFolderID(), Name: "root"})
+
+		err := fixture.folders(t).Move(t.Context(), movedUnder(t, root, fixture.trashedFolder.ID()))
+
+		require.ErrorIs(t, err, domain.ErrFolderGone)
+		assert.ErrorContains(t, err, "sqlite.FolderRepository.Move")
 	})
 
 	t.Run("moves the Folder to the Root", func(t *testing.T) {
@@ -474,6 +448,7 @@ func newSubtreeFixture(t *testing.T) subtreeFixture {
 
 	return subtreeFixture{
 		path:       path,
+		database:   database,
 		folders:    folders,
 		snippets:   snippets,
 		snippetIDs: snippetIDs,
@@ -483,16 +458,4 @@ func newSubtreeFixture(t *testing.T) subtreeFixture {
 		dockerID:   dockerFolder.ID(),
 		kept:       kept,
 	}
-}
-
-func insertRawTag(t *testing.T, path string, snippetID domain.SnippetID) {
-	t.Helper()
-
-	execRaw(
-		t,
-		path,
-		"INSERT INTO tags (id, name, name_key, created_at, updated_at) VALUES (?, 'Go', 'go', 1, 1)",
-		rawTagID,
-	)
-	execRaw(t, path, "INSERT INTO snippet_tag (snippet_id, tag_id) VALUES (?, ?)", snippetID.String(), rawTagID)
 }

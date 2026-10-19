@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/confirm"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 )
@@ -56,11 +55,11 @@ func (s Screen) deleteAsked() outcome.Step {
 	}
 
 	successor, _ := s.panes.list.Successor()
-	onYes := outcome.SnippetDeleteRequested{
+
+	return outcome.Stay(s).Passing(outcome.SnippetDeleteRequested{
 		Input:     snippet.DeleteInput{SnippetID: selected.ID()},
+		Title:     selected.Title().String(),
 		Selection: s.selection(),
 		Selecting: successor.ID(),
-	}
-
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, snippetDeleteQuestion(selected), onYes))
+	})
 }

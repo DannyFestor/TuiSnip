@@ -19,7 +19,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
-	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -77,8 +76,6 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.resized(msg.Box))
 	case look.Restyled:
 		return outcome.Stay(s.restyled(msg))
-	case FolderDeletePreviewed:
-		return s.confirmingFolderDelete(msg.Preview)
 	case TagDeletePreviewed:
 		return s.tagDeletePreviewed(msg.Preview)
 	case StatusShown:
@@ -426,15 +423,6 @@ func (s Screen) snippetsLoaded(loaded SnippetsLoaded) outcome.Step {
 	}
 
 	return step
-}
-
-func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Step {
-	onYes := outcome.FolderDeleteRequested{
-		Input:    folder.DeleteInput{FolderID: preview.Folder.ID()},
-		ParentID: preview.Folder.ParentID(),
-	}
-
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, folderDeleteQuestion(preview), onYes))
 }
 
 func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {

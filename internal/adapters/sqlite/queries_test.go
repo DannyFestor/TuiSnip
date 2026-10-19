@@ -83,8 +83,6 @@ func baseTableReaders() map[string]string {
 		"CountSnippets":                emptiness,
 		"CountSnippetsByTag":           joinedToLive,
 		"CountSnippetsWithTag":         joinedToLive,
-		"DeleteFolder":                 write,
-		"DeleteSnippet":                write,
 		"DeleteSnippetTags":            write,
 		"ListDescendantFolderIDs":      wholeTreeOnly,
 		"ListFragmentsWithTag":         joinedToLive,

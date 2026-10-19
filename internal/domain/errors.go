@@ -9,6 +9,7 @@ var (
 	ErrDeletedBeforeCreate   = errors.New("domain: deleted time is before created time")
 	ErrEditorFailed          = errors.New("domain: external editor exited with an error")
 	ErrFolderCycle           = errors.New("domain: folder cannot move into itself or its own subtree")
+	ErrFolderGone            = errors.New("domain: folder to place into was moved to the trash or deleted")
 	ErrFormerPathNotDetached = errors.New(
 		"domain: a former path belongs only to a Trash item detached from its deleted Folder",
 	)

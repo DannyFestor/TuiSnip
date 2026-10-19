@@ -20,7 +20,17 @@ const (
 	editorFailedText      = "Editor exited with an error; changes discarded"
 )
 
+const (
+	snippetNoun        = "Snippet"
+	folderNoun         = "Folder"
+	movedToTrashFormat = "Moved %s %q to the Trash"
+)
+
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
+
+func movedToTrashText(noun, name string) string {
+	return fmt.Sprintf(movedToTrashFormat, noun, name)
+}
 
 func deliveryText(delivery domain.CopyDelivery) (string, error) {
 	switch delivery {

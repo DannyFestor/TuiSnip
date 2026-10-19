@@ -56,19 +56,6 @@ func (q *Queries) CountSnippetsByFolder(ctx context.Context) ([]CountSnippetsByF
 	return items, nil
 }
 
-const deleteSnippet = `-- name: DeleteSnippet :execrows
-DELETE FROM snippets
-WHERE id = ?
-`
-
-func (q *Queries) DeleteSnippet(ctx context.Context, id sqltype.ID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteSnippet, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const getSnippet = `-- name: GetSnippet :one
 SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
 FROM live_snippets
@@ -465,6 +452,25 @@ type SetSnippetTrashMarkParams struct {
 func (q *Queries) SetSnippetTrashMark(ctx context.Context, arg SetSnippetTrashMarkParams) error {
 	_, err := q.db.ExecContext(ctx, setSnippetTrashMark, arg.DeletedAt, arg.FormerFolderPath, arg.ID)
 	return err
+}
+
+const trashSnippet = `-- name: TrashSnippet :execrows
+UPDATE snippets
+SET deleted_at = ?1
+WHERE snippets.id = ?2 AND snippets.id IN (SELECT live_snippets.id FROM live_snippets)
+`
+
+type TrashSnippetParams struct {
+	DeletedAt *sqltype.Timestamp
+	ID        sqltype.ID
+}
+
+func (q *Queries) TrashSnippet(ctx context.Context, arg TrashSnippetParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, trashSnippet, arg.DeletedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateSnippet = `-- name: UpdateSnippet :execrows

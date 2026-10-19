@@ -162,14 +162,10 @@ func TestModel_folderDefaultLanguage(t *testing.T) {
 func TestModel_folderDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("confirms with the counts, deletes, and makes the parent the Browse selection", func(t *testing.T) {
+	t.Run("moves the Folder to the Trash and makes the parent the Browse selection", func(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		previewer := NewMockFolderDeletePreviewer(t)
-		previewer.EXPECT().Run(mock.Anything, folder.PreviewDeleteInput{FolderID: sample.Tests.ID()}).
-			Return(folder.DeletePreview{Folder: sample.Tests, SubfolderCount: 0, SnippetCount: 2}, nil)
-
 		deleter := NewMockFolderDeleter(t)
 		deleter.EXPECT().Run(mock.Anything, folder.DeleteInput{FolderID: sample.Tests.ID()}).Return(nil)
 
@@ -182,15 +178,12 @@ func TestModel_folderDelete(t *testing.T) {
 		pruned.Folders = []browse.FolderNode{sample.Tree.Folders[0], sample.Tree.Folders[1]}
 		pruned.Folders[1].Children = nil
 		screen := start(t, folderModel(t, folderActions{
-			lister: lister, trees: treesOf(t, sample.Tree, pruned), previewer: previewer, deleter: deleter,
+			lister: lister, trees: treesOf(t, sample.Tree, pruned), deleter: deleter,
 		}), wideWidth, wideHeight)
+
 		screen.press(keypress.Letter('j'), keypress.Letter('j'), keypress.Letter('j'), keypress.Letter('d'))
 
-		assert.Contains(t, screen.screen(),
-			`Permanently delete Folder "testing", 0 subfolders, and 2 Snippets? This cannot be undone. [y/N]`)
-
-		screen.press(keypress.Letter('y'))
-
+		assert.Contains(t, screen.screen(), `Moved Folder "testing" to the Trash`)
 		assert.Contains(t, screen.screen(), "3 Root / go · by title")
 		assert.Contains(t, screen.screen(), filedTitle)
 		assert.NotContains(t, screen.screen(), "  testing")
@@ -200,10 +193,6 @@ func TestModel_folderDelete(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		previewer := NewMockFolderDeletePreviewer(t)
-		previewer.EXPECT().Run(mock.Anything, mock.Anything).
-			Return(folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 0, SnippetCount: 3}, nil)
-
 		deleter := NewMockFolderDeleter(t)
 		deleter.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
@@ -217,66 +206,41 @@ func TestModel_folderDelete(t *testing.T) {
 		lister := listerOf(t)
 		listingIn(lister, sample.Docker.ID())
 		screen := start(t, folderModel(t, folderActions{
-			lister: lister, trees: treesOf(t, sample.Tree, sample.Tree), previewer: previewer, deleter: deleter,
-			tags: tags,
-		}), wideWidth, wideHeight)
-
-		screen.press(keypress.Letter('j'), keypress.Letter('d'), keypress.Letter('y'))
-
-		assert.Regexp(t, `# docker +0`, screen.screen())
-	})
-
-	t.Run("reports a failed preview without asking", func(t *testing.T) {
-		t.Parallel()
-
-		sample := foldertree.New(t)
-		previewer := NewMockFolderDeletePreviewer(t)
-		previewer.EXPECT().Run(mock.Anything, mock.Anything).Return(folder.DeletePreview{}, errDatabaseLocked)
-
-		lister := listerOf(t)
-		listingIn(lister, sample.Docker.ID())
-		screen := start(t, folderModel(t, folderActions{
-			lister: lister, trees: treeOf(t, sample.Tree), previewer: previewer,
+			lister: lister, trees: treesOf(t, sample.Tree, sample.Tree), deleter: deleter, tags: tags,
 		}), wideWidth, wideHeight)
 
 		screen.press(keypress.Letter('j'), keypress.Letter('d'))
 
-		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
-		assert.NotContains(t, screen.screen(), "Delete Folder")
+		assert.Regexp(t, `# docker +0`, screen.screen())
 	})
 
 	t.Run("reports a failed delete", func(t *testing.T) {
 		t.Parallel()
 
 		sample := foldertree.New(t)
-		previewer := NewMockFolderDeletePreviewer(t)
-		previewer.EXPECT().Run(mock.Anything, mock.Anything).
-			Return(folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 0, SnippetCount: 0}, nil)
-
 		deleter := NewMockFolderDeleter(t)
 		deleter.EXPECT().Run(mock.Anything, mock.Anything).Return(errDatabaseLocked)
 
 		lister := listerOf(t)
 		listingIn(lister, sample.Docker.ID())
 		screen := start(t, folderModel(t, folderActions{
-			lister: lister, trees: treeOf(t, sample.Tree), previewer: previewer, deleter: deleter,
+			lister: lister, trees: treeOf(t, sample.Tree), deleter: deleter,
 		}), wideWidth, wideHeight)
 
-		screen.press(keypress.Letter('j'), keypress.Letter('d'), keypress.Letter('y'))
+		screen.press(keypress.Letter('j'), keypress.Letter('d'))
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 	})
 }
 
 type folderActions struct {
-	lister    tui.FolderSnippetsLister
-	trees     tui.FolderTreeLister
-	creator   tui.FolderCreator
-	renamer   tui.FolderRenamer
-	previewer tui.FolderDeletePreviewer
-	deleter   tui.FolderDeleter
-	setter    tui.FolderDefaultLanguageSetter
-	tags      tui.TagLister
+	lister  tui.FolderSnippetsLister
+	trees   tui.FolderTreeLister
+	creator tui.FolderCreator
+	renamer tui.FolderRenamer
+	deleter tui.FolderDeleter
+	setter  tui.FolderDefaultLanguageSetter
+	tags    tui.TagLister
 }
 
 func folderModel(t *testing.T, with folderActions) tui.Model {
@@ -291,7 +255,6 @@ func folderModel(t *testing.T, with folderActions) tui.Model {
 		searcher:              NewMockSnippetSearcher(t),
 		folderCreator:         with.creator,
 		folderRenamer:         with.renamer,
-		folderDeletePreviewer: with.previewer,
 		folderDeleter:         with.deleter,
 		defaultLanguageSetter: with.setter,
 	})

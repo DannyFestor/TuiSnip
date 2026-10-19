@@ -320,34 +320,133 @@ func TestSnippetRepository_Update(t *testing.T) {
 	})
 }
 
-func TestSnippetRepository_Delete(t *testing.T) {
+func TestSnippetRepository_Trash(t *testing.T) {
 	t.Parallel()
 
-	t.Run("removes the Snippet and its Fragment and keeps its Tags", func(t *testing.T) {
+	t.Run("moves the Snippet to the Trash with its Fragments and Tags", func(t *testing.T) {
 		t.Parallel()
 
-		fixture := newTagFixture(t)
-		golang := insertTag(t, fixture.tags, fixture.ids, "go")
-		deleted := fixture.insertSnippetWith(t, golang)
-		kept := fixture.insertSnippetWith(t)
+		fixture := newTrashFixture(t)
+		trashed := fixture.liveSnippet
 
-		require.NoError(t, fixture.snippets.Delete(t.Context(), deleted.ID()))
+		require.NoError(t, fixture.snippets(t).Trash(t.Context(), trashed.ID(), trashedAt()))
 
-		listed, err := fixture.snippets.List(t.Context())
-		require.NoError(t, err)
-		assert.Equal(t, []domain.Snippet{kept}, listed)
-		assert.Equal(t, []domain.Tag{golang}, listedTags(t, fixture.tags))
+		_, err := fixture.snippets(t).Find(t.Context(), trashed.ID())
+		require.ErrorIs(t, err, domain.ErrNotFound)
+		library := fixture.library(t)
+		assert.Contains(t, library.Snippets, trashed)
+		assert.WithinDuration(t, trashedAt(), library.Trash.Snippets[trashed.ID()].DeletedAt(), 0)
+		assert.Equal(t, []domain.Tag{fixture.tag}, library.Tags)
 	})
 
-	t.Run("reports a missing Snippet as not found", func(t *testing.T) {
+	tests := []struct {
+		name    string
+		missing func(fixture trashFixture) domain.SnippetID
+	}{
+		{
+			name: "reports a Snippet already in the Trash as not found",
+			missing: func(fixture trashFixture) domain.SnippetID {
+				return fixture.trashedSnippet.ID()
+			},
+		},
+		{
+			name: "reports a Snippet in a Folder in the Trash as not found",
+			missing: func(fixture trashFixture) domain.SnippetID {
+				return fixture.nestedSnippet.ID()
+			},
+		},
+		{name: "reports a missing Snippet as not found", missing: func(trashFixture) domain.SnippetID {
+			return testkit.NewSequentialIDs().NewSnippetID()
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			err := fixture.snippets(t).Trash(t.Context(), tt.missing(fixture), trashedAt())
+
+			require.ErrorIs(t, err, domain.ErrNotFound)
+			assert.ErrorContains(t, err, "sqlite.SnippetRepository.Trash")
+		})
+	}
+
+	t.Run("leaves a Snippet in a Folder in the Trash untouched", func(t *testing.T) {
 		t.Parallel()
 
-		fixture := newTagFixture(t)
+		fixture := newTrashFixture(t)
 
-		err := fixture.snippets.Delete(t.Context(), fixture.ids.NewSnippetID())
+		err := fixture.snippets(t).Trash(t.Context(), fixture.nestedSnippet.ID(), trashedAt())
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
-		assert.ErrorContains(t, err, "sqlite.SnippetRepository.Delete")
+		assert.NotContains(t, fixture.library(t).Trash.Snippets, fixture.nestedSnippet.ID())
+	})
+}
+
+func TestSnippetRepository_placingIntoTrash(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		place func(t *testing.T, fixture trashFixture, folderID domain.FolderID) error
+	}{
+		{
+			name: "refuses to insert a Snippet",
+			place: func(t *testing.T, fixture trashFixture, folderID domain.FolderID) error {
+				t.Helper()
+
+				placed := testkit.Snippet(t, testkit.SnippetSpec{
+					ID:        fixture.ids.NewSnippetID(),
+					FolderID:  folderID,
+					Fragments: []testkit.FragmentSpec{{ID: fixture.ids.NewFragmentID()}},
+				})
+
+				return fixture.snippets(t).Insert(t.Context(), placed)
+			},
+		},
+		{
+			name: "refuses to move a Snippet",
+			place: func(t *testing.T, fixture trashFixture, folderID domain.FolderID) error {
+				t.Helper()
+
+				return fixture.snippets(t).Move(t.Context(), fixture.liveSnippet.MoveTo(folderID))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name+" into a Folder in the Trash", func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			err := tt.place(t, fixture, fixture.trashedFolder.ID())
+
+			require.ErrorIs(t, err, domain.ErrFolderGone)
+		})
+
+		t.Run(tt.name+" into a Folder under one in the Trash", func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			err := tt.place(t, fixture, fixture.nestedFolder.ID())
+
+			require.ErrorIs(t, err, domain.ErrFolderGone)
+		})
+	}
+
+	t.Run("leaves a refused move's Snippet where it was", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		err := fixture.snippets(t).Move(t.Context(), fixture.liveSnippet.MoveTo(fixture.trashedFolder.ID()))
+		require.ErrorIs(t, err, domain.ErrFolderGone)
+
+		stored, err := fixture.snippets(t).Find(t.Context(), fixture.liveSnippet.ID())
+		require.NoError(t, err)
+		assert.Equal(t, fixture.liveFolder.ID(), stored.FolderID())
 	})
 }
 

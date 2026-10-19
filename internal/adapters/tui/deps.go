@@ -17,7 +17,6 @@ type Deps struct {
 	Searcher                    SnippetSearcher
 	FolderCreator               FolderCreator
 	FolderRenamer               FolderRenamer
-	FolderDeletePreviewer       FolderDeletePreviewer
 	FolderDeleter               FolderDeleter
 	FolderDefaultLanguageSetter FolderDefaultLanguageSetter
 	FolderMover                 FolderMover

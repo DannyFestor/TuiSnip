@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"charm.land/bubbles/v2/cursor"
@@ -143,7 +144,7 @@ func New() Model {
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
 		cache:                memoization.NewMemoCache[line, []wrappedLine](wrapCacheCapacity),
-		rowWraps:             &rowWraps{rows: nil},
+		rowWraps:             &rowWraps{mutex: sync.Mutex{}, rows: nil},
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		useVirtualCursor:     true,

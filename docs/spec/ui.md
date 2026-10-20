@@ -165,7 +165,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 
 Content keeps its tab characters, and Content with tabs is editable in the Content textarea.
 
-- **Tab stops** sit every 4 cells: a tab runs to the next multiple of 4 cells, so `a\tb` shows `b` at cell 4. The Content textarea, the Snippet pane, the Search preview, and the Trash preview all use the same tab stops.
+- **Tab stops** sit every 4 cells: a tab runs to the next multiple of 4 cells, so `a\tb` shows `b` at cell 4. On a soft-wrapped row the cells count from the start of the line, not of the row. The Content textarea, the Snippet pane, the Search preview, and the Trash preview all use the same tab stops.
 - **Tabs draw as spaces**, with no visible mark.
 - **The cursor** on a tab covers the whole tab.
 - **Movement:** one `←` / `→` press moves over a tab. `↑` / `↓` keep the cell column and land on the tab covering it.

@@ -248,16 +248,46 @@ func TestModel_SelectedText_tabs(t *testing.T) {
 
 		assert.Equal(t, "a\tb", area.SelectedText())
 	})
+
+	t.Run("gives the tab back from a wrapped row and draws it at the tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine)
+		area.SetWidth(10)
+		area.SetCursorColumn(12)
+
+		area = selectedRight(area, 1)
+
+		assert.Equal(t, "\t", area.SelectedText())
+		assert.Equal(t, []string{"abcdefghi", "jk    l"}, viewRows(&area)[:2])
+	})
 }
 
 func TestModel_PositionAt_tabs(t *testing.T) {
 	t.Parallel()
 
-	area := newPlainTextarea(t, "a\tb")
+	t.Run("maps every cell of a tab to the tab", func(t *testing.T) {
+		t.Parallel()
 
-	for cell := 1; cell < 4; cell++ {
-		assert.Equal(t, textarea.Position{Row: 0, Col: 1}, area.PositionAt(cell, 0), "cell %d", cell)
-	}
+		area := newPlainTextarea(t, "a\tb")
 
-	assert.Equal(t, textarea.Position{Row: 0, Col: 2}, area.PositionAt(4, 0))
+		for cell := 1; cell < 4; cell++ {
+			assert.Equal(t, textarea.Position{Row: 0, Col: 1}, area.PositionAt(cell, 0), "cell %d", cell)
+		}
+
+		assert.Equal(t, textarea.Position{Row: 0, Col: 2}, area.PositionAt(4, 0))
+	})
+
+	t.Run("maps every cell of a tab on a wrapped row to the tab", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine)
+		area.SetWidth(10)
+
+		for cell := 2; cell < 6; cell++ {
+			assert.Equal(t, textarea.Position{Row: 0, Col: 12}, area.PositionAt(cell, 1), "cell %d", cell)
+		}
+
+		assert.Equal(t, textarea.Position{Row: 0, Col: 13}, area.PositionAt(6, 1))
+	})
 }

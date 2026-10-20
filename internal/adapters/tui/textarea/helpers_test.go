@@ -9,6 +9,8 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 )
 
+const wrappedTabLine = "abcdefghi jk\tl"
+
 func newPlainTextarea(t *testing.T, value string) textarea.Model {
 	t.Helper()
 

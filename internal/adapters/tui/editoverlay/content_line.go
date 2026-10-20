@@ -8,7 +8,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 )
 
-const indentLevel = "    "
+const (
+	indentLevel = "    "
+	tabIndent   = "\t"
+)
 
 func indentedLine(area textarea.Model) textarea.Model {
 	column := area.Column()
@@ -43,9 +46,13 @@ func cursorLine(area textarea.Model) string {
 }
 
 func removableIndent(line string) int {
-	indent := len(line) - len(strings.TrimLeft(line, " "))
+	if strings.HasPrefix(line, tabIndent) {
+		return len(tabIndent)
+	}
 
-	return min(indent, len(indentLevel))
+	spaces := len(line) - len(strings.TrimLeft(line, " "))
+
+	return min(spaces, len(indentLevel))
 }
 
 // The textarea has no method that deletes text, so dedent sends it the press

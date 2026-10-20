@@ -800,6 +800,18 @@ func TestSession_indent(t *testing.T) {
 			want:    "first\nsecond\nthird",
 		},
 		{
+			name:    "dedent removes one tab from a line that starts with a tab",
+			pasted:  "first\n\t\t  second\nthird",
+			pressed: shiftTab(),
+			want:    "first\n\t  second\nthird",
+		},
+		{
+			name:    "dedent removes the leading spaces before a tab",
+			pasted:  "first\n  \tsecond\nthird",
+			pressed: shiftTab(),
+			want:    "first\n\tsecond\nthird",
+		},
+		{
 			name:    "dedent leaves an unindented line unchanged",
 			pasted:  "first\nsecond\nthird",
 			pressed: shiftTab(),
@@ -840,6 +852,18 @@ func TestSession_indent(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "    ab"})
+		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())
+	})
+
+	t.Run("dedent of a tab keeps the cursor on the same character", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: "\tab"})
 		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())

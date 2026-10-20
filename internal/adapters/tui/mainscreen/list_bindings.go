@@ -4,17 +4,22 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpicker"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 )
 
+func (s Screen) snippetsPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+	if step, ok := s.listPressed(msg); ok {
+		return step, true
+	}
+
+	return s.editPressed(msg)
+}
+
 func (s Screen) listPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	if s.focus != paneList {
 		return outcome.Stay(s), false
-	}
-
-	if s.inTrash() {
-		return s.trashPressed(msg)
 	}
 
 	switch {
@@ -26,9 +31,23 @@ func (s Screen) listPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 		return s.duplicateAsked(), true
 	case s.listKeys.Matches(msg, binding.Delete):
 		return s.deleteAsked(), true
+	case s.listKeys.Matches(msg, binding.Move):
+		return s.snippetMoveAsked(), true
 	}
 
 	return outcome.Stay(s), false
+}
+
+func (s Screen) snippetMoveAsked() outcome.Step {
+	moving, ok := s.panes.list.Selected()
+	if !ok {
+		return outcome.Stay(s)
+	}
+
+	successor, _ := s.panes.list.Successor()
+	pending := snippetMove{moving: moving, successor: successor, selection: s.selection()}
+
+	return s.opening(folderpicker.New(s.keys, s.styles, snippetMoveOffer(pending, s.panes.folders.Tree())))
 }
 
 func (s Screen) copyAsked() outcome.Step {

@@ -16,7 +16,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
@@ -32,7 +31,7 @@ type panes struct {
 	trash      trashlist.List
 	preview    snippetpane.Pane
 	outline    folderoutline.Pane
-	trashShown bool
+	browsed    browsed
 	styles     look.Styles
 	paths      folderpath.Paths
 	orderLabel string
@@ -46,7 +45,7 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, co
 		trash:      trashlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
 		outline:    folderoutline.New(keys, styles, location),
-		trashShown: false,
+		browsed:    browsedSnippets,
 		styles:     styles,
 		paths:      folderpath.Paths{},
 		orderLabel: "",
@@ -63,22 +62,17 @@ func (p panes) naming() bool {
 	return p.folders.Naming() || p.tags.Naming()
 }
 
+func (p panes) showing(shown browsed) panes {
+	next := p
+	next.browsed = shown
+
+	return next
+}
+
 func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
-	if p.trashShown && focus.showsTrash() {
-		return p.trashUpdated(focus, msg)
-	}
-
 	switch focus {
-	case paneList:
-		list, outcomes, cmd := p.list.Update(msg)
-		p.list = list
-
-		return p.previewSelected(), outcomes, cmd
-	case paneSnippet:
-		preview, outcomes, cmd := p.preview.Update(msg)
-		p.preview = preview
-
-		return p, outcomes, cmd
+	case paneList, paneSnippet:
+		return p.browsed.updated(p, focus, msg)
 	case paneFolders:
 		folders, outcomes, cmd := p.folders.Update(msg)
 		p.folders = folders
@@ -94,6 +88,23 @@ func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.C
 	return p, nil, nil
 }
 
+func (p panes) snippetsUpdated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
+	var (
+		outcomes []outcome.Outcome
+		cmd      tea.Cmd
+	)
+
+	if focus == paneList {
+		p.list, outcomes, cmd = p.list.Update(msg)
+
+		return p.previewSelected(), outcomes, cmd
+	}
+
+	p.preview, outcomes, cmd = p.preview.Update(msg)
+
+	return p, outcomes, cmd
+}
+
 func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
 	switch of {
 	case paneFolders:
@@ -101,11 +112,7 @@ func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
 	case paneTags:
 		return p.tags.HasRowAt(cell)
 	case paneList:
-		if p.trashShown {
-			return p.trash.HasRowAt(cell)
-		}
-
-		return p.list.HasRowAt(cell)
+		return p.browsed.listHasRowAt(p, cell)
 	case paneSnippet:
 	}
 
@@ -166,12 +173,7 @@ func (p panes) selectionIn(holder pane) browseselection.Selection {
 	return p.folders.Selection()
 }
 
-func (p panes) destination(selection browseselection.Selection) editoverlay.Destination {
-	filedIn := selection
-	if selection.Trash() {
-		filedIn = browseselection.InFolder(domain.FolderID{})
-	}
-
+func (p panes) destination(filedIn browseselection.Selection) editoverlay.Destination {
 	folderID, _ := filedIn.Folder()
 
 	return editoverlay.Destination{
@@ -225,14 +227,6 @@ func (p panes) selectingFolder(id domain.FolderID) (panes, []outcome.Outcome) {
 	return p, outcomes
 }
 
-func (p panes) selectionAndOrder(selection browseselection.Selection) string {
-	if selection.Trash() {
-		return trashTitle
-	}
-
-	return p.selectionTitle(selection) + listTitleSeparator + p.orderLabel
-}
-
 func (p panes) selectionTitle(selection browseselection.Selection) string {
 	if _, ok := selection.Tag(); ok {
 		return tagpane.TagPrefix + p.tags.SelectedName()
@@ -241,14 +235,6 @@ func (p panes) selectionTitle(selection browseselection.Selection) string {
 	folderID, _ := selection.Folder()
 
 	return p.paths.Full(folderID)
-}
-
-func (p panes) listing(selection browseselection.Selection) searchpopup.Listing {
-	if selection.Trash() {
-		return searchpopup.Listing{Snippets: nil, Paths: p.paths, EmptyQueryNote: searchSkipsTrashText}
-	}
-
-	return searchpopup.Listing{Snippets: p.list.Snippets(), Paths: p.paths, EmptyQueryNote: ""}
 }
 
 func (p panes) previewSelected() panes {
@@ -262,35 +248,27 @@ func (p panes) previewSelected() panes {
 	return p
 }
 
-func (p panes) body(of pane, frame look.FrameStyle) string {
-	if p.trashShown && of.showsTrash() {
-		return p.trashBody(of, frame)
-	}
-
-	switch of {
+func (p panes) body(framed pane, frame look.FrameStyle) string {
+	switch framed {
 	case paneFolders:
 		return p.folders.View(frame)
 	case paneTags:
 		return p.tags.View(frame)
-	case paneList:
-		return p.list.View(frame)
-	case paneSnippet:
-		return p.preview.View()
+	case paneList, paneSnippet:
+		return p.browsed.body(p, framed, frame)
 	}
 
 	return ""
 }
 
-func (p panes) keyMaps() map[pane]help.KeyMap {
-	list := help.KeyMap(p.list)
-	if p.trashShown {
-		list = p.trash
+func (p panes) snippetsBody(framed pane, frame look.FrameStyle) string {
+	if framed == paneList {
+		return p.list.View(frame)
 	}
 
-	return map[pane]help.KeyMap{
-		paneFolders: p.folders,
-		paneTags:    p.tags,
-		paneList:    list,
-		paneSnippet: p.preview,
-	}
+	return p.preview.View()
+}
+
+func (p panes) keyMaps() map[pane]help.KeyMap {
+	return p.browsed.keyMaps(p)
 }

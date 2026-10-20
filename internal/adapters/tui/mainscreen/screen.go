@@ -102,7 +102,7 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	case outcome.ContentEdited:
 		return s.externallyEdited(received)
 	case outcome.SnippetSaved:
-		return s.saved(received)
+		return s.browsed().saved(s, received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -143,7 +143,7 @@ func (s Screen) loaded(msg tea.Msg) outcome.Step {
 	case SnippetsLoaded:
 		return s.snippetsLoaded(msg)
 	case TrashLoaded:
-		return outcome.Stay(s.trashLoaded(msg.Items))
+		return outcome.Stay(s.withPanes(s.browsed().trashLoaded(s.panes, msg.Items)))
 	}
 
 	return outcome.Stay(s)
@@ -158,55 +158,41 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if step, ok := s.listPressed(msg); ok {
+	if step, ok := s.browsed().pressed(s, msg); ok {
 		return step
-	}
-
-	if step, ok := s.trashPanePressed(msg); ok {
-		return step
-	}
-
-	if stored, ok := s.shownFor(msg, binding.Edit); ok {
-		return s.opening(editoverlay.Editing(s.keys, s.styles, s.overlayOptions(), s.browsed(stored, s.selection())))
-	}
-
-	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
-		return outcome.Stay(s).Passing(s.externalEditAsked(stored))
 	}
 
 	if filed, ok := s.defaultLanguageAsked(msg); ok {
 		return s.opening(languagepicker.New(s.keys, s.styles, defaultLanguageOffer(filed, s.curated)))
 	}
 
-	if offer, ok := s.moveAsked(msg); ok {
-		return s.opening(folderpicker.New(s.keys, s.styles, offer))
+	if moving, ok := s.folderMoveAsked(msg); ok {
+		return s.opening(folderpicker.New(s.keys, s.styles, folderMoveOffer(moving, s.panes.folders.Tree())))
 	}
 
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) moveAsked(msg tea.KeyPressMsg) (folderpicker.Offer, bool) {
-	tree := s.panes.folders.Tree()
-
-	switch {
-	case s.focus == paneFolders && s.folderKeys.Matches(msg, binding.Move):
-		moving, ok := s.panes.folders.SelectedFolder()
-
-		return folderMoveOffer(moving, tree), ok
-	case s.focus == paneList && !s.inTrash() && s.listKeys.Matches(msg, binding.Move):
-		pending, ok := s.snippetMoveAsked()
-
-		return snippetMoveOffer(pending, tree), ok
+func (s Screen) editPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+	if stored, ok := s.shownFor(msg, binding.Edit); ok {
+		return s.opening(
+			editoverlay.Editing(s.keys, s.styles, s.overlayOptions(), s.browsedSnippet(stored, s.selection())),
+		), true
 	}
 
-	return folderpicker.Offer{}, false
+	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
+		return outcome.Stay(s).Passing(s.externalEditAsked(stored)), true
+	}
+
+	return outcome.Stay(s), false
 }
 
-func (s Screen) snippetMoveAsked() (snippetMove, bool) {
-	moving, ok := s.panes.list.Selected()
-	successor, _ := s.panes.list.Successor()
+func (s Screen) folderMoveAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {
+	if s.focus != paneFolders || !s.folderKeys.Matches(msg, binding.Move) {
+		return domain.Folder{}, false
+	}
 
-	return snippetMove{moving: moving, successor: successor, selection: s.selection()}, ok
+	return s.panes.folders.SelectedFolder()
 }
 
 func (s Screen) defaultLanguageAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {
@@ -229,7 +215,7 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
 		return s.opening(
-			searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing(s.selection())),
+			searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.browsed().listing(s.panes)),
 		), true
 	case s.global.Matches(msg, binding.Zoom):
 		return outcome.Stay(s.zoomToggled()), true
@@ -245,10 +231,6 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 }
 
 func (s Screen) shownFor(msg tea.KeyPressMsg, name string) (domain.Snippet, bool) {
-	if s.inTrash() {
-		return domain.Snippet{}, false
-	}
-
 	if (s.focus == paneList && s.listKeys.Matches(msg, name)) ||
 		(s.focus == paneSnippet && s.paneKeys.Matches(msg, name)) {
 		return s.panes.preview.Shown()
@@ -271,7 +253,7 @@ func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsk
 
 func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
 	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.overlayOptions(), editoverlay.ExternallyEdited{
-		Browsed:  s.browsed(edited.Asked.Snippet, edited.Asked.Selection),
+		Browsed:  s.browsedSnippet(edited.Asked.Snippet, edited.Asked.Selection),
 		Fragment: edited.Asked.Fragment,
 		Content:  edited.Content,
 	}))
@@ -382,11 +364,19 @@ func (s Screen) selection() browseselection.Selection {
 	return s.panes.selectionIn(s.selectionHolder)
 }
 
-func (s Screen) destination() editoverlay.Destination {
-	return s.panes.destination(s.selection())
+func (s Screen) browsed() browsed {
+	return browsedBy(s.selection())
 }
 
-func (s Screen) browsed(stored domain.Snippet, selection browseselection.Selection) editoverlay.BrowsedSnippet {
+func (s Screen) shown() panes {
+	return s.panes.showing(s.browsed())
+}
+
+func (s Screen) destination() editoverlay.Destination {
+	return s.panes.destination(s.browsed().filedIn(s.selection()))
+}
+
+func (s Screen) browsedSnippet(stored domain.Snippet, selection browseselection.Selection) editoverlay.BrowsedSnippet {
 	return editoverlay.BrowsedSnippet{
 		Snippet:         stored,
 		Selection:       selection,
@@ -422,16 +412,7 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 
 func (s Screen) goneElsewhereShown(text string) outcome.Step {
 	return outcome.Stay(s.withStatus(text)).
-		Passing(outcome.ReloadAsked{Selection: s.selection(), Selecting: s.listedSnippetID()})
-}
-
-func (s Screen) listedSnippetID() domain.SnippetID {
-	listed, _ := s.panes.list.Selected()
-	if s.inTrash() {
-		return domain.SnippetID{}
-	}
-
-	return listed.ID()
+		Passing(outcome.ReloadAsked{Selection: s.selection(), Selecting: s.browsed().listedSnippetID(s.panes)})
 }
 
 func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
@@ -630,7 +611,7 @@ func (s Screen) panesView() string {
 
 func (s Screen) paneFrame(framed pane) string {
 	frame := s.paneStyle(framed)
-	title := framed.title(s.panes.selectionAndOrder(s.selection()))
+	title := framed.title(s.browsed().listTitle(s.panes, s.selection()))
 
 	return look.Frame(frame, title, s.shown().body(framed, frame), s.layout.of(framed))
 }

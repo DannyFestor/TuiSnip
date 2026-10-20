@@ -15,10 +15,6 @@ const (
 	searchSkipsTrashText = "Search doesn't cover the Trash"
 )
 
-func (p pane) showsTrash() bool {
-	return p == paneList || p == paneSnippet
-}
-
 func (p panes) trashUpdated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
 	var (
 		outcomes []outcome.Outcome
@@ -39,11 +35,19 @@ func (p panes) trashUpdated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, 
 	return p, outcomes, cmd
 }
 
-func (p panes) showingTrash(shown bool) panes {
-	next := p
-	next.trashShown = shown
+func (p panes) trashBody(framed pane, frame look.FrameStyle) string {
+	_, ok := p.trash.Selected()
 
-	return next
+	switch {
+	case framed == paneList:
+		return p.trash.View(frame)
+	case !ok:
+		return look.EmptyTrash(p.styles)
+	case p.selectedTrashFolder():
+		return p.outline.View()
+	}
+
+	return p.preview.View()
 }
 
 func (p panes) withTrash(items []trash.Item) panes {
@@ -79,19 +83,4 @@ func (p panes) selectedTrashFolder() bool {
 	item, ok := p.trash.Selected()
 
 	return ok && item.Kind == trash.ItemKindFolder
-}
-
-func (p panes) trashBody(of pane, frame look.FrameStyle) string {
-	_, ok := p.trash.Selected()
-
-	switch {
-	case of == paneList:
-		return p.trash.View(frame)
-	case !ok:
-		return look.EmptyTrash(p.styles)
-	case p.selectedTrashFolder():
-		return p.outline.View()
-	}
-
-	return p.preview.View()
 }

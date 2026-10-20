@@ -14,20 +14,29 @@ const (
 	restoreToEditText    = "Restore the Snippet to edit it"
 )
 
-func (s Screen) inTrash() bool {
-	return s.selection().Trash()
-}
-
-func (s Screen) shown() panes {
-	return s.panes.showingTrash(s.inTrash())
-}
-
 func (s Screen) trashPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	item, ok := s.panes.trash.Selected()
 
 	switch {
 	case !ok:
 		return outcome.Stay(s), false
+	case s.focus == paneList:
+		return s.trashListPressed(item, msg)
+	case s.focus == paneSnippet:
+		return s.trashPanePressed(item, msg)
+	}
+
+	return outcome.Stay(s), false
+}
+
+func (s Screen) savedFromTrash(saved outcome.SnippetSaved) outcome.Step {
+	next, expanded := s.selectingFolder(domain.FolderID{})
+
+	return outcome.Stay(next).Passing(expanded...).Passing(saved)
+}
+
+func (s Screen) trashListPressed(item trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
+	switch {
 	case s.trashKeys.Matches(msg, binding.Copy):
 		return s.trashCopyAsked(item), true
 	case s.trashKeys.Matches(msg, binding.Restore):
@@ -36,6 +45,19 @@ func (s Screen) trashPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 			Name:  item.Name(),
 			Path:  item.Path,
 		}), true
+	}
+
+	return outcome.Stay(s), false
+}
+
+func (s Screen) trashPanePressed(item trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
+	editing := s.paneKeys.Matches(msg, binding.Edit) || s.paneKeys.Matches(msg, binding.OpenInEditor)
+
+	switch {
+	case s.paneKeys.Matches(msg, binding.Copy):
+		return s.trashCopyAsked(item), true
+	case item.Kind == trash.ItemKindSnippet && editing:
+		return outcome.Stay(s.withStatus(restoreToEditText)), true
 	}
 
 	return outcome.Stay(s), false
@@ -52,40 +74,4 @@ func (s Screen) trashCopyAsked(item trash.Item) outcome.Step {
 	}
 
 	return outcome.Stay(s).Passing(outcome.TrashCopyRequested(request))
-}
-
-func (s Screen) trashPanePressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
-	item, ok := s.panes.trash.Selected()
-	if !ok || !s.inTrash() || s.focus != paneSnippet {
-		return outcome.Stay(s), false
-	}
-
-	editing := s.paneKeys.Matches(msg, binding.Edit) || s.paneKeys.Matches(msg, binding.OpenInEditor)
-
-	switch {
-	case s.paneKeys.Matches(msg, binding.Copy):
-		return s.trashCopyAsked(item), true
-	case item.Kind == trash.ItemKindSnippet && editing:
-		return outcome.Stay(s.withStatus(restoreToEditText)), true
-	}
-
-	return outcome.Stay(s), false
-}
-
-func (s Screen) trashLoaded(items []trash.Item) Screen {
-	if !s.inTrash() {
-		return s
-	}
-
-	return s.withPanes(s.panes.withTrash(items))
-}
-
-func (s Screen) saved(saved outcome.SnippetSaved) outcome.Step {
-	if !s.inTrash() {
-		return outcome.Stay(s).Passing(saved)
-	}
-
-	next, expanded := s.selectingFolder(domain.FolderID{})
-
-	return outcome.Stay(next).Passing(expanded...).Passing(saved)
 }

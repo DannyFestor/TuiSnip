@@ -29,11 +29,11 @@ func (i ItemID) Snippet() (domain.SnippetID, bool) {
 }
 
 func (i ItemID) Folder() (domain.FolderID, bool) {
-	return i.folderID, i.kind == ItemKindFolder
+	return i.folderID, i.kind.IsFolder()
 }
 
 func (i ItemID) String() string {
-	if i.kind == ItemKindFolder {
+	if i.kind.IsFolder() {
 		return i.folderID.String()
 	}
 

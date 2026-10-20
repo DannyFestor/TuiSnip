@@ -62,7 +62,7 @@ func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Re
 }
 
 func homeNoun(restored trash.ItemID) string {
-	if restored.Kind() == trash.ItemKindFolder {
+	if restored.Kind().IsFolder() {
 		return parentPrefix + folderNoun
 	}
 

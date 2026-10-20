@@ -64,7 +64,7 @@ func (s Screen) trashPanePressed(item trash.Item, msg tea.KeyPressMsg) (outcome.
 }
 
 func (s Screen) trashCopyAsked(item trash.Item) outcome.Step {
-	if item.Kind == trash.ItemKindFolder {
+	if item.Kind.IsFolder() {
 		return outcome.Stay(s.withStatus(onlySnippetsCopyText))
 	}
 

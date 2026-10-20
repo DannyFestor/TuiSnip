@@ -78,7 +78,7 @@ func (l List) HasRowAt(at pointer.Point) bool {
 }
 
 func (l List) row(item trash.Item, width int) string {
-	if item.Kind == trash.ItemKindFolder {
+	if item.Kind.IsFolder() {
 		return look.Row(folderMarker+item.Name(), look.Counted(item.Contents.SnippetCount, snippetNoun), width)
 	}
 

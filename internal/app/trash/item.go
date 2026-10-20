@@ -16,7 +16,7 @@ type Item struct {
 }
 
 func (i Item) ID() ItemID {
-	if i.Kind == ItemKindFolder {
+	if i.Kind.IsFolder() {
 		return FolderItem(i.Folder.ID())
 	}
 
@@ -24,7 +24,7 @@ func (i Item) ID() ItemID {
 }
 
 func (i Item) Name() string {
-	if i.Kind == ItemKindFolder {
+	if i.Kind.IsFolder() {
 		return i.Folder.Name().String()
 	}
 

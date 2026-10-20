@@ -4,3 +4,7 @@ package trash
 
 // ENUM(snippet, folder).
 type ItemKind string
+
+func (k ItemKind) IsFolder() bool {
+	return k == ItemKindFolder
+}

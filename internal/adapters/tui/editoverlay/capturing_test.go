@@ -1,6 +1,7 @@
 package editoverlay_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -27,40 +28,45 @@ func TestCapturing_View(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "docker system prune")
 	})
 
-	t.Run("shows captured content with tabs read-only", func(t *testing.T) {
+	t.Run("shows captured content with tabs editable", func(t *testing.T) {
 		t.Parallel()
 
 		screen := capturing(t, tabbedContent)
 
 		assert.Contains(t, screen.Screen(), unsavedTitle)
-		assert.Contains(t, screen.Screen(), readOnlyNotice)
+		assert.Contains(t, screen.Screen(), "    return")
+		assert.NotContains(t, screen.Screen(), "read-only")
 	})
 
-	t.Run("highlights captured content with tabs in the Destination's Language", func(t *testing.T) {
+	t.Run("highlights read-only captured content in the Destination's Language", func(t *testing.T) {
 		t.Parallel()
 
-		inGo := capturingIn(t, destinationIn(t, "Go"), tabbedContent)
-		plain := capturing(t, tabbedContent)
+		inGo := capturingIn(t, destinationIn(t, "Go"), overlongGo())
+		plain := capturing(t, overlongGo())
 
 		assert.Contains(t, inGo.Screen(), "Language       Go")
 		assert.Equal(t, withoutLanguageRow(plain.Screen()), withoutLanguageRow(inGo.Screen()))
 		assert.NotEqual(t, withoutLanguageRow(plain.StyledScreen()), withoutLanguageRow(inGo.StyledScreen()))
 	})
 
-	t.Run("re-highlights captured content with tabs in a picked Language", func(t *testing.T) {
+	t.Run("re-highlights read-only captured content in a picked Language", func(t *testing.T) {
 		t.Parallel()
 
-		picked := capturing(t, tabbedContent)
-		unpicked := capturing(t, tabbedContent)
+		picked := capturing(t, overlongGo())
+		unpicked := capturing(t, overlongGo())
 
 		picked.Press(pickLanguage())
 		picked.Press(keypress.Typed("bash")...)
 		picked.Press(keypress.Special(tea.KeyEnter))
 
-		inBash := capturingIn(t, destinationIn(t, "Bash"), tabbedContent)
+		inBash := capturingIn(t, destinationIn(t, "Bash"), overlongGo())
 		assert.Equal(t, inBash.StyledScreen(), picked.StyledScreen())
 		assert.NotEqual(t, withoutLanguageRow(unpicked.StyledScreen()), withoutLanguageRow(picked.StyledScreen()))
 	})
+}
+
+func overlongGo() string {
+	return strings.Repeat("if x {\n}\n", 5_001)
 }
 
 func TestCaptureRefusal(t *testing.T) {
@@ -119,23 +125,9 @@ func TestCapturing_save(t *testing.T) {
 	tests := []struct {
 		name     string
 		captured string
-		sent     []tea.Msg
 	}{
 		{name: "saves the captured content under the typed title", captured: capturedContent},
-		{
-			name:     "keeps captured content with tabs byte for byte",
-			captured: tabbedContent,
-			sent: []tea.Msg{
-				keypress.Special(tea.KeyDown),
-				keypress.Special(tea.KeyDown),
-				keypress.Special(tea.KeyDown),
-				keypress.Special(tea.KeyDown),
-				keypress.Special(tea.KeyDown),
-				keypress.Special(tea.KeyEnter),
-				keypress.Special(tea.KeyTab),
-				tea.PasteMsg{Content: "pasted"},
-			},
-		},
+		{name: "keeps captured content with tabs byte for byte", captured: tabbedContent},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -144,11 +136,6 @@ func TestCapturing_save(t *testing.T) {
 			screen := capturing(t, tt.captured)
 
 			screen.Press(keypress.Typed("Prune")...)
-
-			for _, msg := range tt.sent {
-				screen.Send(msg)
-			}
-
 			screen.Press(save())
 
 			want := outcome.SaveRequested{Input: input("Prune", "", tt.captured)}

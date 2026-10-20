@@ -73,6 +73,7 @@ internal/
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: a row per Snippet with its meta column, the empty hint
       snippetpane/           the Snippet pane: header, the tab strip, the highlighted and scrolled Shown Fragment, Copy of the Shown Fragment, a trashed Snippet's place and deletion date
+      tabstop/               where a tab in Content ends: the 4-cell tab stops the Content textarea and highlighted Content share
       trashlist/             the Snippet list while the Trash is the Browse selection: a row per Trash item, "The Trash is empty."
       tagchoice/             the Tags a Snippet carries while the edit overlay is open: stored Tags and the names of Tags to create on save
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close

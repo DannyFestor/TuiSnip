@@ -571,29 +571,17 @@ func TestSession_Received(t *testing.T) {
 func TestSession_paste(t *testing.T) {
 	t.Parallel()
 
-	t.Run("refuses a paste with tabs into Content", func(t *testing.T) {
+	t.Run("inserts a paste with tabs into Content and keeps the tabs", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "if x {\n\treturn\n}"})
+		screen.Press(save())
 
-		want := outcome.NoticeShown{Text: "Pasted text contains tabs; use ctrl+e to edit in $EDITOR"}
+		want := outcome.SaveRequested{Input: input("", "", "if x {\n\treturn\n}")}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-		assert.NotContains(t, screen.Screen(), "return")
-		assert.NotContains(t, screen.Screen(), unsavedTitle)
-	})
-
-	t.Run("inserts a paste without tabs into Content", func(t *testing.T) {
-		t.Parallel()
-
-		screen := editing(t)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: "if x {\n    return\n}"})
-
-		assert.Contains(t, screen.Screen(), "return")
 	})
 
 	t.Run("pastes text with tabs into Title", func(t *testing.T) {
@@ -615,9 +603,11 @@ func TestSession_paste(t *testing.T) {
 		screen := editingWith(t, keys)
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: "\t"})
+		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
 
-		want := outcome.NoticeShown{Text: "Pasted text contains tabs; use ctrl+o to edit in $EDITOR"}
+		want := outcome.NoticeShown{
+			Text: "Paste would make Content longer than 10,000 lines; use ctrl+o to edit in $EDITOR",
+		}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
@@ -629,9 +619,10 @@ func TestSession_paste(t *testing.T) {
 		screen := editingWith(t, keys)
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: "\t"})
+		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
 
-		assert.Equal(t, []outcome.Outcome{outcome.NoticeShown{Text: "Pasted text contains tabs"}}, screen.Outcomes())
+		want := outcome.NoticeShown{Text: "Paste would make Content longer than 10,000 lines"}
+		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
 	t.Run("refuses a paste over 10,000 lines into Content", func(t *testing.T) {
@@ -809,6 +800,18 @@ func TestSession_indent(t *testing.T) {
 			want:    "first\nsecond\nthird",
 		},
 		{
+			name:    "dedent removes one tab from a line that starts with a tab",
+			pasted:  "first\n\t\t  second\nthird",
+			pressed: shiftTab(),
+			want:    "first\n\t  second\nthird",
+		},
+		{
+			name:    "dedent removes the leading spaces before a tab",
+			pasted:  "first\n  \tsecond\nthird",
+			pressed: shiftTab(),
+			want:    "first\n\tsecond\nthird",
+		},
+		{
 			name:    "dedent leaves an unindented line unchanged",
 			pasted:  "first\nsecond\nthird",
 			pressed: shiftTab(),
@@ -849,6 +852,18 @@ func TestSession_indent(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "    ab"})
+		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
+
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())
+	})
+
+	t.Run("dedent of a tab keeps the cursor on the same character", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+
+		screen.Press(enterContent()...)
+		screen.Send(tea.PasteMsg{Content: "\tab"})
 		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())

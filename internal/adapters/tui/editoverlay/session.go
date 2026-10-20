@@ -207,8 +207,6 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.editingTags()
 	case requestPickLanguage:
 		return s.pickingLanguage()
-	case requestRefusePasteWithTabs:
-		return s.pasteRefused(pasteHasTabs)
 	case requestRefuseOverlongPaste:
 		return s.pasteRefused(pasteOverflowsContent)
 	case requestExternalEditor:
@@ -230,7 +228,7 @@ func (s Session) fragmentRequested(asked request) outcome.Step {
 	case requestRefuseRemovingLastFragment:
 		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: lastFragmentRefusal})
 	case requestNothing, requestSave, requestCancel, requestEditTags, requestPickLanguage,
-		requestRefusePasteWithTabs, requestRefuseOverlongPaste, requestExternalEditor:
+		requestRefuseOverlongPaste, requestExternalEditor:
 	}
 
 	return outcome.Stay(s)

@@ -47,6 +47,14 @@ func TestPane_View(t *testing.T) {
 		}, trimmed(got))
 	})
 
+	t.Run("runs a tab in the Fragment to the next tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		pane := showing(t, snippetWithContent(t, testkit.SnippetSpec{}, "a\tb"))
+
+		assert.Equal(t, "   1 │ a   b", trimmed(code(pane))[0])
+	})
+
 	t.Run("shows the Description under the dates and gives the Fragment less room", func(t *testing.T) {
 		t.Parallel()
 

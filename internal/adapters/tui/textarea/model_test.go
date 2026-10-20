@@ -15,8 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
 func TestVerticalScrolling(t *testing.T) {
@@ -2711,4 +2715,207 @@ func pressed(m textarea.Model, press tea.KeyPressMsg, count int) textarea.Model 
 	}
 
 	return m
+}
+
+func TestModel_Value_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("keeps loaded tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "\tif x {\n\t\treturn\n\t}")
+
+		assert.Equal(t, "\tif x {\n\t\treturn\n\t}", area.Value())
+	})
+
+	t.Run("keeps inserted tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "")
+		area.InsertString("a\tb")
+
+		assert.Equal(t, "a\tb", area.Value())
+	})
+
+	t.Run("keeps pasted tabs", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "")
+		area, _ = area.Update(tea.PasteMsg{Content: "a\tb\n\tc"})
+
+		assert.Equal(t, "a\tb\n\tc", area.Value())
+	})
+}
+
+func TestModel_View_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("runs a tab to the next tab stop", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb\nabc\td\n\t\te")
+
+		assert.Equal(t, []string{"a   b", "abc d", "        e"}, viewRows(&area)[:3])
+	})
+
+	t.Run("wraps a line with tabs at the tab-aware width", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "\t\t\t\tword\tnext")
+
+		assert.Equal(t, []string{"", "word    next"}, viewRows(&area)[:2])
+		assert.Equal(t, "\t\t\t\tword\tnext", area.Value())
+	})
+
+	t.Run("keeps a word on its row when only the tab after it overflows", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "top\nabcdefgh\tx")
+		area.SetWidth(10)
+
+		assert.Equal(t, []string{"top", "abcdefgh", "x"}, viewRows(&area)[:3])
+	})
+
+	t.Run("counts the tab stops on a wrapped row from the start of the line", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "abcdef ghij\tk")
+		area.SetWidth(10)
+
+		assert.Equal(t, []string{"abcdef", "ghij k"}, viewRows(&area)[:2])
+	})
+
+	t.Run("draws a wrapped row's tab on the cells the Snippet pane draws it on", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine)
+		area.SetWidth(10)
+
+		want := []string{"abcdefghi", "jk    l"}
+		assert.Equal(t, want, viewRows(&area)[:2])
+		assert.Equal(t, want, wrappedSnippetPaneRows(t, wrappedTabLine, 10)[:2])
+	})
+
+	t.Run("covers the whole tab with the reverse-video cursor block", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tx")
+		area.MoveToBegin()
+		area, _ = area.Update(keypress.Special(tea.KeyRight))
+
+		firstRow, _, _ := strings.Cut(area.View(), "\n")
+
+		assert.Contains(t, firstRow, "\x1b[7m   \x1b[m")
+	})
+
+	t.Run("covers the whole tab on a wrapped row with the cursor block", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine)
+		area.SetWidth(10)
+		area.SetCursorColumn(12)
+
+		secondRow := strings.Split(area.View(), "\n")[1]
+
+		assert.Contains(t, secondRow, "\x1b[7m    \x1b[m")
+	})
+}
+
+func wrappedSnippetPaneRows(t *testing.T, content string, codeWidth int) []string {
+	t.Helper()
+
+	const (
+		gutter      = "   1 │ "
+		headerLines = 4
+	)
+
+	pane := snippetpane.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), time.UTC)
+	pane, _, _ = pane.Update(look.Resized{Box: look.Size{Width: ansi.StringWidth(gutter) + codeWidth, Height: 10}})
+	pane = pane.Showing(testkit.Snippet(t, testkit.SnippetSpec{Fragments: []testkit.FragmentSpec{{Content: content}}}))
+	pane, _, _ = pane.Update(keypress.Letter('w'))
+
+	rows := strings.Split(ansi.Strip(pane.View()), "\n")[headerLines:]
+	for index, row := range rows {
+		_, code, _ := strings.Cut(row, "│ ")
+		rows[index] = strings.TrimRight(code, " ")
+	}
+
+	return rows
+}
+
+func TestModel_Update_tabs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("left from after a tab lands before it in one press", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb")
+		area.SetCursorColumn(2)
+
+		area, _ = area.Update(keypress.Special(tea.KeyLeft))
+
+		assert.Equal(t, 1, area.Column())
+	})
+
+	t.Run("right from before a tab lands after it in one press", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "a\tb")
+		area.SetCursorColumn(1)
+
+		area, _ = area.Update(keypress.Special(tea.KeyRight))
+
+		assert.Equal(t, 2, area.Column())
+	})
+
+	t.Run("down lands on the tab covering the cell column and keeps it", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "abcdef\n\tx\nabcdef")
+		area.MoveToBegin()
+		area.SetCursorColumn(2)
+
+		area, _ = area.Update(keypress.Special(tea.KeyDown))
+		onTab := area.Column()
+		area, _ = area.Update(keypress.Special(tea.KeyDown))
+
+		assert.Equal(t, 0, onTab)
+		assert.Equal(t, 2, area.Column())
+	})
+
+	t.Run("up from after a tab keeps the cell column", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, "abcdef\n\tx")
+		area.SetCursorColumn(1)
+
+		area, _ = area.Update(keypress.Special(tea.KeyUp))
+
+		assert.Equal(t, 4, area.Column())
+	})
+
+	t.Run("down from after a tab on a wrapped row keeps the cell column", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine+"\n0123456789")
+		area.SetWidth(10)
+		area.MoveToBegin()
+		area.SetCursorColumn(13)
+
+		area, _ = area.Update(keypress.Special(tea.KeyDown))
+
+		assert.Equal(t, 6, area.Column())
+	})
+
+	t.Run("up onto a wrapped row lands on the tab covering the cell column", func(t *testing.T) {
+		t.Parallel()
+
+		area := newPlainTextarea(t, wrappedTabLine+"\n0123456789")
+		area.SetWidth(10)
+		area.SetCursorColumn(5)
+
+		area, _ = area.Update(keypress.Special(tea.KeyUp))
+
+		assert.Equal(t, 12, area.Column())
+	})
 }

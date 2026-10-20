@@ -3,8 +3,6 @@ package textarea
 import (
 	"strconv"
 	"strings"
-
-	"github.com/charmbracelet/x/ansi"
 )
 
 type runeSpan struct {
@@ -35,21 +33,16 @@ func (m *Model) PositionAt(cellX, cellY int) Position {
 	display := 0
 
 	for row, line := range m.value {
-		wrapped := m.memoizedWrap(line, m.width)
-		if len(wrapped) == 0 {
-			wrapped = [][]rune{{}}
-		}
-
 		base := 0
 
-		for _, wrappedLine := range wrapped {
+		for _, wrapped := range m.memoizedWrap(line, m.width) {
 			if display == targetLine {
-				col := base + runeIndexForColumn(wrappedLine, contentX)
+				col := base + wrapped.runeIndexAt(contentX)
 
 				return Position{Row: row, Col: clamp(col, 0, len(line))}
 			}
 
-			base += len(wrappedLine)
+			base += len(wrapped.runes)
 			display++
 		}
 	}
@@ -227,26 +220,4 @@ func (m *Model) selectionSpanFor(row, base, length int) (runeSpan, bool) {
 	}
 
 	return runeSpan{from: from - base, to: to - base}, true
-}
-
-// runeIndexForColumn returns the index of the rune occupying the given display
-// column within runes, accounting for double-width runes. A column past the
-// end of the line yields len(runes).
-func runeIndexForColumn(runes []rune, col int) int {
-	if col <= 0 {
-		return 0
-	}
-
-	width := 0
-
-	for i, r := range runes {
-		rWidth := ansi.StringWidth(string(r))
-		if width+rWidth > col {
-			return i
-		}
-
-		width += rWidth
-	}
-
-	return len(runes)
 }

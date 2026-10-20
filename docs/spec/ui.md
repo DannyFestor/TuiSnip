@@ -160,25 +160,24 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **Inside Content:**
   - `esc` leaves the textarea but keeps the overlay open, and a second `esc` cancels.
   - `↑` on the first line moves to Language.
-  - `tab` indents and `shift+tab` removes one indent level from the cursor's line. An indent level is four spaces. `shift+tab` on a line with fewer leading spaces removes those, and the cursor stays on the same character.
+  - `tab` indents the cursor's line by four spaces. `shift+tab` removes one leading tab from a line that starts with a tab, and otherwise up to four leading spaces. Either way the cursor stays on the same character.
   - **A paste that would make Content longer than 10,000 lines** isn't inserted, because the textarea would cut it at 10,000 lines. The count is the lines Content would have after the paste: its current lines, minus the line breaks in a selection the paste replaces, plus the line breaks in the paste, since the paste's first line joins the cursor's line. The textarea turns every carriage return into a line break, so each `\r` counts as one, and a `\r\n` line ending counts as two. A paste that brings Content to exactly 10,000 lines goes in. The status line says "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Paste would make Content longer than 10,000 lines".
 - `ctrl+s` saves, closes the overlay, selects the Snippet in the list, and shows it in the Snippet pane. `esc` outside Content cancels, asking [y/N] first if anything changed.
 - **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
   - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
   - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
 - `ctrl+e` opens the Shown Fragment in the external editor from any field. The temp file is named from its Language.
-- **Content over 10,000 lines** is read-only, like [Content with tabs](#content-with-tabs), because the textarea would cut it at 10,000 lines. That covers a stored Snippet opened with `e`, and externally edited content, which lands as an unsaved change. Lines are counted the way a paste into empty Content is, so exactly 10,000 lines stay editable. The Content field says "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Longer than 10,000 lines: read-only here". Content that also has a tab gets the tabs notice. Saving keeps the content byte for byte. When the external editor returns it with 10,000 lines or fewer and no tab, it is editable again.
+- **Content over 10,000 lines** is read-only, because the textarea would cut it at 10,000 lines. That covers a stored Snippet opened with `e`, and externally edited content, which lands as an unsaved change. Lines are counted the way a paste into empty Content is, so exactly 10,000 lines stay editable. The Content field says "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Longer than 10,000 lines: read-only here". Saving keeps the content byte for byte. When the external editor returns it with 10,000 lines or fewer, it is editable again.
 
-### Content with tabs
+### Tabs in Content
 
-The stock Bubbles textarea replaces every tab with four spaces, on typing, pasting, and loading alike, and has no option to keep them. Letting it edit such content would silently rewrite the indentation. In v1:
+Content keeps its tab characters, and Content with tabs is editable in the Content textarea.
 
-- **Content that contains a tab** shows highlighted in the Language on the Language row, which a picked Language changes, and read-only in the Content field, with "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). The other fields stay editable, and saving keeps the content byte for byte.
-- **The tab key in editable content** indents the cursor's line with four spaces. That is visible, so nothing is silently changed.
-- **A paste containing tabs** isn't inserted. The status line says "Pasted text contains tabs; use ctrl+e to edit in $EDITOR", naming the first key the user configured for `open_in_editor` in the `content` Scope (`ctrl+e` by default). With no key bound it says only "Pasted text contains tabs".
-- **Captured or externally edited content with tabs** lands read-only as an unsaved change and saves unchanged.
-
-A TuiSnip-owned editor component that keeps tabs and highlights while editing is on the [roadmap](../../ROADMAP.md).
+- **Tab stops** sit every 4 cells: a tab runs to the next multiple of 4 cells, so `a\tb` shows `b` at cell 4. On a soft-wrapped row the cells count from the start of the line, not of the row. The Content textarea, the Snippet pane, the Search preview, and the Trash preview all use the same tab stops.
+- **Tabs draw as spaces**, with no visible mark.
+- **The cursor** on a tab covers the whole tab.
+- **Movement:** one `←` / `→` press moves over a tab. `↑` / `↓` keep the cell column and land on the tab covering it.
+- **Pasted, captured, loaded, and externally edited tabs** stay tabs. The `tab` key still indents with four spaces ([Edit overlay](#edit-overlay)).
 
 ### Tag editor
 

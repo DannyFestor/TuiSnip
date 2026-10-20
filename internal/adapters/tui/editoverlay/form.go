@@ -27,7 +27,6 @@ const (
 	fieldRows         = 6
 	tagPrefix         = "#"
 	tagSeparator      = " "
-	tabCharacter      = "\t"
 	lineBreak         = "\n"
 	carriageReturn    = "\r"
 	maxContentLines   = 10_000
@@ -91,7 +90,7 @@ func (f form) withContent(content string) form {
 
 func (f form) withExternalContent(content string) form {
 	next := f
-	next.readOnly = readOnlyIfUneditable(content, f.language, f.codeStyle)
+	next.readOnly = readOnlyIfOverlong(content, f.language, f.codeStyle)
 
 	if next.readOnly.held() {
 		next = next.leftContent()
@@ -338,10 +337,7 @@ func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
 		return f.typed(msg)
 	}
 
-	switch {
-	case strings.Contains(msg.Content, tabCharacter):
-		return f, requestRefusePasteWithTabs, nil
-	case f.linesAfterPaste(msg.Content) > maxContentLines:
+	if f.linesAfterPaste(msg.Content) > maxContentLines {
 		return f, requestRefuseOverlongPaste, nil
 	}
 

@@ -300,6 +300,6 @@ func revealing(selected domain.Snippet, fragmentID domain.FragmentID) outcome.St
 
 func copying(selected domain.Snippet, fragmentID domain.FragmentID) outcome.Step {
 	return outcome.Close().Passing(outcome.CopyRequested{
-		ID: selected.ID(), FragmentID: fragmentID, Title: selected.Title().String(), InTrash: false,
+		ID: selected.ID(), FragmentID: fragmentID, Title: selected.Title().String(),
 	})
 }

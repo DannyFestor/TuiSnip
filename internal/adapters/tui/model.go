@@ -517,7 +517,7 @@ func (m Model) concludedAll(outcomes []outcome.Outcome, cmd tea.Cmd) (Model, tea
 func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
-		outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested,
+		outcome.TrashCopyRequested, outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested,
 		outcome.SnippetMoveRequested, outcome.TrashRestoreRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
@@ -620,6 +620,8 @@ func (m Model) runSnippetAction(reported outcome.Outcome) tea.Cmd {
 		return m.querySnippets(reported.Text)
 	case outcome.CopyRequested:
 		return m.copySnippet(reported)
+	case outcome.TrashCopyRequested:
+		return m.copyFromTrash(reported)
 	case outcome.CaptureAsked:
 		return m.captureSnippet()
 	case outcome.ExternalEditAsked:
@@ -702,12 +704,11 @@ func (m Model) querySnippets(text string) tea.Cmd {
 }
 
 func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
-	input := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
-	copier, gone := m.copier, goneItem(snippetNoun, requested.Title)
+	return m.copyThrough(m.copier, requested, goneItem(snippetNoun, requested.Title))
+}
 
-	if requested.InTrash {
-		copier, gone = m.trash.copier, goneFromTrash(requested.Title)
-	}
+func (m Model) copyThrough(copier SnippetCopier, requested outcome.CopyRequested, gone gone) tea.Cmd {
+	input := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
 
 	return func() tea.Msg {
 		result, err := copier.Run(m.ctx, input)

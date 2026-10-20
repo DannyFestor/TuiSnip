@@ -46,7 +46,12 @@ func (s Screen) trashCopyAsked(item trash.Item) outcome.Step {
 		return outcome.Stay(s.withStatus(onlySnippetsCopyText))
 	}
 
-	return s.copyAsked()
+	request, ok := s.panes.preview.Copying()
+	if !ok {
+		return outcome.Stay(s)
+	}
+
+	return outcome.Stay(s).Passing(outcome.TrashCopyRequested(request))
 }
 
 func (s Screen) trashPanePressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
@@ -58,8 +63,8 @@ func (s Screen) trashPanePressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	editing := s.paneKeys.Matches(msg, binding.Edit) || s.paneKeys.Matches(msg, binding.OpenInEditor)
 
 	switch {
-	case item.Kind == trash.ItemKindFolder && s.paneKeys.Matches(msg, binding.Copy):
-		return outcome.Stay(s.withStatus(onlySnippetsCopyText)), true
+	case s.paneKeys.Matches(msg, binding.Copy):
+		return s.trashCopyAsked(item), true
 	case item.Kind == trash.ItemKindSnippet && editing:
 		return outcome.Stay(s.withStatus(restoreToEditText)), true
 	}

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
@@ -30,17 +29,6 @@ func TestPane_ShowingInTrash(t *testing.T) {
 		assert.Equal(t, "deleted 2026-10-14 · created 2026-09-06 · updated 2026-09-06", got[2])
 	})
 
-	t.Run("asks to Copy from the Trash", func(t *testing.T) {
-		t.Parallel()
-
-		pane := paneIn(t, time.UTC, look.Size{Width: 80, Height: 10}).ShowingInTrash(longSnippet(t), trashed)
-
-		request, ok := pane.Copying()
-
-		require.True(t, ok)
-		assert.True(t, request.InTrash)
-	})
-
 	t.Run("shows a live Snippet again without the Trash details", func(t *testing.T) {
 		t.Parallel()
 
@@ -48,9 +36,9 @@ func TestPane_ShowingInTrash(t *testing.T) {
 			ShowingInTrash(longSnippet(t), trashed).
 			Showing(longSnippet(t))
 
-		request, _ := pane.Copying()
+		got := trimmed(lines(pane))
 
-		assert.Equal(t, "Root · Go", trimmed(lines(pane))[1])
-		assert.False(t, request.InTrash)
+		assert.Equal(t, "Root · Go", got[1])
+		assert.Equal(t, "created 2026-09-06 · updated 2026-09-06", got[2])
 	})
 }

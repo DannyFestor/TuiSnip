@@ -134,7 +134,6 @@ func (p Pane) Copying() (outcome.CopyRequested, bool) {
 		ID:         p.snippet.ID(),
 		FragmentID: fragment.ID(),
 		Title:      p.snippet.Title().String(),
-		InTrash:    p.trashed.isSet(),
 	}, shown
 }
 

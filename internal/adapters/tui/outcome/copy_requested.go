@@ -6,7 +6,6 @@ type CopyRequested struct {
 	ID         domain.SnippetID
 	FragmentID domain.FragmentID
 	Title      string
-	InTrash    bool
 }
 
 func (CopyRequested) isOutcome() {}

@@ -52,6 +52,14 @@ func trashedSnippetItem(t *testing.T) trash.Item {
 	}
 }
 
+func trashCopyRequestedFor(item trash.Item) outcome.TrashCopyRequested {
+	return outcome.TrashCopyRequested{
+		ID:         item.Snippet.ID(),
+		FragmentID: item.Snippet.Fragments()[0].ID(),
+		Title:      item.Snippet.Title().String(),
+	}
+}
+
 func trashedFolderItem(t *testing.T) trash.Item {
 	t.Helper()
 
@@ -229,13 +237,19 @@ func TestScreen_trashActions(t *testing.T) {
 
 		driver.Press(keypress.Letter('y'))
 
-		want := outcome.CopyRequested{
-			ID:         item.Snippet.ID(),
-			FragmentID: item.Snippet.Fragments()[0].ID(),
-			Title:      item.Snippet.Title().String(),
-			InTrash:    true,
-		}
-		assert.Equal(t, []outcome.Outcome{outcome.TrashSelected{}, want}, driver.Outcomes())
+		assert.Equal(t, []outcome.Outcome{outcome.TrashSelected{}, trashCopyRequestedFor(item)}, driver.Outcomes())
+	})
+
+	t.Run("y in the Snippet pane on a Snippet item asks to copy it from the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		item := trashedSnippetItem(t)
+		driver, _ := inTrash(t, item)
+		driver.Press(keypress.Letter('4'))
+
+		driver.Press(keypress.Letter('y'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.TrashSelected{}, trashCopyRequestedFor(item)}, driver.Outcomes())
 	})
 
 	t.Run("y on a Folder item reports nothing and explains why", func(t *testing.T) {

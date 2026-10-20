@@ -36,6 +36,10 @@ func (m Model) loadTrash() tea.Cmd {
 	}
 }
 
+func (m Model) copyFromTrash(requested outcome.TrashCopyRequested) tea.Cmd {
+	return m.copyThrough(m.trash.copier, outcome.CopyRequested(requested), goneFromTrash(requested.Title))
+}
+
 func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd {
 	return func() tea.Msg {
 		restoration, err := m.trash.restorer.Run(m.ctx, requested.Input)

@@ -22,7 +22,7 @@ type List struct {
 	keys            binding.Set
 	styles          look.Styles
 	snippetLanguage func(domain.Snippet) string
-	items           cursorlist.List[trash.Item]
+	trashItems      cursorlist.List[trash.Item]
 }
 
 func New(keys binding.Keys, styles look.Styles, snippetLanguage func(domain.Snippet) string) List {
@@ -30,7 +30,7 @@ func New(keys binding.Keys, styles look.Styles, snippetLanguage func(domain.Snip
 		keys:            keys.For(binding.ScopeTrash),
 		styles:          styles,
 		snippetLanguage: snippetLanguage,
-		items:           cursorlist.New[trash.Item](keys),
+		trashItems:      cursorlist.New[trash.Item](keys),
 	}
 }
 
@@ -42,17 +42,17 @@ func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
 		return l, nil, nil
 	}
 
-	l.items = l.items.Update(msg)
+	l.trashItems = l.trashItems.Update(msg)
 
 	return l, nil, nil
 }
 
 func (l List) View(frame look.FrameStyle) string {
-	if len(l.items.Rows()) == 0 {
+	if len(l.trashItems.Rows()) == 0 {
 		return look.EmptyTrash(l.styles)
 	}
 
-	return l.items.View(l.row, frame)
+	return l.trashItems.View(l.row, frame)
 }
 
 func (l List) ShortHelp() []key.Binding {
@@ -63,24 +63,28 @@ func (l List) FullHelp() [][]key.Binding {
 	return l.keys.FullHelp()
 }
 
-func (l List) WithItems(items []trash.Item) List {
-	l.items = l.items.WithRows(items)
+func (l List) WithItems(trashItems []trash.Item) List {
+	l.trashItems = l.trashItems.WithRows(trashItems)
 
 	return l
 }
 
 func (l List) Selected() (trash.Item, bool) {
-	return l.items.Selected()
+	return l.trashItems.Selected()
 }
 
 func (l List) HasRowAt(at pointer.Point) bool {
-	return l.items.HasRowAt(at)
+	return l.trashItems.HasRowAt(at)
 }
 
-func (l List) row(item trash.Item, width int) string {
-	if item.Kind.IsFolder() {
-		return look.Row(folderMarker+item.Name(), look.Counted(item.Contents.SnippetCount, snippetNoun), width)
+func (l List) row(trashItem trash.Item, width int) string {
+	if trashItem.Kind.IsFolder() {
+		return look.Row(
+			folderMarker+trashItem.Name(),
+			look.Counted(trashItem.Contents.SnippetCount, snippetNoun),
+			width,
+		)
 	}
 
-	return look.Row(item.Name(), l.snippetLanguage(item.Snippet), width)
+	return look.Row(trashItem.Name(), l.snippetLanguage(trashItem.Snippet), width)
 }

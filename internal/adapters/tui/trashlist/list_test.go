@@ -37,7 +37,7 @@ func TestList_View(t *testing.T) {
 	t.Run("shows a Snippet by title and Language and a Folder with its Snippet count", func(t *testing.T) {
 		t.Parallel()
 
-		got := rows(listOf(t, sampleItems(t)...))
+		got := rows(listOf(t, sampleTrashItems(t)...))
 
 		assert.Equal(t, []string{
 			"PRUNE EVERYTHING          BASH",
@@ -53,7 +53,7 @@ func TestList_Update(t *testing.T) {
 	t.Run("moves the cursor with the movement keys", func(t *testing.T) {
 		t.Parallel()
 
-		list := listOf(t, sampleItems(t)...)
+		list := listOf(t, sampleTrashItems(t)...)
 
 		list, _, _ = list.Update(keypress.Letter('G'))
 
@@ -63,7 +63,7 @@ func TestList_Update(t *testing.T) {
 	t.Run("selects the clicked row", func(t *testing.T) {
 		t.Parallel()
 
-		list := listOf(t, sampleItems(t)...)
+		list := listOf(t, sampleTrashItems(t)...)
 
 		docker := screencell.Find(t, strings.Join(rows(list), "\n"), "docker")
 
@@ -75,10 +75,10 @@ func TestList_Update(t *testing.T) {
 	t.Run("keeps the cursor's row when the Trash items change", func(t *testing.T) {
 		t.Parallel()
 
-		items := sampleItems(t)
-		list, _, _ := listOf(t, items...).Update(keypress.Letter('j'))
+		trashItems := sampleTrashItems(t)
+		list, _, _ := listOf(t, trashItems...).Update(keypress.Letter('j'))
 
-		list = list.WithItems([]trash.Item{items[0], items[2]})
+		list = list.WithItems([]trash.Item{trashItems[0], trashItems[2]})
 
 		assert.Equal(t, "empty", selectedName(t, list))
 	})
@@ -92,20 +92,20 @@ func TestList_Selected(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func listOf(t *testing.T, items ...trash.Item) trashlist.List {
+func listOf(t *testing.T, trashItems ...trash.Item) trashlist.List {
 	t.Helper()
 
 	list := trashlist.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), languageOf)
 	list, _, _ = list.Update(look.Resized{Box: look.Size{Width: boxWidth, Height: boxHeight}})
 
-	return list.WithItems(items)
+	return list.WithItems(trashItems)
 }
 
 func languageOf(snippet domain.Snippet) string {
 	return snippet.FirstFragment().Language().String()
 }
 
-func sampleItems(t *testing.T) []trash.Item {
+func sampleTrashItems(t *testing.T) []trash.Item {
 	t.Helper()
 
 	ids := testkit.NewSequentialIDs()

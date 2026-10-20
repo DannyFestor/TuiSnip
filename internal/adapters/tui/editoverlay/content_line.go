@@ -10,7 +10,7 @@ import (
 
 const (
 	indentLevel = "    "
-	tabIndent   = "\t"
+	leadingTab  = "\t"
 )
 
 func indentedLine(area textarea.Model) textarea.Model {
@@ -46,8 +46,8 @@ func cursorLine(area textarea.Model) string {
 }
 
 func removableIndent(line string) int {
-	if strings.HasPrefix(line, tabIndent) {
-		return len(tabIndent)
+	if strings.HasPrefix(line, leadingTab) {
+		return len(leadingTab)
 	}
 
 	spaces := len(line) - len(strings.TrimLeft(line, " "))

@@ -1555,7 +1555,7 @@ func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.St
 	v.out.WriteString(model.lineNumberFor(segment.row, lineNumber))
 
 	wrappedLength := len(segment.wrapped.runes)
-	// If the trailing space causes the line to be wider than the
+	// If the trailing space or tab causes the line to be wider than the
 	// width, we should not draw it to the screen since it will result
 	// in an extra space at the end of the line which can look off when
 	// the cursor line is showing.

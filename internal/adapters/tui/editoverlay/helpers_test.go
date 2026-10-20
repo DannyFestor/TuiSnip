@@ -2,6 +2,7 @@ package editoverlay_test
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -34,9 +35,16 @@ const (
 	pickerHints      = "down move · enter pick · esc close"
 
 	languagePickerTitle = "Pick a Language"
+
+	goneElsewhereTitle = "Gone elsewhere"
+	folderGoneQuestion = `Folder "docker" was moved to the Trash or deleted in another TuiSnip. ` +
+		"Save the Snippet at the Root instead?"
 )
 
-var errDatabaseLocked = errors.New("database is locked")
+var (
+	errDatabaseLocked = errors.New("database is locked")
+	errFolderGone     = fmt.Errorf("snippet.Create: %w", domain.ErrFolderGone)
+)
 
 func screenSize() look.Size {
 	return look.Size{Width: 120, Height: 40}

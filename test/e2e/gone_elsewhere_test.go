@@ -11,8 +11,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
-	"github.com/DannyFestor/TuiSnip/internal/app/trash"
-	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -54,14 +52,15 @@ func TestEditOverSnippetTrashedElsewhereThenSaveAtRoot(t *testing.T) {
 	screen.waitForFrame(`Saved "Prune everything now" as a new Snippet at the Root`)
 	screen.waitForFrame(rootListTitle)
 
-	assert.Equal(t, []string{stored.Title().String()}, trashedNames(t, app))
+	trashed := testapp.TrashItems(t, app)
+	require.Len(t, trashed, 1)
+	assert.Equal(t, stored.ID(), trashed[0].Snippet.ID())
 
 	savedAtRoot := testapp.StoredSnippets(t, app)
 	require.Len(t, savedAtRoot, 1)
 	assert.True(t, savedAtRoot[0].AtRoot())
 	assert.Equal(t, "Prune everything now", savedAtRoot[0].Title().String())
-	assert.Equal(t, []string{"prune.sh", ""}, fragmentTitles(savedAtRoot[0]))
-	assert.Equal(t, []string{"Bash", "YAML"}, fragmentLanguages(savedAtRoot[0]))
+	assert.Equal(t, fragmentTextsOf(stored), fragmentTextsOf(savedAtRoot[0]))
 	assert.Equal(t, []domain.Tag{prune}, savedAtRoot[0].Tags())
 }
 
@@ -90,25 +89,21 @@ func TestCaptureIntoFolderTrashedElsewhereThenSaveAtRoot(t *testing.T) {
 	assert.Equal(t, clipboardText, captured[0].FirstFragment().Content().String())
 }
 
-func trashedNames(t *testing.T, app *bootstrap.App) []string {
-	t.Helper()
-
-	trashed, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
-	require.NoError(t, err)
-
-	names := make([]string, 0, len(trashed))
-	for index := range trashed {
-		names = append(names, trashed[index].Name())
-	}
-
-	return names
+type fragmentText struct {
+	title    string
+	language string
+	content  string
 }
 
-func fragmentLanguages(stored domain.Snippet) []string {
-	languages := make([]string, 0, len(stored.Fragments()))
+func fragmentTextsOf(stored domain.Snippet) []fragmentText {
+	texts := make([]fragmentText, 0, len(stored.Fragments()))
 	for _, fragment := range stored.Fragments() {
-		languages = append(languages, fragment.Language().String())
+		texts = append(texts, fragmentText{
+			title:    fragment.Title().String(),
+			language: fragment.Language().String(),
+			content:  fragment.Content().String(),
+		})
 	}
 
-	return languages
+	return texts
 }

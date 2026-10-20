@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -56,11 +57,11 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 }
 
 func (c Confirmation) View() string {
-	lines := strings.Split(ansi.Wrap(c.prompt(), c.screen.Inner().Width, ""), "\n")
-	width := max(widest(lines), ansi.StringWidth(c.question.Title)+titlePadding)
-	outer := look.Size{Width: width + look.BorderWidth, Height: len(lines) + look.BorderWidth}
+	prompt := ansi.Wrap(c.prompt(), c.screen.Inner().Width, "")
+	width := max(lipgloss.Width(prompt), ansi.StringWidth(c.question.Title)+titlePadding)
+	outer := look.Size{Width: width + look.BorderWidth, Height: lipgloss.Height(prompt) + look.BorderWidth}
 
-	return look.Frame(c.styles.Focused, c.question.Title, strings.Join(lines, "\n"), outer)
+	return look.Frame(c.styles.Focused, c.question.Title, prompt, outer)
 }
 
 func (c Confirmation) ShortHelp() []key.Binding {
@@ -92,15 +93,6 @@ func (c Confirmation) resized(screen look.Size) Confirmation {
 	c.screen = screen
 
 	return c
-}
-
-func widest(lines []string) int {
-	width := 0
-	for _, line := range lines {
-		width = max(width, ansi.StringWidth(line))
-	}
-
-	return width
 }
 
 func (c Confirmation) prompt() string {

@@ -1,8 +1,6 @@
 package editoverlay
 
 import (
-	"errors"
-
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
@@ -26,8 +24,6 @@ const (
 	unsavedTitle    = "Unsaved changes"
 	discardQuestion = "Discard the unsaved changes?"
 	quitQuestion    = "Quit and discard the unsaved changes?"
-	staleTitle      = "Changed elsewhere"
-	reloadQuestion  = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
 
 	removeFragmentTitle = "Remove Fragment"
 	lastFragmentRefusal = "A Snippet needs a Fragment; delete the Snippet instead"
@@ -146,7 +142,7 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 	case outcome.SnippetReloaded:
 		return outcome.Close().Passing(received)
 	case outcome.SaveAtRootConfirmed:
-		return s.aimedAt(snippetAtRoot{}).saveStarted()
+		return s.aimedAt(atRoot()).saveStarted()
 	case outcome.LanguagePicked, outcome.FragmentRemoveConfirmed, outcome.TagsEdited, outcome.ContentEdited:
 		return outcome.Stay(s.formChangedBy(received))
 	case outcome.QuitAsked:
@@ -329,12 +325,8 @@ func (s Session) saved(msg SaveFinished) outcome.Step {
 }
 
 func (s Session) refused(err error) outcome.Step {
-	if question, gone := s.target.goneQuestion(err); gone {
-		return s.confirming(question, outcome.SaveAtRootConfirmed{})
-	}
-
-	if reload, ok := s.target.reloaded(); ok && errors.Is(err, domain.ErrConflict) {
-		return s.confirming(confirm.Question{Title: staleTitle, Text: reloadQuestion}, reload)
+	if asked, ok := s.target.confirmationAfter(err); ok {
+		return s.confirming(asked.question, asked.onYes)
 	}
 
 	fieldErrors := shownFieldErrors(err)

@@ -28,11 +28,8 @@ const (
 	changedElsewhereTitle = "Changed elsewhere"
 	reloadQuestion        = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
 
-	goneElsewhereTitle  = "Gone elsewhere"
 	savedAtRootQuestion = "This Snippet was moved to the Trash or deleted in another TuiSnip. " +
 		"Save your changes as a new Snippet at the Root?"
-	folderGoneQuestion = `Folder "docker" was moved to the Trash or deleted in another TuiSnip. ` +
-		"Save the Snippet at the Root instead?"
 )
 
 var (

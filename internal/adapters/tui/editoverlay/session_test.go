@@ -319,6 +319,34 @@ func TestSession_save(t *testing.T) {
 	})
 }
 
+func TestSession_folderGoneElsewhere(t *testing.T) {
+	t.Parallel()
+
+	t.Run("offers to save a new Snippet at the Root when its Folder is gone", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+		screen.Press(keypress.Letter('x'), save())
+		screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errFolderGone})
+
+		assert.Contains(t, screen.Screen(), goneElsewhereTitle)
+		assert.Contains(t, screen.Screen(), folderGoneQuestion)
+	})
+
+	t.Run("asks to save it at the Root on yes", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editing(t)
+		screen.Press(keypress.Letter('x'), save())
+		screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errFolderGone})
+		screen.Press(keypress.Letter('y'))
+
+		atRoot := input("x", "", "")
+		atRoot.FolderID = domain.FolderID{}
+		assert.Equal(t, outcome.Outcome(outcome.SaveRequested{Input: atRoot}), screen.Outcomes()[1])
+	})
+}
+
 func TestSession_pendingSave(t *testing.T) {
 	t.Parallel()
 

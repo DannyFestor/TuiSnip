@@ -1,7 +1,6 @@
 package editoverlay_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -201,10 +200,7 @@ func capturedIntoGoneFolder(t *testing.T) *overlaytest.Driver {
 	screen := capturingIn(t, destinationIn(t, "Go"), capturedContent)
 	screen.Press(keypress.Typed("Prune")...)
 	screen.Press(save())
-	screen.Send(editoverlay.SaveFinished{
-		Snippet: domain.Snippet{},
-		Err:     fmt.Errorf("snippet.Create: %w", domain.ErrFolderGone),
-	})
+	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errFolderGone})
 
 	return screen
 }

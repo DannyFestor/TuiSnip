@@ -14,6 +14,9 @@ import (
 )
 
 const (
+	staleTitle     = "Changed elsewhere"
+	reloadQuestion = "This Snippet changed in another TuiSnip. Reload it and discard your changes?"
+
 	goneTitle           = "Gone elsewhere"
 	snippetGoneQuestion = "This Snippet was moved to the Trash or deleted in another TuiSnip. " +
 		"Save your changes as a new Snippet at the Root?"
@@ -25,9 +28,20 @@ const (
 type saveTarget interface {
 	savingAs(saving outcome.Overlay, values entered) outcome.Step
 	closedAfterSave(saved domain.Snippet) outcome.Step
-	reloaded() (outcome.SnippetReloaded, bool)
-	goneQuestion(err error) (confirm.Question, bool)
+	confirmationAfter(refusal error) (confirmation, bool)
 	newFragmentLanguage() value.Language
+}
+
+type confirmation struct {
+	question confirm.Question
+	onYes    outcome.Outcome
+}
+
+func savingAtRoot(question string) confirmation {
+	return confirmation{
+		question: confirm.Question{Title: goneTitle, Text: question},
+		onYes:    outcome.SaveAtRootConfirmed{},
+	}
 }
 
 type newSnippet struct {
@@ -46,16 +60,12 @@ func (n newSnippet) closedAfterSave(saved domain.Snippet) outcome.Step {
 	return outcome.Close().Passing(outcome.SnippetSaved{ID: saved.ID(), Selection: n.destination.Selection})
 }
 
-func (newSnippet) reloaded() (outcome.SnippetReloaded, bool) {
-	return outcome.SnippetReloaded{ID: domain.SnippetID{}, Selection: browseselection.Selection{}}, false
-}
-
-func (n newSnippet) goneQuestion(err error) (confirm.Question, bool) {
-	if !errors.Is(err, domain.ErrFolderGone) {
-		return confirm.Question{}, false
+func (n newSnippet) confirmationAfter(refusal error) (confirmation, bool) {
+	if !errors.Is(refusal, domain.ErrFolderGone) {
+		return confirmation{}, false
 	}
 
-	return confirm.Question{Title: goneTitle, Text: fmt.Sprintf(folderGoneQuestion, n.destination.FolderName)}, true
+	return savingAtRoot(fmt.Sprintf(folderGoneQuestion, n.destination.FolderName)), true
 }
 
 type storedSnippet struct {
@@ -82,44 +92,41 @@ func (s storedSnippet) savingAs(saving outcome.Overlay, values entered) outcome.
 }
 
 func (s storedSnippet) closedAfterSave(domain.Snippet) outcome.Step {
-	reload, _ := s.reloaded()
-
-	return outcome.Close().Passing(reload)
+	return outcome.Close().Passing(s.reloaded())
 }
 
-func (s storedSnippet) reloaded() (outcome.SnippetReloaded, bool) {
-	return outcome.SnippetReloaded{ID: s.id, Selection: s.selection}, true
-}
-
-func (storedSnippet) goneQuestion(err error) (confirm.Question, bool) {
-	if !errors.Is(err, domain.ErrNotFound) {
-		return confirm.Question{}, false
+func (s storedSnippet) confirmationAfter(refusal error) (confirmation, bool) {
+	switch {
+	case errors.Is(refusal, domain.ErrConflict):
+		return confirmation{
+			question: confirm.Question{Title: staleTitle, Text: reloadQuestion},
+			onYes:    s.reloaded(),
+		}, true
+	case errors.Is(refusal, domain.ErrNotFound):
+		return savingAtRoot(snippetGoneQuestion), true
 	}
 
-	return confirm.Question{Title: goneTitle, Text: snippetGoneQuestion}, true
+	return confirmation{}, false
 }
 
-type snippetAtRoot struct{}
-
-func (snippetAtRoot) newFragmentLanguage() value.Language {
-	return value.PlainText()
+func (s storedSnippet) reloaded() outcome.SnippetReloaded {
+	return outcome.SnippetReloaded{ID: s.id, Selection: s.selection}
 }
 
-func (snippetAtRoot) savingAs(saving outcome.Overlay, values entered) outcome.Step {
-	return outcome.Stay(saving).Passing(outcome.SaveRequested{Input: values.createInput(domain.FolderID{})})
+type snippetAtRoot struct {
+	newSnippet
 }
 
-func (snippetAtRoot) closedAfterSave(saved domain.Snippet) outcome.Step {
-	return outcome.Close().Passing(
-		outcome.SnippetSaved{ID: saved.ID(), Selection: browseselection.InFolder(domain.FolderID{})},
-		outcome.NoticeShown{Text: fmt.Sprintf(savedAtRootFormat, saved.Title().String())},
-	)
+func atRoot() snippetAtRoot {
+	return snippetAtRoot{destination: Destination{
+		Selection:  browseselection.InFolder(domain.FolderID{}),
+		FolderName: "",
+		Tags:       nil,
+		Language:   value.PlainText(),
+	}}
 }
 
-func (snippetAtRoot) reloaded() (outcome.SnippetReloaded, bool) {
-	return outcome.SnippetReloaded{ID: domain.SnippetID{}, Selection: browseselection.Selection{}}, false
-}
-
-func (snippetAtRoot) goneQuestion(error) (confirm.Question, bool) {
-	return confirm.Question{}, false
+func (r snippetAtRoot) closedAfterSave(saved domain.Snippet) outcome.Step {
+	return r.newSnippet.closedAfterSave(saved).
+		Passing(outcome.NoticeShown{Text: fmt.Sprintf(savedAtRootFormat, saved.Title().String())})
 }

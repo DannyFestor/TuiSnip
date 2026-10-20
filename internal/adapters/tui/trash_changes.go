@@ -41,7 +41,7 @@ func (m Model) copyFromTrash(requested outcome.TrashCopyRequested) tea.Cmd {
 }
 
 func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd {
-	restored := reporting(
+	report := reporter(
 		actionFailure{operation: operationRestore, whenGone: goneFromTrash(requested.Name)},
 		func(restoration domain.Restoration) tea.Msg {
 			return snippetsChangedMsg{
@@ -52,5 +52,5 @@ func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd
 		},
 	)
 
-	return func() tea.Msg { return restored(m.trash.restorer.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.trash.restorer.Run(m.ctx, requested.Input)) }
 }

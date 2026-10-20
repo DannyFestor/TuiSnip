@@ -25,16 +25,16 @@ func (m Model) runFolderAction(reported outcome.Outcome) tea.Cmd {
 }
 
 func (m Model) createFolder(requested outcome.FolderCreateRequested) tea.Cmd {
-	created := reporting(
+	report := reporter(
 		actionFailure{operation: operationCreateFolder, whenGone: goneElsewhere(folderNoun, requested.ParentName)},
 		func(folder domain.Folder) tea.Msg { return folderTreeChangedMsg{selecting: folder.ID(), status: ""} },
 	)
 
-	return func() tea.Msg { return created(m.folderCreator.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.folderCreator.Run(m.ctx, requested.Input)) }
 }
 
 func (m Model) deleteFolder(requested outcome.FolderDeleteRequested) tea.Cmd {
-	deleted := reporting(
+	report := reporter(
 		actionFailure{operation: operationDeleteFolder, whenGone: goneElsewhere(folderNoun, requested.Name)},
 		func(struct{}) tea.Msg {
 			return folderTreeChangedMsg{
@@ -44,11 +44,11 @@ func (m Model) deleteFolder(requested outcome.FolderDeleteRequested) tea.Cmd {
 		},
 	)
 
-	return func() tea.Msg { return deleted(withoutResult(m.folderDeleter.Run(m.ctx, requested.Input))) }
+	return func() tea.Msg { return report(withoutResult(m.folderDeleter.Run(m.ctx, requested.Input))) }
 }
 
 func (m Model) moveFolder(requested outcome.FolderMoveRequested) tea.Cmd {
-	moved := reporting(
+	report := reporter(
 		actionFailure{
 			operation: operationMoveFolder,
 			whenGone:  goneElsewhere(folderNoun, requested.Name).placingInto(requested.TargetName),
@@ -56,23 +56,23 @@ func (m Model) moveFolder(requested outcome.FolderMoveRequested) tea.Cmd {
 		func(folder domain.Folder) tea.Msg { return folderTreeChangedMsg{selecting: folder.ID(), status: ""} },
 	)
 
-	return func() tea.Msg { return moved(m.folderMover.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.folderMover.Run(m.ctx, requested.Input)) }
 }
 
 func (m Model) renameFolder(requested outcome.FolderRenameRequested) tea.Cmd {
-	renamed := reporting(
+	report := reporter(
 		actionFailure{operation: operationRenameFolder, whenGone: goneElsewhere(folderNoun, requested.PreviousName)},
 		func(domain.Folder) tea.Msg { return folderEditedMsg{} },
 	)
 
-	return func() tea.Msg { return renamed(m.folderRenamer.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.folderRenamer.Run(m.ctx, requested.Input)) }
 }
 
 func (m Model) setFolderDefaultLanguage(requested outcome.DefaultLanguageRequested) tea.Cmd {
-	set := reporting(
+	report := reporter(
 		actionFailure{operation: operationSetDefaultLanguage, whenGone: goneElsewhere(folderNoun, requested.Name)},
 		func(domain.Folder) tea.Msg { return folderEditedMsg{} },
 	)
 
-	return func() tea.Msg { return set(m.defaultLanguageSetter.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.defaultLanguageSetter.Run(m.ctx, requested.Input)) }
 }

@@ -23,18 +23,18 @@ func (m Model) runSnippetListChange(reported outcome.Outcome) tea.Cmd {
 }
 
 func (m Model) duplicateSnippet(requested outcome.SnippetDuplicateRequested) tea.Cmd {
-	duplicated := reporting(
+	report := reporter(
 		actionFailure{operation: operationDuplicate, whenGone: goneElsewhere(snippetNoun, requested.Title)},
 		func(duplicate domain.Snippet) tea.Msg {
 			return snippetsChangedMsg{selection: requested.Selection, selecting: duplicate.ID(), status: ""}
 		},
 	)
 
-	return func() tea.Msg { return duplicated(m.duplicator.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.duplicator.Run(m.ctx, requested.Input)) }
 }
 
 func (m Model) deleteSnippet(requested outcome.SnippetDeleteRequested) tea.Cmd {
-	deleted := reporting(
+	report := reporter(
 		actionFailure{operation: operationDeleteSnippet, whenGone: goneElsewhere(snippetNoun, requested.Title)},
 		func(struct{}) tea.Msg {
 			return snippetsChangedMsg{
@@ -45,11 +45,11 @@ func (m Model) deleteSnippet(requested outcome.SnippetDeleteRequested) tea.Cmd {
 		},
 	)
 
-	return func() tea.Msg { return deleted(withoutResult(m.deleter.Run(m.ctx, requested.Input))) }
+	return func() tea.Msg { return report(withoutResult(m.deleter.Run(m.ctx, requested.Input))) }
 }
 
 func (m Model) moveSnippet(requested outcome.SnippetMoveRequested) tea.Cmd {
-	moved := reporting(
+	report := reporter(
 		actionFailure{
 			operation: operationMoveSnippet,
 			whenGone:  goneElsewhere(snippetNoun, requested.Title).placingInto(requested.TargetName),
@@ -59,5 +59,5 @@ func (m Model) moveSnippet(requested outcome.SnippetMoveRequested) tea.Cmd {
 		},
 	)
 
-	return func() tea.Msg { return moved(m.mover.Run(m.ctx, requested.Input)) }
+	return func() tea.Msg { return report(m.mover.Run(m.ctx, requested.Input)) }
 }

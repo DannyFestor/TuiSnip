@@ -3,11 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/mainscreen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
@@ -44,16 +40,4 @@ func (g gone) text(err error) (string, bool) {
 	}
 
 	return "", false
-}
-
-func (m Model) actionFailed(msg actionFailedMsg) (Model, tea.Cmd) {
-	text, isGone := msg.whenGone.text(msg.err)
-	if !isGone {
-		return m.failed(msg.operation, msg.err)
-	}
-
-	m.logger.InfoContext(m.ctx, "gone elsewhere",
-		slog.String(keyOperation, msg.operation), slog.Any(keyError, msg.err))
-
-	return m.overlaysUpdated(mainscreen.GoneElsewhereShown{Text: text})
 }

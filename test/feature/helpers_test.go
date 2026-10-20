@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -21,6 +22,15 @@ func create(t *testing.T, app *bootstrap.App, in snippet.CreateInput) domain.Sni
 	require.NoError(t, err)
 
 	return created
+}
+
+func trashItems(t *testing.T, app *bootstrap.App) []trash.Item {
+	t.Helper()
+
+	listed, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
+	require.NoError(t, err)
+
+	return listed
 }
 
 func plainFragment(content string) []snippet.FragmentInput {

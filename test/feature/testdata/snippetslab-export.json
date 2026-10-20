@@ -91,6 +91,7 @@
       {
         "uuid": "5E1C0000-0000-4000-8000-000000000003",
         "title": "trashed",
+        "folder": "8A1F0000-0000-4000-8000-0000000000FF",
         "pinned": false,
         "dateCreated": "2024-05-01T09:30:00Z",
         "dateModified": "2024-05-01T09:30:00Z",
@@ -103,6 +104,27 @@
             "content": "old\n",
             "dateCreated": "2024-05-01T09:30:00Z",
             "dateModified": "2024-05-01T09:30:00Z"
+          }
+        ]
+      },
+      {
+        "uuid": "5E1C0000-0000-4000-8000-000000000004",
+        "title": "old flags",
+        "folder": "8A1F0000-0000-4000-8000-000000000002",
+        "tags": ["7A6C0000-0000-4000-8000-000000000001"],
+        "pinned": false,
+        "gistIdentifier": "fedcba9876543210fedcba9876543210",
+        "dateCreated": "2024-03-01T08:00:00Z",
+        "dateModified": "2024-03-01T08:00:00Z",
+        "dateDeleted": "2024-03-16T08:30:00Z",
+        "fragments": [
+          {
+            "uuid": "F7A90000-0000-4000-8000-000000000005",
+            "title": "Fragment",
+            "language": "GoLexer",
+            "content": "os.Args\n",
+            "dateCreated": "2024-03-01T08:00:00Z",
+            "dateModified": "2024-03-01T08:00:00Z"
           }
         ]
       }

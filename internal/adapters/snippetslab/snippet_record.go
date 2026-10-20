@@ -23,6 +23,23 @@ type snippetRecord struct {
 	Fragments      []fragmentRecord `json:"fragments"`
 }
 
+func (c *conversion) snippetEntry(record snippetRecord) (domain.LibraryEntry[domain.Snippet], error) {
+	snippet, snippetErr := c.snippet(record)
+	deletedAt, deletedErr := parseDeletedDate(record.DateDeleted)
+
+	err := errors.Join(snippetErr, deletedErr)
+	if err != nil {
+		return domain.LibraryEntry[domain.Snippet]{}, record.named(err)
+	}
+
+	entry, err := domain.NewLibraryEntry(snippet, deletedAt, value.FolderPath{})
+	if err != nil {
+		return domain.LibraryEntry[domain.Snippet]{}, record.named(err)
+	}
+
+	return entry, nil
+}
+
 func (c *conversion) snippet(record snippetRecord) (domain.Snippet, error) {
 	title, titleErr := value.NewTitle(record.Title)
 	fragments, fragmentsErr := c.fragments(title, record.Fragments)
@@ -31,7 +48,7 @@ func (c *conversion) snippet(record snippetRecord) (domain.Snippet, error) {
 
 	err := errors.Join(titleErr, fragmentsErr, descriptionErr, datesErr)
 	if err != nil {
-		return domain.Snippet{}, record.named(err)
+		return domain.Snippet{}, err
 	}
 
 	snippet, err := domain.NewSnippet(
@@ -45,20 +62,12 @@ func (c *conversion) snippet(record snippetRecord) (domain.Snippet, error) {
 		latestUpdate(stamped.modified, fragments),
 	)
 	if err != nil {
-		return domain.Snippet{}, record.named(err)
+		return domain.Snippet{}, fmt.Errorf("build snippet: %w", err)
 	}
 
 	c.recordLosses(record, title)
 
 	return snippet, nil
-}
-
-func liveSnippets(records []snippetRecord) []snippetRecord {
-	return slices.DeleteFunc(slices.Clone(records), snippetRecord.trashed)
-}
-
-func (r snippetRecord) trashed() bool {
-	return r.DateDeleted != ""
 }
 
 func (r snippetRecord) linkedToGist() bool {

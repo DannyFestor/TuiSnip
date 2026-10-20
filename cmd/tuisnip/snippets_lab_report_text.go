@@ -17,10 +17,8 @@ const (
 
 func snippetsLabReportText(report library.SnippetsLabReport) string {
 	lines := slices.Concat(
-		[]string{
-			"Imported " + countsPhrase(report.Counts) + ", " + pluralised(report.Counts.Fragments, "Fragment"),
-			"Skipped " + pluralised(report.Losses.TrashedSnippets, "Snippet") + " in the Trash",
-		},
+		[]string{"Imported " + countsPhrase(report.Counts) + ", " + pluralised(report.Counts.Fragments, "Fragment")},
+		trashedSnippetsLines(report.Counts.InTrash.Snippets),
 		lostLines("Lost a pin", report.Losses.LostPins),
 		lostLines("Lost a Gist link", report.Losses.LostGistLinks),
 		lostLines("Lost an attachment", report.Losses.LostAttachments),
@@ -28,6 +26,14 @@ func snippetsLabReportText(report library.SnippetsLabReport) string {
 	)
 
 	return strings.Join(lines, "\n") + "\n"
+}
+
+func trashedSnippetsLines(count int) []string {
+	if count == 0 {
+		return nil
+	}
+
+	return []string{"Put " + pluralised(count, "Snippet") + " in the Trash"}
 }
 
 func lostLines(what string, titles []value.Title) []string {

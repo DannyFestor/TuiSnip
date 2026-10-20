@@ -7,6 +7,7 @@ import (
 )
 
 type Item struct {
+	Kind      ItemKind
 	Snippet   domain.Snippet
 	Folder    domain.Folder
 	DeletedAt time.Time
@@ -27,19 +28,15 @@ type Outline struct {
 }
 
 func (i Item) ID() ItemID {
-	if i.IsFolder() {
+	if i.Kind == ItemKindFolder {
 		return FolderItem(i.Folder.ID())
 	}
 
 	return SnippetItem(i.Snippet.ID())
 }
 
-func (i Item) IsFolder() bool {
-	return !i.Folder.ID().IsNil()
-}
-
 func (i Item) Name() string {
-	if i.IsFolder() {
+	if i.Kind == ItemKindFolder {
 		return i.Folder.Name().String()
 	}
 

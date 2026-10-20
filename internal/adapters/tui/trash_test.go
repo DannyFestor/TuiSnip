@@ -163,6 +163,7 @@ func trashedPrune(t *testing.T) trash.Item {
 	ids := testkit.NewSequentialIDs()
 
 	return trash.Item{
+		Kind: trash.ItemKindSnippet,
 		Snippet: testkit.Snippet(t, testkit.SnippetSpec{
 			ID:    ids.NewSnippetID(),
 			Title: "Prune everything",

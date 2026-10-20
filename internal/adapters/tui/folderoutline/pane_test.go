@@ -59,6 +59,7 @@ func paneShowing(t *testing.T, height int) folderoutline.Pane {
 	docker := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "docker"})
 
 	return pane.Showing(trash.Item{
+		Kind:      trash.ItemKindFolder,
 		Folder:    docker,
 		DeletedAt: time.Date(2026, time.October, 14, 9, 0, 0, 0, time.UTC),
 		Contents: trash.Contents{

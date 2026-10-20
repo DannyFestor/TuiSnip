@@ -56,11 +56,11 @@ func (s *shelved) snippet(t *testing.T, title string, folderID domain.FolderID) 
 	return snippet
 }
 
-func (s *shelved) trashFolder(t *testing.T, folder domain.Folder, at time.Time, formerPath []string) {
+func (s *shelved) trashFolder(t *testing.T, folder domain.Folder, at time.Time) {
 	t.Helper()
 
 	s.library.Trash.Folders[folder.ID()] = testkit.TrashMark(t, testkit.TrashMarkSpec{
-		Item: folder, DeletedAt: at, FormerPath: formerPath,
+		Item: folder, DeletedAt: at, FormerPath: nil,
 	})
 }
 

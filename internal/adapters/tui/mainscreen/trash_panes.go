@@ -61,7 +61,7 @@ func (p panes) previewTrashSelected() panes {
 		return p
 	}
 
-	if item.IsFolder() {
+	if item.Kind == trash.ItemKindFolder {
 		p.outline = p.outline.Showing(item, folderpath.FullOf(item.Path))
 
 		return p
@@ -78,7 +78,7 @@ func (p panes) previewTrashSelected() panes {
 func (p panes) selectedTrashFolder() bool {
 	item, ok := p.trash.Selected()
 
-	return ok && item.IsFolder()
+	return ok && item.Kind == trash.ItemKindFolder
 }
 
 func (p panes) trashBody(of pane, frame look.FrameStyle) string {

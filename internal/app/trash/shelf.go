@@ -96,6 +96,7 @@ func (s shelf) folderItem(folder domain.Folder) Item {
 	outline := s.outlineOf(folder)
 
 	return Item{
+		Kind:      ItemKindFolder,
 		Snippet:   domain.Snippet{},
 		Folder:    folder,
 		DeletedAt: mark.DeletedAt(),
@@ -112,6 +113,7 @@ func (s shelf) snippetItem(snippet domain.Snippet) Item {
 	mark := s.trash.Snippets[snippet.ID()]
 
 	return Item{
+		Kind:      ItemKindSnippet,
 		Snippet:   snippet,
 		Folder:    domain.Folder{},
 		DeletedAt: mark.DeletedAt(),

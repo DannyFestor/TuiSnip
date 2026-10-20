@@ -53,7 +53,7 @@ func TestList_Run(t *testing.T) {
 		shelved := newShelved(t)
 		golang := shelved.folder(t, "go", domain.FolderID{})
 		nested := shelved.folder(t, "testing", golang.ID())
-		shelved.trashFolder(t, golang, deletedAt().Add(-time.Hour), nil)
+		shelved.trashFolder(t, golang, deletedAt().Add(-time.Hour))
 		trashed := shelved.snippet(t, "Table test", nested.ID())
 		shelved.trashSnippet(t, trashed, deletedAt(), nil)
 
@@ -63,6 +63,22 @@ func TestList_Run(t *testing.T) {
 		assert.Equal(t, trashed, got[0].Snippet)
 		assert.Equal(t, []string{"go", "testing"}, got[0].Path)
 		assert.Empty(t, got[1].Path)
+	})
+
+	t.Run("marks each item as a Snippet or a Folder", func(t *testing.T) {
+		t.Parallel()
+
+		shelved := newShelved(t)
+		docker := shelved.folder(t, "docker", domain.FolderID{})
+		prune := shelved.snippet(t, "Prune everything", domain.FolderID{})
+		shelved.trashFolder(t, docker, deletedAt().Add(-time.Hour))
+		shelved.trashSnippet(t, prune, deletedAt(), nil)
+
+		got := listed(t, shelved.library)
+
+		require.Len(t, got, 2)
+		assert.Equal(t, trash.ItemKindSnippet, got[0].Kind)
+		assert.Equal(t, trash.ItemKindFolder, got[1].Kind)
 	})
 
 	t.Run("gives a detached item its former path", func(t *testing.T) {
@@ -91,8 +107,8 @@ func TestList_Run(t *testing.T) {
 		shelved.snippet(t, "inside separate", separate.ID())
 		trashedInside := shelved.snippet(t, "trashed inside", docker.ID())
 		shelved.trashSnippet(t, trashedInside, deletedAt().Add(-2*time.Hour), nil)
-		shelved.trashFolder(t, separate, deletedAt().Add(-time.Hour), nil)
-		shelved.trashFolder(t, docker, deletedAt(), nil)
+		shelved.trashFolder(t, separate, deletedAt().Add(-time.Hour))
+		shelved.trashFolder(t, docker, deletedAt())
 
 		got := listed(t, shelved.library)
 

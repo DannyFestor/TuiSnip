@@ -108,16 +108,21 @@ func sampleItems(t *testing.T) []trash.Item {
 	ids := testkit.NewSequentialIDs()
 
 	return []trash.Item{
-		{Snippet: testkit.Snippet(t, testkit.SnippetSpec{
-			ID:        ids.NewSnippetID(),
-			Title:     "Prune everything",
-			Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Bash"}},
-		})},
 		{
+			Kind: trash.ItemKindSnippet,
+			Snippet: testkit.Snippet(t, testkit.SnippetSpec{
+				ID:        ids.NewSnippetID(),
+				Title:     "Prune everything",
+				Fragments: []testkit.FragmentSpec{{ID: ids.NewFragmentID(), Language: "Bash"}},
+			}),
+		},
+		{
+			Kind:     trash.ItemKindFolder,
 			Folder:   testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "docker"}),
 			Contents: trash.Contents{SnippetCount: 15},
 		},
 		{
+			Kind:     trash.ItemKindFolder,
 			Folder:   testkit.Folder(t, testkit.FolderSpec{ID: ids.NewFolderID(), Name: "empty"}),
 			Contents: trash.Contents{SnippetCount: 1},
 		},

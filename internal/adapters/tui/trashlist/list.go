@@ -127,7 +127,7 @@ func (l List) withCursor(index int) List {
 
 func (l List) rowAt(index int) string {
 	item := l.items[index]
-	if item.IsFolder() {
+	if item.Kind == trash.ItemKindFolder {
 		return look.Row(folderMarker+item.Name(), look.Counted(item.Contents.SnippetCount, snippetNoun), l.box.Width)
 	}
 

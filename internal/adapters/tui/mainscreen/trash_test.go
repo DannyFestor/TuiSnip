@@ -39,6 +39,7 @@ func trashedSnippetItem(t *testing.T) trash.Item {
 	ids := testkit.NewSequentialIDs()
 
 	return trash.Item{
+		Kind: trash.ItemKindSnippet,
 		Snippet: testkit.Snippet(t, testkit.SnippetSpec{
 			ID:        ids.NewSnippetID(),
 			Title:     trashedSnippet,
@@ -57,6 +58,7 @@ func trashedFolderItem(t *testing.T) trash.Item {
 	ids := testkit.NewSequentialIDs()
 
 	return trash.Item{
+		Kind:    trash.ItemKindFolder,
 		Snippet: domain.Snippet{},
 		Folder: testkit.Folder(t, testkit.FolderSpec{
 			ID:   ids.NewFolderID(),

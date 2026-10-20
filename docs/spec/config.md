@@ -132,7 +132,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 | `folders` | `new_folder` N · `rename` r · `delete` d · `move` m · `collapse` space · `language` L |
 | `tags` | `new_tag` N · `rename` r · `delete` d |
 | `snippet_list` | `copy` y · `edit` e · `open_in_editor` E · `move` m · `duplicate` c · `delete` d · `cycle_sort` s |
-| `trash` | `copy` y · `restore` r |
+| `trash` | `copy` y · `restore` r · `delete` d · `empty` D |
 | `snippet_pane` | `copy` y · `edit` e · `open_in_editor` E · `wrap` w · `next_fragment` ] · `prev_fragment` [ |
 | `editor` | `save` ctrl+s · `cancel` esc · `next_field` down, tab · `prev_field` up, shift+tab · `open_field` enter · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e · `next_fragment` alt+right · `prev_fragment` alt+left · `add_fragment` ctrl+n · `remove_fragment` ctrl+x · `move_fragment_left` alt+shift+left · `move_fragment_right` alt+shift+right |
 | `content` | `save` ctrl+s · `leave` esc · `indent` tab · `dedent` shift+tab · `pick_language` ctrl+l · `edit_tags` ctrl+t · `open_in_editor` ctrl+e |
@@ -143,7 +143,7 @@ Help opens from the main screen only, and closes with its own `help` key or with
 
 - `new_snippet` and `capture` act on the Browse selection from any Pane. A Folder or the Root receives the Snippet. With a Tag, the Snippet goes to the Root carrying that Tag. With the Trash, it goes to the Root in plain text.
 - `rename` acts on the row under the cursor in `folders` or `tags`, and `delete` on the row under the cursor in `folders`, `tags`, or `snippet_list`. Deleting a Snippet or a Folder moves it to the Trash. `move` opens the Folder picker for the row under the cursor in `folders` or `snippet_list`, and does nothing on the Root. Tags don't move. `new_folder`, `rename`, `delete`, `move`, `collapse`, and `language` do nothing on the `▪ Trash` row.
-- `trash.copy` copies the Shown Fragment of the trashed Snippet under the cursor, and says "Only a Snippet can be copied" on a trashed Folder. `trash.restore` restores the Trash item under the cursor to its Folder, or a trashed Folder under its parent, or to the Root when that Folder is in the Trash or gone.
+- `trash.copy` copies the Shown Fragment of the trashed Snippet under the cursor, and says "Only a Snippet can be copied" on a trashed Folder. `trash.restore` restores the Trash item under the cursor to its Folder, or a trashed Folder under its parent, or to the Root when that Folder is in the Trash or gone. `trash.delete` deletes the Trash item under the cursor for good, and `trash.empty` deletes every Trash item for good. Both ask for [y/N] confirmation first, and neither can be undone.
 - `snippet_list.duplicate` copies the Snippet under the cursor into the same Folder.
 - `snippet_pane.next_fragment` and `snippet_pane.prev_fragment` switch the Shown Fragment, wrapping around at either end. `copy` and `open_in_editor` in `snippet_list` and `snippet_pane` act on the Shown Fragment.
 - `folders.language` opens the Language picker on the Folder under the cursor and sets its Default Language. Snippets already in the Folder keep their Language. It does nothing on the Root.

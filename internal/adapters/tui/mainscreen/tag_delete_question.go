@@ -19,7 +19,7 @@ func tagDeleteQuestion(preview tag.DeletePreview) confirm.Question {
 		Text: fmt.Sprintf(
 			tagDeleteFormat,
 			preview.Tag.Name().String(),
-			look.Counted(preview.SnippetCount, "Snippet"),
+			look.Counted(preview.SnippetCount, snippetNoun),
 		),
 	}
 }

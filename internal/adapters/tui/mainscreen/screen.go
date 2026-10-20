@@ -460,7 +460,7 @@ func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {
 		return outcome.Stay(s).Passing(onYes)
 	}
 
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, tagDeleteQuestion(preview), onYes))
+	return s.asking(tagDeleteQuestion(preview), onYes)
 }
 
 func (s Screen) tagCreated(created TagCreated) outcome.Step {
@@ -488,6 +488,10 @@ func (s Screen) holdingFoldersWithoutTags() Screen {
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
+}
+
+func (s Screen) asking(question confirm.Question, onYes outcome.Outcome) outcome.Step {
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, question, onYes))
 }
 
 func (s Screen) captured(content string) outcome.Step {

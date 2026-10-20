@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -24,9 +25,10 @@ const (
 )
 
 const (
-	snippetNoun        = "Snippet"
-	folderNoun         = "Folder"
-	movedToTrashFormat = "Moved %s %q to the Trash"
+	snippetNoun              = "Snippet"
+	folderNoun               = "Folder"
+	movedToTrashFormat       = "Moved %s %q to the Trash"
+	permanentlyDeletedFormat = "Permanently deleted %s %q"
 )
 
 const (
@@ -37,10 +39,28 @@ const (
 	parentPrefix         = "parent "
 )
 
+const (
+	emptiedTrashText = "Emptied the Trash"
+	emptiedSeparator = ": "
+	countsSeparator  = ", "
+)
+
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
 
 func movedToTrashText(noun, name string) string {
 	return fmt.Sprintf(movedToTrashFormat, noun, name)
+}
+
+func permanentlyDeletedText(requested outcome.TrashDeleteRequested) string {
+	return fmt.Sprintf(permanentlyDeletedFormat, trashItemNoun(requested.Input.Item), requested.Name)
+}
+
+func trashItemNoun(trashItemID trash.ItemID) string {
+	if trashItemID.Kind().IsFolder() {
+		return folderNoun
+	}
+
+	return snippetNoun
 }
 
 func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Restoration) string {
@@ -59,6 +79,15 @@ func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Re
 	}
 
 	return fmt.Sprintf(restoredFormat, requested.Name, folderpath.ShortOf(requested.Path))
+}
+
+func emptiedText(emptied domain.TrashEmptied) string {
+	counts := look.FolderAndSnippetCounts(emptied.Folders, emptied.Snippets)
+	if len(counts) == 0 {
+		return emptiedTrashText
+	}
+
+	return emptiedTrashText + emptiedSeparator + strings.Join(counts, countsSeparator)
 }
 
 func homeNoun(restored trash.ItemID) string {

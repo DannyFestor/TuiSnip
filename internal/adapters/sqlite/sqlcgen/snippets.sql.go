@@ -67,6 +67,35 @@ func (q *Queries) CountSnippetsByFolder(ctx context.Context) ([]CountSnippetsByF
 	return items, nil
 }
 
+const deleteSnippetTrashItem = `-- name: DeleteSnippetTrashItem :execrows
+DELETE FROM snippets
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+func (q *Queries) DeleteSnippetTrashItem(ctx context.Context, id sqltype.ID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSnippetTrashItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const detachSnippetTrashItem = `-- name: DetachSnippetTrashItem :exec
+UPDATE snippets
+SET folder_id = NULL, former_folder_path = ?
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+type DetachSnippetTrashItemParams struct {
+	FormerFolderPath string
+	ID               sqltype.ID
+}
+
+func (q *Queries) DetachSnippetTrashItem(ctx context.Context, arg DetachSnippetTrashItemParams) error {
+	_, err := q.db.ExecContext(ctx, detachSnippetTrashItem, arg.FormerFolderPath, arg.ID)
+	return err
+}
+
 const getSnippet = `-- name: GetSnippet :one
 SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
 FROM live_snippets
@@ -135,6 +164,40 @@ func (q *Queries) InsertSnippet(ctx context.Context, arg InsertSnippetParams) er
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const listFiledSnippetTrashItems = `-- name: ListFiledSnippetTrashItems :many
+SELECT id, folder_id
+FROM snippets
+WHERE deleted_at IS NOT NULL AND folder_id IS NOT NULL
+`
+
+type ListFiledSnippetTrashItemsRow struct {
+	ID       sqltype.ID
+	FolderID *sqltype.ID
+}
+
+func (q *Queries) ListFiledSnippetTrashItems(ctx context.Context) ([]ListFiledSnippetTrashItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listFiledSnippetTrashItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFiledSnippetTrashItemsRow{}
+	for rows.Next() {
+		var i ListFiledSnippetTrashItemsRow
+		if err := rows.Scan(&i.ID, &i.FolderID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listLibrarySnippets = `-- name: ListLibrarySnippets :many

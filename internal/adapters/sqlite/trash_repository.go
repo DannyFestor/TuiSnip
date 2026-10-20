@@ -100,6 +100,58 @@ func (r *TrashRepository) RestoreFolder(ctx context.Context, id domain.FolderID)
 	return restoration, nil
 }
 
+func (r *TrashRepository) DeleteSnippet(ctx context.Context, id domain.SnippetID) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		return deleteSnippetTrashItem(ctx, queries, id)
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.TrashRepository.DeleteSnippet: %w", err)
+	}
+
+	return nil
+}
+
+func (r *TrashRepository) DeleteFolder(ctx context.Context, id domain.FolderID) error {
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		return deleteFolderTrashItem(ctx, queries, id)
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite.TrashRepository.DeleteFolder: %w", err)
+	}
+
+	return nil
+}
+
+func (r *TrashRepository) Empty(ctx context.Context, items domain.TrashItemIDs) (domain.TrashEmptied, error) {
+	var emptied domain.TrashEmptied
+
+	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		before, countErr := countRows(ctx, queries)
+		if countErr != nil {
+			return countErr
+		}
+
+		emptyErr := emptyTrash(ctx, queries, items)
+		if emptyErr != nil {
+			return emptyErr
+		}
+
+		after, countErr := countRows(ctx, queries)
+		if countErr != nil {
+			return countErr
+		}
+
+		emptied = before.emptiedTo(after)
+
+		return nil
+	})
+	if err != nil {
+		return domain.TrashEmptied{}, fmt.Errorf("sqlite.TrashRepository.Empty: %w", err)
+	}
+
+	return emptied, nil
+}
+
 func (r *TrashRepository) restored(
 	ctx context.Context, restore func(queries *sqlcgen.Queries) (domain.Restoration, error),
 ) (domain.Restoration, error) {

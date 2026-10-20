@@ -46,7 +46,7 @@ func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd
 		return snippetsChangedMsg{
 			selection: browseselection.InTrash(),
 			selecting: domain.SnippetID{},
-			status:    restoredText(requested.Name, requested.Path, restoration),
+			status:    restoredText(requested, restoration),
 		}
 	}
 }

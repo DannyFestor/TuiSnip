@@ -6,6 +6,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -30,8 +32,10 @@ const (
 const (
 	restoredFormat       = "Restored %q to %s"
 	restoredToRootFormat = "Restored %q to the Root"
-	folderInTrashReason  = "; its Folder is in the Trash"
-	folderDeletedReason  = "; its Folder was deleted"
+	homeInTrashFormat    = "; its %s is in the Trash"
+	homeDeletedFormat    = "; its %s was deleted"
+	snippetHomeNoun      = "Folder"
+	folderHomeNoun       = "parent Folder"
 )
 
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
@@ -40,20 +44,30 @@ func movedToTrashText(noun, name string) string {
 	return fmt.Sprintf(movedToTrashFormat, noun, name)
 }
 
-func restoredText(name string, path []string, restoration domain.Restoration) string {
+func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Restoration) string {
+	toRoot := fmt.Sprintf(restoredToRootFormat, requested.Name)
+
 	switch restoration.Fallback {
 	case domain.RestoreFallbackFolderInTrash:
-		return fmt.Sprintf(restoredToRootFormat, name) + folderInTrashReason
+		return toRoot + fmt.Sprintf(homeInTrashFormat, homeNoun(requested.Input.Item))
 	case domain.RestoreFallbackFolderDeleted:
-		return fmt.Sprintf(restoredToRootFormat, name) + folderDeletedReason
+		return toRoot + fmt.Sprintf(homeDeletedFormat, homeNoun(requested.Input.Item))
 	case domain.RestoreFallbackNone:
 	}
 
 	if restoration.FolderID.IsNil() {
-		return fmt.Sprintf(restoredToRootFormat, name)
+		return toRoot
 	}
 
-	return fmt.Sprintf(restoredFormat, name, folderpath.ShortOf(path))
+	return fmt.Sprintf(restoredFormat, requested.Name, folderpath.ShortOf(requested.Path))
+}
+
+func homeNoun(restored trash.ItemID) string {
+	if _, isFolder := restored.Folder(); isFolder {
+		return folderHomeNoun
+	}
+
+	return snippetHomeNoun
 }
 
 func deliveryText(delivery domain.CopyDelivery) (string, error) {

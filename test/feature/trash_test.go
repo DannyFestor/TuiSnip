@@ -57,7 +57,7 @@ func TestDeletingAFolderHidesItsSubtreeUntilItIsRestored(t *testing.T) {
 	_, found := testapp.FindSnippet(t, app, nested.ID())
 	assert.False(t, found)
 
-	listed := trashItems(t, app)
+	listed := testapp.TrashItems(t, app)
 	require.Len(t, listed, 1)
 	assert.Equal(t, docker, listed[0].Folder)
 	assert.Equal(t, 1, listed[0].Contents.SubfolderCount)
@@ -69,7 +69,7 @@ func TestDeletingAFolderHidesItsSubtreeUntilItIsRestored(t *testing.T) {
 	assert.Equal(t, domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackNone}, restored)
 	assert.Equal(t, treeBefore, folderTree(t, app))
 	assert.Equal(t, nested, testapp.StoredSnippet(t, app, nested.ID()))
-	assert.Empty(t, trashItems(t, app))
+	assert.Empty(t, testapp.TrashItems(t, app))
 }
 
 func TestASnippetWhoseFolderIsInTheTrashRestoresToTheRoot(t *testing.T) {
@@ -86,7 +86,7 @@ func TestASnippetWhoseFolderIsInTheTrashRestoresToTheRoot(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.RestoreFallbackFolderInTrash, restored.Fallback)
 	assert.True(t, testapp.StoredSnippet(t, app, prune.ID()).AtRoot())
-	listed := trashItems(t, app)
+	listed := testapp.TrashItems(t, app)
 	require.Len(t, listed, 1)
 	assert.Equal(t, docker, listed[0].Folder)
 }

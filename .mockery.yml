@@ -30,6 +30,8 @@ packages:
     interfaces:
       Loader: {}
       RestoreRepository: {}
+      DeletePermanentlyRepository: {}
+      Emptier: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -59,6 +61,8 @@ packages:
       SnippetCopier: {}
       TrashLister: {}
       TrashRestorer: {}
+      TrashDeleter: {}
+      TrashEmptier: {}
       SnippetCreator: {}
       SnippetCapturer: {}
       SnippetUpdater: {}

@@ -16,10 +16,10 @@ const (
 
 	write         = "a write"
 	library       = "Export reads the whole Library, the Trash included"
-	emptiness     = "the Import emptiness check counts the whole Library, the Trash included"
+	emptiness     = "the Import emptiness check and Empty Trash's tally count the whole Library, the Trash included"
 	joinedToLive  = "joins snippet_tag to live_snippets"
 	wholeTreeOnly = "the Folder cycle check guards the whole tree, the Trash included"
-	trashItems    = "the Trash list, its count, restore, and Copy read the Trash itself"
+	trashItems    = "the Trash list, its count, restore, permanent delete, and Copy read the Trash itself"
 )
 
 var (
@@ -91,7 +91,10 @@ func baseTableReaders() map[string]string {
 		"CountSnippets":                emptiness,
 		"CountSnippetsByTag":           joinedToLive,
 		"CountSnippetsWithTag":         joinedToLive,
+		"DeleteFolderTrashItem":        write,
 		"DeleteSnippetTags":            write,
+		"DeleteSnippetTrashItem":       write,
+		"ListFiledSnippetTrashItems":   trashItems,
 		"ListDescendantFolderIDs":      wholeTreeOnly,
 		"ListFragmentsWithTag":         joinedToLive,
 		"ListLibraryFolders":           library,

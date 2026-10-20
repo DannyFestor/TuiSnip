@@ -69,6 +69,21 @@ func (l List) WithItems(trashItems []trash.Item) List {
 	return l
 }
 
+func (l List) TrashItems() []trash.Item {
+	return l.trashItems.Rows()
+}
+
+func (l List) TrashItemIDs() []trash.ItemID {
+	trashItems := l.trashItems.Rows()
+	ids := make([]trash.ItemID, 0, len(trashItems))
+
+	for index := range trashItems {
+		ids = append(ids, trashItems[index].ID())
+	}
+
+	return ids
+}
+
 func (l List) Selected() (trash.Item, bool) {
 	return l.trashItems.Selected()
 }

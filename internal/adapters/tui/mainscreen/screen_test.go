@@ -1381,6 +1381,44 @@ func TestScreen_Received(t *testing.T) {
 		assert.Contains(t, screen.Screen(), strings.ToUpper("3 # docker · by title"))
 	})
 
+	savedAtRootFrom := []struct {
+		name   string
+		browse func(t *testing.T) *overlaytest.Driver
+	}{
+		{name: "a Folder", browse: func(t *testing.T) *overlaytest.Driver {
+			t.Helper()
+
+			screen, _ := browsing(t)
+			screen.Press(keypress.Letter('j'))
+
+			return screen
+		}},
+		{name: "a Tag", browse: func(t *testing.T) *overlaytest.Driver {
+			t.Helper()
+
+			screen, _ := browsingTags(t)
+			screen.Press(keypress.Letter('2'), keypress.Special(tea.KeyEnter), keypress.Letter('1'))
+
+			return screen
+		}},
+	}
+	for _, tt := range savedAtRootFrom {
+		t.Run("makes the Root the Browse selection for a Snippet saved at the Root from "+tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			screen := tt.browse(t)
+			saved := outcome.SnippetSaved{
+				ID:        filedIn(t, domain.FolderID{}).ID(),
+				Selection: browseselection.InFolder(domain.FolderID{}),
+			}
+
+			screen.Offer(saved)
+
+			assert.Equal(t, saved, screen.Outcomes()[len(screen.Outcomes())-1])
+			assert.Contains(t, screen.Screen(), snippetListTitle)
+		})
+	}
+
 	t.Run("keeps the Browse selection for a reloaded Snippet and passes it on", func(t *testing.T) {
 		t.Parallel()
 

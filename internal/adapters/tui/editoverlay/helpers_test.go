@@ -2,6 +2,7 @@ package editoverlay_test
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -37,9 +38,16 @@ const (
 
 	maxContentBytes = 256 << 10
 	pasteTooLarge   = "Paste would make Content larger than 256 KiB"
+
+	goneElsewhereTitle = "Gone elsewhere"
+	folderGoneQuestion = `Folder "docker" was moved to the Trash or deleted in another TuiSnip. ` +
+		"Save the Snippet at the Root instead?"
 )
 
-var errDatabaseLocked = errors.New("database is locked")
+var (
+	errDatabaseLocked = errors.New("database is locked")
+	errFolderGone     = fmt.Errorf("snippet.Create: %w", domain.ErrFolderGone)
+)
 
 func screenSize() look.Size {
 	return look.Size{Width: 120, Height: 40}
@@ -140,9 +148,10 @@ func capturingIn(t *testing.T, filedIn editoverlay.Destination, captured string)
 
 func destination() editoverlay.Destination {
 	return editoverlay.Destination{
-		Selection: browseselection.InFolder(destinationFolderID()),
-		Tags:      nil,
-		Language:  value.PlainText(),
+		Selection:  browseselection.InFolder(destinationFolderID()),
+		FolderName: "docker",
+		Tags:       nil,
+		Language:   value.PlainText(),
 	}
 }
 

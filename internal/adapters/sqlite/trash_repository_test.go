@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"log/slog"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -252,6 +253,259 @@ func TestTrashRepository_RestoreFolder(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrNotFound)
 		assert.ErrorContains(t, err, "sqlite.TrashRepository.RestoreFolder")
 	})
+}
+
+func TestTrashRepository_DeleteSnippet(t *testing.T) {
+	t.Parallel()
+
+	t.Run("deletes the Snippet for good and keeps its Tags", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		err := fixture.trash(t).DeleteSnippet(t.Context(), fixture.trashedSnippet.ID())
+
+		require.NoError(t, err)
+		library := fixture.library(t)
+		assert.ElementsMatch(t, []domain.Snippet{fixture.liveSnippet, fixture.nestedSnippet}, library.Snippets)
+		assert.Empty(t, library.Trash.Snippets)
+		assert.Equal(t, []domain.Tag{fixture.tag}, library.Tags)
+	})
+
+	tests := []struct {
+		name    string
+		missing func(fixture trashFixture) domain.SnippetID
+	}{
+		{name: "reports a live Snippet as not found", missing: func(fixture trashFixture) domain.SnippetID {
+			return fixture.liveSnippet.ID()
+		}},
+		{
+			name: "reports a Snippet inside a trashed Folder as not found",
+			missing: func(fixture trashFixture) domain.SnippetID {
+				return fixture.nestedSnippet.ID()
+			},
+		},
+		{name: "reports a missing Snippet as not found", missing: func(trashFixture) domain.SnippetID {
+			return testkit.NewSequentialIDs().NewSnippetID()
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			err := fixture.trash(t).DeleteSnippet(t.Context(), tt.missing(fixture))
+
+			require.ErrorIs(t, err, domain.ErrNotFound)
+			require.ErrorContains(t, err, "sqlite.TrashRepository.DeleteSnippet")
+			assert.Len(t, fixture.library(t).Snippets, 3)
+		})
+	}
+}
+
+func TestTrashRepository_DeleteFolder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("deletes the Folder with its whole subtree and keeps the Tags", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		err := fixture.trash(t).DeleteFolder(t.Context(), fixture.trashedFolder.ID())
+
+		require.NoError(t, err)
+		library := fixture.library(t)
+		assert.Equal(t, []domain.Folder{fixture.liveFolder}, library.Folders)
+		assert.ElementsMatch(t, []domain.Snippet{fixture.liveSnippet, fixture.trashedSnippet}, library.Snippets)
+		assert.Equal(t, []domain.Tag{fixture.tag}, library.Tags)
+	})
+
+	t.Run("detaches a separate Trash Snippet inside it with the path it was in", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		trashRawSnippet(t, fixture.path, fixture.nestedSnippet.ID())
+
+		err := fixture.trash(t).DeleteFolder(t.Context(), fixture.trashedFolder.ID())
+
+		require.NoError(t, err)
+		library := fixture.library(t)
+		assert.Equal(
+			t,
+			[]string{"live", "trashed", "nested"},
+			library.Trash.Snippets[fixture.nestedSnippet.ID()].FormerPath().Strings(),
+		)
+		assert.True(t, snippetIn(t, library, fixture.nestedSnippet.ID()).AtRoot())
+	})
+
+	t.Run("detaches a separate Trash Folder inside it, which keeps its own subtree", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		trashRawFolder(t, fixture.path, fixture.nestedFolder.ID())
+
+		err := fixture.trash(t).DeleteFolder(t.Context(), fixture.trashedFolder.ID())
+
+		require.NoError(t, err)
+		library := fixture.library(t)
+		assert.Equal(
+			t, []string{"live", "trashed"}, library.Trash.Folders[fixture.nestedFolder.ID()].FormerPath().Strings(),
+		)
+		assert.True(t, folderIn(t, library, fixture.nestedFolder.ID()).AtRoot())
+		assert.Equal(t, fixture.nestedSnippet, snippetIn(t, library, fixture.nestedSnippet.ID()))
+	})
+
+	t.Run("passes a detached Folder's former path on to the items it detaches", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		detachRawFolder(t, fixture, fixture.trashedFolder.ID())
+		trashRawSnippet(t, fixture.path, fixture.nestedSnippet.ID())
+
+		err := fixture.trash(t).DeleteFolder(t.Context(), fixture.trashedFolder.ID())
+
+		require.NoError(t, err)
+		assert.Equal(
+			t,
+			[]string{"gone", "trashed", "nested"},
+			fixture.library(t).Trash.Snippets[fixture.nestedSnippet.ID()].FormerPath().Strings(),
+		)
+	})
+
+	tests := []struct {
+		name    string
+		missing func(fixture trashFixture) domain.FolderID
+	}{
+		{name: "reports a live Folder as not found", missing: func(fixture trashFixture) domain.FolderID {
+			return fixture.liveFolder.ID()
+		}},
+		{
+			name: "reports a Folder inside a trashed Folder as not found",
+			missing: func(fixture trashFixture) domain.FolderID {
+				return fixture.nestedFolder.ID()
+			},
+		},
+		{name: "reports a missing Folder as not found", missing: func(trashFixture) domain.FolderID {
+			return testkit.NewSequentialIDs().NewFolderID()
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newTrashFixture(t)
+
+			err := fixture.trash(t).DeleteFolder(t.Context(), tt.missing(fixture))
+
+			require.ErrorIs(t, err, domain.ErrNotFound)
+			require.ErrorContains(t, err, "sqlite.TrashRepository.DeleteFolder")
+			assert.Len(t, fixture.library(t).Folders, 3)
+		})
+	}
+}
+
+func TestTrashRepository_Empty(t *testing.T) {
+	t.Parallel()
+
+	t.Run("deletes the given Trash items and counts every Folder and Snippet removed", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+
+		got, err := fixture.trash(t).Empty(t.Context(), fixture.trashItems())
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.TrashEmptied{Folders: 2, Snippets: 2}, got)
+		library := fixture.library(t)
+		assert.Equal(t, []domain.Folder{fixture.liveFolder}, library.Folders)
+		assert.Equal(t, []domain.Snippet{fixture.liveSnippet}, library.Snippets)
+		assert.Equal(t, []domain.Tag{fixture.tag}, library.Tags)
+	})
+
+	t.Run("skips a given item that left the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		_, err := fixture.trash(t).RestoreSnippet(t.Context(), fixture.trashedSnippet.ID())
+		require.NoError(t, err)
+
+		got, err := fixture.trash(t).Empty(t.Context(), fixture.trashItems())
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.TrashEmptied{Folders: 2, Snippets: 1}, got)
+		assert.ElementsMatch(
+			t,
+			[]domain.Snippet{fixture.liveSnippet, fixture.trashedSnippet},
+			fixture.library(t).Snippets,
+		)
+	})
+
+	t.Run("leaves a Trash item it wasn't given in the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		trashRawSnippet(t, fixture.path, fixture.liveSnippet.ID())
+
+		_, err := fixture.trash(t).Empty(t.Context(), fixture.trashItems())
+
+		require.NoError(t, err)
+		assert.Contains(t, fixture.library(t).Trash.Snippets, fixture.liveSnippet.ID())
+	})
+
+	t.Run("detaches a Trash item it wasn't given from a Folder it deletes", func(t *testing.T) {
+		t.Parallel()
+
+		fixture := newTrashFixture(t)
+		trashRawSnippet(t, fixture.path, fixture.nestedSnippet.ID())
+
+		_, err := fixture.trash(t).Empty(t.Context(), fixture.trashItems())
+
+		require.NoError(t, err)
+		library := fixture.library(t)
+		assert.Equal(t, []domain.Folder{fixture.liveFolder}, library.Folders)
+		assert.Equal(
+			t,
+			[]string{"live", "trashed", "nested"},
+			library.Trash.Snippets[fixture.nestedSnippet.ID()].FormerPath().Strings(),
+		)
+	})
+}
+
+func (f trashFixture) trashItems() domain.TrashItemIDs {
+	return domain.TrashItemIDs{
+		Folders:  []domain.FolderID{f.trashedFolder.ID()},
+		Snippets: []domain.SnippetID{f.trashedSnippet.ID()},
+	}
+}
+
+func snippetIn(t *testing.T, library domain.Library, id domain.SnippetID) domain.Snippet {
+	t.Helper()
+
+	index := slices.IndexFunc(library.Snippets, func(snippet domain.Snippet) bool { return snippet.ID() == id })
+	require.NotEqual(t, -1, index, "snippet %s", id)
+
+	return library.Snippets[index]
+}
+
+func folderIn(t *testing.T, library domain.Library, id domain.FolderID) domain.Folder {
+	t.Helper()
+
+	index := slices.IndexFunc(library.Folders, func(folder domain.Folder) bool { return folder.ID() == id })
+	require.NotEqual(t, -1, index, "folder %s", id)
+
+	return library.Folders[index]
+}
+
+func detachRawFolder(t *testing.T, fixture trashFixture, id domain.FolderID) {
+	t.Helper()
+
+	execRaw(
+		t,
+		fixture.path,
+		`UPDATE folders SET parent_id = NULL, former_parent_path = '["gone"]' WHERE id = ?`,
+		id.String(),
+	)
 }
 
 func (f trashFixture) trash(t *testing.T) *sqlite.TrashRepository {

@@ -36,14 +36,6 @@ func (b browsed) pressed(s Screen, msg tea.KeyPressMsg) (outcome.Step, bool) {
 	return s.snippetsPressed(msg)
 }
 
-func (b browsed) saved(s Screen, saved outcome.SnippetSaved) outcome.Step {
-	if b == browsedTrash {
-		return s.savedFromTrash(saved)
-	}
-
-	return outcome.Stay(s).Passing(saved)
-}
-
 func (b browsed) updated(p panes, focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
 	if b == browsedTrash {
 		return p.trashUpdated(focus, msg)

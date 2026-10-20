@@ -14,6 +14,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/test/foldertree"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
@@ -125,6 +126,47 @@ func TestModel_capture(t *testing.T) {
 		assert.Contains(t, screen.screen(), "3 # docker · by title")
 		assert.Contains(t, screen.screen(), filedTitle)
 	})
+}
+
+func TestModel_captureIntoFolderGoneElsewhere(t *testing.T) {
+	t.Parallel()
+
+	sample := foldertree.New(t)
+	captured := filedIn(t, domain.FolderID{})
+	intoDocker := snippet.CreateInput{
+		Title:     filedTitle,
+		Fragments: []snippet.FragmentInput{{Language: "plaintext", Content: clipboardText}},
+		FolderID:  sample.Docker.ID(),
+	}
+	atRoot := intoDocker
+	atRoot.FolderID = domain.FolderID{}
+
+	creator := NewMockSnippetCreator(t)
+	creator.EXPECT().Run(mock.Anything, intoDocker).
+		Return(domain.Snippet{}, fmt.Errorf("snippet.Create: %w", domain.ErrFolderGone))
+	creator.EXPECT().Run(mock.Anything, atRoot).Return(captured, nil)
+
+	lister := NewMockFolderSnippetsLister(t)
+	listingIn(lister, domain.FolderID{})
+	listingIn(lister, sample.Docker.ID())
+	listingIn(lister, domain.FolderID{}, captured)
+
+	with := browsingActions(t, sample, lister)
+	with.creator = creator
+	with.capturer = capturerReading(t, clipboardText)
+	screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+
+	screen.press(keypress.Letter('j'), keypress.Letter('p'))
+	screen.press(keypress.Typed(filedTitle)...)
+	screen.press(keypress.Ctrl('s'))
+	asked := screen.screen()
+	screen.press(keypress.Letter('y'))
+
+	assert.Contains(t, asked, `Folder "docker" was moved to the Trash or deleted in another TuiSnip.`)
+	assert.Contains(t, asked, "Save the Snippet at the Root instead?")
+	assert.NotContains(t, screen.screen(), editOverlayTitle)
+	assert.Contains(t, screen.screen(), `Saved "`+filedTitle+`" as a new Snippet at the Root`)
+	assert.Contains(t, screen.screen(), "3 Root · by title")
 }
 
 func capturingActions(t *testing.T, capturer tui.SnippetCapturer, lister *MockFolderSnippetsLister) actions {

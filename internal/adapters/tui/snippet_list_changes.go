@@ -15,10 +15,8 @@ func (m Model) runSnippetListChange(reported outcome.Outcome) tea.Cmd {
 		return m.deleteSnippet(reported)
 	case outcome.SnippetMoveRequested:
 		return m.moveSnippet(reported)
-	case outcome.TrashRestoreRequested:
-		return m.restoreFromTrash(reported)
 	default:
-		return nil
+		return m.runTrashAction(reported)
 	}
 }
 

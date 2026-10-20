@@ -5,6 +5,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagchoice"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 type entered struct {
@@ -19,6 +20,17 @@ func (e entered) equal(other entered) bool {
 		e.description == other.description &&
 		e.tags.Equal(other.tags) &&
 		slices.Equal(e.fragments, other.fragments)
+}
+
+func (e entered) createInput(folderID domain.FolderID) snippet.CreateInput {
+	return snippet.CreateInput{
+		Title:       e.title,
+		Description: e.description,
+		Fragments:   e.fragmentInputs(),
+		FolderID:    folderID,
+		Tags:        e.tags.Stored(),
+		NewTags:     e.newTagNames(),
+	}
 }
 
 func (e entered) fragmentInputs() []snippet.FragmentInput {

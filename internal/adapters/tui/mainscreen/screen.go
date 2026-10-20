@@ -102,7 +102,7 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	case outcome.ContentEdited:
 		return s.externallyEdited(received)
 	case outcome.SnippetSaved:
-		return s.browsed().saved(s, received)
+		return s.saved(received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -410,6 +410,17 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	return s.focusedUpdated(msg)
 }
 
+func (s Screen) saved(saved outcome.SnippetSaved) outcome.Step {
+	folderID, inFolder := saved.Selection.Folder()
+	if !inFolder || saved.Selection == s.selection() {
+		return outcome.Stay(s).Passing(saved)
+	}
+
+	next, expanded := s.selectingFolder(folderID)
+
+	return outcome.Stay(next).Passing(expanded...).Passing(saved)
+}
+
 func (s Screen) goneElsewhereShown(text string) outcome.Step {
 	return outcome.Stay(s.withStatus(text)).
 		Passing(outcome.ReloadAsked{Selection: s.selection(), Selecting: s.browsed().listedSnippetID(s.panes)})
@@ -449,7 +460,7 @@ func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {
 		return outcome.Stay(s).Passing(onYes)
 	}
 
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, tagDeleteQuestion(preview), onYes))
+	return s.asking(tagDeleteQuestion(preview), onYes)
 }
 
 func (s Screen) tagCreated(created TagCreated) outcome.Step {
@@ -477,6 +488,10 @@ func (s Screen) holdingFoldersWithoutTags() Screen {
 
 func (s Screen) opening(child outcome.Overlay, cmd tea.Cmd) outcome.Step {
 	return outcome.Stay(s).Opening(child).Running(cmd)
+}
+
+func (s Screen) asking(question confirm.Question, onYes outcome.Outcome) outcome.Step {
+	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, question, onYes))
 }
 
 func (s Screen) captured(content string) outcome.Step {

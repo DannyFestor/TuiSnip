@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -122,6 +123,15 @@ func StoredTags(t *testing.T, app *bootstrap.App) []domain.Tag {
 	}
 
 	return tags
+}
+
+func TrashItems(t *testing.T, app *bootstrap.App) []trash.Item {
+	t.Helper()
+
+	listed, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
+	require.NoError(t, err)
+
+	return listed
 }
 
 func snippetsIn(t *testing.T, app *bootstrap.App, folderID domain.FolderID) []domain.Snippet {

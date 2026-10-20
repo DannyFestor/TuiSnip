@@ -11,6 +11,8 @@ type Deps struct {
 	TrashCopier                 SnippetCopier
 	TrashLister                 TrashLister
 	TrashRestorer               TrashRestorer
+	TrashDeleter                TrashDeleter
+	TrashEmptier                TrashEmptier
 	Creator                     SnippetCreator
 	Capturer                    SnippetCapturer
 	Updater                     SnippetUpdater

@@ -11,18 +11,41 @@ import (
 )
 
 const (
-	operationListTrash = "list trash"
-	operationRestore   = "restore from trash"
+	operationListTrash         = "list trash"
+	operationRestore           = "restore from trash"
+	operationDeletePermanently = "delete permanently"
+	operationEmptyTrash        = "empty trash"
 )
 
 type trashActions struct {
 	copier   SnippetCopier
 	lister   TrashLister
 	restorer TrashRestorer
+	deleter  TrashDeleter
+	emptier  TrashEmptier
 }
 
 func trashActionsOf(deps Deps) trashActions {
-	return trashActions{copier: deps.TrashCopier, lister: deps.TrashLister, restorer: deps.TrashRestorer}
+	return trashActions{
+		copier:   deps.TrashCopier,
+		lister:   deps.TrashLister,
+		restorer: deps.TrashRestorer,
+		deleter:  deps.TrashDeleter,
+		emptier:  deps.TrashEmptier,
+	}
+}
+
+func (m Model) runTrashAction(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.TrashRestoreRequested:
+		return m.restoreFromTrash(reported)
+	case outcome.TrashDeleteRequested:
+		return m.deleteFromTrash(reported)
+	case outcome.TrashEmptyRequested:
+		return m.emptyTrash(reported)
+	default:
+		return nil
+	}
 }
 
 func (m Model) loadTrash() tea.Cmd {
@@ -44,13 +67,31 @@ func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd
 	report := reporter(
 		actionFailure{operation: operationRestore, whenGone: goneFromTrash(requested.Name)},
 		func(restoration domain.Restoration) tea.Msg {
-			return snippetsChangedMsg{
-				selection: browseselection.InTrash(),
-				selecting: domain.SnippetID{},
-				status:    restoredText(requested, restoration),
-			}
+			return trashChanged(restoredText(requested, restoration))
 		},
 	)
 
 	return func() tea.Msg { return report(m.trash.restorer.Run(m.ctx, requested.Input)) }
+}
+
+func (m Model) deleteFromTrash(requested outcome.TrashDeleteRequested) tea.Cmd {
+	report := reporter(
+		actionFailure{operation: operationDeletePermanently, whenGone: goneFromTrash(requested.Name)},
+		func(struct{}) tea.Msg { return trashChanged(permanentlyDeletedText(requested)) },
+	)
+
+	return func() tea.Msg { return report(withoutResult(m.trash.deleter.Run(m.ctx, requested.Input))) }
+}
+
+func (m Model) emptyTrash(requested outcome.TrashEmptyRequested) tea.Cmd {
+	report := reporter(
+		actionFailure{operation: operationEmptyTrash, whenGone: gone{notFound: "", folderGone: ""}},
+		func(emptied domain.TrashEmptied) tea.Msg { return trashChanged(emptiedText(emptied)) },
+	)
+
+	return func() tea.Msg { return report(m.trash.emptier.Run(m.ctx, requested.Input)) }
+}
+
+func trashChanged(status string) snippetsChangedMsg {
+	return snippetsChangedMsg{selection: browseselection.InTrash(), selecting: domain.SnippetID{}, status: status}
 }

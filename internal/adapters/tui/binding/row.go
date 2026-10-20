@@ -1,6 +1,5 @@
 package binding
 
-//nolint:dupl // a table of labels that dupl matches against the Binding name table in names.go; no logic repeats.
 const (
 	labelQuit              = "quit"
 	labelHelp              = "help"
@@ -22,6 +21,8 @@ const (
 	labelDuplicate         = "duplicate"
 	labelSort              = "sort"
 	labelRestore           = "restore"
+	labelDeletePermanently = "delete permanently"
+	labelEmptyTrash        = "empty Trash"
 	labelWrap              = "wrap"
 	labelNextFragment      = "next Fragment"
 	labelPrevFragment      = "previous Fragment"
@@ -117,6 +118,8 @@ func snippetRows() []Row {
 		{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
 		{Scope: ScopeTrash, Name: Copy, Label: labelCopy},
 		{Scope: ScopeTrash, Name: Restore, Label: labelRestore},
+		{Scope: ScopeTrash, Name: Delete, Label: labelDeletePermanently},
+		{Scope: ScopeTrash, Name: Empty, Label: labelEmptyTrash},
 		{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
 		{Scope: ScopeSnippetPane, Name: OpenInEditor, Label: labelExternalEditor},

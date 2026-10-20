@@ -102,3 +102,17 @@ SELECT COUNT(*) FROM snippets WHERE deleted_at IS NOT NULL;
 UPDATE snippets
 SET deleted_at = NULL, folder_id = ?, former_folder_path = '[]'
 WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: ListFiledSnippetTrashItems :many
+SELECT id, folder_id
+FROM snippets
+WHERE deleted_at IS NOT NULL AND folder_id IS NOT NULL;
+
+-- name: DetachSnippetTrashItem :exec
+UPDATE snippets
+SET folder_id = NULL, former_folder_path = ?
+WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: DeleteSnippetTrashItem :execrows
+DELETE FROM snippets
+WHERE id = ? AND deleted_at IS NOT NULL;

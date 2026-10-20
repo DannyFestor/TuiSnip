@@ -81,7 +81,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 | Folders | `N` new Folder inside the selected one (at the Root when the Root is selected), typed in place on a new row below the cursor · `r` rename in place · `d` delete · `m` move · `space` collapse · `L` Default Language |
 | Tags | `N` new Tag, typed in place; it exists with a count of 0 until a Snippet carries it · `r` rename in place · `d` delete |
 | Snippet list | `y` Copy · `e` edit · `E` external editor · `m` move · `c` duplicate · `d` delete · `s` cycle sort |
-| Snippet list, with the Trash as the Browse selection (`trash` Scope) | `y` Copy · `r` restore |
+| Snippet list, with the Trash as the Browse selection (`trash` Scope) | `y` Copy · `r` restore · `d` delete permanently · `D` empty Trash |
 | Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap · `]` next Fragment · `[` previous Fragment |
 
 - In-place entry commits with `enter` and cancels with `esc` (the `name_input` Scope). A blank name is refused. A new Folder becomes the Browse selection once it is created.
@@ -94,6 +94,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `d` in the Snippet list moves the Snippet to the Trash at once: `Moved Snippet "Prune everything" to the Trash`. `d` in Folders does the same for the Folder and its subtree: `Moved Folder "docker" to the Trash`, and the Folder's parent becomes the Browse selection. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
 - `N`, `r`, `m`, `space`, `L`, and `d` do nothing on the `▪ Trash` row.
 - In the Trash, `y` copies the Shown Fragment of a trashed Snippet. On a trashed Folder it does nothing, and the status line says "Only a Snippet can be copied". `r` restores the Trash item under the cursor ([v1: Rename and delete](v1.md#rename-and-delete)). The cursor keeps its row, the Browse selection stays on the Trash, and the restored Trash item isn't revealed.
+- `d` in the Trash deletes the Trash item under the cursor for good, after a confirmation titled "Delete permanently", default No: `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`, or `Permanently delete Folder "docker", 1 subfolder, and 15 Snippets? This cannot be undone. [y/N]`, which leaves out a zero count: `Permanently delete Folder "docker" and 15 Snippets? This cannot be undone. [y/N]`. Then it says `Permanently deleted Snippet "Prune everything"` or `Permanently deleted Folder "docker"`. The cursor keeps its row, as after a restore. `D` empties the Trash after a confirmation titled "Empty Trash", default No: `Permanently delete 3 Folders and 20 Snippets in the Trash? This cannot be undone. [y/N]`, then says `Emptied the Trash: 2 Folders, 20 Snippets` ([v1: Rename and delete](v1.md#rename-and-delete)). Both do nothing in an empty Trash.
 - A trashed Snippet in the Snippet pane keeps the `snippet_pane` Bindings for Copy, wrap, `]`/`[`, and scrolling. `e` and `E` do nothing, and the status line says "Restore the Snippet to edit it". On a trashed Folder, `y` in the Snippet pane says "Only a Snippet can be copied", as in the list. Beyond that, a trashed Folder's outline only scrolls and zooms, so the [status hint](#status-hint) and [Help](#help) leave out the `snippet_pane` Bindings there.
 - `m` in Folders or the Snippet list opens the [Folder picker](#other-overlays) for the row under the cursor.
   - A moved Folder keeps the cursor and the Browse selection in its new place, and its new parent expands if it was collapsed. When a Tag held the Browse selection, the Folders take it back.
@@ -166,6 +167,9 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - **A save over a Snippet that another TuiSnip changed** is refused. A confirmation titled "Changed elsewhere" asks "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]", default No.
   - Yes closes the overlay, discards the edits, selects the Snippet in the list, and shows the stored version in the Snippet pane. `e` edits it again.
   - No keeps the overlay open with the edits. Every save stays refused, asking again, until the Snippet is reloaded.
+- **A save whose Snippet or Folder is gone**, moved to the Trash or deleted in another TuiSnip, asks in a confirmation titled "Gone elsewhere", default No. An edit asks "This Snippet was moved to the Trash or deleted in another TuiSnip. Save your changes as a new Snippet at the Root? [y/N]". A New Snippet or Capture into a Folder that is gone asks `Folder "docker" was moved to the Trash or deleted in another TuiSnip. Save the Snippet at the Root instead? [y/N]`.
+  - Yes saves everything the overlay holds as a new Snippet at the Root, closes the overlay, makes the Root the Browse selection with the cursor on the new Snippet, and says `Saved "Prune everything" as a new Snippet at the Root`.
+  - No keeps the overlay open with the edits. The next save asks again.
 - `ctrl+e` opens the Shown Fragment in the external editor from any field. The temp file is named from its Language.
 
 ### Tabs in Content
@@ -208,7 +212,7 @@ Typing filters the list, ignoring case and the space around the filter: the entr
 
 - The **Language picker** shows the curated `languages` list when config sets one, in the config's order, and `ctrl+a` switches to every Language and back, keeping the filter. Every Language is listed by name, ignoring case. The picker opens on the current Language, and says "No Language matches." when the filter matches none. From the edit overlay it is titled "Pick a Language", and the picked Language is an unsaved change.
 - The **Folder picker** is titled "Move", the Snippet's title or the Folder's name, and "to". It lists the Root and every Folder by its path, and opens on the Folder the Snippet or Folder is in. It greys out a moving Folder's own subtree, which `enter` doesn't pick.
-- **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written.
+- **Confirmations** (default No) open over whatever is showing. A confirmation shows the user's configured keys: the first `yes` key and the first `no` key in brackets, `[y/N]` by default. The No key is upper-cased to mark it as the default only when it is one printable character, so a first No key of `shift+tab` shows as written. A question wider than the screen wraps onto more rows.
 - Overlays stack: the Tag editor, the Language picker, and a confirmation can open over the edit overlay.
 
 ## Help
@@ -276,7 +280,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `folders` | open · new Folder · rename · delete · move · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
 | `snippet_list` | Copy · edit · external editor · new · move · duplicate · delete · sort · zoom · search · help |
-| `trash` | Copy · restore · zoom · search · help |
+| `trash` | Copy · restore · delete permanently · empty Trash · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · next Fragment · previous Fragment · zoom · search · help |
 | `snippet_pane`, on a trashed Folder | zoom · search · help |
 | `editor` | save · cancel · field · Tags · Language · external editor · next Fragment · previous Fragment · add Fragment · remove Fragment · move Fragment left · move Fragment right |

@@ -6,8 +6,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 )
 
 const capturedContent = "docker system prune\n"
@@ -71,6 +74,53 @@ func TestCapturing_saveInDestinationLanguage(t *testing.T) {
 
 	want := outcome.SaveRequested{Input: inputIn("Prune", "", "Go", capturedContent)}
 	assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+}
+
+func TestCapturing_folderGoneElsewhere(t *testing.T) {
+	t.Parallel()
+
+	t.Run("offers to save at the Root when the Folder captured into is gone", func(t *testing.T) {
+		t.Parallel()
+
+		screen := capturedIntoGoneFolder(t)
+
+		assert.Contains(t, screen.Screen(), goneElsewhereTitle)
+		assert.Contains(t, screen.Screen(), folderGoneQuestion)
+		assert.Len(t, screen.Outcomes(), 1, "only the save request, no failure")
+	})
+
+	t.Run("asks to save the captured content at the Root in its Language on yes", func(t *testing.T) {
+		t.Parallel()
+
+		screen := capturedIntoGoneFolder(t)
+		screen.Press(keypress.Letter('y'))
+
+		atRoot := inputIn("Prune", "", "Go", capturedContent)
+		atRoot.FolderID = domain.FolderID{}
+		assert.Equal(t, outcome.Outcome(outcome.SaveRequested{Input: atRoot}), screen.Outcomes()[1])
+	})
+
+	t.Run("keeps the capture open on no", func(t *testing.T) {
+		t.Parallel()
+
+		screen := capturedIntoGoneFolder(t)
+		screen.Press(keypress.Letter('n'))
+
+		assert.Contains(t, screen.Screen(), unsavedTitle)
+		assert.NotContains(t, screen.Screen(), folderGoneQuestion)
+		assert.Len(t, screen.Outcomes(), 1)
+	})
+}
+
+func capturedIntoGoneFolder(t *testing.T) *overlaytest.Driver {
+	t.Helper()
+
+	screen := capturingIn(t, destinationInGo(t), capturedContent)
+	screen.Press(keypress.Typed("Prune")...)
+	screen.Press(save())
+	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errFolderGone})
+
+	return screen
 }
 
 func TestCapturing_cancel(t *testing.T) {

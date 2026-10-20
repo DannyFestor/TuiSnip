@@ -6,7 +6,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/trash"
-	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
 const (
@@ -29,12 +28,6 @@ func (s Screen) trashPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	return outcome.Stay(s), false
 }
 
-func (s Screen) savedFromTrash(saved outcome.SnippetSaved) outcome.Step {
-	next, expanded := s.selectingFolder(domain.FolderID{})
-
-	return outcome.Stay(next).Passing(expanded...).Passing(saved)
-}
-
 func (s Screen) trashListPressed(trashItem trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
 	switch {
 	case s.trashKeys.Matches(msg, binding.Copy):
@@ -45,9 +38,23 @@ func (s Screen) trashListPressed(trashItem trash.Item, msg tea.KeyPressMsg) (out
 			Name:  trashItem.Name(),
 			Path:  trashItem.Path,
 		}), true
+	case s.trashKeys.Matches(msg, binding.Delete):
+		return s.asking(deletePermanentlyQuestion(trashItem), outcome.TrashDeleteRequested{
+			Input: trash.DeletePermanentlyInput{Item: trashItem.ID()},
+			Name:  trashItem.Name(),
+		}), true
+	case s.trashKeys.Matches(msg, binding.Empty):
+		return s.emptyTrashAsked(), true
 	}
 
 	return outcome.Stay(s), false
+}
+
+func (s Screen) emptyTrashAsked() outcome.Step {
+	return s.asking(
+		emptyTrashQuestion(s.panes.trash.TrashItems()),
+		outcome.TrashEmptyRequested{Input: trash.EmptyInput{Items: s.panes.trash.TrashItemIDs()}},
+	)
 }
 
 func (s Screen) trashPanePressed(trashItem trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {

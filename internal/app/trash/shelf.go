@@ -9,7 +9,7 @@ import (
 
 type shelf struct {
 	trash           domain.Trash
-	folders         map[domain.FolderID]domain.Folder
+	paths           domain.FolderPaths
 	subfolders      map[domain.FolderID][]domain.Folder
 	snippetsFiled   map[domain.FolderID][]domain.Snippet
 	trashedFolders  []domain.Folder
@@ -19,7 +19,7 @@ type shelf struct {
 func shelfOf(loaded domain.Library) shelf {
 	stocked := shelf{
 		trash:           loaded.Trash,
-		folders:         make(map[domain.FolderID]domain.Folder, len(loaded.Folders)),
+		paths:           domain.NewFolderPaths(loaded.Folders, loaded.Trash),
 		subfolders:      make(map[domain.FolderID][]domain.Folder, len(loaded.Folders)),
 		snippetsFiled:   make(map[domain.FolderID][]domain.Snippet, len(loaded.Snippets)),
 		trashedFolders:  nil,
@@ -38,8 +38,6 @@ func shelfOf(loaded domain.Library) shelf {
 }
 
 func (s shelf) withFolder(folder domain.Folder) shelf {
-	s.folders[folder.ID()] = folder
-
 	if _, trashed := s.trash.Folders[folder.ID()]; trashed {
 		s.trashedFolders = append(s.trashedFolders, folder)
 
@@ -147,18 +145,7 @@ func (s shelf) pathOf(folderID domain.FolderID, mark domain.TrashMark) []string 
 		return mark.FormerPath().Strings()
 	}
 
-	var names []string
-
-	visited := make(map[domain.FolderID]bool)
-
-	for id := folderID; !id.IsNil() && !visited[id]; id = s.folders[id].ParentID() {
-		visited[id] = true
-		names = append(names, s.folders[id].Name().String())
-	}
-
-	slices.Reverse(names)
-
-	return names
+	return s.paths.To(folderID)
 }
 
 func (o Outline) subfolderCount() int {

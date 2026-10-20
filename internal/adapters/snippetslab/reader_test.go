@@ -101,14 +101,13 @@ func TestReader_Read(t *testing.T) {
 		got, _ := read(t, path)
 
 		require.Len(t, got.Snippets, 2)
-		live, deleted := got.Snippets[0], got.Snippets[1]
+		deleted := got.Snippets[1]
 		assert.Equal(t, "deleted", deleted.Title().String())
 		assert.Equal(t, map[domain.SnippetID]domain.TrashMark{
 			deleted.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
 				Item: deleted, DeletedAt: time.Date(2024, time.June, 1, 0, 0, 0, 0, time.UTC),
 			}),
 		}, got.Trash.Snippets)
-		assert.NotContains(t, got.Trash.Snippets, live.ID())
 		assert.Empty(t, got.Trash.Folders)
 	})
 

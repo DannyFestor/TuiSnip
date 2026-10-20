@@ -86,7 +86,7 @@ func TestImportFromSnippetsLabBuildsTheLibraryAndReportsWhatItLeftBehind(t *test
 	assert.Equal(t, []fragmentView{{title: "", language: "plaintext", content: "%%\n"}}, fragmentViews(yacc))
 }
 
-func TestImportFromSnippetsLabPutsItsTrashInTheTrashAndRestoreReturnsEachToItsFolder(t *testing.T) {
+func TestImportFromSnippetsLabPutsItsTrashInTheTrashAndRestoresEachToItsFolderOrTheRoot(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)

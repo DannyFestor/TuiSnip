@@ -179,11 +179,11 @@ func editingStoredStyled(
 ) *overlaytest.Driver {
 	tb.Helper()
 
-	opened, _ := editoverlay.Editing(
+	opened, cmd := editoverlay.Editing(
 		keys, styles, editoverlay.Options{}, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
 	)
 
-	return overlaytest.Open(tb, screenSize(), opened)
+	return overlaytest.OpenWith(tb, screenSize(), opened, cmd)
 }
 
 func browsed() browseselection.Selection {
@@ -193,6 +193,12 @@ func browsed() browseselection.Selection {
 func storedSnippet(tb testing.TB, content string) domain.Snippet {
 	tb.Helper()
 
+	return storedSnippetIn(tb, "Go", content)
+}
+
+func storedSnippetIn(tb testing.TB, language, content string) domain.Snippet {
+	tb.Helper()
+
 	ids := testkit.NewSequentialIDs()
 
 	return testkit.Snippet(tb, testkit.SnippetSpec{
@@ -200,7 +206,7 @@ func storedSnippet(tb testing.TB, content string) domain.Snippet {
 		Title:       "Prune",
 		Description: "Reclaim",
 		FolderID:    ids.NewFolderID(),
-		Fragments:   []testkit.FragmentSpec{{Language: "Go", Content: content}},
+		Fragments:   []testkit.FragmentSpec{{Language: language, Content: content}},
 		UpdatedAt:   time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
 	})
 }
@@ -254,14 +260,6 @@ func textOfSize(size int) string {
 	const line = "\tfmt.Println(\"a line of typical code, indented by a tab\")\n"
 
 	return strings.Repeat(line, size/len(line)) + line[:size%len(line)]
-}
-
-func shiftLeft() tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
-}
-
-func shiftTab() tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 }
 
 func save() tea.KeyPressMsg {

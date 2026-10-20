@@ -98,6 +98,7 @@ type Model struct {
 	MaxContentHeight int
 
 	styles           Styles
+	highlighter      LineHighlighter
 	useVirtualCursor bool
 	promptFunc       func(PromptInfo) string
 	promptWidth      int
@@ -143,6 +144,7 @@ func New() Model {
 		Prompt:               lipgloss.ThickBorder().Left + " ",
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
+		highlighter:          nil,
 		cache:                memoization.NewMemoCache[line, []wrappedLine](wrapCacheCapacity),
 		rowWraps:             &rowWraps{mutex: sync.Mutex{}, rows: nil},
 		EndOfBufferCharacter: ' ',
@@ -186,6 +188,10 @@ func (m *Model) Styles() Styles {
 func (m *Model) SetStyles(s Styles) {
 	m.styles = s
 	m.updateVirtualCursorStyle()
+}
+
+func (m *Model) SetHighlighter(highlighter LineHighlighter) {
+	m.highlighter = highlighter
 }
 
 func (m *Model) VirtualCursor() bool {
@@ -547,6 +553,14 @@ func (m *Model) Cursor() *tea.Cursor {
 	c.Shape = m.styles.Cursor.Shape
 
 	return c
+}
+
+func (m *Model) coloursOf(row int, line []rune) []lipgloss.Range {
+	if m.highlighter == nil {
+		return nil
+	}
+
+	return m.highlighter.Highlight(row, line)
 }
 
 func (m *Model) updateVirtualCursorStyle() {
@@ -1545,14 +1559,6 @@ type contentRenderer struct {
 	displayLine int
 }
 
-type wrappedSegment struct {
-	row        int
-	index      int
-	base       int
-	lineLength int
-	wrapped    wrappedLine
-}
-
 func (v *contentRenderer) writeLine(row int, line []rune) {
 	wrappedLines := v.model.wrappedRow(row)
 	if !v.drawn.overlaps(v.displayLine, len(wrappedLines)) {
@@ -1570,9 +1576,17 @@ func (v *contentRenderer) writeLine(row int, line []rune) {
 	// of the current wrapped segment. It is what maps a segment back onto
 	// selection coordinates.
 	wrappedBase := 0
+	colours := v.model.coloursOf(row, line)
 
 	for index, wrapped := range wrappedLines {
-		segment := wrappedSegment{row: row, index: index, base: wrappedBase, lineLength: len(line), wrapped: wrapped}
+		segment := wrappedSegment{
+			row:        row,
+			index:      index,
+			base:       wrappedBase,
+			lineLength: len(line),
+			wrapped:    wrapped,
+			colours:    colours,
+		}
 		wrappedBase += v.writeSegment(segment, style)
 	}
 }
@@ -1619,10 +1633,9 @@ func (v *contentRenderer) writeSegmentText(segment wrappedSegment, style lipglos
 	// inline cursor: during a drag the highlight is the meaningful
 	// affordance, and mixing the two would double-style the same cell.
 	if span, selected := v.model.selectionSpanFor(segment.row, segment.base, len(segment.wrapped.runes)); selected {
-		drawn := segment.wrapped.split(span.from, span.to)
-		v.out.WriteString(style.Render(drawn.before))
-		v.out.WriteString(v.styles.computedSelection().Render(drawn.inside))
-		v.out.WriteString(style.Render(drawn.after))
+		v.out.WriteString(segment.drawn(0, span.from, style))
+		v.out.WriteString(v.styles.computedSelection().Render(segment.wrapped.drawnBetween(span.from, span.to)))
+		v.out.WriteString(segment.drawn(span.to, len(segment.wrapped.runes), style))
 
 		return
 	}
@@ -1633,15 +1646,16 @@ func (v *contentRenderer) writeSegmentText(segment wrappedSegment, style lipglos
 		return
 	}
 
-	v.out.WriteString(style.Render(segment.wrapped.drawn()))
+	v.out.WriteString(segment.drawn(0, len(segment.wrapped.runes), style))
 }
 
 func (v *contentRenderer) writeCursorSegment(segment wrappedSegment, style lipgloss.Style) {
 	model := v.model
-	cursorAt := v.lineInfo.ColumnOffset
-	drawn := segment.wrapped.split(cursorAt, min(cursorAt+1, len(segment.wrapped.runes)))
+	length := len(segment.wrapped.runes)
+	cursorAt := min(v.lineInfo.ColumnOffset, length)
+	afterCursor := min(cursorAt+1, length)
 
-	v.out.WriteString(style.Render(drawn.before))
+	v.out.WriteString(segment.drawn(0, cursorAt, style))
 
 	if model.col >= segment.lineLength && v.lineInfo.CharOffset >= model.width {
 		model.virtualCursor.SetChar(" ")
@@ -1650,9 +1664,9 @@ func (v *contentRenderer) writeCursorSegment(segment wrappedSegment, style lipgl
 		return
 	}
 
-	model.virtualCursor.SetChar(drawn.inside)
+	model.virtualCursor.SetChar(segment.wrapped.drawnBetween(cursorAt, afterCursor))
 	v.out.WriteString(style.Render(model.virtualCursor.View()))
-	v.out.WriteString(style.Render(drawn.after))
+	v.out.WriteString(segment.drawn(afterCursor, length, style))
 }
 
 func (v *contentRenderer) writeEndOfBuffer() {

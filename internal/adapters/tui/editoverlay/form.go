@@ -140,6 +140,12 @@ func (f form) withLanguage(language value.Language) form {
 	return f
 }
 
+func (f form) withColours(colours textarea.LineHighlighter) form {
+	f.content.SetHighlighter(colours)
+
+	return f
+}
+
 func (f form) withTags(chosen tagchoice.Chosen) form {
 	f.tags = chosen
 

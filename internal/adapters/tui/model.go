@@ -229,7 +229,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BackgroundColorMsg:
 		return m.restyledOn(msg)
 	case tea.WindowSizeMsg, tea.PasteMsg,
-		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
+		editoverlay.SaveFinished, editoverlay.HighlightDue, editoverlay.ContentHighlighted, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
 		mainscreen.TreeChanged, mainscreen.TrashLoaded, mainscreen.TagsLoaded,
 		mainscreen.TagCreated, mainscreen.TagsChanged, mainscreen.TagDeletePreviewed:
 		return m.overlaysUpdatedSharingArrivals(msg)

@@ -137,9 +137,13 @@ func (r *TrashRepository) Empty(ctx context.Context, items domain.TrashItemIDs) 
 		}
 
 		after, countErr := countRows(ctx, queries)
+		if countErr != nil {
+			return countErr
+		}
+
 		emptied = before.emptiedTo(after)
 
-		return countErr
+		return nil
 	})
 	if err != nil {
 		return domain.TrashEmptied{}, fmt.Errorf("sqlite.TrashRepository.Empty: %w", err)

@@ -16,7 +16,6 @@ const (
 	emptyTrashTitle        = "Empty Trash"
 	emptyTrashFormat       = "Permanently delete %s in the Trash? This cannot be undone."
 	countsJoint            = " and "
-	folderNoun             = "Folder"
 	subfolderNoun          = "subfolder"
 	snippetNoun            = "Snippet"
 )
@@ -58,12 +57,7 @@ func tallyOf(trashItems []trash.Item) trashTally {
 }
 
 func (t trashTally) String() string {
-	counts := look.NonZeroCounts(
-		look.Tally{Count: t.folders, Noun: folderNoun},
-		look.Tally{Count: t.snippets, Noun: snippetNoun},
-	)
-
-	return strings.Join(counts, countsJoint)
+	return strings.Join(look.FolderAndSnippetCounts(t.folders, t.snippets), countsJoint)
 }
 
 func (t trashTally) with(trashItem trash.Item) trashTally {

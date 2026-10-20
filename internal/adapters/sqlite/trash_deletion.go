@@ -42,7 +42,7 @@ func deleteFolderTrashItem(ctx context.Context, queries *sqlcgen.Queries, id dom
 		return err
 	}
 
-	_, err = queries.DeleteFolderTrashItem(ctx, columnID(id))
+	err = queries.DeleteFolderTrashItem(ctx, columnID(id))
 	if err != nil {
 		return fmt.Errorf("delete folder trash item: %w", err)
 	}
@@ -54,9 +54,9 @@ func detachTrashItemsIn(ctx context.Context, queries *sqlcgen.Queries, tree fold
 	reached := tree.cascadeFrom(id)
 
 	for _, folder := range reached.trashFolders {
-		err := detachFrom(tree, folder.parentID, func(formerPath string) error {
+		err := detachFrom(tree, folder.ParentID(), func(formerPath string) error {
 			return queries.DetachFolderTrashItem(
-				ctx, sqlcgen.DetachFolderTrashItemParams{FormerParentPath: formerPath, ID: columnID(folder.id)},
+				ctx, sqlcgen.DetachFolderTrashItemParams{FormerParentPath: formerPath, ID: columnID(folder.ID())},
 			)
 		})
 		if err != nil {
@@ -95,12 +95,7 @@ func detachSnippetTrashItemsIn(
 }
 
 func detachFrom(tree folderTree, folderID domain.FolderID, detach func(formerPath string) error) error {
-	place, err := tree.placeOf(folderID)
-	if err != nil {
-		return err
-	}
-
-	formerPath, err := formerPathColumn(place)
+	formerPath, err := formerPathColumn(tree.paths.To(folderID))
 	if err != nil {
 		return err
 	}

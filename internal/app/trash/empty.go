@@ -30,18 +30,18 @@ func (e *Empty) Run(ctx context.Context, input EmptyInput) (domain.TrashEmptied,
 }
 
 func idsByKind(items []ItemID) domain.TrashItemIDs {
-	var sorted domain.TrashItemIDs
+	var byKind domain.TrashItemIDs
 
 	for _, item := range items {
 		if snippetID, ok := item.Snippet(); ok {
-			sorted.Snippets = append(sorted.Snippets, snippetID)
+			byKind.Snippets = append(byKind.Snippets, snippetID)
 
 			continue
 		}
 
 		folderID, _ := item.Folder()
-		sorted.Folders = append(sorted.Folders, folderID)
+		byKind.Folders = append(byKind.Folders, folderID)
 	}
 
-	return sorted
+	return byKind
 }

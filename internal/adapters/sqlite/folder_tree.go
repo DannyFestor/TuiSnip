@@ -3,28 +3,20 @@ package sqlite
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-type folderNode struct {
-	id               domain.FolderID
-	parentID         domain.FolderID
-	name             string
-	formerParentPath string
-	trashed          bool
-}
-
 type folderTree struct {
-	nodes    map[domain.FolderID]folderNode
-	children map[domain.FolderID][]folderNode
+	children map[domain.FolderID][]domain.Folder
+	trash    domain.Trash
+	paths    domain.FolderPaths
 }
 
 type cascade struct {
 	folders      map[domain.FolderID]bool
-	trashFolders []folderNode
+	trashFolders []domain.Folder
 }
 
 func loadFolderTree(ctx context.Context, queries *sqlcgen.Queries) (folderTree, error) {
@@ -33,32 +25,37 @@ func loadFolderTree(ctx context.Context, queries *sqlcgen.Queries) (folderTree, 
 		return folderTree{}, fmt.Errorf("list folders: %w", err)
 	}
 
-	tree := folderTree{
-		nodes:    make(map[domain.FolderID]folderNode, len(rows)),
-		children: make(map[domain.FolderID][]folderNode, len(rows)),
-	}
+	entries := make([]domain.LibraryEntry[domain.Folder], 0, len(rows))
 
 	for index := range rows {
-		node := folderNodeOf(rows[index])
-		tree.nodes[node.id] = node
-		tree.children[node.parentID] = append(tree.children[node.parentID], node)
+		entry, rebuildErr := folderRebuilder().rebuild(rows[index])
+		if rebuildErr != nil {
+			return folderTree{}, rebuildErr
+		}
+
+		entries = append(entries, entry)
 	}
 
-	return tree, nil
+	return folderTreeOf(domain.NewLibrary(entries, nil, nil)), nil
 }
 
-func folderNodeOf(row sqlcgen.Folder) folderNode {
-	return folderNode{
-		id:               entityID[domain.FolderID](row.ID),
-		parentID:         folderFromColumn(row.ParentID),
-		name:             row.Name,
-		formerParentPath: row.FormerParentPath,
-		trashed:          row.DeletedAt != nil,
+func folderTreeOf(folders domain.Library) folderTree {
+	children := make(map[domain.FolderID][]domain.Folder, len(folders.Folders))
+	for _, folder := range folders.Folders {
+		children[folder.ParentID()] = append(children[folder.ParentID()], folder)
+	}
+
+	return folderTree{
+		children: children,
+		trash:    folders.Trash,
+		paths:    domain.NewFolderPaths(folders.Folders, folders.Trash),
 	}
 }
 
 func (t folderTree) isTrashItem(id domain.FolderID) bool {
-	return t.nodes[id].trashed
+	_, trashed := t.trash.Folders[id]
+
+	return trashed
 }
 
 func (t folderTree) cascadeFrom(id domain.FolderID) cascade {
@@ -71,48 +68,14 @@ func (t folderTree) cascadeFrom(id domain.FolderID) cascade {
 
 		for _, child := range t.children[parentID] {
 			switch {
-			case child.trashed:
+			case t.isTrashItem(child.ID()):
 				reached.trashFolders = append(reached.trashFolders, child)
-			case !reached.folders[child.id]:
-				reached.folders[child.id] = true
-				pending = append(pending, child.id)
+			case !reached.folders[child.ID()]:
+				reached.folders[child.ID()] = true
+				pending = append(pending, child.ID())
 			}
 		}
 	}
 
 	return reached
-}
-
-func (t folderTree) placeOf(id domain.FolderID) ([]string, error) {
-	lineage := t.lineageOf(id)
-	if len(lineage) == 0 {
-		return []string{}, nil
-	}
-
-	formerPath, err := formerPathFromColumn(lineage[len(lineage)-1].formerParentPath)
-	if err != nil {
-		return nil, corrupt(err)
-	}
-
-	names := formerPath.Strings()
-	for _, node := range slices.Backward(lineage) {
-		names = append(names, node.name)
-	}
-
-	return names, nil
-}
-
-func (t folderTree) lineageOf(id domain.FolderID) []folderNode {
-	var lineage []folderNode
-
-	visited := make(map[domain.FolderID]bool)
-
-	for node, known := t.nodes[id]; known && !visited[id]; node, known = t.nodes[id] {
-		visited[id] = true
-
-		lineage = append(lineage, node)
-		id = node.parentID
-	}
-
-	return lineage
 }

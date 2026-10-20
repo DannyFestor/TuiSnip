@@ -33,17 +33,14 @@ func (q *Queries) CountFolders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const deleteFolderTrashItem = `-- name: DeleteFolderTrashItem :execrows
+const deleteFolderTrashItem = `-- name: DeleteFolderTrashItem :exec
 DELETE FROM folders
 WHERE id = ? AND deleted_at IS NOT NULL
 `
 
-func (q *Queries) DeleteFolderTrashItem(ctx context.Context, id sqltype.ID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteFolderTrashItem, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+func (q *Queries) DeleteFolderTrashItem(ctx context.Context, id sqltype.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteFolderTrashItem, id)
+	return err
 }
 
 const detachFolderTrashItem = `-- name: DetachFolderTrashItem :exec

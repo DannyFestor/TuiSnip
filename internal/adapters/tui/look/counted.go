@@ -2,10 +2,10 @@ package look
 
 import "fmt"
 
-type Tally struct {
-	Count int
-	Noun  string
-}
+const (
+	folderNoun  = "Folder"
+	snippetNoun = "Snippet"
+)
 
 func Counted(count int, noun string) string {
 	if count == 1 {
@@ -15,13 +15,15 @@ func Counted(count int, noun string) string {
 	return fmt.Sprintf("%d %ss", count, noun)
 }
 
-func NonZeroCounts(tallies ...Tally) []string {
+func FolderAndSnippetCounts(folders, snippets int) []string {
 	var counts []string
 
-	for _, tally := range tallies {
-		if tally.Count > 0 {
-			counts = append(counts, Counted(tally.Count, tally.Noun))
-		}
+	if folders > 0 {
+		counts = append(counts, Counted(folders, folderNoun))
+	}
+
+	if snippets > 0 {
+		counts = append(counts, Counted(snippets, snippetNoun))
 	}
 
 	return counts

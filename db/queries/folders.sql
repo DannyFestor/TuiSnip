@@ -67,6 +67,6 @@ UPDATE folders
 SET parent_id = NULL, former_parent_path = ?
 WHERE id = ? AND deleted_at IS NOT NULL;
 
--- name: DeleteFolderTrashItem :execrows
+-- name: DeleteFolderTrashItem :exec
 DELETE FROM folders
 WHERE id = ? AND deleted_at IS NOT NULL;

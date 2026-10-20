@@ -11,6 +11,7 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 )
 
 var errDatabaseLocked = errors.New("database is locked")
@@ -92,6 +93,24 @@ func TestList_Run(t *testing.T) {
 
 		require.Len(t, got, 1)
 		assert.Equal(t, []string{"docker", "compose"}, got[0].Path)
+	})
+
+	t.Run("passes a detached Trash Folder's former path on to a Trash item inside it", func(t *testing.T) {
+		t.Parallel()
+
+		shelved := newShelved(t)
+		compose := shelved.folder(t, "compose", domain.FolderID{})
+		shelved.library.Trash.Folders[compose.ID()] = testkit.TrashMark(t, testkit.TrashMarkSpec{
+			Item: compose, DeletedAt: deletedAt(), FormerPath: []string{"ops", "docker"},
+		})
+		inside := shelved.snippet(t, "Compose up", compose.ID())
+		shelved.trashSnippet(t, inside, deletedAt().Add(time.Hour), nil)
+
+		got := listed(t, shelved.library)
+
+		require.Len(t, got, 2)
+		assert.Equal(t, []string{"ops", "docker", "compose"}, got[0].Path)
+		assert.Equal(t, []string{"ops", "docker"}, got[1].Path)
 	})
 
 	t.Run("counts and outlines a Folder's subtree without its separate Trash items", func(t *testing.T) {

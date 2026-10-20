@@ -69,10 +69,7 @@ func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Re
 }
 
 func emptiedText(emptied domain.TrashEmptied) string {
-	counts := look.NonZeroCounts(
-		look.Tally{Count: emptied.Folders, Noun: folderNoun},
-		look.Tally{Count: emptied.Snippets, Noun: snippetNoun},
-	)
+	counts := look.FolderAndSnippetCounts(emptied.Folders, emptied.Snippets)
 	if len(counts) == 0 {
 		return emptiedTrashText
 	}

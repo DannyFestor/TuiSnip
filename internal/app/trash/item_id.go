@@ -7,33 +7,34 @@ import (
 )
 
 type ItemID struct {
+	kind      ItemKind
 	snippetID domain.SnippetID
 	folderID  domain.FolderID
 }
 
 func SnippetItem(id domain.SnippetID) ItemID {
-	return ItemID{snippetID: id, folderID: domain.FolderID{}}
+	return ItemID{kind: ItemKindSnippet, snippetID: id, folderID: domain.FolderID{}}
 }
 
 func FolderItem(id domain.FolderID) ItemID {
-	return ItemID{snippetID: domain.SnippetID{}, folderID: id}
+	return ItemID{kind: ItemKindFolder, snippetID: domain.SnippetID{}, folderID: id}
+}
+
+func (i ItemID) Kind() ItemKind {
+	return i.kind
 }
 
 func (i ItemID) Snippet() (domain.SnippetID, bool) {
-	return i.snippetID, !i.snippetID.IsNil()
+	return i.snippetID, i.kind == ItemKindSnippet
 }
 
 func (i ItemID) Folder() (domain.FolderID, bool) {
-	return i.folderID, !i.folderID.IsNil()
-}
-
-func (i ItemID) IsNil() bool {
-	return i.snippetID.IsNil() && i.folderID.IsNil()
+	return i.folderID, i.kind == ItemKindFolder
 }
 
 func (i ItemID) String() string {
-	if id, ok := i.Folder(); ok {
-		return id.String()
+	if i.kind == ItemKindFolder {
+		return i.folderID.String()
 	}
 
 	return i.snippetID.String()

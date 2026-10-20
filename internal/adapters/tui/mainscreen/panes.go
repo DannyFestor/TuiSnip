@@ -3,7 +3,6 @@ package mainscreen
 import (
 	"time"
 
-	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -31,7 +30,6 @@ type panes struct {
 	trash      trashlist.List
 	preview    snippetpane.Pane
 	outline    folderoutline.Pane
-	browsed    browsed
 	styles     look.Styles
 	paths      folderpath.Paths
 	orderLabel string
@@ -45,7 +43,6 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, co
 		trash:      trashlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
 		outline:    folderoutline.New(keys, styles, location),
-		browsed:    browsedSnippets,
 		styles:     styles,
 		paths:      folderpath.Paths{},
 		orderLabel: "",
@@ -62,17 +59,10 @@ func (p panes) naming() bool {
 	return p.folders.Naming() || p.tags.Naming()
 }
 
-func (p panes) showing(shown browsed) panes {
-	next := p
-	next.browsed = shown
-
-	return next
-}
-
-func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
+func (p panes) updated(shown browsed, focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
 	switch focus {
 	case paneList, paneSnippet:
-		return p.browsed.updated(p, focus, msg)
+		return shown.updated(p, focus, msg)
 	case paneFolders:
 		folders, outcomes, cmd := p.folders.Update(msg)
 		p.folders = folders
@@ -105,14 +95,14 @@ func (p panes) snippetsUpdated(focus pane, msg tea.Msg) (panes, []outcome.Outcom
 	return p, outcomes, cmd
 }
 
-func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
+func (p panes) hasRowAt(shown browsed, of pane, cell pointer.Point) bool {
 	switch of {
 	case paneFolders:
 		return p.folders.HasRowAt(cell)
 	case paneTags:
 		return p.tags.HasRowAt(cell)
 	case paneList:
-		return p.browsed.listHasRowAt(p, cell)
+		return shown.listHasRowAt(p, cell)
 	case paneSnippet:
 	}
 
@@ -248,14 +238,14 @@ func (p panes) previewSelected() panes {
 	return p
 }
 
-func (p panes) body(framed pane, frame look.FrameStyle) string {
+func (p panes) body(shown browsed, framed pane, frame look.FrameStyle) string {
 	switch framed {
 	case paneFolders:
 		return p.folders.View(frame)
 	case paneTags:
 		return p.tags.View(frame)
 	case paneList, paneSnippet:
-		return p.browsed.body(p, framed, frame)
+		return shown.body(p, framed, frame)
 	}
 
 	return ""
@@ -267,8 +257,4 @@ func (p panes) snippetsBody(framed pane, frame look.FrameStyle) string {
 	}
 
 	return p.preview.View()
-}
-
-func (p panes) keyMaps() map[pane]help.KeyMap {
-	return p.browsed.keyMaps(p)
 }

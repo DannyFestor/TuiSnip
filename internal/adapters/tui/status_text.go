@@ -34,8 +34,7 @@ const (
 	restoredToRootFormat = "Restored %q to the Root"
 	homeInTrashFormat    = "; its %s is in the Trash"
 	homeDeletedFormat    = "; its %s was deleted"
-	snippetHomeNoun      = "Folder"
-	folderHomeNoun       = "parent Folder"
+	parentPrefix         = "parent "
 )
 
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
@@ -63,11 +62,11 @@ func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Re
 }
 
 func homeNoun(restored trash.ItemID) string {
-	if _, isFolder := restored.Folder(); isFolder {
-		return folderHomeNoun
+	if restored.Kind() == trash.ItemKindFolder {
+		return parentPrefix + folderNoun
 	}
 
-	return snippetHomeNoun
+	return folderNoun
 }
 
 func deliveryText(delivery domain.CopyDelivery) (string, error) {

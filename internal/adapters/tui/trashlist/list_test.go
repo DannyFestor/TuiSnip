@@ -16,6 +16,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/screencell"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -64,7 +65,9 @@ func TestList_Update(t *testing.T) {
 
 		list := listOf(t, sampleItems(t)...)
 
-		list, _, _ = list.Update(pointer.Clicked{At: pointer.Point{X: 0, Y: 1}, Double: false})
+		docker := screencell.Find(t, strings.Join(rows(list), "\n"), "docker")
+
+		list, _, _ = list.Update(pointer.Clicked{At: docker, Double: false})
 
 		assert.Equal(t, "docker", selectedName(t, list))
 	})

@@ -707,13 +707,13 @@ func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
 	return m.copyThrough(m.copier, requested, goneItem(snippetNoun, requested.Title))
 }
 
-func (m Model) copyThrough(copier SnippetCopier, requested outcome.CopyRequested, gone gone) tea.Cmd {
+func (m Model) copyThrough(copier SnippetCopier, requested outcome.CopyRequested, whenGone gone) tea.Cmd {
 	input := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
 
 	return func() tea.Msg {
 		result, err := copier.Run(m.ctx, input)
 		if err != nil {
-			return itemActionFailedMsg{operation: operationCopy, err: err, gone: gone}
+			return itemActionFailedMsg{operation: operationCopy, err: err, gone: whenGone}
 		}
 
 		return copyFinishedMsg{result: result}

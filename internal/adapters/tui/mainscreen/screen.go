@@ -121,11 +121,11 @@ func (s Screen) ShortHelp() []key.Binding {
 		return nil
 	}
 
-	return s.shown().keyMaps()[s.focus].ShortHelp()
+	return s.browsed().keyMaps(s.panes)[s.focus].ShortHelp()
 }
 
 func (s Screen) FullHelp() [][]key.Binding {
-	return append(s.global.FullHelp(), s.shown().keyMaps()[s.focus].FullHelp()...)
+	return append(s.global.FullHelp(), s.browsed().keyMaps(s.panes)[s.focus].FullHelp()...)
 }
 
 func (s Screen) loaded(msg tea.Msg) outcome.Step {
@@ -302,8 +302,8 @@ func (s Screen) clicked(click pointer.Clicked) outcome.Step {
 		return outcome.Stay(s)
 	}
 
-	onRow := s.shown().hasRowAt(target, inner)
-	updated, outcomes, cmd := s.shown().updated(target, pointer.Clicked{At: inner, Double: click.Double})
+	onRow := s.panes.hasRowAt(s.browsed(), target, inner)
+	updated, outcomes, cmd := s.paneUpdated(target, pointer.Clicked{At: inner, Double: click.Double})
 	next := s.withPanes(updated).focusedOn(target)
 
 	if onRow {
@@ -327,7 +327,7 @@ func (s Screen) wheeled(wheel pointer.Wheeled) outcome.Step {
 		return outcome.Stay(s)
 	}
 
-	updated, outcomes, cmd := s.shown().updated(target, pointer.Wheeled{At: inner, Lines: wheel.Lines})
+	updated, outcomes, cmd := s.paneUpdated(target, pointer.Wheeled{At: inner, Lines: wheel.Lines})
 
 	return outcome.Stay(s.withPanes(updated)).Passing(outcomes...).Running(cmd)
 }
@@ -368,8 +368,8 @@ func (s Screen) browsed() browsed {
 	return browsedBy(s.selection())
 }
 
-func (s Screen) shown() panes {
-	return s.panes.showing(s.browsed())
+func (s Screen) paneUpdated(target pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
+	return s.panes.updated(s.browsed(), target, msg)
 }
 
 func (s Screen) destination() editoverlay.Destination {
@@ -490,7 +490,7 @@ func (s Screen) captured(content string) outcome.Step {
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {
-	updated, outcomes, cmd := s.shown().updated(s.focus, msg)
+	updated, outcomes, cmd := s.paneUpdated(s.focus, msg)
 	next := s.withPanes(updated).holdingAfter(outcomes).arranged()
 
 	return outcome.Stay(next).Passing(outcomes...).Running(cmd)
@@ -613,7 +613,7 @@ func (s Screen) paneFrame(framed pane) string {
 	frame := s.paneStyle(framed)
 	title := framed.title(s.browsed().listTitle(s.panes, s.selection()))
 
-	return look.Frame(frame, title, s.shown().body(framed, frame), s.layout.of(framed))
+	return look.Frame(frame, title, s.panes.body(s.browsed(), framed, frame), s.layout.of(framed))
 }
 
 func (s Screen) paneStyle(p pane) look.FrameStyle {

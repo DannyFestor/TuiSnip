@@ -26,7 +26,10 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 - **Widths** are proportions of the terminal width: the left column about 22%, the Snippet list about 30%, and the Snippet pane the rest.
 - **The focused Pane grows by 8 columns.** They come from the Snippet pane, or from the other two columns when the Snippet pane has focus.
 - **The left column** splits its height two-thirds to one-third. The tall Pane is the focused one of Folders and Tags, or the one holding the Browse selection when focus is elsewhere. Folders is tall at start-up.
-- **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order: `by title`, `by last updated`, or `by creation date`. Cycling the order keeps the cursor on the selected Snippet.
+- **The Snippet list title** shows the Browse selection's path (`Root / go`) or Tag (`# go`) and the sort order: `by title`, `by last updated`, or `by creation date`. Cycling the order keeps the cursor on the selected Snippet. With the Trash as the Browse selection the title is `Trash`, with no sort order.
+- **The `▪ Trash` row** is always the last row of the Folders Pane, after the tree, with its count of Trash items (a trashed Folder counts as 1). `G`/`end` lands on it.
+- **The Trash list** lists the Trash items newest deleted first. A Snippet row looks as it does in Browse. A Folder row reads `▸ docker`, with its Snippet count (`15 Snippets`) in the right-hand column. `s` doesn't apply, and the remembered Sort order is untouched.
+- **A trashed Snippet in the Snippet pane** shows in full, read-only: its meta line names the path of the Folder it was in, and the dates line gains `deleted 2026-10-14`. **A trashed Folder** shows its name, the path it was in, `1 subfolder · 15 Snippets`, and `deleted 2026-10-14`, then below a separator an outline of its subtree: subfolders indented as in the Folders Pane, with their Snippet titles in title order. The outline scrolls like Content.
 - **The Snippet list's right-hand column** shows the first Fragment's Language, followed by the count of the other Fragments when there are any: `Go +2`.
 - **The Snippet pane** shows one Fragment at a time, the Shown Fragment, and its meta line names that Fragment's Language. A tab strip under the header separator labels each Fragment by its Fragment title, or by its Language when it has none, and marks the Shown Fragment. The strip shows when the Snippet has two or more Fragments, or when its only Fragment has a title. A strip wider than the Pane is cut off with `…`. Showing a different Snippet goes back to its first Fragment, unless Search revealed it on another.
 
@@ -44,7 +47,7 @@ How the main screen is laid out and how the keyboard and mouse move through it. 
 
 ### Browse selection
 
-The Browse selection is the Folder, the Root, or the Tag whose Snippets the Snippet list shows.
+The Browse selection is the Folder, the Root, the Tag, or the Trash whose contents the Snippet list shows. The Trash is entered and left like a Folder.
 
 - Moving focus never changes it. Tabbing through Tags on the way to the Snippet list keeps showing the Folder's Snippets.
 - Moving the cursor in Folders or Tags, clicking a row there, or pressing `enter` on it makes that row the Browse selection.
@@ -78,6 +81,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 | Folders | `N` new Folder inside the selected one (at the Root when the Root is selected), typed in place on a new row below the cursor · `r` rename in place · `d` delete · `m` move · `space` collapse · `L` Default Language |
 | Tags | `N` new Tag, typed in place; it exists with a count of 0 until a Snippet carries it · `r` rename in place · `d` delete |
 | Snippet list | `y` Copy · `e` edit · `E` external editor · `m` move · `c` duplicate · `d` delete · `s` cycle sort |
+| Snippet list, with the Trash as the Browse selection (`trash` Scope) | `y` Copy · `r` restore |
 | Snippet pane | `y` Copy · `e` edit · `E` external editor · `w` wrap · `]` next Fragment · `[` previous Fragment |
 
 - In-place entry commits with `enter` and cancels with `esc` (the `name_input` Scope). A blank name is refused. A new Folder becomes the Browse selection once it is created.
@@ -87,7 +91,10 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `c` in the Snippet list copies the Snippet under the cursor into the same Folder, with the same Title, Description, and Tags, and every Fragment with its title, content, and Language, in the same order. The cursor moves onto the copy.
 - `y` and `E` in the Snippet list and the Snippet pane act on the Shown Fragment. `e` edits the first Fragment, and an external edit returns to the edit overlay on the Fragment it edited.
 - `]` and `[` in the Snippet pane show the next and the previous Fragment, wrapping around at either end, and scroll back to the top.
-- `d` in the Snippet list asks first with a confirmation titled "Delete Snippet", default No: `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`. The deletion is permanent, and the Tags the Snippet carried stay. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
+- `d` in the Snippet list moves the Snippet to the Trash at once: `Moved Snippet "Prune everything" to the Trash`. `d` in Folders does the same for the Folder and its subtree: `Moved Folder "docker" to the Trash`, and the Folder's parent becomes the Browse selection. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
+- `N`, `r`, `m`, `space`, `L`, and `d` do nothing on the `▪ Trash` row.
+- In the Trash, `y` copies the Shown Fragment of a Snippet item. On a Folder item it does nothing, and the status line says "Only a Snippet can be copied". `r` restores the item under the cursor ([v1: Rename and delete](v1.md#rename-and-delete)). The cursor keeps its row, the Browse selection stays on the Trash, and the restored item isn't revealed.
+- A trashed Snippet in the Snippet pane keeps the `snippet_pane` Bindings for Copy, wrap, `]`/`[`, and scrolling. `e` and `E` do nothing, and the status line says "Restore the Snippet to edit it".
 - `m` in Folders or the Snippet list opens the [Folder picker](#other-overlays) for the row under the cursor.
   - A moved Folder keeps the cursor and the Browse selection in its new place, and its new parent expands if it was collapsed. When a Tag held the Browse selection, the Folders take it back.
   - A moved Snippet leaves the Browse selection as it is. When the Snippet leaves the listed Folder or the Root, the cursor keeps its row as after a delete. When it is still listed, as under a Tag, the cursor stays on it and only its Folder path changes.
@@ -95,6 +102,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `n` (new Snippet) and `p` (Capture) work from every Pane and use the Browse selection:
   - A Folder or the Root: the Snippet goes there, with that Folder's Default Language.
   - A Tag: the Snippet goes to the Root and already carries the Tag, so it shows up in the list being looked at.
+  - The Trash: the Snippet goes to the Root, in plain text. On save, the Root becomes the Browse selection.
 - `w` wraps long lines in the Snippet pane, and pressing it again cuts them off at the Pane's edge. A wrapped line keeps its number on its first row, and each continuation row shows `↪` in the line-number gutter, so the gutter keeps its width and the `│` separator lines up.
 
 ## Search popup
@@ -270,6 +278,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `folders` | open · new Folder · rename · delete · move · zoom · search · help |
 | `tags` | open · new Tag · rename · delete · zoom · search · help |
 | `snippet_list` | Copy · edit · external editor · new · move · duplicate · delete · sort · zoom · search · help |
+| `trash` | Copy · restore · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · next Fragment · previous Fragment · zoom · search · help |
 | `editor` | save · cancel · field · Tags · Language · external editor · next Fragment · previous Fragment · add Fragment · remove Fragment · move Fragment left · move Fragment right |
 | `content` | save · leave · indent · dedent · external editor |
@@ -301,4 +310,4 @@ While the mouse is on, the terminal's own click-and-drag selection needs a modif
 
 ## Empty main screen
 
-With no Snippets in the Browse selection, the Snippet list shows "No Snippets here." followed by the main Bindings: new Snippet, Capture, Search, new Folder, help. With no Snippets at all, the Snippet pane shows the same hint.
+With no Snippets in the Browse selection, the Snippet list shows "No Snippets here." followed by the main Bindings: new Snippet, Capture, Search, new Folder, help. With no Snippets at all, the Snippet pane shows the same hint. An empty Trash shows "The Trash is empty." in the Snippet list and the Snippet pane, with no Binding hints.

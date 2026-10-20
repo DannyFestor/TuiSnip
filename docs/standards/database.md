@@ -28,7 +28,7 @@ The Root is not stored. It is the absence of a Folder, so `folder_id IS NULL` an
 - **Timestamps** are `INTEGER` Unix nanoseconds, UTC. Every entity table has `created_at` and `updated_at`. Join tables have none.
 - **Optional text** is `NOT NULL DEFAULT ''`. The domain doesn't distinguish "no Description" from an empty one, so NULL would only add a pointer.
 - **Languages** are stored as chroma's canonical lexer name (`plaintext`, `Go`, `Bash`), the string `value.Language` holds.
-- **Foreign keys** cascade on delete. Subtree delete is one `DELETE FROM folders WHERE id = ?`. When Trash arrives, deleting becomes a soft delete and the cascade only runs when something is removed for good.
+- **Foreign keys** cascade on delete. Deleting a Snippet or a Folder is a soft delete that sets `deleted_at` on that one row ([ADR 0005](../adr/0005-trash-is-a-soft-delete-read-through-live-views.md)), so the cascade only runs when something is removed from the Trash for good.
 - **Indexes**: one per foreign key that isn't already the leading column of a primary key or unique constraint.
 - **Tag uniqueness** is on `name_key`, the case-folded form from `value.TagName.Key()`, never on `name` with `COLLATE NOCASE`. `NOCASE` folds only ASCII, so SQLite and memsearch would disagree about which Tags are the same.
 
@@ -121,9 +121,9 @@ Read transactions use `sql.TxOptions{ReadOnly: true}`. modernc begins those with
 - Each capability method writes one whole aggregate in one transaction inside the adapter. `SnippetRepository.Insert(ctx, snippet)` writes the Snippet, its Fragments, and its Tag links together. Actions never see a transaction.
 - **Tags created with a Snippet.** `SnippetRepository.Insert` and `Update` store each Tag the Snippet carries that isn't stored yet (`INSERT ... ON CONFLICT (id) DO NOTHING`), in the same transaction as the Snippet, so a Tag created in the Tag editor exists only once its Snippet is saved. A new Tag whose name another Tag has, ignoring case, fails the save with `domain.ErrTagNameTaken`. `Update` replaces the Snippet's Tag links with the ones it carries.
 - **Optimistic concurrency.** Saving an edited Snippet updates `WHERE id = ? AND updated_at = ?` with the `updated_at` it loaded. If no row changed, the adapter looks the ID up again: it returns `domain.ErrNotFound` if the row is gone and `domain.ErrConflict` if it's there. Only Snippet saves are checked. Folder and Tag changes are last-write-wins.
+- **Live targets.** A write that moves an item to the Trash sets `deleted_at` only while the row is in `live_snippets` or `live_folders`, and returns `domain.ErrNotFound` otherwise, so a Snippet still shown inside a Folder trashed elsewhere never becomes a Trash item nested in it. A write that places into a Folder (inserting or moving a Snippet, inserting or moving a Folder) checks that the Folder is in `live_folders` inside its write transaction and returns `domain.ErrFolderGone` otherwise: the foreign key alone would let the item vanish into a Trash item. Restore and Copy in the Trash read the row only while `deleted_at IS NOT NULL`, and return `domain.ErrNotFound` once another instance has restored it.
 - **Tag merge.** Renaming a Tag onto an existing Tag's name keeps the existing Tag's ID, gives it the spelling the user typed, moves the renamed Tag's links over with `INSERT OR IGNORE`, and deletes the renamed Tag, all in one transaction.
 - **Folder cycles.** The domain rejects moving a Folder into its own subtree. The adapter's move method checks again with a recursive query inside its write transaction and returns `domain.ErrFolderCycle`. The second check exists because two instances can each pass the domain check with a tree the other is changing. Together they would leave a loop cut off from the Root.
-- The delete confirmation's counts come from a recursive query over the subtree.
 
 ## Errors
 

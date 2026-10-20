@@ -19,7 +19,7 @@ func snippetsLabReportText(report library.SnippetsLabReport) string {
 	lines := slices.Concat(
 		[]string{
 			"Imported " + countsPhrase(report.Counts) + ", " + pluralised(report.Counts.Fragments, "Fragment"),
-			"Skipped " + pluralised(report.Losses.TrashedSnippets, "Snippet") + " in the Trash",
+			"Put " + pluralised(report.Counts.InTrash.Snippets, "Snippet") + " in the Trash",
 		},
 		lostLines("Lost a pin", report.Losses.LostPins),
 		lostLines("Lost a Gist link", report.Losses.LostGistLinks),

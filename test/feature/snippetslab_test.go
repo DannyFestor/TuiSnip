@@ -14,6 +14,8 @@ import (
 
 	"github.com/DannyFestor/TuiSnip/internal/app/library"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
+	"github.com/DannyFestor/TuiSnip/internal/bootstrap"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/test/testapp"
@@ -35,10 +37,11 @@ func TestImportFromSnippetsLabBuildsTheLibraryAndReportsWhatItLeftBehind(t *test
 	report, err := app.ImportSnippetsLab.Run(t.Context(), library.ImportSnippetsLabInput{Path: snippetsLabFixture})
 
 	require.NoError(t, err)
-	assert.Equal(t, library.Counts{Folders: 3, Tags: 2, Snippets: 2, Fragments: 3}, report.Counts)
-	assert.Equal(t, 1, report.Losses.TrashedSnippets)
+	assert.Equal(t, library.Counts{
+		Folders: 3, Tags: 2, Snippets: 4, Fragments: 5, InTrash: library.TrashCounts{Folders: 0, Snippets: 2},
+	}, report.Counts)
 	assert.Equal(t, []string{"flags"}, titlesOf(report.Losses.LostPins))
-	assert.Equal(t, []string{"yacc"}, titlesOf(report.Losses.LostGistLinks))
+	assert.Equal(t, []string{"yacc", "old flags"}, titlesOf(report.Losses.LostGistLinks))
 	assert.Equal(t, []string{"flags"}, titlesOf(report.Losses.LostAttachments))
 	require.Len(t, report.Losses.FolderFallbacks, 1)
 	assert.Equal(t, "grammars", report.Losses.FolderFallbacks[0].Folder.String())
@@ -83,6 +86,32 @@ func TestImportFromSnippetsLabBuildsTheLibraryAndReportsWhatItLeftBehind(t *test
 	assert.Equal(t, []fragmentView{{title: "", language: "plaintext", content: "%%\n"}}, fragmentViews(yacc))
 }
 
+func TestImportFromSnippetsLabPutsItsTrashInTheTrashAndRestoreReturnsEachToItsFolder(t *testing.T) {
+	t.Parallel()
+
+	_, app := testapp.Start(t, testapp.RecordingTool)
+
+	_, err := app.ImportSnippetsLab.Run(t.Context(), library.ImportSnippetsLabInput{Path: snippetsLabFixture})
+
+	require.NoError(t, err)
+	listed := trashItems(t, app)
+	require.Len(t, listed, 2)
+	trashed, oldFlags := listed[0], listed[1]
+	assert.Equal(t, "trashed", trashed.Name())
+	assert.Equal(t, time.Date(2024, time.June, 1, 0, 0, 0, 0, time.UTC), trashed.DeletedAt)
+	assert.Equal(t, "old flags", oldFlags.Name())
+	assert.Equal(t, time.Date(2024, time.March, 16, 8, 30, 0, 0, time.UTC), oldFlags.DeletedAt)
+	assert.Equal(t, []string{"go", "cli"}, oldFlags.Path)
+	assert.Equal(t, []string{"Go"}, tagNames(oldFlags.Snippet.Tags()))
+
+	cli := folderNamed(t, testapp.StoredFolders(t, app), "cli")
+	assert.Equal(t, restoredTo(cli.ID()), restore(t, app, oldFlags))
+	assert.Equal(t, cli.ID(), testapp.StoredSnippet(t, app, oldFlags.Snippet.ID()).FolderID())
+	assert.Equal(t, restoredTo(domain.FolderID{}), restore(t, app, trashed))
+	assert.True(t, testapp.StoredSnippet(t, app, trashed.Snippet.ID()).AtRoot())
+	assert.Empty(t, trashItems(t, app))
+}
+
 func TestImportFromSnippetsLabReusesAStoredTagOfTheSameName(t *testing.T) {
 	t.Parallel()
 
@@ -123,6 +152,19 @@ func brokenSnippetsLabExport(t *testing.T) string {
 	require.NoError(t, os.WriteFile(path, []byte(broken), 0o600)) //nolint:gosec // G703: a path under t.TempDir
 
 	return path
+}
+
+func restore(t *testing.T, app *bootstrap.App, item trash.Item) domain.Restoration {
+	t.Helper()
+
+	restored, err := app.Restore.Run(t.Context(), trash.RestoreInput{Item: item.ID()})
+	require.NoError(t, err)
+
+	return restored
+}
+
+func restoredTo(folderID domain.FolderID) domain.Restoration {
+	return domain.Restoration{FolderID: folderID, Fallback: domain.RestoreFallbackNone}
 }
 
 func folderNamed(t *testing.T, folders []domain.Folder, name string) domain.Folder {

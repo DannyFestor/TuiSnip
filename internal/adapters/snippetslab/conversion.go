@@ -23,7 +23,6 @@ func newConversion(ids IDGenerator, now time.Time) *conversion {
 		folderIDs:  map[string]domain.FolderID{},
 		tagsByUUID: map[string]domain.Tag{},
 		losses: domain.ImportLosses{
-			TrashedSnippets:   0,
 			LostPins:          nil,
 			LostGistLinks:     nil,
 			LostAttachments:   nil,
@@ -38,21 +37,23 @@ func newConversion(ids IDGenerator, now time.Time) *conversion {
 func (c *conversion) library(read contents) (domain.Library, error) {
 	folders, foldersErr := c.folders(read.Folders, rootParent())
 	tags, tagsErr := entitiesOf(read.Tags, c.tag)
-	live := liveSnippets(read.Snippets)
-	snippets, snippetsErr := entitiesOf(live, c.snippet)
-	c.losses.TrashedSnippets = len(read.Snippets) - len(live)
+	snippets, snippetsErr := entitiesOf(read.Snippets, c.snippetEntry)
 
 	err := errors.Join(foldersErr, tagsErr, snippetsErr)
 	if err != nil {
 		return domain.Library{}, err
 	}
 
-	return domain.Library{
-		Folders:  folders,
-		Tags:     tags,
-		Snippets: snippets,
-		Trash:    domain.Trash{Folders: nil, Snippets: nil},
-	}, nil
+	return domain.NewLibrary(liveEntries(folders), tags, snippets), nil
+}
+
+func liveEntries(folders []domain.Folder) []domain.LibraryEntry[domain.Folder] {
+	entries := make([]domain.LibraryEntry[domain.Folder], 0, len(folders))
+	for _, folder := range folders {
+		entries = append(entries, domain.NewLiveEntry(folder))
+	}
+
+	return entries
 }
 
 func (c *conversion) recordLosses(record snippetRecord, title value.Title) {

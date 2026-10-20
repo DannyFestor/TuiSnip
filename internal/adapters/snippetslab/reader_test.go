@@ -90,20 +90,26 @@ func TestReader_Read(t *testing.T) {
 		assert.Equal(t, time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC), got.Snippets[0].UpdatedAt())
 	})
 
-	t.Run("skips the Snippets in SnippetsLab's Trash and counts them", func(t *testing.T) {
+	t.Run("puts each Snippet in SnippetsLab's Trash in the Trash, deleted at its dateDeleted", func(t *testing.T) {
 		t.Parallel()
 
 		path := exportFile(t, contents(nil, nil, []record{
-			snippetRecord(record{"title": "live"}),
-			snippetRecord(record{"title": "deleted", "dateDeleted": modified}),
-			snippetRecord(record{"title": "also deleted", "dateDeleted": modified}),
+			snippetRecord(record{"uuid": "live", "title": "live"}),
+			snippetRecord(record{"uuid": "deleted", "title": "deleted", "dateDeleted": "2024-06-01T09:00:00+09:00"}),
 		}))
 
-		got, losses := read(t, path)
+		got, _ := read(t, path)
 
-		require.Len(t, got.Snippets, 1)
-		assert.Equal(t, "live", got.Snippets[0].Title().String())
-		assert.Equal(t, 2, losses.TrashedSnippets)
+		require.Len(t, got.Snippets, 2)
+		live, deleted := got.Snippets[0], got.Snippets[1]
+		assert.Equal(t, "deleted", deleted.Title().String())
+		assert.Equal(t, map[domain.SnippetID]domain.TrashMark{
+			deleted.ID(): testkit.TrashMark(t, testkit.TrashMarkSpec{
+				Item: deleted, DeletedAt: time.Date(2024, time.June, 1, 0, 0, 0, 0, time.UTC),
+			}),
+		}, got.Trash.Snippets)
+		assert.NotContains(t, got.Trash.Snippets, live.ID())
+		assert.Empty(t, got.Trash.Folders)
 	})
 
 	t.Run("names each pinned Snippet as having lost its pin", func(t *testing.T) {
@@ -112,11 +118,12 @@ func TestReader_Read(t *testing.T) {
 		path := exportFile(t, contents(nil, nil, []record{
 			snippetRecord(record{"title": "pinned", "pinned": true}),
 			snippetRecord(record{"title": "unpinned"}),
+			snippetRecord(record{"title": "pinned in the Trash", "pinned": true, "dateDeleted": modified}),
 		}))
 
 		_, losses := read(t, path)
 
-		assert.Equal(t, []value.Title{title(t, "pinned")}, losses.LostPins)
+		assert.Equal(t, []value.Title{title(t, "pinned"), title(t, "pinned in the Trash")}, losses.LostPins)
 	})
 
 	t.Run("names each Snippet linked to a Gist as having lost its Gist link", func(t *testing.T) {
@@ -126,11 +133,16 @@ func TestReader_Read(t *testing.T) {
 			snippetRecord(record{"title": "shared", "gistIdentifier": "0123456789abcdef0123456789abcdef"}),
 			snippetRecord(record{"title": "unshared", "gistIdentifier": nil}),
 			snippetRecord(record{"title": "never shared"}),
+			snippetRecord(record{
+				"title":          "shared, then deleted",
+				"gistIdentifier": "fedcba9876543210fedcba9876543210",
+				"dateDeleted":    modified,
+			}),
 		}))
 
 		_, losses := read(t, path)
 
-		assert.Equal(t, []value.Title{title(t, "shared")}, losses.LostGistLinks)
+		assert.Equal(t, []value.Title{title(t, "shared"), title(t, "shared, then deleted")}, losses.LostGistLinks)
 	})
 
 	t.Run("names each Snippet with an attachment once as having lost its attachments", func(t *testing.T) {
@@ -289,6 +301,25 @@ func TestReader_Read_folders(t *testing.T) {
 		require.Len(t, got.Snippets, 1)
 		assert.True(t, got.Snippets[0].AtRoot())
 	})
+
+	t.Run("keeps a trashed Snippet in its Folder, or at the Root when the file lacks it", func(t *testing.T) {
+		t.Parallel()
+
+		path := exportFile(t, contents([]record{folderRecord("go", "GoLexer")}, nil, []record{
+			snippetRecord(record{"title": "filed", "folder": folderUUID("go"), "dateDeleted": modified}),
+			snippetRecord(record{"title": "orphaned", "folder": folderUUID("gone"), "dateDeleted": modified}),
+		}))
+
+		got, _ := read(t, path)
+
+		require.Len(t, got.Snippets, 2)
+		filed, orphaned := got.Snippets[0], got.Snippets[1]
+		assert.Equal(t, folderNamed(t, got, "go").ID(), filed.FolderID())
+		assert.True(t, orphaned.AtRoot())
+		assert.True(t, got.Trash.Snippets[filed.ID()].FormerPath().IsEmpty())
+		assert.True(t, got.Trash.Snippets[orphaned.ID()].FormerPath().IsEmpty())
+		assert.Len(t, got.Trash.Snippets, 2)
+	})
 }
 
 func TestReader_Read_tags(t *testing.T) {
@@ -405,6 +436,12 @@ func TestReader_Read_refusals(t *testing.T) {
 			wantMessage: []string{"snippet " + snippetUUID + ": fragment 2: "},
 		},
 		{
+			name:        "refuses a Snippet deleted before it was created and names the Snippet",
+			document:    contents(nil, nil, []record{snippetRecord(record{"dateDeleted": "2024-04-30T00:00:00Z"})}),
+			wantErr:     domain.ErrDeletedBeforeCreate,
+			wantMessage: []string{"snippet " + snippetUUID + ": "},
+		},
+		{
 			name: "refuses a note link that runs past its note",
 			document: contents(nil, nil, []record{snippetRecord(record{"fragments": []record{
 				fragmentRecord(record{"note": "docs", "noteAttributes": []record{
@@ -453,6 +490,18 @@ func TestReader_Read_refusals(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("refuses a dateDeleted that isn't a date and names the Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		path := exportFile(t, contents(nil, nil, []record{snippetRecord(record{"dateDeleted": "last week"})}))
+
+		_, _, err := newReader().Read(t.Context(), path)
+
+		var parseErr *time.ParseError
+		require.ErrorAs(t, err, &parseErr)
+		assert.ErrorContains(t, err, "snippet "+snippetUUID+": parse deleted date: ")
+	})
 
 	t.Run("fails on a missing file", func(t *testing.T) {
 		t.Parallel()

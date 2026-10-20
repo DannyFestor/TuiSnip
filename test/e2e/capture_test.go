@@ -65,11 +65,6 @@ func TestCaptureRefusalOpensNothing(t *testing.T) {
 			clipboard: strings.Repeat("c", 256<<10+1),
 			want:      "Clipboard is larger than 256 KiB",
 		},
-		{
-			name:      "a clipboard over 10,000 lines",
-			clipboard: strings.Repeat("line\n", 10_000),
-			want:      "Clipboard is longer than 10,000 lines",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

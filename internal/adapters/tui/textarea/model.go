@@ -30,7 +30,7 @@ const (
 	defaultMaxHeight = 99
 	defaultMaxWidth  = 500
 
-	maxLines = 10000
+	defaultMaxLines = 10000
 
 	// 2 columns to account for the trailing space wrapping.
 	trailingSpace = 2
@@ -69,6 +69,8 @@ type Model struct {
 	// CharLimit is the maximum number of characters this input element will
 	// accept. If 0 or less, there's no limit.
 	CharLimit int
+
+	MaxLines int
 
 	// MaxHeight is the maximum height of the text area in rows. If 0 or less,
 	// there's no limit.
@@ -135,12 +137,13 @@ func New() Model {
 
 	model := Model{
 		CharLimit:            defaultCharLimit,
+		MaxLines:             defaultMaxLines,
 		MaxHeight:            defaultMaxHeight,
 		MaxWidth:             defaultMaxWidth,
 		Prompt:               lipgloss.ThickBorder().Left + " ",
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
-		cache:                memoization.NewMemoCache[line, []wrappedLine](maxLines),
+		cache:                memoization.NewMemoCache[line, []wrappedLine](defaultMaxLines),
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		useVirtualCursor:     true,
@@ -161,7 +164,7 @@ func New() Model {
 		hasSelection:         false,
 		selecting:            false,
 
-		value: make([][]rune, minHeight, maxLines),
+		value: make([][]rune, minHeight, defaultMaxLines),
 		focus: false,
 		col:   0,
 		row:   0,
@@ -291,7 +294,7 @@ func (m *Model) Blur() {
 }
 
 func (m *Model) Reset() {
-	m.value = make([][]rune, minHeight, maxLines)
+	m.value = make([][]rune, minHeight, defaultMaxLines)
 	m.col = 0
 	m.row = 0
 	m.viewport.GotoTop()
@@ -597,8 +600,8 @@ func (m *Model) fitCharLimit(runes []rune) ([]rune, bool) {
 }
 
 func (m *Model) fitMaxLines(lines [][]rune) [][]rune {
-	if maxLines > 0 && len(m.value)+len(lines)-1 > maxLines {
-		allowedHeight := max(0, maxLines-len(m.value)+1)
+	if m.MaxLines > 0 && len(m.value)+len(lines)-1 > m.MaxLines {
+		allowedHeight := max(0, m.MaxLines-len(m.value)+1)
 		lines = lines[:allowedHeight]
 	}
 

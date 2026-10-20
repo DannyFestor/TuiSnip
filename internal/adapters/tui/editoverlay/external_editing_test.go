@@ -18,10 +18,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
-const (
-	externallyEditedContent = "echo edited\n"
-	overlongReadOnlyNotice  = "Longer than 10,000 lines: read-only here, edit with ctrl+e ($EDITOR)"
-)
+const externallyEditedContent = "echo edited\n"
 
 func TestSession_Update_externalEditor(t *testing.T) {
 	t.Parallel()
@@ -45,18 +42,6 @@ func TestSession_Update_externalEditor(t *testing.T) {
 		screen.Press(externalEditor())
 
 		want := externalEditAsked("ls -la", value.PlainText())
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
-
-	t.Run("asks for the external editor on read-only content", func(t *testing.T) {
-		t.Parallel()
-
-		overlong := linesOf(10_001)
-		screen := editingStored(t, storedSnippet(t, overlong))
-		screen.Press(toContent()...)
-		screen.Press(externalEditor())
-
-		want := externalEditAsked(overlong, language(t, "Go"))
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 }
@@ -94,53 +79,30 @@ func TestSession_Received_contentEdited(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
-	t.Run("lands edited content over 10,000 lines read-only and saves it byte for byte", func(t *testing.T) {
-		t.Parallel()
-
-		overlong := linesOf(10_001)
-		stored := storedSnippet(t, "echo hi")
-		screen := editingStored(t, stored)
-		screen.Press(enterContent()...)
-		screen.Offer(contentEdited(overlong))
-		screen.Press(keypress.Typed("lost")...)
-		screen.Press(save())
-
-		assert.Contains(t, screen.Screen(), overlongReadOnlyNotice)
-
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", overlong)}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
-
-	t.Run("keeps edited content of exactly 10,000 lines editable", func(t *testing.T) {
+	t.Run("lands edited content of 20,000 short lines editable and saves it byte for byte", func(t *testing.T) {
 		t.Parallel()
 
 		stored := storedSnippet(t, "echo hi")
 		screen := editingStored(t, stored)
-		screen.Offer(contentEdited(linesOf(10_000)))
 		screen.Press(enterContent()...)
+		screen.Offer(contentEdited(twentyThousandShortLines()))
 		screen.Press(keypress.Typed("!")...)
 		screen.Press(save())
 
-		assert.NotContains(t, screen.Screen(), overlongReadOnlyNotice)
-
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", linesOf(10_000)+"!")}
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", twentyThousandShortLines()+"!")}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
-	t.Run("makes content editable again once the edit brought it to 10,000 lines", func(t *testing.T) {
+	t.Run("lands edited content over 256 KiB editable and leaves the refusal to the save", func(t *testing.T) {
 		t.Parallel()
 
+		oversized := textOfSize(maxContentBytes + 1)
 		stored := storedSnippet(t, "echo hi")
 		screen := editingStored(t, stored)
-		screen.Offer(contentEdited(linesOf(10_001)))
-		screen.Offer(contentEdited(externallyEditedContent))
-		screen.Press(enterContent()...)
-		screen.Press(keypress.Typed("!")...)
+		screen.Offer(contentEdited(oversized))
 		screen.Press(save())
 
-		assert.NotContains(t, screen.Screen(), overlongReadOnlyNotice)
-
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", externallyEditedContent+"!")}
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", oversized)}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 }

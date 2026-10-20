@@ -19,21 +19,13 @@ func (f form) shownDraft() fragmentDraft {
 	draft := f.tabs.shownDraft()
 	draft.title = f.fragmentTitle.Value()
 	draft.language = f.language
-	draft.content = f.contentValue()
+	draft.content = f.content.Value()
 
 	return draft
 }
 
 func (f form) shownFragmentName() string {
 	return f.shownDraft().tab().Label()
-}
-
-func (f form) contentValue() string {
-	if f.readOnly.held() {
-		return f.readOnly.content
-	}
-
-	return f.content.Value()
 }
 
 func (f form) fragmentKeyPressed(msg tea.KeyPressMsg) (form, request, bool) {
@@ -104,8 +96,6 @@ func (f form) withDraft(draft fragmentDraft) form {
 	next := f
 	next.fragmentTitle.SetValue(draft.title)
 	next.language = draft.language
-	next.readOnly = readOnlyIfOverlong(draft.content, draft.language, f.codeStyle)
-	next.content.SetValue("")
 
 	return next.withContent(draft.content)
 }

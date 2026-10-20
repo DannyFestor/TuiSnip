@@ -8,18 +8,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
 
-const (
-	pasteOverflowsContent   = "Paste would make Content longer than 10,000 lines"
-	captureOverflowsContent = "Clipboard is longer than 10,000 lines"
-)
-
-func refusalText(refusal, externalEditorKey string) string {
-	if externalEditorKey == "" {
-		return refusal
-	}
-
-	return refusal + "; use " + externalEditorKey + " to edit in $EDITOR"
-}
+const pasteTooLarge = "Paste would make Content larger than 256 KiB"
 
 func fieldErrorText(fieldErr domain.FieldError) string {
 	switch {

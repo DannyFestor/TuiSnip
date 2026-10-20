@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	tabbedContent   = "if x {\n\treturn\n}\n"
-	unboundReadOnly = "Longer than 10,000 lines: read-only here"
+	tabbedContent = "if x {\n\treturn\n}\n"
 
 	changedElsewhereTitle = "Changed elsewhere"
 	reloadQuestion        = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
@@ -62,38 +61,17 @@ func TestEditing_View(t *testing.T) {
 		assert.NotContains(t, screen.Screen(), "read-only")
 	})
 
-	t.Run("names the configured external editor key on read-only content", func(t *testing.T) {
-		t.Parallel()
-
-		keys := testsettings.Default(t).Keys
-		keys[binding.ScopeContent][binding.OpenInEditor] = []string{"ctrl+o"}
-		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
-
-		assert.Contains(t, screen.Screen(), "Longer than 10,000 lines: read-only here, edit with ctrl+o ($EDITOR)")
-	})
-
-	t.Run("names no key on read-only content when the external editor is unbound", func(t *testing.T) {
-		t.Parallel()
-
-		keys := testsettings.Default(t).Keys
-		keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
-		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
-
-		assert.Contains(t, screen.Screen(), unboundReadOnly)
-		assert.NotContains(t, screen.Screen(), "edit with")
-	})
-
-	t.Run("draws the read-only Content and the unsaved marker in the new Styles", func(t *testing.T) {
+	t.Run("draws the Content and the unsaved marker in the new Styles", func(t *testing.T) {
 		t.Parallel()
 
 		keys := testsettings.Default(t).Keys
 		light := look.NewStyles(look.SchemeLight)
-		screen := editingStoredWith(t, keys, storedSnippet(t, linesOf(10_001)))
+		screen := editingStoredWith(t, keys, storedSnippet(t, tabbedContent))
 		screen.Press(keypress.Letter('x'))
 
 		screen.Send(look.Restyled{Styles: light})
 
-		styledFromStart := editingStoredStyled(t, keys, light, storedSnippet(t, linesOf(10_001)))
+		styledFromStart := editingStoredStyled(t, keys, light, storedSnippet(t, tabbedContent))
 		styledFromStart.Press(keypress.Letter('x'))
 		assert.Contains(t, screen.Screen(), unsavedTitle)
 		assert.Equal(t, styledFromStart.StyledScreen(), screen.StyledScreen())
@@ -212,69 +190,22 @@ func TestEditing_language(t *testing.T) {
 	})
 }
 
-func TestEditing_readOnlyContent(t *testing.T) {
+func TestEditing_manyLines(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		sent tea.Msg
-	}{
-		{name: "indent leaves it unchanged", sent: keypress.Special(tea.KeyTab)},
-		{name: "dedent leaves it unchanged", sent: shiftTab()},
-		{name: "a paste leaves it unchanged", sent: tea.PasteMsg{Content: "pasted"}},
-		{name: "a paste over 10,000 lines leaves it unchanged", sent: tea.PasteMsg{Content: linesOf(10_001)}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			overlong := linesOf(10_001)
-			stored := storedSnippet(t, overlong)
-			screen := editingStored(t, stored)
-			screen.Press(enterContent()...)
-			screen.Send(tt.sent)
-			screen.Press(save())
-
-			want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", overlong)}
-			assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-		})
-	}
-}
-
-func TestEditing_overlongContent(t *testing.T) {
-	t.Parallel()
-
-	t.Run("opens stored content over 10,000 lines read-only and saves it byte for byte", func(t *testing.T) {
+	t.Run("opens stored content of 20,000 short lines editable and saves it byte for byte", func(t *testing.T) {
 		t.Parallel()
 
-		overlong := linesOf(10_001)
-		stored := storedSnippet(t, overlong)
+		stored := storedSnippet(t, twentyThousandShortLines())
 		screen := editingStored(t, stored)
 
-		assert.Contains(t, screen.Screen(), overlongReadOnlyNotice)
-
-		screen.Press(enterContent()...)
-		screen.Press(keypress.Typed("lost")...)
-		screen.Press(save())
-
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", overlong)}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
-
-	t.Run("opens stored content of exactly 10,000 lines editable", func(t *testing.T) {
-		t.Parallel()
-
-		stored := storedSnippet(t, linesOf(10_000))
-		screen := editingStored(t, stored)
-
-		assert.NotContains(t, screen.Screen(), overlongReadOnlyNotice)
+		assert.Contains(t, screen.Screen(), contentEntryHint)
 
 		screen.Press(enterContent()...)
 		screen.Press(keypress.Typed("!")...)
 		screen.Press(save())
 
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", linesOf(10_000)+"!")}
+		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", twentyThousandShortLines()+"!")}
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 }
@@ -294,33 +225,19 @@ func TestEditing_editableContent(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
 	})
 
-	t.Run("refuses a paste that makes the stored content longer than 10,000 lines", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"refuses a paste that makes the stored content larger than 256 KiB and leaves it unchanged",
+		func(t *testing.T) {
+			t.Parallel()
 
-		screen := editingStored(t, storedSnippet(t, linesOf(5_000)))
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(5_002)})
+			screen := editingStored(t, storedSnippet(t, textOfSize(maxContentBytes)))
+			screen.Press(enterContent()...)
+			screen.Send(tea.PasteMsg{Content: "x"})
 
-		want := outcome.NoticeShown{
-			Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
-		}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-		assert.NotContains(t, screen.Screen(), unsavedTitle)
-	})
-
-	t.Run("inserts a paste that makes the stored content exactly 10,000 lines", func(t *testing.T) {
-		t.Parallel()
-
-		stored := storedSnippet(t, linesOf(5_000))
-		screen := editingStored(t, stored)
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(5_001)})
-		screen.Press(save())
-
-		content := linesOf(4_999) + "\nlineline\n" + linesOf(5_000)
-		want := outcome.UpdateRequested{Input: updateInput(stored, "Prune", content)}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
+			assert.Equal(t, []outcome.Outcome{outcome.NoticeShown{Text: pasteTooLarge}}, screen.Outcomes())
+			assert.NotContains(t, screen.Screen(), unsavedTitle)
+		},
+	)
 }
 
 func TestEditing_staleSave(t *testing.T) {

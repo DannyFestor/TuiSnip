@@ -2717,6 +2717,38 @@ func pressed(m textarea.Model, press tea.KeyPressMsg, count int) textarea.Model 
 	return m
 }
 
+func TestModel_SetValue_maxLines(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		maxLines int
+		lines    int
+		want     int
+	}{
+		{
+			name:     "cuts upstream's default at 10,000 lines",
+			maxLines: textarea.New().MaxLines,
+			lines:    10_001,
+			want:     10_000,
+		},
+		{name: "cuts at the set number of lines", maxLines: 3, lines: 4, want: 3},
+		{name: "keeps every line with no limit set", maxLines: 0, lines: 20_000, want: 20_000},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			area := textarea.New()
+			area.MaxLines = tt.maxLines
+			area.SetValue(strings.Repeat("line\n", tt.lines-1) + "line")
+
+			assert.Equal(t, tt.want, area.LineCount())
+		})
+	}
+}
+
 func TestModel_Value_tabs(t *testing.T) {
 	t.Parallel()
 

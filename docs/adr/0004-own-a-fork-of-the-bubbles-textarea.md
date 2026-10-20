@@ -2,11 +2,11 @@
 
 The Content textarea is TuiSnip's own copy of the Bubbles v2.2.1 `textarea`, in `internal/adapters/tui/textarea`, with its tests, its MIT licence notice, and its own copies of upstream's internal `runeutil` and `memoization`. The stock textarea can't keep tabs or highlight while editing, and no other component does both. Decided in [Can an existing component keep tabs and highlight while editing?](https://github.com/DannyFestor/TuiSnip/issues/205#issuecomment-6181629638) and [How the editor behaves in the edit overlay and Capture](https://github.com/DannyFestor/TuiSnip/issues/207#issuecomment-6184772817).
 
-The fork exists for four changes against upstream. The two of #223 are made. Each has its own issue:
+The fork exists for four changes against upstream. The two of #223 and the one of #224 are made. Each has its own issue:
 
 - The sanitiser keeps tabs ([#223](https://github.com/DannyFestor/TuiSnip/issues/223)). Upstream turns every tab into four spaces on typing, pasting, `SetValue`, and `InsertString`, and nothing outside the module can pass the option that stops it.
 - One tab-aware width function, used by wrap, the cursor, and rendering ([#223](https://github.com/DannyFestor/TuiSnip/issues/223)). `uniseg.StringWidth("\t")` is 0.
-- `maxLines` becomes a field ([#224](https://github.com/DannyFestor/TuiSnip/issues/224)). Upstream it is a package constant of 10,000.
+- `maxLines` becomes a field ([#224](https://github.com/DannyFestor/TuiSnip/issues/224)). Upstream it is a package constant of 10,000. The fork keeps that as the default of `MaxLines`, and the Content textarea sets it to 0, no limit.
 - The [bubbles#1030](https://github.com/charmbracelet/bubbles/pull/1030) highlighter patch, a `LineHighlighter` that returns styled ranges per line ([#225](https://github.com/DannyFestor/TuiSnip/issues/225)).
 
 ## Considered Options

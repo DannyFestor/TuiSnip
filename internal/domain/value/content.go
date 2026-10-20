@@ -19,11 +19,15 @@ var ErrContentTooLong = errors.New("value: content is larger than 256 KiB")
 type Content struct{ value string }
 
 func NewContent(raw string) (Content, error) {
-	if len(raw) > maxContentBytes {
+	if !ContentFits(len(raw)) {
 		return Content{}, ErrContentTooLong
 	}
 
 	return Content{value: raw}, nil
+}
+
+func ContentFits(bytes int) bool {
+	return bytes <= maxContentBytes
 }
 
 func (c Content) String() string {

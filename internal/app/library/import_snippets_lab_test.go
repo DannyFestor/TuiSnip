@@ -49,7 +49,6 @@ func TestImportSnippetsLab_Run(t *testing.T) {
 				Snippets: []domain.Snippet{snippet},
 			}
 			losses := domain.ImportLosses{
-				TrashedSnippets:   2,
 				LostPins:          []value.Title{snippet.Title()},
 				LostGistLinks:     nil,
 				LostAttachments:   nil,

@@ -28,16 +28,20 @@ func NewLibraryEntry[E TrashItem](
 	return LibraryEntry[E]{entity: entity, mark: mark, trashed: true}, nil
 }
 
+func NewLiveEntry[E TrashItem](entity E) LibraryEntry[E] {
+	return LibraryEntry[E]{
+		entity:  entity,
+		mark:    TrashMark{deletedAt: time.Time{}, formerPath: value.FolderPath{}},
+		trashed: false,
+	}
+}
+
 func liveEntry[E TrashItem](entity E, formerPath value.FolderPath) (LibraryEntry[E], error) {
 	if !formerPath.IsEmpty() {
 		return LibraryEntry[E]{}, fmt.Errorf("domain.NewLibraryEntry: %w", ErrFormerPathOutsideTrash)
 	}
 
-	return LibraryEntry[E]{
-		entity:  entity,
-		mark:    TrashMark{deletedAt: time.Time{}, formerPath: value.FolderPath{}},
-		trashed: false,
-	}, nil
+	return NewLiveEntry(entity), nil
 }
 
 func entitiesIn[E TrashItem](entries []LibraryEntry[E]) []E {

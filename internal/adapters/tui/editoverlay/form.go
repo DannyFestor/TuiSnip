@@ -147,15 +147,23 @@ func (f form) withTags(chosen tagchoice.Chosen) form {
 }
 
 func (f form) changed() bool {
-	return !f.entered().equal(f.original)
+	return f.differsFromOriginal(f.entered())
+}
+
+func (f form) differsFromOriginal(shown entered) bool {
+	return !shown.equal(f.original)
 }
 
 func (f form) entered() entered {
+	return f.enteredIn(f.fragments())
+}
+
+func (f form) enteredIn(tabs fragmentTabs) entered {
 	return entered{
 		title:       f.title.Value(),
 		description: f.description.Value(),
 		tags:        f.tags,
-		fragments:   f.fragments().all(),
+		fragments:   tabs.all(),
 	}
 }
 
@@ -168,13 +176,14 @@ func (f form) hints() []key.Binding {
 }
 
 func (f form) view(styles look.Styles, outer look.Size) string {
+	tabs := f.fragments()
 	lines := []string{
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
 		f.fieldLine(styles, domain.FieldTagName, f.tagsEntry(styles)),
 	}
 
-	if tabs := f.fragments(); tabs.visible() {
+	if tabs.visible() {
 		lines = append(lines, fieldIndent+tabs.view(outer.Inner().Width-len(fieldIndent)))
 	}
 
@@ -185,7 +194,7 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 		f.content.View(),
 	)
 
-	return look.Frame(styles.Focused, f.frameTitle(), strings.Join(lines, "\n"), outer)
+	return look.Frame(styles.Focused, f.frameTitle(f.enteredIn(tabs)), strings.Join(lines, "\n"), outer)
 }
 
 func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
@@ -444,8 +453,8 @@ func (f form) firstKeysOf(names ...string) []string {
 	return binding.BoundOnly(firstKeys...)
 }
 
-func (f form) frameTitle() string {
-	if f.changed() {
+func (f form) frameTitle(shown entered) string {
+	if f.differsFromOriginal(shown) {
 		return overlayTitle + unsavedMarker
 	}
 

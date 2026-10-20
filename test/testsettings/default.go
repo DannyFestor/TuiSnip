@@ -15,14 +15,14 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-func Default(t *testing.T) tui.Settings {
-	t.Helper()
+func Default(tb testing.TB) tui.Settings {
+	tb.Helper()
 
-	cfg, err := config.Load(t.Context(), config.Options{
-		Path:   filepath.Join(t.TempDir(), "config.toml"),
+	cfg, err := config.Load(tb.Context(), config.Options{
+		Path:   filepath.Join(tb.TempDir(), "config.toml"),
 		Logger: slog.New(slog.DiscardHandler),
 	})
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	return bootstrap.SettingsFrom(
 		cfg,

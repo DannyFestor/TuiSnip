@@ -2779,6 +2779,54 @@ func TestModel_Value_tabs(t *testing.T) {
 	})
 }
 
+func TestModel_View_longContent(t *testing.T) {
+	t.Parallel()
+
+	numbered := make([]string, 0, 50)
+	for number := 1; number <= 50; number++ {
+		numbered = append(numbered, fmt.Sprintf("line %d", number))
+	}
+
+	tests := []struct {
+		name  string
+		moves []tea.KeyPressMsg
+		want  []string
+	}{
+		{
+			name:  "draws the rows at the end once scrolled there",
+			moves: []tea.KeyPressMsg{{Code: tea.KeyEnd, Mod: tea.ModCtrl}},
+			want:  numbered[44:],
+		},
+		{
+			name:  "draws the rows at the start once scrolled back",
+			moves: []tea.KeyPressMsg{{Code: tea.KeyEnd, Mod: tea.ModCtrl}, {Code: tea.KeyHome, Mod: tea.ModCtrl}},
+			want:  numbered[:6],
+		},
+		{
+			name: "draws the rows a page down",
+			moves: []tea.KeyPressMsg{
+				{Code: tea.KeyHome, Mod: tea.ModCtrl},
+				{Code: tea.KeyPgDown},
+				{Code: tea.KeyPgDown},
+			},
+			want: numbered[6:12],
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			area := newPlainTextarea(t, strings.Join(numbered, "\n"))
+			for _, move := range tt.moves {
+				area, _ = area.Update(move)
+			}
+
+			assert.Equal(t, tt.want, viewRows(&area)[:6])
+		})
+	}
+}
+
 func TestModel_View_tabs(t *testing.T) {
 	t.Parallel()
 

@@ -1,7 +1,6 @@
 package textarea
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"slices"
 	"strconv"
@@ -46,13 +45,12 @@ type line struct {
 }
 
 func (w line) Hash() string {
-	v := fmt.Sprintf("%s:%d", string(w.runes), w.width)
-
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(v)))
+	return strconv.Itoa(w.width) + ":" + string(w.runes)
 }
 
 type Model struct {
-	cache *memoization.MemoCache[line, []wrappedLine]
+	cache    *memoization.MemoCache[line, []wrappedLine]
+	rowWraps *rowWraps
 
 	// When changing the value of Prompt after the model has been
 	// initialized, ensure that SetWidth() gets called afterwards.
@@ -144,6 +142,7 @@ func New() Model {
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
 		cache:                memoization.NewMemoCache[line, []wrappedLine](defaultMaxLines),
+		rowWraps:             &rowWraps{rows: nil},
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		useVirtualCursor:     true,
@@ -333,7 +332,7 @@ func (m *Model) Word() string {
 }
 
 func (m *Model) LineInfo() LineInfo {
-	grid := m.memoizedWrap(m.value[m.row], m.width)
+	grid := m.wrappedRow(m.row)
 
 	var counter int
 	for segment, line := range grid {
@@ -1113,7 +1112,7 @@ func (m *Model) updateVirtualCursor(msg tea.Msg, oldRow, oldCol int) tea.Cmd {
 }
 
 func (m *Model) contentView() string {
-	if m.Value() == "" && m.row == 0 && m.col == 0 && m.Placeholder != "" {
+	if m.empty() && m.row == 0 && m.col == 0 && m.Placeholder != "" {
 		return m.placeholderView()
 	}
 
@@ -1123,6 +1122,7 @@ func (m *Model) contentView() string {
 		model:       m,
 		styles:      m.activeStyle(),
 		lineInfo:    m.LineInfo(),
+		drawn:       m.rowsWithinAPageOfViewport(),
 		out:         strings.Builder{},
 		displayLine: 0,
 	}
@@ -1133,6 +1133,17 @@ func (m *Model) contentView() string {
 	view.writeEndOfBuffer()
 
 	return view.out.String()
+}
+
+func (m *Model) empty() bool {
+	return len(m.value) == 0 || (len(m.value) == 1 && len(m.value[0]) == 0)
+}
+
+func (m *Model) rowsWithinAPageOfViewport() drawnRows {
+	top := m.viewport.YOffset()
+	page := m.viewport.Height()
+
+	return drawnRows{first: top - page, end: top + 2*page}
 }
 
 func (m *Model) promptView(displayLine int) string {
@@ -1336,11 +1347,23 @@ func (m *Model) memoizedWrap(runes []rune, width int) []wrappedLine {
 	return v
 }
 
+func (m *Model) wrappedRow(row int) []wrappedLine {
+	source := m.value[row]
+	if wrapped, ok := m.rowWraps.lookup(row, source, m.width); ok {
+		return wrapped
+	}
+
+	wrapped := m.memoizedWrap(source, m.width)
+	m.rowWraps.store(row, source, m.width, wrapped)
+
+	return wrapped
+}
+
 // This accounts for soft wrapped lines.
 func (m *Model) cursorLineNumber() int {
 	line := 0
 	for i := range m.row {
-		line += len(m.memoizedWrap(m.value[i], m.width))
+		line += len(m.wrappedRow(i))
 	}
 
 	line += m.LineInfo().RowOffset
@@ -1350,8 +1373,8 @@ func (m *Model) cursorLineNumber() int {
 
 func (m *Model) totalVisualLines() int {
 	n := 0
-	for _, line := range m.value {
-		n += len(m.memoizedWrap(line, m.width))
+	for row := range m.value {
+		n += len(m.wrappedRow(row))
 	}
 
 	return n
@@ -1393,7 +1416,7 @@ func (m *Model) visualLinesForInsert(lines [][]rune) int {
 		return 0
 	}
 
-	currentRowVisual := len(m.memoizedWrap(m.value[m.row], m.width))
+	currentRowVisual := len(m.wrappedRow(m.row))
 
 	merged := make([]rune, 0, m.col+len(lines[0]))
 	merged = append(merged, m.value[m.row][:m.col]...)
@@ -1515,6 +1538,7 @@ type contentRenderer struct {
 	model       *Model
 	styles      *StyleState
 	lineInfo    LineInfo
+	drawn       drawnRows
 	out         strings.Builder
 	displayLine int
 }
@@ -1528,6 +1552,13 @@ type wrappedSegment struct {
 }
 
 func (v *contentRenderer) writeLine(row int, line []rune) {
+	wrappedLines := v.model.wrappedRow(row)
+	if !v.drawn.overlap(v.displayLine, len(wrappedLines)) {
+		v.skipRows(len(wrappedLines))
+
+		return
+	}
+
 	style := v.styles.computedText()
 	if v.model.row == row {
 		style = v.styles.computedCursorLine()
@@ -1538,10 +1569,15 @@ func (v *contentRenderer) writeLine(row int, line []rune) {
 	// selection coordinates.
 	wrappedBase := 0
 
-	for index, wrapped := range v.model.memoizedWrap(line, v.model.width) {
+	for index, wrapped := range wrappedLines {
 		segment := wrappedSegment{row: row, index: index, base: wrappedBase, lineLength: len(line), wrapped: wrapped}
 		wrappedBase += v.writeSegment(segment, style)
 	}
+}
+
+func (v *contentRenderer) skipRows(count int) {
+	v.out.WriteString(strings.Repeat("\n", count))
+	v.displayLine += count
 }
 
 func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.Style) int {

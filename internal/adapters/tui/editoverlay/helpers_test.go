@@ -181,12 +181,12 @@ func browsed() browseselection.Selection {
 	return browseselection.WithTag(testkit.NewSequentialIDs().NewTagID())
 }
 
-func storedSnippet(t *testing.T, content string) domain.Snippet {
-	t.Helper()
+func storedSnippet(tb testing.TB, content string) domain.Snippet {
+	tb.Helper()
 
 	ids := testkit.NewSequentialIDs()
 
-	return testkit.Snippet(t, testkit.SnippetSpec{
+	return testkit.Snippet(tb, testkit.SnippetSpec{
 		ID:          ids.NewSnippetID(),
 		Title:       "Prune",
 		Description: "Reclaim",

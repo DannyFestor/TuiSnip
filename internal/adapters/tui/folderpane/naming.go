@@ -31,11 +31,13 @@ type placement struct {
 }
 
 type newFolder struct {
-	parentID domain.FolderID
+	parentID   domain.FolderID
+	parentName string
 }
 
 type renamedFolder struct {
-	folderID domain.FolderID
+	folderID     domain.FolderID
+	previousName string
 }
 
 func (newFolder) placed(at row, index int) placement {
@@ -44,7 +46,10 @@ func (newFolder) placed(at row, index int) placement {
 
 func (n newFolder) requested(name string) []outcome.Outcome {
 	return []outcome.Outcome{
-		outcome.FolderCreateRequested{Input: folder.CreateInput{Name: name, ParentID: n.parentID}},
+		outcome.FolderCreateRequested{
+			Input:      folder.CreateInput{Name: name, ParentID: n.parentID},
+			ParentName: n.parentName,
+		},
 	}
 }
 
@@ -54,7 +59,10 @@ func (renamedFolder) placed(at row, index int) placement {
 
 func (r renamedFolder) requested(name string) []outcome.Outcome {
 	return []outcome.Outcome{
-		outcome.FolderRenameRequested{Input: folder.RenameInput{FolderID: r.folderID, Name: name}},
+		outcome.FolderRenameRequested{
+			Input:        folder.RenameInput{FolderID: r.folderID, Name: name},
+			PreviousName: r.previousName,
+		},
 	}
 }
 

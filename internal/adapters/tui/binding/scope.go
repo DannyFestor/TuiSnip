@@ -7,6 +7,7 @@ const (
 	ScopeFolders     Scope = "folders"
 	ScopeTags        Scope = "tags"
 	ScopeSnippetList Scope = "snippet_list"
+	ScopeTrash       Scope = "trash"
 	ScopeSnippetPane Scope = "snippet_pane"
 	ScopeEditor      Scope = "editor"
 	ScopeContent     Scope = "content"
@@ -17,5 +18,5 @@ const (
 )
 
 func (s Scope) isPane() bool {
-	return s == ScopeFolders || s == ScopeTags || s == ScopeSnippetList || s == ScopeSnippetPane
+	return s == ScopeFolders || s == ScopeTags || s == ScopeSnippetList || s == ScopeTrash || s == ScopeSnippetPane
 }

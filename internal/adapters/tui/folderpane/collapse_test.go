@@ -30,6 +30,7 @@ func TestPane_UpdateCollapse(t *testing.T) {
 			"◆ Root                2",
 			"  docker              3",
 			"▸ GO                  2",
+			"▪ Trash               0",
 		}, viewLines(pane))
 		assert.Equal(t, []outcome.Outcome{
 			outcome.CollapsedFoldersChanged{IDs: []domain.FolderID{sample.Go.ID()}},
@@ -49,6 +50,7 @@ func TestPane_UpdateCollapse(t *testing.T) {
 			"  docker              3",
 			"▾ GO                  2",
 			"    testing           1",
+			"▪ Trash               0",
 		}, viewLines(pane))
 		assert.Equal(t, []outcome.Outcome{outcome.CollapsedFoldersChanged{IDs: []domain.FolderID{}}}, outcomes)
 	})
@@ -63,7 +65,7 @@ func TestPane_UpdateCollapse(t *testing.T) {
 
 		assert.Empty(t, atRoot)
 		assert.Empty(t, onLeaf)
-		assert.Len(t, viewLines(pane), 4)
+		assert.Len(t, viewLines(pane), 5)
 	})
 
 	t.Run("moves the cursor over the visible rows only", func(t *testing.T) {
@@ -72,7 +74,7 @@ func TestPane_UpdateCollapse(t *testing.T) {
 		sample := foldertree.New(t)
 		pane := collapsedPane(t, sample, sample.Go.ID())
 
-		pane = pressed(pane, keypress.Letter('G'))
+		pane = pressed(pane, keypress.Letter('G'), keypress.Letter('k'))
 
 		assert.Equal(t, sample.Go.ID(), pane.Selected())
 	})
@@ -92,6 +94,7 @@ func TestNew(t *testing.T) {
 			"◆ ROOT                2",
 			"  docker              3",
 			"▸ go                  2",
+			"▪ Trash               0",
 		}, viewLines(pane))
 	})
 }
@@ -159,7 +162,7 @@ func TestPane_UpdateNewFolderInCollapsed(t *testing.T) {
 	t.Parallel()
 
 	sample := foldertree.New(t)
-	pane := pressed(collapsedPane(t, sample, sample.Go.ID()), keypress.Letter('G'))
+	pane := pressed(collapsedPane(t, sample, sample.Go.ID()), keypress.Letter('G'), keypress.Letter('k'))
 
 	pane, outcomes, _ := pane.Update(keypress.Letter('N'))
 

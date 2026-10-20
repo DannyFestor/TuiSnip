@@ -8,6 +8,9 @@ type Deps struct {
 	TagLister                   TagLister
 	TagSnippetsLister           TagSnippetsLister
 	Copier                      SnippetCopier
+	TrashCopier                 SnippetCopier
+	TrashLister                 TrashLister
+	TrashRestorer               TrashRestorer
 	Creator                     SnippetCreator
 	Capturer                    SnippetCapturer
 	Updater                     SnippetUpdater
@@ -17,7 +20,6 @@ type Deps struct {
 	Searcher                    SnippetSearcher
 	FolderCreator               FolderCreator
 	FolderRenamer               FolderRenamer
-	FolderDeletePreviewer       FolderDeletePreviewer
 	FolderDeleter               FolderDeleter
 	FolderDefaultLanguageSetter FolderDefaultLanguageSetter
 	FolderMover                 FolderMover

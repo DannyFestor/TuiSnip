@@ -355,6 +355,48 @@ func (q *Queries) ListSnippetTagsWithTag(ctx context.Context, tagID sqltype.ID) 
 	return items, nil
 }
 
+const listSnippetTrashItemTags = `-- name: ListSnippetTrashItemTags :many
+SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+WHERE snippet_tag.snippet_id = ?
+`
+
+type ListSnippetTrashItemTagsRow struct {
+	SnippetID sqltype.ID
+	Tag       Tag
+}
+
+func (q *Queries) ListSnippetTrashItemTags(ctx context.Context, snippetID sqltype.ID) ([]ListSnippetTrashItemTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSnippetTrashItemTags, snippetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSnippetTrashItemTagsRow{}
+	for rows.Next() {
+		var i ListSnippetTrashItemTagsRow
+		if err := rows.Scan(
+			&i.SnippetID,
+			&i.Tag.ID,
+			&i.Tag.Name,
+			&i.Tag.NameKey,
+			&i.Tag.CreatedAt,
+			&i.Tag.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTags = `-- name: ListTags :many
 SELECT id, name, name_key, created_at, updated_at
 FROM tags
@@ -375,6 +417,48 @@ func (q *Queries) ListTags(ctx context.Context) ([]Tag, error) {
 			&i.NameKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTrashSnippetTags = `-- name: ListTrashSnippetTags :many
+SELECT snippet_tag.snippet_id, tags.id, tags.name, tags.name_key, tags.created_at, tags.updated_at
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+WHERE snippet_tag.snippet_id NOT IN (SELECT live_snippets.id FROM live_snippets)
+`
+
+type ListTrashSnippetTagsRow struct {
+	SnippetID sqltype.ID
+	Tag       Tag
+}
+
+func (q *Queries) ListTrashSnippetTags(ctx context.Context) ([]ListTrashSnippetTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTrashSnippetTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTrashSnippetTagsRow{}
+	for rows.Next() {
+		var i ListTrashSnippetTagsRow
+		if err := rows.Scan(
+			&i.SnippetID,
+			&i.Tag.ID,
+			&i.Tag.Name,
+			&i.Tag.NameKey,
+			&i.Tag.CreatedAt,
+			&i.Tag.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

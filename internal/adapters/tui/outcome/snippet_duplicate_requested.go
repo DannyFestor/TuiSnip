@@ -7,6 +7,7 @@ import (
 
 type SnippetDuplicateRequested struct {
 	Input     snippet.DuplicateInput
+	Title     string
 	Selection browseselection.Selection
 }
 

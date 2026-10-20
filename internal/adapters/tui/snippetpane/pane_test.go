@@ -158,7 +158,11 @@ func TestPane_Update(t *testing.T) {
 
 		assert.Equal(
 			t,
-			[]outcome.Outcome{outcome.CopyRequested{ID: snippet.ID(), FragmentID: snippet.FirstFragment().ID()}},
+			[]outcome.Outcome{outcome.CopyRequested{
+				ID:         snippet.ID(),
+				FragmentID: snippet.FirstFragment().ID(),
+				Title:      snippet.Title().String(),
+			}},
 			outcomes,
 		)
 	})
@@ -172,7 +176,11 @@ func TestPane_Update(t *testing.T) {
 
 		assert.Equal(
 			t,
-			[]outcome.Outcome{outcome.CopyRequested{ID: snippet.ID(), FragmentID: snippet.Fragments()[1].ID()}},
+			[]outcome.Outcome{outcome.CopyRequested{
+				ID:         snippet.ID(),
+				FragmentID: snippet.Fragments()[1].ID(),
+				Title:      snippet.Title().String(),
+			}},
 			outcomes,
 		)
 	})

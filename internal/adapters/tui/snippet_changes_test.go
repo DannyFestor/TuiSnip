@@ -12,8 +12,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
-const snippetDeleteQuestion = `Permanently delete Snippet "Snippet 2"? This cannot be undone. [y/N]`
-
 func TestModel_duplicate(t *testing.T) {
 	t.Parallel()
 
@@ -53,7 +51,7 @@ func TestModel_duplicate(t *testing.T) {
 func TestModel_snippetDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("confirms, deletes, and selects the Snippet that takes its row", func(t *testing.T) {
+	t.Run("moves the Snippet to the Trash and selects the Snippet that takes its row", func(t *testing.T) {
 		t.Parallel()
 
 		snippets := numberedSnippets(t, 3)
@@ -67,24 +65,9 @@ func TestModel_snippetDelete(t *testing.T) {
 		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 		screen.press(keypress.Letter('3'), keypress.Letter('j'), keypress.Letter('d'))
 
-		assert.Contains(t, screen.screen(), snippetDeleteQuestion)
-
-		screen.press(keypress.Letter('y'))
-
-		assert.NotContains(t, screen.screen(), "Snippet 2")
+		assert.Contains(t, screen.screen(), `Moved Snippet "Snippet 2" to the Trash`)
+		assert.NotContains(t, screen.screen(), "Snippet 2 ")
 		assert.Contains(t, screen.screen(), "Description 3")
-	})
-
-	t.Run("keeps the Snippet when the delete is declined", func(t *testing.T) {
-		t.Parallel()
-
-		with := snippetChangingActions(t, listerOf(t, numberedSnippets(t, 3)...))
-		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
-
-		screen.press(keypress.Letter('3'), keypress.Letter('j'), keypress.Letter('d'), keypress.Letter('n'))
-
-		assert.NotContains(t, screen.screen(), "[y/N]")
-		assert.Contains(t, screen.screen(), "Description 2")
 	})
 
 	t.Run("reports a failed delete", func(t *testing.T) {
@@ -97,7 +80,7 @@ func TestModel_snippetDelete(t *testing.T) {
 		with.deleter = deleter
 		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 
-		screen.press(keypress.Letter('3'), keypress.Letter('j'), keypress.Letter('d'), keypress.Letter('y'))
+		screen.press(keypress.Letter('3'), keypress.Letter('j'), keypress.Letter('d'))
 
 		assert.Contains(t, screen.screen(), "Something went wrong; see the log")
 	})

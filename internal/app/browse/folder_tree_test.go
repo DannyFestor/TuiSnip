@@ -15,11 +15,12 @@ import (
 func TestNewFolderTree(t *testing.T) {
 	t.Parallel()
 
-	_, err := browse.NewFolderTree(nil, nil)
+	_, err := browse.NewFolderTree(nil, nil, nil)
 
 	require.ErrorIs(t, err, domain.ErrMissingDependency)
 	require.ErrorContains(t, err, "browse.NewFolderTree: folders")
-	assert.ErrorContains(t, err, "counter")
+	require.ErrorContains(t, err, "counter")
+	assert.ErrorContains(t, err, "trash")
 }
 
 func TestFolderTree_Run(t *testing.T) {
@@ -58,7 +59,35 @@ func TestFolderTree_Run(t *testing.T) {
 			Run(t.Context(), browse.FolderTreeInput{})
 
 		require.NoError(t, err)
-		assert.Equal(t, browse.Tree{RootSnippetCount: 0, Folders: nil}, got)
+		assert.Equal(t, browse.Tree{RootSnippetCount: 0, Folders: nil, TrashCount: 0}, got)
+	})
+
+	t.Run("carries the count of Trash items", func(t *testing.T) {
+		t.Parallel()
+
+		trash := NewMockTrashItemCounter(t)
+		trash.EXPECT().CountItems(mock.Anything).Return(4, nil)
+		action, err := browse.NewFolderTree(folderListerOf(t), snippetCounterOf(t, nil), trash)
+		require.NoError(t, err)
+
+		got, err := action.Run(t.Context(), browse.FolderTreeInput{})
+
+		require.NoError(t, err)
+		assert.Equal(t, 4, got.TrashCount)
+	})
+
+	t.Run("returns the Trash counter's error", func(t *testing.T) {
+		t.Parallel()
+
+		trash := NewMockTrashItemCounter(t)
+		trash.EXPECT().CountItems(mock.Anything).Return(0, errDatabaseLocked)
+		action, err := browse.NewFolderTree(folderListerOf(t), snippetCounterOf(t, nil), trash)
+		require.NoError(t, err)
+
+		_, err = action.Run(t.Context(), browse.FolderTreeInput{})
+
+		require.ErrorIs(t, err, errDatabaseLocked)
+		assert.ErrorContains(t, err, "browse.FolderTree: ")
 	})
 
 	t.Run("returns the lister's error", func(t *testing.T) {
@@ -89,7 +118,10 @@ func TestFolderTree_Run(t *testing.T) {
 func newFolderTree(t *testing.T, folders browse.FolderLister, counter browse.SnippetCounter) *browse.FolderTree {
 	t.Helper()
 
-	action, err := browse.NewFolderTree(folders, counter)
+	trash := NewMockTrashItemCounter(t)
+	trash.EXPECT().CountItems(mock.Anything).Return(0, nil).Maybe()
+
+	action, err := browse.NewFolderTree(folders, counter, trash)
 	require.NoError(t, err)
 
 	return action

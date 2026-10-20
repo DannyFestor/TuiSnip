@@ -25,7 +25,11 @@ func statusHintList(scope Scope) []labelledRef {
 }
 
 func paneHintList(scope Scope) []labelledRef {
-	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)...)
+	return append(paneOwnHintList(scope), paneGlobalHintList()...)
+}
+
+func paneGlobalHintList() []labelledRef {
+	return withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)
 }
 
 func paneOwnHintList(scope Scope) []labelledRef {
@@ -47,6 +51,8 @@ func paneOwnHintList(scope Scope) []labelledRef {
 			rowRef{scope: scope, name: Delete},
 			rowRef{scope: scope, name: CycleSort},
 		)
+	case ScopeTrash:
+		return withRowLabels(refsIn(scope, Copy, Restore)...)
 	case ScopeSnippetPane:
 		return withRowLabels(refsIn(scope, Copy, Edit, OpenInEditor, Wrap, NextFragment, PrevFragment)...)
 	case ScopeGlobal, ScopeEditor, ScopeContent, ScopeSearch, ScopePicker, ScopeNameInput, ScopeConfirm:
@@ -83,7 +89,7 @@ func nonPaneHintList(scope Scope) []labelledRef {
 		return withRowLabels(refsIn(scope, Accept, Cancel)...)
 	case ScopeConfirm:
 		return withRowLabels(refsIn(scope, Yes, No)...)
-	case ScopeGlobal, ScopeFolders, ScopeTags, ScopeSnippetList, ScopeSnippetPane:
+	case ScopeGlobal, ScopeFolders, ScopeTags, ScopeSnippetList, ScopeTrash, ScopeSnippetPane:
 	}
 
 	return nil

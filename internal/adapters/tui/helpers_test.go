@@ -55,6 +55,9 @@ type actions struct {
 	tagLister             tui.TagLister
 	tagSnippetsLister     tui.TagSnippetsLister
 	copier                tui.SnippetCopier
+	trashCopier           tui.SnippetCopier
+	trashLister           tui.TrashLister
+	trashRestorer         tui.TrashRestorer
 	creator               tui.SnippetCreator
 	capturer              tui.SnippetCapturer
 	updater               tui.SnippetUpdater
@@ -64,7 +67,6 @@ type actions struct {
 	searcher              tui.SnippetSearcher
 	folderCreator         tui.FolderCreator
 	folderRenamer         tui.FolderRenamer
-	folderDeletePreviewer tui.FolderDeletePreviewer
 	folderDeleter         tui.FolderDeleter
 	defaultLanguageSetter tui.FolderDefaultLanguageSetter
 	folderMover           tui.FolderMover
@@ -151,6 +153,9 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			func() tui.TagSnippetsLister { return NewMockTagSnippetsLister(t) },
 		),
 		Copier:        with.copier,
+		TrashCopier:   orMock(with.trashCopier, func() tui.SnippetCopier { return NewMockSnippetCopier(t) }),
+		TrashLister:   orMock(with.trashLister, func() tui.TrashLister { return NewMockTrashLister(t) }),
+		TrashRestorer: orMock(with.trashRestorer, func() tui.TrashRestorer { return NewMockTrashRestorer(t) }),
 		Creator:       with.creator,
 		Capturer:      orMock(with.capturer, func() tui.SnippetCapturer { return NewMockSnippetCapturer(t) }),
 		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),
@@ -160,10 +165,6 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 		Searcher:      with.searcher,
 		FolderCreator: orMock(with.folderCreator, func() tui.FolderCreator { return NewMockFolderCreator(t) }),
 		FolderRenamer: orMock(with.folderRenamer, func() tui.FolderRenamer { return NewMockFolderRenamer(t) }),
-		FolderDeletePreviewer: orMock(
-			with.folderDeletePreviewer,
-			func() tui.FolderDeletePreviewer { return NewMockFolderDeletePreviewer(t) },
-		),
 		FolderDeleter: orMock(with.folderDeleter, func() tui.FolderDeleter { return NewMockFolderDeleter(t) }),
 		FolderDefaultLanguageSetter: orMock(
 			with.defaultLanguageSetter,

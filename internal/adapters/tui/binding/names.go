@@ -35,6 +35,7 @@ const (
 	Edit         = "edit"
 	Duplicate    = "duplicate"
 	CycleSort    = "cycle_sort"
+	Restore      = "restore"
 	Wrap         = "wrap"
 	NextFragment = "next_fragment"
 	PrevFragment = "prev_fragment"

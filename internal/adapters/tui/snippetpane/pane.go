@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	dateLayout       = "2006-01-02"
 	lineNumberFormat = "%4d │ "
 	blankGutter      = "     │ "
 	wrappedGutter    = "   ↪ │ "
@@ -37,6 +36,7 @@ type Pane struct {
 	styles     look.Styles
 	snippet    domain.Snippet
 	shown      bool
+	trashed    Trashed
 	strip      fragmentstrip.Strip
 	viewport   viewport.Model
 	location   *time.Location
@@ -55,6 +55,7 @@ func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 		styles:     styles,
 		snippet:    domain.Snippet{},
 		shown:      false,
+		trashed:    Trashed{Place: "", DeletedAt: time.Time{}},
 		strip:      fragmentstrip.New(styles),
 		viewport:   code,
 		location:   location,
@@ -98,17 +99,11 @@ func (p Pane) FullHelp() [][]key.Binding {
 }
 
 func (p Pane) Showing(snippet domain.Snippet) Pane {
-	next := p
-	next.snippet = snippet
-	next.strip = p.stripFor(snippet)
+	return p.displaying(snippet, Trashed{Place: "", DeletedAt: time.Time{}})
+}
 
-	if p.shown && p.snippet.ID() == snippet.ID() && p.snippet.UpdatedAt().Equal(snippet.UpdatedAt()) {
-		return next
-	}
-
-	next.shown = true
-
-	return next.rendered()
+func (p Pane) ShowingInTrash(snippet domain.Snippet, trashed Trashed) Pane {
+	return p.displaying(snippet, trashed)
 }
 
 func (p Pane) ShowingFragment(id domain.FragmentID) Pane {
@@ -133,9 +128,13 @@ func (p Pane) ShownFragment() (domain.Fragment, bool) {
 }
 
 func (p Pane) Copying() (outcome.CopyRequested, bool) {
-	fragment, ok := p.ShownFragment()
+	fragment, shown := p.ShownFragment()
 
-	return outcome.CopyRequested{ID: p.snippet.ID(), FragmentID: fragment.ID()}, ok
+	return outcome.CopyRequested{
+		ID:         p.snippet.ID(),
+		FragmentID: fragment.ID(),
+		Title:      p.snippet.Title().String(),
+	}, shown
 }
 
 func (p Pane) WithPaths(paths folderpath.Paths) Pane {
@@ -150,6 +149,21 @@ func (p Pane) Cleared() Pane {
 	p.viewport.SetContent("")
 
 	return p
+}
+
+func (p Pane) displaying(snippet domain.Snippet, trashed Trashed) Pane {
+	next := p
+	next.snippet = snippet
+	next.trashed = trashed
+	next.strip = p.stripFor(snippet)
+
+	if p.shown && p.snippet.ID() == snippet.ID() && p.snippet.UpdatedAt().Equal(snippet.UpdatedAt()) {
+		return next
+	}
+
+	next.shown = true
+
+	return next.rendered()
 }
 
 func (p Pane) pressed(msg tea.KeyPressMsg) Pane {
@@ -236,31 +250,13 @@ func (p Pane) resized(box look.Size) Pane {
 }
 
 func (p Pane) scrolled(direction move.Direction) Pane {
-	switch direction {
-	case move.Down:
-		p.viewport.ScrollDown(1)
-	case move.Up:
-		p.viewport.ScrollUp(1)
-	case move.Top:
-		p.viewport.GotoTop()
-	case move.Bottom:
-		p.viewport.GotoBottom()
-	case move.PageDown:
-		p.viewport.PageDown()
-	case move.PageUp:
-		p.viewport.PageUp()
-	case move.None:
-	}
+	p.viewport = move.Scrolled(p.viewport, direction)
 
 	return p
 }
 
 func (p Pane) wheeled(wheel pointer.Wheeled) Pane {
-	if wheel.Lines < 0 {
-		p.viewport.ScrollUp(-wheel.Lines)
-	} else {
-		p.viewport.ScrollDown(wheel.Lines)
-	}
+	p.viewport = move.Wheeled(p.viewport, wheel.Lines)
 
 	return p
 }
@@ -305,7 +301,7 @@ func (p Pane) stripRow() int {
 }
 
 func (p Pane) meta() string {
-	place := p.paths.Full(p.snippet.FolderID()) + metaSeparator + p.fragmentInView().Language().String()
+	place := p.place() + metaSeparator + p.fragmentInView().Language().String()
 
 	tags := p.snippet.Tags()
 	if len(tags) == 0 {
@@ -333,9 +329,22 @@ func (p Pane) descriptionLines() []string {
 	return strings.Split(description, "\n")
 }
 
+func (p Pane) place() string {
+	if p.trashed.isSet() {
+		return p.trashed.Place
+	}
+
+	return p.paths.Full(p.snippet.FolderID())
+}
+
 func (p Pane) timestamps() string {
-	return "created " + p.snippet.CreatedAt().In(p.location).Format(dateLayout) +
-		metaSeparator + "updated " + p.snippet.UpdatedAt().In(p.location).Format(dateLayout)
+	dates := "created " + look.Date(p.snippet.CreatedAt(), p.location) +
+		metaSeparator + "updated " + look.Date(p.snippet.UpdatedAt(), p.location)
+	if !p.trashed.isSet() {
+		return dates
+	}
+
+	return look.DeletedOn(p.trashed.DeletedAt, p.location) + metaSeparator + dates
 }
 
 func lineNumbers(styles look.Styles) viewport.GutterFunc {

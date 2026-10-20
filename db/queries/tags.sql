@@ -44,6 +44,18 @@ SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag
 JOIN tags ON tags.id = snippet_tag.tag_id;
 
+-- name: ListTrashSnippetTags :many
+SELECT snippet_tag.snippet_id, sqlc.embed(tags)
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+WHERE snippet_tag.snippet_id NOT IN (SELECT live_snippets.id FROM live_snippets);
+
+-- name: ListSnippetTrashItemTags :many
+SELECT snippet_tag.snippet_id, sqlc.embed(tags)
+FROM snippet_tag
+JOIN tags ON tags.id = snippet_tag.tag_id
+WHERE snippet_tag.snippet_id = ?;
+
 -- name: ListSnippetTagsBySnippet :many
 SELECT snippet_tag.snippet_id, sqlc.embed(tags)
 FROM snippet_tag

@@ -19,6 +19,8 @@ const (
 	ScopeTags Scope = "tags"
 	// ScopeSnippetList is a Scope of type snippet_list.
 	ScopeSnippetList Scope = "snippet_list"
+	// ScopeTrash is a Scope of type trash.
+	ScopeTrash Scope = "trash"
 	// ScopeSnippetPane is a Scope of type snippet_pane.
 	ScopeSnippetPane Scope = "snippet_pane"
 	// ScopeEditor is a Scope of type editor.
@@ -42,6 +44,7 @@ var _ScopeNames = []string{
 	string(ScopeFolders),
 	string(ScopeTags),
 	string(ScopeSnippetList),
+	string(ScopeTrash),
 	string(ScopeSnippetPane),
 	string(ScopeEditor),
 	string(ScopeContent),
@@ -75,6 +78,7 @@ var _ScopeValue = map[string]Scope{
 	"folders":      ScopeFolders,
 	"tags":         ScopeTags,
 	"snippet_list": ScopeSnippetList,
+	"trash":        ScopeTrash,
 	"snippet_pane": ScopeSnippetPane,
 	"editor":       ScopeEditor,
 	"content":      ScopeContent,

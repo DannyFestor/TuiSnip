@@ -98,7 +98,9 @@ func trashRawSnippet(t *testing.T, path string, snippetID domain.SnippetID) {
 }
 
 type trashFixture struct {
+	path           string
 	database       *sqlite.Database
+	ids            *testkit.SequentialIDs
 	tag            domain.Tag
 	liveFolder     domain.Folder
 	trashedFolder  domain.Folder
@@ -130,7 +132,9 @@ func newTrashFixture(t *testing.T) trashFixture {
 		})
 	}
 	fixture := trashFixture{
+		path:           path,
 		database:       database,
+		ids:            ids,
 		tag:            tag,
 		liveFolder:     liveFolder,
 		trashedFolder:  trashedFolder,
@@ -156,6 +160,25 @@ func (f trashFixture) snippets(t *testing.T) *sqlite.SnippetRepository {
 	t.Helper()
 
 	return newSnippetRepository(t, f.database)
+}
+
+func (f trashFixture) library(t *testing.T) domain.Library {
+	t.Helper()
+
+	return loadedLibrary(t, f.database)
+}
+
+func loadedLibrary(t *testing.T, database *sqlite.Database) domain.Library {
+	t.Helper()
+
+	library, err := sqlite.NewLibraryRepository(database, slog.New(slog.DiscardHandler)).Load(t.Context())
+	require.NoError(t, err)
+
+	return library
+}
+
+func trashedAt() time.Time {
+	return time.Date(2026, time.October, 14, 9, 30, 0, 0, time.UTC)
 }
 
 func migrateRawToPreviousSchema(t *testing.T, path string) {

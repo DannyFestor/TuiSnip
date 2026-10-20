@@ -317,7 +317,11 @@ func TestPopup_end(t *testing.T) {
 		assert.Equal(
 			t,
 			[]outcome.Outcome{
-				outcome.CopyRequested{ID: snippets[1].ID(), FragmentID: snippets[1].FirstFragment().ID()},
+				outcome.CopyRequested{
+					ID:         snippets[1].ID(),
+					FragmentID: snippets[1].FirstFragment().ID(),
+					Title:      snippets[1].Title().String(),
+				},
 			},
 			screen.Outcomes(),
 		)
@@ -379,7 +383,11 @@ func TestPopup_hitOnAFragment(t *testing.T) {
 
 		screen.Press(keypress.Ctrl('y'))
 
-		copied := outcome.CopyRequested{ID: deploy.ID(), FragmentID: deploy.Fragments()[2].ID()}
+		copied := outcome.CopyRequested{
+			ID:         deploy.ID(),
+			FragmentID: deploy.Fragments()[2].ID(),
+			Title:      deploy.Title().String(),
+		}
 		assert.Contains(t, screen.Outcomes(), copied)
 	})
 

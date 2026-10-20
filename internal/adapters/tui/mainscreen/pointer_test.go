@@ -194,6 +194,7 @@ func TestScreen_wheel(t *testing.T) {
 		t.Parallel()
 
 		screen := opened(t, wide(), look.NewStyles(look.SchemeDark), domain.SortOrderTitle)
+		screen.Send(mainscreen.TreeLoaded{Tree: foldertree.New(t).Tree})
 		screen.Send(mainscreen.SnippetsLoaded{
 			Selection: browseselection.Selection{},
 			Snippets:  manySnippets(t, wide().Height),

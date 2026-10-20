@@ -19,7 +19,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/searchpopup"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
-	"github.com/DannyFestor/TuiSnip/internal/app/folder"
 	"github.com/DannyFestor/TuiSnip/internal/app/tag"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -30,6 +29,7 @@ type Screen struct {
 	global          binding.Set
 	folderKeys      binding.Set
 	listKeys        binding.Set
+	trashKeys       binding.Set
 	paneKeys        binding.Set
 	styles          look.Styles
 	curated         []value.Language
@@ -53,6 +53,7 @@ func New(keys binding.Keys, styles look.Styles, options Options) (Screen, error)
 		global:          keys.For(binding.ScopeGlobal),
 		folderKeys:      keys.For(binding.ScopeFolders),
 		listKeys:        keys.For(binding.ScopeSnippetList),
+		trashKeys:       keys.For(binding.ScopeTrash),
 		paneKeys:        keys.For(binding.ScopeSnippetPane),
 		styles:          styles,
 		curated:         options.Languages,
@@ -77,12 +78,12 @@ func (s Screen) Update(msg tea.Msg) outcome.Step {
 		return outcome.Stay(s.resized(msg.Box))
 	case look.Restyled:
 		return outcome.Stay(s.restyled(msg))
-	case FolderDeletePreviewed:
-		return s.confirmingFolderDelete(msg.Preview)
 	case TagDeletePreviewed:
 		return s.tagDeletePreviewed(msg.Preview)
 	case StatusShown:
 		return outcome.Stay(s.withStatus(msg.Text))
+	case GoneElsewhereShown:
+		return s.goneElsewhereShown(msg.Text)
 	case Captured:
 		return s.captured(msg.Content)
 	case pointer.Clicked, pointer.Wheeled:
@@ -100,6 +101,8 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 		return outcome.Stay(next).Passing(expanded...).Passing(received)
 	case outcome.ContentEdited:
 		return s.externallyEdited(received)
+	case outcome.SnippetSaved:
+		return s.browsed().saved(s, received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -118,11 +121,11 @@ func (s Screen) ShortHelp() []key.Binding {
 		return nil
 	}
 
-	return s.panes.keyMaps()[s.focus].ShortHelp()
+	return s.browsed().keyMaps(s.panes)[s.focus].ShortHelp()
 }
 
 func (s Screen) FullHelp() [][]key.Binding {
-	return append(s.global.FullHelp(), s.panes.keyMaps()[s.focus].FullHelp()...)
+	return append(s.global.FullHelp(), s.browsed().keyMaps(s.panes)[s.focus].FullHelp()...)
 }
 
 func (s Screen) loaded(msg tea.Msg) outcome.Step {
@@ -139,6 +142,8 @@ func (s Screen) loaded(msg tea.Msg) outcome.Step {
 		return s.tagsChanged(msg)
 	case SnippetsLoaded:
 		return s.snippetsLoaded(msg)
+	case TrashLoaded:
+		return outcome.Stay(s.withPanes(s.browsed().trashLoaded(s.panes, msg.Items)))
 	}
 
 	return outcome.Stay(s)
@@ -153,51 +158,41 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if step, ok := s.listPressed(msg); ok {
+	if step, ok := s.browsed().pressed(s, msg); ok {
 		return step
-	}
-
-	if stored, ok := s.shownFor(msg, binding.Edit); ok {
-		return s.opening(editoverlay.Editing(s.keys, s.styles, s.overlayOptions(), s.browsed(stored, s.selection())))
-	}
-
-	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
-		return outcome.Stay(s).Passing(s.externalEditAsked(stored))
 	}
 
 	if filed, ok := s.defaultLanguageAsked(msg); ok {
 		return s.opening(languagepicker.New(s.keys, s.styles, defaultLanguageOffer(filed, s.curated)))
 	}
 
-	if offer, ok := s.moveAsked(msg); ok {
-		return s.opening(folderpicker.New(s.keys, s.styles, offer))
+	if moving, ok := s.folderMoveAsked(msg); ok {
+		return s.opening(folderpicker.New(s.keys, s.styles, folderMoveOffer(moving, s.panes.folders.Tree())))
 	}
 
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) moveAsked(msg tea.KeyPressMsg) (folderpicker.Offer, bool) {
-	tree := s.panes.folders.Tree()
-
-	switch {
-	case s.focus == paneFolders && s.folderKeys.Matches(msg, binding.Move):
-		moving, ok := s.panes.folders.SelectedFolder()
-
-		return folderMoveOffer(moving, tree), ok
-	case s.focus == paneList && s.listKeys.Matches(msg, binding.Move):
-		pending, ok := s.snippetMoveAsked()
-
-		return snippetMoveOffer(pending, tree), ok
+func (s Screen) editPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+	if stored, ok := s.shownFor(msg, binding.Edit); ok {
+		return s.opening(
+			editoverlay.Editing(s.keys, s.styles, s.overlayOptions(), s.browsedSnippet(stored, s.selection())),
+		), true
 	}
 
-	return folderpicker.Offer{}, false
+	if stored, ok := s.shownFor(msg, binding.OpenInEditor); ok {
+		return outcome.Stay(s).Passing(s.externalEditAsked(stored)), true
+	}
+
+	return outcome.Stay(s), false
 }
 
-func (s Screen) snippetMoveAsked() (snippetMove, bool) {
-	moving, ok := s.panes.list.Selected()
-	successor, _ := s.panes.list.Successor()
+func (s Screen) folderMoveAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {
+	if s.focus != paneFolders || !s.folderKeys.Matches(msg, binding.Move) {
+		return domain.Folder{}, false
+	}
 
-	return snippetMove{moving: moving, successor: successor, selection: s.selection()}, ok
+	return s.panes.folders.SelectedFolder()
 }
 
 func (s Screen) defaultLanguageAsked(msg tea.KeyPressMsg) (domain.Folder, bool) {
@@ -219,7 +214,9 @@ func (s Screen) globalPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 	case s.global.Matches(msg, binding.Capture):
 		return outcome.Stay(s).Passing(outcome.CaptureAsked{}), true
 	case s.global.Matches(msg, binding.Search):
-		return s.opening(searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.panes.listing())), true
+		return s.opening(
+			searchpopup.New(s.keys, s.styles, s.panes.preview.Cleared(), s.browsed().listing(s.panes)),
+		), true
 	case s.global.Matches(msg, binding.Zoom):
 		return outcome.Stay(s.zoomToggled()), true
 	case s.focus.inLeftColumn() && s.global.Matches(msg, binding.Open):
@@ -256,7 +253,7 @@ func (s Screen) externalEditAsked(stored domain.Snippet) outcome.ExternalEditAsk
 
 func (s Screen) externallyEdited(edited outcome.ContentEdited) outcome.Step {
 	return s.opening(editoverlay.EditedExternally(s.keys, s.styles, s.overlayOptions(), editoverlay.ExternallyEdited{
-		Browsed:  s.browsed(edited.Asked.Snippet, edited.Asked.Selection),
+		Browsed:  s.browsedSnippet(edited.Asked.Snippet, edited.Asked.Selection),
 		Fragment: edited.Asked.Fragment,
 		Content:  edited.Content,
 	}))
@@ -305,8 +302,8 @@ func (s Screen) clicked(click pointer.Clicked) outcome.Step {
 		return outcome.Stay(s)
 	}
 
-	onRow := s.panes.hasRowAt(target, inner)
-	updated, outcomes, cmd := s.panes.updated(target, pointer.Clicked{At: inner, Double: click.Double})
+	onRow := s.panes.hasRowAt(s.browsed(), target, inner)
+	updated, outcomes, cmd := s.paneUpdated(target, pointer.Clicked{At: inner, Double: click.Double})
 	next := s.withPanes(updated).focusedOn(target)
 
 	if onRow {
@@ -330,7 +327,7 @@ func (s Screen) wheeled(wheel pointer.Wheeled) outcome.Step {
 		return outcome.Stay(s)
 	}
 
-	updated, outcomes, cmd := s.panes.updated(target, pointer.Wheeled{At: inner, Lines: wheel.Lines})
+	updated, outcomes, cmd := s.paneUpdated(target, pointer.Wheeled{At: inner, Lines: wheel.Lines})
 
 	return outcome.Stay(s.withPanes(updated)).Passing(outcomes...).Running(cmd)
 }
@@ -367,11 +364,19 @@ func (s Screen) selection() browseselection.Selection {
 	return s.panes.selectionIn(s.selectionHolder)
 }
 
-func (s Screen) destination() editoverlay.Destination {
-	return s.panes.destination(s.selection())
+func (s Screen) browsed() browsed {
+	return browsedBy(s.selection())
 }
 
-func (s Screen) browsed(stored domain.Snippet, selection browseselection.Selection) editoverlay.BrowsedSnippet {
+func (s Screen) paneUpdated(target pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
+	return s.panes.updated(s.browsed(), target, msg)
+}
+
+func (s Screen) destination() editoverlay.Destination {
+	return s.panes.destination(s.browsed().filedIn(s.selection()))
+}
+
+func (s Screen) browsedSnippet(stored domain.Snippet, selection browseselection.Selection) editoverlay.BrowsedSnippet {
 	return editoverlay.BrowsedSnippet{
 		Snippet:         stored,
 		Selection:       selection,
@@ -384,6 +389,10 @@ func (s Screen) overlayOptions() editoverlay.Options {
 }
 
 func selected(selection browseselection.Selection) []outcome.Outcome {
+	if selection.Trash() {
+		return []outcome.Outcome{outcome.TrashSelected{}}
+	}
+
 	if tagID, ok := selection.Tag(); ok {
 		return []outcome.Outcome{outcome.TagSelected{ID: tagID}}
 	}
@@ -401,10 +410,16 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	return s.focusedUpdated(msg)
 }
 
-func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
-	next, pruned := s.panes.withTree(tree)
+func (s Screen) goneElsewhereShown(text string) outcome.Step {
+	return outcome.Stay(s.withStatus(text)).
+		Passing(outcome.ReloadAsked{Selection: s.selection(), Selecting: s.browsed().listedSnippetID(s.panes)})
+}
 
-	return outcome.Stay(s.withPanes(next)).Passing(pruned...)
+func (s Screen) treeLoaded(tree browse.Tree) outcome.Step {
+	withTree, pruned := s.panes.withTree(tree)
+	next := s.withPanes(withTree)
+
+	return outcome.Stay(next).Passing(pruned...).Passing(s.selectionChangeTo(next)...)
 }
 
 func (s Screen) treeChanged(msg TreeChanged) outcome.Step {
@@ -426,15 +441,6 @@ func (s Screen) snippetsLoaded(loaded SnippetsLoaded) outcome.Step {
 	}
 
 	return step
-}
-
-func (s Screen) confirmingFolderDelete(preview folder.DeletePreview) outcome.Step {
-	onYes := outcome.FolderDeleteRequested{
-		Input:    folder.DeleteInput{FolderID: preview.Folder.ID()},
-		ParentID: preview.Folder.ParentID(),
-	}
-
-	return outcome.Stay(s).Opening(confirm.New(s.keys, s.styles, folderDeleteQuestion(preview), onYes))
 }
 
 func (s Screen) tagDeletePreviewed(preview tag.DeletePreview) outcome.Step {
@@ -484,7 +490,7 @@ func (s Screen) captured(content string) outcome.Step {
 }
 
 func (s Screen) focusedUpdated(msg tea.Msg) outcome.Step {
-	updated, outcomes, cmd := s.panes.updated(s.focus, msg)
+	updated, outcomes, cmd := s.paneUpdated(s.focus, msg)
 	next := s.withPanes(updated).holdingAfter(outcomes).arranged()
 
 	return outcome.Stay(next).Passing(outcomes...).Running(cmd)
@@ -603,10 +609,11 @@ func (s Screen) panesView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, s.paneFrame(paneList), s.paneFrame(paneSnippet))
 }
 
-func (s Screen) paneFrame(p pane) string {
-	frame := s.paneStyle(p)
+func (s Screen) paneFrame(framed pane) string {
+	frame := s.paneStyle(framed)
+	title := framed.title(s.browsed().listTitle(s.panes, s.selection()))
 
-	return look.Frame(frame, p.title(s.panes.selectionAndOrder(s.selection())), s.panes.body(p, frame), s.layout.of(p))
+	return look.Frame(frame, title, s.panes.body(s.browsed(), framed, frame), s.layout.of(framed))
 }
 
 func (s Screen) paneStyle(p pane) look.FrameStyle {

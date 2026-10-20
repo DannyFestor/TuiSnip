@@ -19,6 +19,7 @@ const (
 	emptiness     = "the Import emptiness check counts the whole Library, the Trash included"
 	joinedToLive  = "joins snippet_tag to live_snippets"
 	wholeTreeOnly = "the Folder cycle check guards the whole tree, the Trash included"
+	trashItems    = "the Trash list, its count, restore, and Copy read the Trash itself"
 )
 
 var (
@@ -79,12 +80,17 @@ func TestQueries_baseTableAllowlist(t *testing.T) {
 
 func baseTableReaders() map[string]string {
 	return map[string]string{
+		"CountFolderTrashItems":        trashItems,
+		"CountSnippetTrashItems":       trashItems,
+		"GetFolderTrashItem":           trashItems,
+		"GetSnippetTrashItem":          trashItems,
+		"ListSnippetTrashItemTags":     trashItems,
+		"ListTrashSnippetTags":         trashItems,
+		"ListTrashSnippets":            trashItems,
 		"CountFolders":                 emptiness,
 		"CountSnippets":                emptiness,
 		"CountSnippetsByTag":           joinedToLive,
 		"CountSnippetsWithTag":         joinedToLive,
-		"DeleteFolder":                 write,
-		"DeleteSnippet":                write,
 		"DeleteSnippetTags":            write,
 		"ListDescendantFolderIDs":      wholeTreeOnly,
 		"ListFragmentsWithTag":         joinedToLive,

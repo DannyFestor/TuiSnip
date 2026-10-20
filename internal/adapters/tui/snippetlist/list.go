@@ -1,12 +1,11 @@
 package snippetlist
 
 import (
-	"slices"
-
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/cursorlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -15,55 +14,42 @@ import (
 )
 
 type List struct {
-	global     binding.Set
 	keys       binding.Set
 	emptyHints []key.Binding
 	styles     look.Styles
 	meta       Meta
-	snippets   []domain.Snippet
-	cursor     move.Cursor
-	box        look.Size
+	snippets   cursorlist.List[domain.Snippet]
 }
 
 func New(keys binding.Keys, styles look.Styles, meta Meta) List {
 	return List{
-		global:     keys.For(binding.ScopeGlobal),
 		keys:       keys.For(binding.ScopeSnippetList),
 		emptyHints: keys.EmptyListHints(),
 		styles:     styles,
 		meta:       meta,
-		snippets:   nil,
-		cursor:     move.Cursor{},
-		box:        look.Size{Width: 0, Height: 0},
+		snippets:   cursorlist.New[domain.Snippet](keys),
 	}
 }
 
 //nolint:unparam // every embedded child returns a Cmd (architecture.md), so parents handle each child alike.
 func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		return l.pressed(msg), nil, nil
-	case look.Resized:
-		return l.resized(msg.Box), nil, nil
-	case look.Restyled:
-		l.styles = msg.Styles
+	if restyled, ok := msg.(look.Restyled); ok {
+		l.styles = restyled.Styles
 
 		return l, nil, nil
-	case pointer.Clicked:
-		return l.clicked(msg.At), nil, nil
-	case pointer.Wheeled:
-		return l.wheeled(msg), nil, nil
 	}
+
+	l.snippets = l.snippets.Update(msg)
 
 	return l, nil, nil
 }
 
 func (l List) View(frame look.FrameStyle) string {
-	if len(l.snippets) == 0 {
+	if len(l.snippets.Rows()) == 0 {
 		return look.EmptyHint(l.styles, l.emptyHints)
 	}
 
-	return l.rows(frame)
+	return l.snippets.View(l.row, frame)
 }
 
 func (l List) ShortHelp() []key.Binding {
@@ -75,10 +61,9 @@ func (l List) FullHelp() [][]key.Binding {
 }
 
 func (l List) WithSnippets(snippets []domain.Snippet) List {
-	next := l
-	next.snippets = snippets
+	l.snippets = l.snippets.WithRows(snippets)
 
-	return next.withCursor(l.cursor.Index())
+	return l
 }
 
 func (l List) WithMeta(meta Meta) List {
@@ -88,95 +73,33 @@ func (l List) WithMeta(meta Meta) List {
 }
 
 func (l List) WithCursorOn(id domain.SnippetID) List {
-	index := slices.IndexFunc(l.snippets, func(candidate domain.Snippet) bool { return candidate.ID() == id })
-	if index < 0 {
-		return l
-	}
+	l.snippets = l.snippets.WithCursorOn(func(candidate domain.Snippet) bool { return candidate.ID() == id })
 
-	return l.withCursor(index)
+	return l
 }
 
 func (l List) Moved(direction move.Direction) List {
-	l.cursor = l.cursor.Moved(direction, len(l.snippets), l.box.Height)
+	l.snippets = l.snippets.Moved(direction)
 
 	return l
 }
 
 func (l List) Selected() (domain.Snippet, bool) {
-	if len(l.snippets) == 0 {
-		return domain.Snippet{}, false
-	}
-
-	return l.snippets[l.cursor.Index()], true
+	return l.snippets.Selected()
 }
 
 func (l List) Successor() (domain.Snippet, bool) {
-	index := l.cursor.Index() + 1
-	if index == len(l.snippets) {
-		index = l.cursor.Index() - 1
-	}
-
-	if index < 0 || index >= len(l.snippets) {
-		return domain.Snippet{}, false
-	}
-
-	return l.snippets[index], true
+	return l.snippets.Successor()
 }
 
 func (l List) Snippets() []domain.Snippet {
-	return l.snippets
+	return l.snippets.Rows()
 }
 
 func (l List) HasRowAt(at pointer.Point) bool {
-	_, ok := l.cursor.RowAt(at.Y, len(l.snippets), l.box.Height)
-
-	return ok
+	return l.snippets.HasRowAt(at)
 }
 
-func (l List) clicked(at pointer.Point) List {
-	l.cursor, _ = l.cursor.ClickedAt(at.Y, len(l.snippets), l.box.Height)
-
-	return l
-}
-
-func (l List) wheeled(wheel pointer.Wheeled) List {
-	l.cursor = l.cursor.Scrolled(wheel.Lines, len(l.snippets), l.box.Height)
-
-	return l
-}
-
-func (l List) pressed(msg tea.KeyPressMsg) List {
-	direction, ok := move.Pressed(l.global, msg)
-	if !ok {
-		return l
-	}
-
-	return l.Moved(direction)
-}
-
-func (l List) resized(box look.Size) List {
-	if box == l.box {
-		return l
-	}
-
-	next := l
-	next.box = box
-
-	return next.withCursor(l.cursor.Index())
-}
-
-func (l List) rows(frame look.FrameStyle) string {
-	return l.cursor.VisibleRows(len(l.snippets), l.box.Height, l.rowAt, frame.CursorOn)
-}
-
-func (l List) rowAt(index int) string {
-	snippet := l.snippets[index]
-
-	return look.Row(snippet.Title().String(), l.meta(snippet), l.box.Width)
-}
-
-func (l List) withCursor(index int) List {
-	l.cursor = l.cursor.At(index, len(l.snippets), l.box.Height)
-
-	return l
+func (l List) row(snippet domain.Snippet, width int) string {
+	return look.Row(snippet.Title().String(), l.meta(snippet), width)
 }

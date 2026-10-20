@@ -17,6 +17,7 @@ const (
 	DockerSnippetCount = 3
 	GoSnippetCount     = 2
 	TestsSnippetCount  = 1
+	TrashCount         = 0
 
 	dockerID = "0194c3a0-f01d-7000-8000-000000000001"
 	goID     = "0194c3a0-f01d-7000-8000-000000000002"
@@ -46,6 +47,7 @@ func New(t *testing.T) Sample {
 					{Folder: tests, SnippetCount: TestsSnippetCount, Children: nil},
 				}},
 			},
+			TrashCount: TrashCount,
 		},
 		Docker: docker,
 		Go:     golang,

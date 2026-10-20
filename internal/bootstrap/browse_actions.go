@@ -15,7 +15,7 @@ type browseActions struct {
 
 func newBrowseActions(repos repositories) (browseActions, error) {
 	snippetsInFolder, listErr := browse.NewSnippetsInFolder(repos.snippets)
-	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets)
+	folderTree, treeErr := browse.NewFolderTree(repos.folders, repos.snippets, repos.trash)
 	tagList, tagListErr := browse.NewTagList(repos.tags, repos.snippets)
 	snippetsWithTag, withTagErr := browse.NewSnippetsWithTag(repos.snippets)
 

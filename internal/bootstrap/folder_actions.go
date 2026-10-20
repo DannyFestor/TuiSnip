@@ -11,7 +11,6 @@ import (
 type folderActions struct {
 	create             *folder.Create
 	rename             *folder.Rename
-	previewDelete      *folder.PreviewDelete
 	remove             *folder.Delete
 	setDefaultLanguage *folder.SetDefaultLanguage
 	move               *folder.Move
@@ -20,17 +19,15 @@ type folderActions struct {
 func newFolderActions(folders *sqlite.FolderRepository) (folderActions, error) {
 	create, createErr := folder.NewCreate(folders, system.NewIDs(), system.NewClock())
 	rename, renameErr := folder.NewRename(folders, system.NewClock())
-	previewDelete, previewDeleteErr := folder.NewPreviewDelete(folders)
-	remove, removeErr := folder.NewDelete(folders)
+	remove, removeErr := folder.NewDelete(folders, system.NewClock())
 	setDefaultLanguage, setDefaultLanguageErr := folder.NewSetDefaultLanguage(folders, system.NewClock())
 	move, moveErr := folder.NewMove(folders)
 
 	return folderActions{
 		create:             create,
 		rename:             rename,
-		previewDelete:      previewDelete,
 		remove:             remove,
 		setDefaultLanguage: setDefaultLanguage,
 		move:               move,
-	}, errors.Join(createErr, renameErr, previewDeleteErr, removeErr, setDefaultLanguageErr, moveErr)
+	}, errors.Join(createErr, renameErr, removeErr, setDefaultLanguageErr, moveErr)
 }

@@ -250,3 +250,42 @@ func (q *Queries) ListLiveFragments(ctx context.Context) ([]Fragment, error) {
 	}
 	return items, nil
 }
+
+const listTrashFragments = `-- name: ListTrashFragments :many
+SELECT id, snippet_id, position, language, content, created_at, updated_at, title
+FROM fragments
+WHERE fragments.snippet_id NOT IN (SELECT live_snippets.id FROM live_snippets)
+ORDER BY snippet_id, position
+`
+
+func (q *Queries) ListTrashFragments(ctx context.Context) ([]Fragment, error) {
+	rows, err := q.db.QueryContext(ctx, listTrashFragments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Fragment{}
+	for rows.Next() {
+		var i Fragment
+		if err := rows.Scan(
+			&i.ID,
+			&i.SnippetID,
+			&i.Position,
+			&i.Language,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

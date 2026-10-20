@@ -13,11 +13,6 @@ import (
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 )
 
-const (
-	snippetDeleteTitle    = "Delete Snippet"
-	snippetDeleteQuestion = `Permanently delete Snippet "Prune everything"? This cannot be undone. [y/N]`
-)
-
 func TestScreen_duplicate(t *testing.T) {
 	t.Parallel()
 
@@ -31,6 +26,7 @@ func TestScreen_duplicate(t *testing.T) {
 
 		assert.Equal(t, []outcome.Outcome{outcome.SnippetDuplicateRequested{
 			Input:     snippet.DuplicateInput{SnippetID: snippets[1].ID()},
+			Title:     snippets[1].Title().String(),
 			Selection: browseselection.Selection{},
 		}}, screen.Outcomes())
 	})
@@ -50,6 +46,7 @@ func TestScreen_duplicate(t *testing.T) {
 
 		assert.Contains(t, screen.Outcomes(), outcome.SnippetDuplicateRequested{
 			Input:     snippet.DuplicateInput{SnippetID: filedIn(t, sample.Go.ID()).ID()},
+			Title:     filedIn(t, sample.Go.ID()).Title().String(),
 			Selection: browseselection.InFolder(sample.Go.ID()),
 		})
 	})
@@ -78,16 +75,15 @@ func TestScreen_duplicate(t *testing.T) {
 func TestScreen_snippetDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("d in the Snippet list asks to confirm, naming the selected Snippet", func(t *testing.T) {
+	t.Run("d in the Snippet list moves it to the Trash without asking", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, wide(), sampleSnippets(t)...)
 
 		screen.Press(keypress.Typed("3jd")...)
 
-		assert.Contains(t, screen.Screen(), snippetDeleteTitle)
-		assert.Contains(t, screen.Screen(), snippetDeleteQuestion)
-		assert.Empty(t, screen.Outcomes())
+		assert.NotContains(t, screen.Screen(), "[y/N]")
+		assert.Len(t, screen.Outcomes(), 1)
 	})
 
 	selectingAfter := []struct {
@@ -96,8 +92,8 @@ func TestScreen_snippetDelete(t *testing.T) {
 		deleted   int
 		selecting int
 	}{
-		{name: "yes asks to delete the Snippet, selecting the one below it", typed: "3dy", deleted: 0, selecting: 1},
-		{name: "yes on the last Snippet selects the one above it", typed: "3jdy", deleted: 1, selecting: 0},
+		{name: "asks to delete the Snippet, selecting the one below it", typed: "3d", deleted: 0, selecting: 1},
+		{name: "on the last Snippet selects the one above it", typed: "3jd", deleted: 1, selecting: 0},
 	}
 
 	for _, tt := range selectingAfter {
@@ -111,36 +107,27 @@ func TestScreen_snippetDelete(t *testing.T) {
 
 			assert.Equal(t, []outcome.Outcome{outcome.SnippetDeleteRequested{
 				Input:     snippet.DeleteInput{SnippetID: snippets[tt.deleted].ID()},
+				Title:     snippets[tt.deleted].Title().String(),
 				Selection: browseselection.Selection{},
 				Selecting: snippets[tt.selecting].ID(),
 			}}, screen.Outcomes())
 		})
 	}
 
-	t.Run("yes on the only Snippet selects nothing", func(t *testing.T) {
+	t.Run("on the only Snippet selects nothing", func(t *testing.T) {
 		t.Parallel()
 
 		only := sampleSnippets(t)[0]
 		screen := showing(t, wide(), only)
 
-		screen.Press(keypress.Typed("3dy")...)
+		screen.Press(keypress.Typed("3d")...)
 
 		assert.Equal(t, []outcome.Outcome{outcome.SnippetDeleteRequested{
 			Input:     snippet.DeleteInput{SnippetID: only.ID()},
+			Title:     only.Title().String(),
 			Selection: browseselection.Selection{},
 			Selecting: domain.SnippetID{},
 		}}, screen.Outcomes())
-	})
-
-	t.Run("no closes the confirmation without deleting", func(t *testing.T) {
-		t.Parallel()
-
-		screen := showing(t, wide(), sampleSnippets(t)...)
-
-		screen.Press(keypress.Typed("3dn")...)
-
-		assert.Empty(t, screen.Outcomes())
-		assert.NotContains(t, screen.Screen(), snippetDeleteTitle)
 	})
 
 	t.Run("d does nothing in an empty Snippet list", func(t *testing.T) {
@@ -150,6 +137,6 @@ func TestScreen_snippetDelete(t *testing.T) {
 
 		screen.Press(keypress.Typed("3d")...)
 
-		assert.NotContains(t, screen.Screen(), snippetDeleteTitle)
+		assert.Empty(t, screen.Outcomes())
 	})
 }

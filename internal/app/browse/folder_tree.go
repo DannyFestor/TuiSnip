@@ -12,18 +12,20 @@ import (
 type FolderTree struct {
 	folders FolderLister
 	counter SnippetCounter
+	trash   TrashItemCounter
 }
 
-func NewFolderTree(folders FolderLister, counter SnippetCounter) (*FolderTree, error) {
+func NewFolderTree(folders FolderLister, counter SnippetCounter, trash TrashItemCounter) (*FolderTree, error) {
 	err := errors.Join(
 		domain.RequireDependency("folders", folders),
 		domain.RequireDependency("counter", counter),
+		domain.RequireDependency("trash", trash),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("browse.NewFolderTree: %w", err)
 	}
 
-	return &FolderTree{folders: folders, counter: counter}, nil
+	return &FolderTree{folders: folders, counter: counter, trash: trash}, nil
 }
 
 func (f *FolderTree) Run(ctx context.Context, _ FolderTreeInput) (Tree, error) {
@@ -37,11 +39,17 @@ func (f *FolderTree) Run(ctx context.Context, _ FolderTreeInput) (Tree, error) {
 		return Tree{}, fmt.Errorf("browse.FolderTree: %w", err)
 	}
 
+	trashCount, err := f.trash.CountItems(ctx)
+	if err != nil {
+		return Tree{}, fmt.Errorf("browse.FolderTree: %w", err)
+	}
+
 	root := domain.FolderID{}
 
 	return Tree{
 		RootSnippetCount: counts[root],
 		Folders:          nodesUnder(root, childrenByParent(folders), counts),
+		TrashCount:       trashCount,
 	}, nil
 }
 

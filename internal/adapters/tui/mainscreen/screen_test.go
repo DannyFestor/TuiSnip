@@ -105,7 +105,7 @@ func TestScreen_cursor(t *testing.T) {
 	t.Run("moving down in Folders keeps the Snippet", func(t *testing.T) {
 		t.Parallel()
 
-		screen := showing(t, wide(), sampleSnippets(t)...)
+		screen, _ := browsing(t)
 
 		screen.Press(keypress.Letter('j'))
 
@@ -217,7 +217,7 @@ func TestScreen_browse(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
-		screen.Press(keypress.Typed("G")...)
+		screen.Press(keypress.Typed("Gk")...)
 
 		screen.Send(
 			mainscreen.SnippetsLoaded{
@@ -233,7 +233,7 @@ func TestScreen_browse(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
-		screen.Press(keypress.Typed("G")...)
+		screen.Press(keypress.Typed("Gk")...)
 		screen.Send(
 			mainscreen.SnippetsLoaded{
 				Selection: browseselection.InFolder(sample.Tests.ID()),
@@ -872,7 +872,8 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "qn/2", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "qn/2", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 
@@ -886,7 +887,8 @@ func TestScreen_Update(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 
@@ -1257,61 +1259,19 @@ func TestScreen_sortOrder(t *testing.T) {
 func TestScreen_UpdateFolderDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("d passes on the ask to delete the Folder under the cursor", func(t *testing.T) {
+	t.Run("d moves the Folder under the cursor to the Trash without asking", func(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
 
 		screen.Press(keypress.Letter('j'), keypress.Letter('d'))
 
-		assert.Contains(t, screen.Outcomes(), outcome.FolderDeleteAsked{ID: sample.Docker.ID()})
-	})
-
-	t.Run("asks to confirm with the counts from the preview", func(t *testing.T) {
-		t.Parallel()
-
-		screen, sample := browsing(t)
-
-		screen.Send(mainscreen.FolderDeletePreviewed{
-			Preview: folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 1, SnippetCount: 15},
+		assert.Contains(t, screen.Outcomes(), outcome.FolderDeleteRequested{
+			Input:    folder.DeleteInput{FolderID: sample.Docker.ID()},
+			Name:     "docker",
+			ParentID: domain.FolderID{},
 		})
-
-		assert.Contains(t, screen.Screen(), "Delete Folder")
-		assert.Contains(
-			t,
-			screen.Screen(),
-			`Permanently delete Folder "docker", 1 subfolder, and 15 Snippets? This cannot be undone. [y/N]`,
-		)
-	})
-
-	t.Run("yes asks to delete the Folder, remembering its parent", func(t *testing.T) {
-		t.Parallel()
-
-		screen, sample := browsing(t)
-		screen.Send(mainscreen.FolderDeletePreviewed{
-			Preview: folder.DeletePreview{Folder: sample.Tests, SubfolderCount: 0, SnippetCount: 1},
-		})
-
-		screen.Press(keypress.Letter('y'))
-
-		assert.Equal(t, []outcome.Outcome{outcome.FolderDeleteRequested{
-			Input:    folder.DeleteInput{FolderID: sample.Tests.ID()},
-			ParentID: sample.Go.ID(),
-		}}, screen.Outcomes())
-	})
-
-	t.Run("no closes the confirmation without deleting", func(t *testing.T) {
-		t.Parallel()
-
-		screen, sample := browsing(t)
-		screen.Send(mainscreen.FolderDeletePreviewed{
-			Preview: folder.DeletePreview{Folder: sample.Docker, SubfolderCount: 0, SnippetCount: 0},
-		})
-
-		screen.Press(keypress.Letter('n'))
-
-		assert.Empty(t, screen.Outcomes())
-		assert.NotContains(t, screen.Screen(), "Delete Folder")
+		assert.NotContains(t, screen.Screen(), "[y/N]")
 	})
 
 	t.Run("makes the deleted Folder's parent the Browse selection", func(t *testing.T) {
@@ -1329,38 +1289,6 @@ func TestScreen_UpdateFolderDelete(t *testing.T) {
 		assert.Contains(t, screen.Outcomes(), outcome.FolderSelected{ID: sample.Go.ID()})
 		assert.Contains(t, screen.Screen(), "3 Root / go · by title")
 	})
-}
-
-func TestScreen_folderDeleteQuestion(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		subfolders int
-		snippets   int
-		want       string
-	}{
-		{name: "pluralises zero counts", subfolders: 0, snippets: 0, want: "0 subfolders, and 0 Snippets?"},
-		{name: "keeps single counts singular", subfolders: 1, snippets: 1, want: "1 subfolder, and 1 Snippet?"},
-		{name: "pluralises larger counts", subfolders: 2, snippets: 15, want: "2 subfolders, and 15 Snippets?"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			screen, sample := browsing(t)
-
-			screen.Send(mainscreen.FolderDeletePreviewed{
-				Preview: folder.DeletePreview{
-					Folder:         sample.Docker,
-					SubfolderCount: tt.subfolders,
-					SnippetCount:   tt.snippets,
-				},
-			})
-
-			assert.Contains(t, screen.Screen(), `Permanently delete Folder "docker", `+tt.want)
-		})
-	}
 }
 
 func TestScreen_Received(t *testing.T) {
@@ -1602,7 +1530,8 @@ func TestScreen_help(t *testing.T) {
 		screen.Press(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "?", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "?", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, screen.Outcomes())
 	})
 }
@@ -1624,6 +1553,7 @@ func TestScreen_defaultLanguage(t *testing.T) {
 
 		assert.Contains(t, screen.Outcomes(), outcome.Outcome(outcome.DefaultLanguageRequested{
 			Input: folder.SetDefaultLanguageInput{FolderID: sample.Docker.ID(), Language: "plaintext"},
+			Name:  "docker",
 		}))
 		assert.Equal(t, folderHints, screen.Hints())
 	})

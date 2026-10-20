@@ -46,7 +46,7 @@ func TestFolderCreatedInsideAnotherCopiesItsDefaultLanguage(t *testing.T) {
 	assert.Equal(t, "Go", stored.DefaultLanguage().String())
 }
 
-func TestFolderDeletedWithItsSubtreeAfterPreviewCountsIt(t *testing.T) {
+func TestDeletingAFolderHidesItsWholeSubtree(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
@@ -56,11 +56,6 @@ func TestFolderDeletedWithItsSubtreeAfterPreviewCountsIt(t *testing.T) {
 	testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: golang.ID()})
 	deleted := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: nested.ID()})
 	kept := testapp.SeedSnippet(t, app, snippet.CreateInput{FolderID: docker.ID()})
-
-	preview, err := app.PreviewDeleteFolder.Run(t.Context(), folder.PreviewDeleteInput{FolderID: golang.ID()})
-	require.NoError(t, err)
-	assert.Equal(t, 1, preview.SubfolderCount)
-	assert.Equal(t, 2, preview.SnippetCount)
 
 	require.NoError(t, app.DeleteFolder.Run(t.Context(), folder.DeleteInput{FolderID: golang.ID()}))
 

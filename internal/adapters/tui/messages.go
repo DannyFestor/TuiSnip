@@ -17,7 +17,6 @@ type treeFailedMsg struct {
 
 type copyFinishedMsg struct {
 	result snippet.CopyResult
-	err    error
 }
 
 type captureFinishedMsg struct {
@@ -35,8 +34,17 @@ type searchFailedMsg struct {
 	err error
 }
 
+type statusCarrier interface {
+	statusText() string
+}
+
 type folderTreeChangedMsg struct {
 	selecting domain.FolderID
+	status    string
+}
+
+func (m folderTreeChangedMsg) statusText() string {
+	return m.status
 }
 
 type folderEditedMsg struct{}
@@ -52,6 +60,11 @@ type tagsChangedMsg struct {
 type snippetsChangedMsg struct {
 	selection browseselection.Selection
 	selecting domain.SnippetID
+	status    string
+}
+
+func (m snippetsChangedMsg) statusText() string {
+	return m.status
 }
 
 type operationFailedMsg struct {

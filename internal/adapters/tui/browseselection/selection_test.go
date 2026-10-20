@@ -24,10 +24,12 @@ func TestSelection(t *testing.T) {
 		inFolder   bool
 		wantTag    domain.TagID
 		withTag    bool
+		inTrash    bool
 	}{
 		{name: "the zero selection is the Root", selection: browseselection.Selection{}, inFolder: true},
 		{name: "a Folder", selection: browseselection.InFolder(folderID), wantFolder: folderID, inFolder: true},
 		{name: "a Tag", selection: browseselection.WithTag(tagID), wantTag: tagID, withTag: true},
+		{name: "the Trash is neither a Folder nor a Tag", selection: browseselection.InTrash(), inTrash: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -40,6 +42,7 @@ func TestSelection(t *testing.T) {
 			assert.Equal(t, tt.inFolder, inFolder)
 			assert.Equal(t, tt.wantTag, gotTag)
 			assert.Equal(t, tt.withTag, withTag)
+			assert.Equal(t, tt.inTrash, tt.selection.Trash())
 		})
 	}
 }

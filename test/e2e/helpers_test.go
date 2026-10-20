@@ -4,6 +4,8 @@ package e2e_test
 
 import (
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -86,16 +88,28 @@ func open(t *testing.T, app *bootstrap.App) *session {
 func (s *session) waitForFrame(text string) {
 	s.t.Helper()
 
+	s.waitUntil(strconv.Quote(text), func(frame string) bool { return strings.Contains(frame, text) })
+}
+
+func (s *session) waitForMatch(pattern *regexp.Regexp) {
+	s.t.Helper()
+
+	s.waitUntil(pattern.String(), pattern.MatchString)
+}
+
+func (s *session) waitUntil(wanted string, shows func(frame string) bool) {
+	s.t.Helper()
+
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
 	deadline := time.After(waitTimeout)
 
-	for !strings.Contains(s.frame.get(), text) {
+	for !shows(s.frame.get()) {
 		select {
 		case <-ticker.C:
 		case <-deadline:
-			s.t.Fatalf("%q never appeared; last frame:\n%s", text, s.frame.get())
+			s.t.Fatalf("%s never appeared; last frame:\n%s", wanted, s.frame.get())
 		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqlcgen"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/sqlite/sqltype"
@@ -22,6 +23,11 @@ func NewFolderRepository(database *Database, logger *slog.Logger) *FolderReposit
 
 func (r *FolderRepository) Insert(ctx context.Context, folder domain.Folder) error {
 	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
+		liveErr := requireLiveFolder(ctx, queries, folder.ParentID())
+		if liveErr != nil {
+			return liveErr
+		}
+
 		return queries.InsertFolder(ctx, insertFolderParams(folder))
 	})
 	if err != nil {
@@ -66,21 +72,21 @@ func (r *FolderRepository) Update(ctx context.Context, folder domain.Folder) err
 	return nil
 }
 
-func (r *FolderRepository) Delete(ctx context.Context, id domain.FolderID) error {
+func (r *FolderRepository) Trash(ctx context.Context, id domain.FolderID, deletedAt time.Time) error {
 	err := inWriteTransaction(ctx, r.db, func(queries *sqlcgen.Queries) error {
-		deleted, deleteErr := queries.DeleteFolder(ctx, columnID(id))
-		if deleteErr != nil {
-			return fmt.Errorf("delete folder: %w", deleteErr)
+		trashed, trashErr := queries.TrashFolder(ctx, trashFolderParams(id, deletedAt))
+		if trashErr != nil {
+			return fmt.Errorf("trash folder: %w", trashErr)
 		}
 
-		if deleted == 0 {
+		if trashed == 0 {
 			return domain.ErrNotFound
 		}
 
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("sqlite.FolderRepository.Delete: %w", err)
+		return fmt.Errorf("sqlite.FolderRepository.Trash: %w", err)
 	}
 
 	return nil
@@ -113,28 +119,6 @@ func (r *FolderRepository) Move(ctx context.Context, folder domain.Folder) error
 	}
 
 	return nil
-}
-
-func (r *FolderRepository) CountSubfolders(ctx context.Context, id domain.FolderID) (int, error) {
-	count, err := readCount(ctx, r.db, func(queries *sqlcgen.Queries) (int64, error) {
-		return queries.CountSubfolders(ctx, columnID(id))
-	})
-	if err != nil {
-		return 0, fmt.Errorf("sqlite.FolderRepository.CountSubfolders: %w", err)
-	}
-
-	return count, nil
-}
-
-func (r *FolderRepository) CountSnippetsInSubtree(ctx context.Context, id domain.FolderID) (int, error) {
-	count, err := readCount(ctx, r.db, func(queries *sqlcgen.Queries) (int64, error) {
-		return queries.CountSnippetsInSubtree(ctx, columnID(id))
-	})
-	if err != nil {
-		return 0, fmt.Errorf("sqlite.FolderRepository.CountSnippetsInSubtree: %w", err)
-	}
-
-	return count, nil
 }
 
 func (r *FolderRepository) List(ctx context.Context) ([]domain.Folder, error) {
@@ -210,6 +194,11 @@ func requireNoCycle(ctx context.Context, queries *sqlcgen.Queries, folder domain
 }
 
 func moveFolder(ctx context.Context, queries *sqlcgen.Queries, folder domain.Folder) error {
+	err := requireLiveFolder(ctx, queries, folder.ParentID())
+	if err != nil {
+		return err
+	}
+
 	moved, err := queries.MoveFolder(ctx, moveFolderParams(folder))
 	if err != nil {
 		return fmt.Errorf("move folder: %w", err)

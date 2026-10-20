@@ -26,6 +26,10 @@ func moveSnippetParams(snippet domain.Snippet) sqlcgen.MoveSnippetParams {
 	}
 }
 
+func trashSnippetParams(id domain.SnippetID, deletedAt time.Time) sqlcgen.TrashSnippetParams {
+	return sqlcgen.TrashSnippetParams{DeletedAt: new(sqltype.Timestamp(deletedAt)), ID: columnID(id)}
+}
+
 func updateSnippetParams(snippet domain.Snippet, loadedUpdatedAt time.Time) sqlcgen.UpdateSnippetParams {
 	return sqlcgen.UpdateSnippetParams{
 		Title:           snippet.Title().String(),

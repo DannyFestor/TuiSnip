@@ -70,9 +70,10 @@ UPDATE snippets
 SET title = sqlc.arg(title), description = sqlc.arg(description), updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(loaded_updated_at);
 
--- name: DeleteSnippet :execrows
-DELETE FROM snippets
-WHERE id = ?;
+-- name: TrashSnippet :execrows
+UPDATE snippets
+SET deleted_at = sqlc.arg(deleted_at)
+WHERE snippets.id = sqlc.arg(id) AND snippets.id IN (SELECT live_snippets.id FROM live_snippets);
 
 -- name: MoveSnippet :execrows
 UPDATE snippets
@@ -83,3 +84,21 @@ WHERE id = ?;
 UPDATE snippets
 SET deleted_at = ?, former_folder_path = ?
 WHERE id = ?;
+
+-- name: ListTrashSnippets :many
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM snippets
+WHERE snippets.id NOT IN (SELECT live_snippets.id FROM live_snippets);
+
+-- name: GetSnippetTrashItem :one
+SELECT id, folder_id, title, description, created_at, updated_at, deleted_at, former_folder_path
+FROM snippets
+WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: CountSnippetTrashItems :one
+SELECT COUNT(*) FROM snippets WHERE deleted_at IS NOT NULL;
+
+-- name: RestoreSnippet :exec
+UPDATE snippets
+SET deleted_at = NULL, folder_id = ?, former_folder_path = '[]'
+WHERE id = ? AND deleted_at IS NOT NULL;

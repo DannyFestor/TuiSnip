@@ -12,14 +12,13 @@ packages:
       ClipboardReader: {}
       UpdateRepository: {}
       DuplicateRepository: {}
-      Deleter: {}
+      Trasher: {}
       MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/folder:
     interfaces:
       CreateRepository: {}
       EditRepository: {}
-      PreviewDeleteRepository: {}
-      Deleter: {}
+      Trasher: {}
       MoveRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/tag:
     interfaces:
@@ -27,6 +26,10 @@ packages:
       RenameRepository: {}
       PreviewDeleteRepository: {}
       Deleter: {}
+  github.com/DannyFestor/TuiSnip/internal/app/trash:
+    interfaces:
+      Loader: {}
+      RestoreRepository: {}
   github.com/DannyFestor/TuiSnip/internal/app/search:
     interfaces:
       Searcher: {}
@@ -35,6 +38,7 @@ packages:
       SnippetLister: {}
       FolderLister: {}
       SnippetCounter: {}
+      TrashItemCounter: {}
       TagLister: {}
       TagSnippetCounter: {}
       TagSnippetLister: {}
@@ -53,6 +57,8 @@ packages:
       TagLister: {}
       TagSnippetsLister: {}
       SnippetCopier: {}
+      TrashLister: {}
+      TrashRestorer: {}
       SnippetCreator: {}
       SnippetCapturer: {}
       SnippetUpdater: {}
@@ -62,7 +68,6 @@ packages:
       SnippetSearcher: {}
       FolderCreator: {}
       FolderRenamer: {}
-      FolderDeletePreviewer: {}
       FolderDeleter: {}
       FolderDefaultLanguageSetter: {}
       FolderMover: {}

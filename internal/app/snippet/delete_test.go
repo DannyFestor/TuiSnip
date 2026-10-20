@@ -14,19 +14,20 @@ import (
 func TestNewDelete(t *testing.T) {
 	t.Parallel()
 
-	t.Run("names the missing dependency", func(t *testing.T) {
+	t.Run("names every missing dependency", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := snippet.NewDelete(nil)
+		_, err := snippet.NewDelete(nil, nil)
 
 		require.ErrorIs(t, err, domain.ErrMissingDependency)
-		assert.ErrorContains(t, err, "snippet.NewDelete: deleter")
+		require.ErrorContains(t, err, "snippet.NewDelete: trasher")
+		assert.ErrorContains(t, err, "clock")
 	})
 
 	t.Run("accepts every dependency", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := snippet.NewDelete(NewMockDeleter(t))
+		_, err := snippet.NewDelete(NewMockTrasher(t), fixedClock())
 
 		assert.NoError(t, err)
 	})
@@ -35,14 +36,14 @@ func TestNewDelete(t *testing.T) {
 func TestDelete_Run(t *testing.T) {
 	t.Parallel()
 
-	t.Run("deletes the Snippet", func(t *testing.T) {
+	t.Run("moves the Snippet to the Trash, deleted now", func(t *testing.T) {
 		t.Parallel()
 
 		id := storedSnippet(t, "").ID()
-		deleter := NewMockDeleter(t)
-		deleter.EXPECT().Delete(mock.Anything, id).Return(nil)
+		trasher := NewMockTrasher(t)
+		trasher.EXPECT().Trash(mock.Anything, id, createdAt()).Return(nil)
 
-		err := newDelete(t, deleter).Run(t.Context(), snippet.DeleteInput{SnippetID: id})
+		err := newDelete(t, trasher).Run(t.Context(), snippet.DeleteInput{SnippetID: id})
 
 		assert.NoError(t, err)
 	})
@@ -50,20 +51,20 @@ func TestDelete_Run(t *testing.T) {
 	t.Run("passes up a Snippet that is gone", func(t *testing.T) {
 		t.Parallel()
 
-		deleter := NewMockDeleter(t)
-		deleter.EXPECT().Delete(mock.Anything, mock.Anything).Return(domain.ErrNotFound)
+		trasher := NewMockTrasher(t)
+		trasher.EXPECT().Trash(mock.Anything, mock.Anything, mock.Anything).Return(domain.ErrNotFound)
 
-		err := newDelete(t, deleter).Run(t.Context(), snippet.DeleteInput{SnippetID: storedSnippet(t, "").ID()})
+		err := newDelete(t, trasher).Run(t.Context(), snippet.DeleteInput{SnippetID: storedSnippet(t, "").ID()})
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 		assert.ErrorContains(t, err, "snippet.Delete: ")
 	})
 }
 
-func newDelete(t *testing.T, deleter snippet.Deleter) *snippet.Delete {
+func newDelete(t *testing.T, trasher snippet.Trasher) *snippet.Delete {
 	t.Helper()
 
-	deleteAction, err := snippet.NewDelete(deleter)
+	deleteAction, err := snippet.NewDelete(trasher, fixedClock())
 	require.NoError(t, err)
 
 	return deleteAction

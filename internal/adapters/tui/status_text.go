@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/app/trash"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 )
@@ -20,7 +23,51 @@ const (
 	editorFailedText      = "Editor exited with an error; changes discarded"
 )
 
+const (
+	snippetNoun        = "Snippet"
+	folderNoun         = "Folder"
+	movedToTrashFormat = "Moved %s %q to the Trash"
+)
+
+const (
+	restoredFormat       = "Restored %q to %s"
+	restoredToRootFormat = "Restored %q to the Root"
+	homeInTrashFormat    = "; its %s is in the Trash"
+	homeDeletedFormat    = "; its %s was deleted"
+	parentPrefix         = "parent "
+)
+
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
+
+func movedToTrashText(noun, name string) string {
+	return fmt.Sprintf(movedToTrashFormat, noun, name)
+}
+
+func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Restoration) string {
+	toRoot := fmt.Sprintf(restoredToRootFormat, requested.Name)
+
+	switch restoration.Fallback {
+	case domain.RestoreFallbackFolderInTrash:
+		return toRoot + fmt.Sprintf(homeInTrashFormat, homeNoun(requested.Input.Item))
+	case domain.RestoreFallbackFolderDeleted:
+		return toRoot + fmt.Sprintf(homeDeletedFormat, homeNoun(requested.Input.Item))
+	case domain.RestoreFallbackNone:
+	}
+
+	if restoration.FolderID.IsNil() {
+		return toRoot
+	}
+
+	return fmt.Sprintf(restoredFormat, requested.Name, folderpath.ShortOf(requested.Path))
+}
+
+func homeNoun(restored trash.ItemID) string {
+	if restored.Kind().IsFolder() {
+		return parentPrefix + folderNoun
+	}
+
+	return folderNoun
+}
 
 func deliveryText(delivery domain.CopyDelivery) (string, error) {
 	switch delivery {

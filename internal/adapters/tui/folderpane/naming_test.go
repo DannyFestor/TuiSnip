@@ -26,16 +26,19 @@ func TestPane_UpdateNewFolder(t *testing.T) {
 		name   string
 		before []tea.KeyPressMsg
 		want   func(foldertree.Sample) domain.FolderID
+		parent string
 	}{
 		{
 			name:   "creates inside the selected Folder",
 			before: []tea.KeyPressMsg{keypress.Letter('j'), keypress.Letter('j')},
 			want:   func(sample foldertree.Sample) domain.FolderID { return sample.Go.ID() },
+			parent: "go",
 		},
 		{
 			name:   "creates at the Root when the Root is selected",
 			before: nil,
 			want:   func(foldertree.Sample) domain.FolderID { return domain.FolderID{} },
+			parent: "Root",
 		},
 	}
 	for _, tt := range tests {
@@ -49,7 +52,8 @@ func TestPane_UpdateNewFolder(t *testing.T) {
 			pane, outcomes, _ := pane.Update(keypress.Special(tea.KeyEnter))
 
 			assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-				Input: folder.CreateInput{Name: "errors", ParentID: tt.want(sample)},
+				Input:      folder.CreateInput{Name: "errors", ParentID: tt.want(sample)},
+				ParentName: tt.parent,
 			}}, outcomes)
 			assert.False(t, pane.Naming())
 		})
@@ -69,7 +73,8 @@ func TestPane_UpdateRename(t *testing.T) {
 		pane, outcomes, _ := pane.Update(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderRenameRequested{
-			Input: folder.RenameInput{FolderID: sample.Docker.ID(), Name: "dockers"},
+			Input:        folder.RenameInput{FolderID: sample.Docker.ID(), Name: "dockers"},
+			PreviousName: "docker",
 		}}, outcomes)
 		assert.False(t, pane.Naming())
 	})
@@ -96,7 +101,7 @@ func TestPane_UpdateWhileNaming(t *testing.T) {
 
 		assert.Empty(t, outcomes)
 		assert.False(t, pane.Naming())
-		assert.Len(t, viewLines(pane), 4)
+		assert.Len(t, viewLines(pane), 5)
 	})
 
 	t.Run("movement keys type instead of moving the cursor", func(t *testing.T) {
@@ -146,7 +151,8 @@ func TestPane_UpdateWhileNaming(t *testing.T) {
 		_, outcomes, _ := pane.Update(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderCreateRequested{
-			Input: folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			Input:      folder.CreateInput{Name: "docker", ParentID: domain.FolderID{}},
+			ParentName: "Root",
 		}}, outcomes)
 	})
 }
@@ -197,7 +203,7 @@ func TestPane_ViewWhileNaming(t *testing.T) {
 
 		lines := viewLines(pane)
 
-		require.Len(t, lines, 4)
+		require.Len(t, lines, 5)
 		assert.Regexp(t, `^  DOCKER +3$`, lines[1])
 	})
 }

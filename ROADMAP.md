@@ -20,7 +20,6 @@ In this order.
 
 Live in TuiSnip day to day once it holds the only copy.
 
-- Trash. Deleted Snippets and Folders go to the Trash and can be restored. Deleting a Folder moves its whole subtree there.
 - A TuiSnip-owned editor component replacing the stock Bubbles textarea. It keeps tab characters, so content with tabs becomes editable in the TUI, and it highlights syntax while editing. The stock textarea turns every tab into four spaces, and upstream highlighting (bubbles#1030) is unreviewed. A fifth of the SnippetsLab library's Fragments contain tabs.
 
 ### Find it

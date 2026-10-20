@@ -24,6 +24,12 @@ SELECT id, snippet_id, position, language, content, created_at, updated_at, titl
 FROM fragments
 ORDER BY snippet_id, position;
 
+-- name: ListTrashFragments :many
+SELECT id, snippet_id, position, language, content, created_at, updated_at, title
+FROM fragments
+WHERE fragments.snippet_id NOT IN (SELECT live_snippets.id FROM live_snippets)
+ORDER BY snippet_id, position;
+
 -- name: ListFragmentsInFolder :many
 SELECT fragments.id, fragments.snippet_id, fragments.position, fragments.language, fragments.content,
        fragments.created_at, fragments.updated_at, fragments.title

@@ -7,9 +7,11 @@ import (
 )
 
 type SnippetMoveRequested struct {
-	Input     snippet.MoveInput
-	Selection browseselection.Selection
-	Selecting domain.SnippetID
+	Input      snippet.MoveInput
+	Title      string
+	TargetName string
+	Selection  browseselection.Selection
+	Selecting  domain.SnippetID
 }
 
 func (SnippetMoveRequested) isOutcome() {}

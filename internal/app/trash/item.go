@@ -15,18 +15,6 @@ type Item struct {
 	Contents  Contents
 }
 
-type Contents struct {
-	SubfolderCount int
-	SnippetCount   int
-	Outline        Outline
-}
-
-type Outline struct {
-	Name          string
-	SnippetTitles []string
-	Subfolders    []Outline
-}
-
 func (i Item) ID() ItemID {
 	if i.Kind == ItemKindFolder {
 		return FolderItem(i.Folder.ID())

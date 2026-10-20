@@ -233,7 +233,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.overlaysUpdatedSharingArrivals(msg)
 	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg, snippetsChangedMsg:
 		return m.reloadedAfter(msg)
-	case operationFailedMsg, itemActionFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
+	case operationFailedMsg, actionFailedMsg, listFailedMsg, treeFailedMsg, searchFailedMsg:
 		return m.failedWith(msg)
 	case copyFinishedMsg:
 		return m.copyFinished(msg)
@@ -291,8 +291,8 @@ func (m Model) failedWith(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case operationFailedMsg:
 		return m.failed(msg.operation, msg.err)
-	case itemActionFailedMsg:
-		return m.itemActionFailed(msg)
+	case actionFailedMsg:
+		return m.actionFailed(msg)
 	case listFailedMsg:
 		return m.failed(operationList, msg.err)
 	case treeFailedMsg:
@@ -704,20 +704,17 @@ func (m Model) querySnippets(text string) tea.Cmd {
 }
 
 func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
-	return m.copyThrough(m.copier, requested, goneItem(snippetNoun, requested.Title))
+	return m.copyThrough(m.copier, requested, goneElsewhere(snippetNoun, requested.Title))
 }
 
 func (m Model) copyThrough(copier SnippetCopier, requested outcome.CopyRequested, whenGone gone) tea.Cmd {
 	input := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
+	copied := reporting(
+		actionFailure{operation: operationCopy, whenGone: whenGone},
+		func(result snippet.CopyResult) tea.Msg { return copyFinishedMsg{result: result} },
+	)
 
-	return func() tea.Msg {
-		result, err := copier.Run(m.ctx, input)
-		if err != nil {
-			return itemActionFailedMsg{operation: operationCopy, err: err, gone: whenGone}
-		}
-
-		return copyFinishedMsg{result: result}
-	}
+	return func() tea.Msg { return copied(copier.Run(m.ctx, input)) }
 }
 
 func (m Model) copyFinished(msg copyFinishedMsg) (Model, tea.Cmd) {

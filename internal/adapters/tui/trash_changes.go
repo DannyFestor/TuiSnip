@@ -41,16 +41,16 @@ func (m Model) copyFromTrash(requested outcome.TrashCopyRequested) tea.Cmd {
 }
 
 func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd {
-	return func() tea.Msg {
-		restoration, err := m.trash.restorer.Run(m.ctx, requested.Input)
-		if err != nil {
-			return itemActionFailedMsg{operation: operationRestore, err: err, gone: goneFromTrash(requested.Name)}
-		}
+	restored := reporting(
+		actionFailure{operation: operationRestore, whenGone: goneFromTrash(requested.Name)},
+		func(restoration domain.Restoration) tea.Msg {
+			return snippetsChangedMsg{
+				selection: browseselection.InTrash(),
+				selecting: domain.SnippetID{},
+				status:    restoredText(requested, restoration),
+			}
+		},
+	)
 
-		return snippetsChangedMsg{
-			selection: browseselection.InTrash(),
-			selecting: domain.SnippetID{},
-			status:    restoredText(requested, restoration),
-		}
-	}
+	return func() tea.Msg { return restored(m.trash.restorer.Run(m.ctx, requested.Input)) }
 }

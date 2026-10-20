@@ -21,13 +21,7 @@ type gone struct {
 	folderGone string
 }
 
-type itemActionFailedMsg struct {
-	operation string
-	err       error
-	gone      gone
-}
-
-func goneItem(noun, name string) gone {
+func goneElsewhere(noun, name string) gone {
 	return gone{notFound: fmt.Sprintf(goneElsewhereFormat, noun, name), folderGone: ""}
 }
 
@@ -52,13 +46,13 @@ func (g gone) text(err error) (string, bool) {
 	return "", false
 }
 
-func (m Model) itemActionFailed(msg itemActionFailedMsg) (Model, tea.Cmd) {
-	text, isGone := msg.gone.text(msg.err)
+func (m Model) actionFailed(msg actionFailedMsg) (Model, tea.Cmd) {
+	text, isGone := msg.whenGone.text(msg.err)
 	if !isGone {
 		return m.failed(msg.operation, msg.err)
 	}
 
-	m.logger.InfoContext(m.ctx, "item gone elsewhere",
+	m.logger.InfoContext(m.ctx, "gone elsewhere",
 		slog.String(keyOperation, msg.operation), slog.Any(keyError, msg.err))
 
 	return m.overlaysUpdated(mainscreen.GoneElsewhereShown{Text: text})

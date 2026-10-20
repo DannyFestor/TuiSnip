@@ -61,9 +61,8 @@ func (p panes) previewTrashSelected() panes {
 		return p
 	}
 
-	deleted := snippetpane.DeletedOn(item.DeletedAt, p.location)
 	if item.IsFolder() {
-		p.outline = p.outline.Showing(item, folderpath.FullOf(item.Path), deleted)
+		p.outline = p.outline.Showing(item, folderpath.FullOf(item.Path))
 
 		return p
 	}

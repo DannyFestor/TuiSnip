@@ -72,7 +72,7 @@ func (m Model) renameFolder(requested outcome.FolderRenameRequested) tea.Cmd {
 		_, err := m.folderRenamer.Run(m.ctx, requested.Input)
 		if err != nil {
 			return itemActionFailedMsg{
-				operation: operationRenameFolder, err: err, gone: goneItem(folderNoun, requested.Current),
+				operation: operationRenameFolder, err: err, gone: goneItem(folderNoun, requested.PreviousName),
 			}
 		}
 

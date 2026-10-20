@@ -2,6 +2,7 @@ package folderoutline
 
 import (
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -25,15 +26,17 @@ const (
 type Pane struct {
 	global   binding.Set
 	styles   look.Styles
+	location *time.Location
 	header   []string
 	viewport viewport.Model
 	box      look.Size
 }
 
-func New(keys binding.Keys, styles look.Styles) Pane {
+func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 	return Pane{
 		global:   keys.For(binding.ScopeGlobal),
 		styles:   styles,
+		location: location,
 		header:   nil,
 		viewport: viewport.New(),
 		box:      look.Size{Width: 0, Height: 0},
@@ -71,9 +74,9 @@ func (p Pane) View() string {
 	return strings.Join(lines, "\n")
 }
 
-func (p Pane) Showing(item trash.Item, place, deleted string) Pane {
+func (p Pane) Showing(item trash.Item, place string) Pane {
 	next := p
-	next.header = []string{item.Name(), place, countsOf(item.Contents), deleted}
+	next.header = []string{item.Name(), place, countsOf(item.Contents), look.DeletedOn(item.DeletedAt, p.location)}
 	next.viewport.SetContent(strings.Join(outlineLines(item.Contents.Outline, ""), "\n"))
 	next.viewport.GotoTop()
 

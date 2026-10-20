@@ -34,7 +34,6 @@ type panes struct {
 	outline    folderoutline.Pane
 	trashShown bool
 	styles     look.Styles
-	location   *time.Location
 	paths      folderpath.Paths
 	orderLabel string
 }
@@ -46,10 +45,9 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, co
 		list:       snippetlist.New(keys, styles, snippetlist.Language),
 		trash:      trashlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
-		outline:    folderoutline.New(keys, styles),
+		outline:    folderoutline.New(keys, styles, location),
 		trashShown: false,
 		styles:     styles,
-		location:   location,
 		paths:      folderpath.Paths{},
 		orderLabel: "",
 	}

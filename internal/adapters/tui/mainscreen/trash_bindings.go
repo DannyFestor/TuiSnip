@@ -49,17 +49,22 @@ func (s Screen) trashCopyAsked(item trash.Item) outcome.Step {
 	return s.copyAsked()
 }
 
-func (s Screen) trashEditPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+func (s Screen) trashPanePressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
+	item, ok := s.panes.trash.Selected()
+	if !ok || !s.inTrash() || s.focus != paneSnippet {
+		return outcome.Stay(s), false
+	}
+
 	editing := s.paneKeys.Matches(msg, binding.Edit) || s.paneKeys.Matches(msg, binding.OpenInEditor)
-	if !s.inTrash() || s.focus != paneSnippet || !editing || s.panes.selectedTrashFolder() {
-		return outcome.Stay(s), false
+
+	switch {
+	case item.IsFolder() && s.paneKeys.Matches(msg, binding.Copy):
+		return outcome.Stay(s.withStatus(onlySnippetsCopyText)), true
+	case !item.IsFolder() && editing:
+		return outcome.Stay(s.withStatus(restoreToEditText)), true
 	}
 
-	if _, ok := s.panes.trash.Selected(); !ok {
-		return outcome.Stay(s), false
-	}
-
-	return outcome.Stay(s.withStatus(restoreToEditText)), true
+	return outcome.Stay(s), false
 }
 
 func (s Screen) trashLoaded(items []trash.Item) Screen {

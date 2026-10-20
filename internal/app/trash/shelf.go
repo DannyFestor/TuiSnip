@@ -8,22 +8,22 @@ import (
 )
 
 type shelf struct {
-	trash          domain.Trash
-	folders        map[domain.FolderID]domain.Folder
-	subfolders     map[domain.FolderID][]domain.Folder
-	snippetsFiled  map[domain.FolderID][]domain.Snippet
-	trashedFolders []domain.Folder
-	trashedItems   []domain.Snippet
+	trash           domain.Trash
+	folders         map[domain.FolderID]domain.Folder
+	subfolders      map[domain.FolderID][]domain.Folder
+	snippetsFiled   map[domain.FolderID][]domain.Snippet
+	trashedFolders  []domain.Folder
+	trashedSnippets []domain.Snippet
 }
 
 func shelfOf(loaded domain.Library) shelf {
 	stocked := shelf{
-		trash:          loaded.Trash,
-		folders:        make(map[domain.FolderID]domain.Folder, len(loaded.Folders)),
-		subfolders:     make(map[domain.FolderID][]domain.Folder, len(loaded.Folders)),
-		snippetsFiled:  make(map[domain.FolderID][]domain.Snippet, len(loaded.Snippets)),
-		trashedFolders: nil,
-		trashedItems:   nil,
+		trash:           loaded.Trash,
+		folders:         make(map[domain.FolderID]domain.Folder, len(loaded.Folders)),
+		subfolders:      make(map[domain.FolderID][]domain.Folder, len(loaded.Folders)),
+		snippetsFiled:   make(map[domain.FolderID][]domain.Snippet, len(loaded.Snippets)),
+		trashedFolders:  nil,
+		trashedSnippets: nil,
 	}
 
 	for _, folder := range loaded.Folders {
@@ -53,7 +53,7 @@ func (s shelf) withFolder(folder domain.Folder) shelf {
 
 func (s shelf) withSnippet(snippet domain.Snippet) shelf {
 	if _, trashed := s.trash.Snippets[snippet.ID()]; trashed {
-		s.trashedItems = append(s.trashedItems, snippet)
+		s.trashedSnippets = append(s.trashedSnippets, snippet)
 
 		return s
 	}
@@ -76,14 +76,14 @@ func (s shelf) sorted() shelf {
 }
 
 func (s shelf) items() []Item {
-	items := make([]Item, 0, len(s.trashedFolders)+len(s.trashedItems))
+	items := make([]Item, 0, len(s.trashedFolders)+len(s.trashedSnippets))
 
 	for _, folder := range s.trashedFolders {
 		items = append(items, s.folderItem(folder))
 	}
 
-	for index := range s.trashedItems {
-		items = append(items, s.snippetItem(s.trashedItems[index]))
+	for index := range s.trashedSnippets {
+		items = append(items, s.snippetItem(s.trashedSnippets[index]))
 	}
 
 	slices.SortFunc(items, newestDeletedFirst)

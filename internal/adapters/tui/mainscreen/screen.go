@@ -162,7 +162,7 @@ func (s Screen) pressed(msg tea.KeyPressMsg) outcome.Step {
 		return step
 	}
 
-	if step, ok := s.trashEditPressed(msg); ok {
+	if step, ok := s.trashPanePressed(msg); ok {
 		return step
 	}
 

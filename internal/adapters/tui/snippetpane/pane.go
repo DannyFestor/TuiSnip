@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	dateLayout       = "2006-01-02"
 	lineNumberFormat = "%4d │ "
 	blankGutter      = "     │ "
 	wrappedGutter    = "   ↪ │ "
@@ -340,16 +339,13 @@ func (p Pane) place() string {
 }
 
 func (p Pane) timestamps() string {
-	dates := "created " + p.date(p.snippet.CreatedAt()) + metaSeparator + "updated " + p.date(p.snippet.UpdatedAt())
+	dates := "created " + look.Date(p.snippet.CreatedAt(), p.location) +
+		metaSeparator + "updated " + look.Date(p.snippet.UpdatedAt(), p.location)
 	if !p.trashed.isSet() {
 		return dates
 	}
 
-	return dates + metaSeparator + DeletedOn(p.trashed.DeletedAt, p.location)
-}
-
-func (p Pane) date(at time.Time) string {
-	return at.In(p.location).Format(dateLayout)
+	return dates + metaSeparator + look.DeletedOn(p.trashed.DeletedAt, p.location)
 }
 
 func lineNumbers(styles look.Styles) viewport.GutterFunc {

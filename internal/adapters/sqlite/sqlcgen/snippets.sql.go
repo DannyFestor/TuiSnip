@@ -511,7 +511,7 @@ func (q *Queries) MoveSnippet(ctx context.Context, arg MoveSnippetParams) (int64
 const restoreSnippet = `-- name: RestoreSnippet :exec
 UPDATE snippets
 SET deleted_at = NULL, folder_id = ?, former_folder_path = '[]'
-WHERE id = ?
+WHERE id = ? AND deleted_at IS NOT NULL
 `
 
 type RestoreSnippetParams struct {

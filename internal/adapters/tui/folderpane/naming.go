@@ -36,8 +36,8 @@ type newFolder struct {
 }
 
 type renamedFolder struct {
-	folderID domain.FolderID
-	current  string
+	folderID     domain.FolderID
+	previousName string
 }
 
 func (newFolder) placed(at row, index int) placement {
@@ -59,7 +59,10 @@ func (renamedFolder) placed(at row, index int) placement {
 
 func (r renamedFolder) requested(name string) []outcome.Outcome {
 	return []outcome.Outcome{
-		outcome.FolderRenameRequested{Input: folder.RenameInput{FolderID: r.folderID, Name: name}, Current: r.current},
+		outcome.FolderRenameRequested{
+			Input:        folder.RenameInput{FolderID: r.folderID, Name: name},
+			PreviousName: r.previousName,
+		},
 	}
 }
 

@@ -299,6 +299,18 @@ func TestScreen_trashActions(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("y in the Snippet pane on a Folder item says only a Snippet can be copied", func(t *testing.T) {
+		t.Parallel()
+
+		driver, _ := inTrash(t, trashedFolderItem(t))
+		driver.Press(keypress.Letter('4'))
+
+		driver.Press(keypress.Letter('y'))
+
+		assert.Equal(t, []outcome.Outcome{outcome.TrashSelected{}}, driver.Outcomes())
+		assert.Contains(t, statusLine(driver), "Only a Snippet can be copied")
+	})
 }
 
 func TestScreen_goneElsewhere(t *testing.T) {

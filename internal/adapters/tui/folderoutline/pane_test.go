@@ -3,6 +3,7 @@ package folderoutline_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
@@ -52,13 +53,14 @@ func TestPane_Update(t *testing.T) {
 func paneShowing(t *testing.T, height int) folderoutline.Pane {
 	t.Helper()
 
-	pane := folderoutline.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark))
+	pane := folderoutline.New(testsettings.Default(t).Keys, look.NewStyles(look.SchemeDark), time.UTC)
 	pane, _, _ = pane.Update(look.Resized{Box: look.Size{Width: 40, Height: height}})
 
 	docker := testkit.Folder(t, testkit.FolderSpec{ID: testkit.NewSequentialIDs().NewFolderID(), Name: "docker"})
 
 	return pane.Showing(trash.Item{
-		Folder: docker,
+		Folder:    docker,
+		DeletedAt: time.Date(2026, time.October, 14, 9, 0, 0, 0, time.UTC),
 		Contents: trash.Contents{
 			SubfolderCount: 1,
 			SnippetCount:   3,
@@ -68,7 +70,7 @@ func paneShowing(t *testing.T, height int) folderoutline.Pane {
 				Subfolders:    []trash.Outline{{Name: "compose", SnippetTitles: []string{"Up"}}},
 			},
 		},
-	}, "Root / ops", "deleted 2026-10-14")
+	}, "Root / ops")
 }
 
 func lines(pane folderoutline.Pane) []string {

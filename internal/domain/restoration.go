@@ -2,13 +2,10 @@ package domain
 
 import "github.com/DannyFestor/TuiSnip/internal/domain/value"
 
-type RestoreFallback int
+//go:generate go-enum
 
-const (
-	RestoreFallbackNone RestoreFallback = iota
-	RestoreFallbackFolderInTrash
-	RestoreFallbackFolderDeleted
-)
+// ENUM(none, folder_in_trash, folder_deleted).
+type RestoreFallback string
 
 type Restoration struct {
 	FolderID FolderID

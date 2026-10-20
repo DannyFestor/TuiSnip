@@ -21,7 +21,7 @@ db/
 embeds/
   config/                    default.toml, embedded by embed.go
 internal/
-  domain/                    entities, the Library, what an Import from another app leaves behind, invariants, search weights, FieldError, sentinel errors
+  domain/                    entities, the Library, what an Import from another app leaves behind, where a restored Trash item lands, invariants, search weights, FieldError, sentinel errors
     value/                   value objects (Title, Description, Content, FolderName, TagName, Language, FragmentTitle) and their rule sentinels
   app/
     snippet/                 Create, Update, Delete, Move, Duplicate, Capture, Copy
@@ -61,7 +61,7 @@ internal/
       input/                 the text inputs components embed, with clipboard access turned off
       languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick
       look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
-      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to copy, duplicate, and delete the selected Snippet
+      mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to copy, duplicate, and delete the selected Snippet, and the Trash list and its outline in place of the Snippet list and pane while the Trash is the Browse selection
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
       outcome/               the sealed union of outcomes TUI components report to the model, and the Overlay, Step and Stack types bound to it
@@ -100,7 +100,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 
 | Layer | Owns | Must not |
 |---|---|---|
-| `domain` | Snippet, Fragment, Folder, Tag, IDs, the Library; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors; `ImportLosses`, what an Import from another app leaves behind, Trash count included, because the reader adapter reports it and no adapter may return an `app` type | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
+| `domain` | Snippet, Fragment, Folder, Tag, IDs, the Library; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors; `ImportLosses`, what an Import from another app leaves behind, Trash count included, because the reader adapter reports it and no adapter may return an `app` type; `Restoration`, where a restored Trash item lands and why, because the restore rule needs the live check inside the adapter's write transaction | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
 | `domain/value` | Title, Description, Content, FolderName, TagName, Language, FragmentTitle: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter (except `atomicfile`), or `bootstrap` |
@@ -136,7 +136,7 @@ No other edges exist. In particular:
 ## Actions
 
 - An Action is an exported struct named for the verb, inside its concern: `snippet.Create`, `folder.Move`, `search.Query`.
-- Its one method is `Run(ctx context.Context, in <Action>Input)`. It returns domain types where they fit and a result type from its own package otherwise (`browse.FolderNode` carries a Snippet count, `folder.DeletePreview` carries the counts for the confirmation). Counts are not domain facts, so they stay out of `domain`.
+- Its one method is `Run(ctx context.Context, in <Action>Input)`. It returns domain types where they fit and a result type from its own package otherwise (`browse.FolderNode` carries a Snippet count, `tag.DeletePreview` carries the count for the confirmation). Counts are not domain facts, so they stay out of `domain`.
 - A type name never starts with its package name. revive flags `search.SearchIndex`, which is why the Search Action is `search.Query`.
 
 ### Constructors

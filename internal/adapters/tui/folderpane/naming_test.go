@@ -73,8 +73,8 @@ func TestPane_UpdateRename(t *testing.T) {
 		pane, outcomes, _ := pane.Update(keypress.Special(tea.KeyEnter))
 
 		assert.Equal(t, []outcome.Outcome{outcome.FolderRenameRequested{
-			Input:   folder.RenameInput{FolderID: sample.Docker.ID(), Name: "dockers"},
-			Current: "docker",
+			Input:        folder.RenameInput{FolderID: sample.Docker.ID(), Name: "dockers"},
+			PreviousName: "docker",
 		}}, outcomes)
 		assert.False(t, pane.Naming())
 	})

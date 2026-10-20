@@ -101,4 +101,4 @@ SELECT COUNT(*) FROM snippets WHERE deleted_at IS NOT NULL;
 -- name: RestoreSnippet :exec
 UPDATE snippets
 SET deleted_at = NULL, folder_id = ?, former_folder_path = '[]'
-WHERE id = ?;
+WHERE id = ? AND deleted_at IS NOT NULL;

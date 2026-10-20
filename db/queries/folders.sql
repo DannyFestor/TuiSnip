@@ -60,4 +60,4 @@ SELECT COUNT(*) FROM folders WHERE deleted_at IS NOT NULL;
 -- name: RestoreFolder :exec
 UPDATE folders
 SET deleted_at = NULL, parent_id = ?, former_parent_path = '[]'
-WHERE id = ?;
+WHERE id = ? AND deleted_at IS NOT NULL;

@@ -242,7 +242,7 @@ func (q *Queries) MoveFolder(ctx context.Context, arg MoveFolderParams) (int64, 
 const restoreFolder = `-- name: RestoreFolder :exec
 UPDATE folders
 SET deleted_at = NULL, parent_id = ?, former_parent_path = '[]'
-WHERE id = ?
+WHERE id = ? AND deleted_at IS NOT NULL
 `
 
 type RestoreFolderParams struct {

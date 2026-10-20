@@ -41,7 +41,7 @@ internal/
     state/                   the remembered-state file (sort order, collapsed Folders)
     atomicfile/              writes a file through a temporary file, so config, state, and an Export never leave one half written
     exportfile/              the Export file's versioned JSON format, written owner-only through atomicfile and read back for Import
-    snippetslab/             reads a SnippetsLab JSON export into a Library with fresh IDs: the lexer table, notes into the Description, what the Import leaves behind
+    snippetslab/             reads a SnippetsLab JSON export into a Library with fresh IDs, its Trash included: the lexer table, notes into the Description, what the Import leaves behind
     editor/                  resolves the external editor command, runs it on a temp file, reads it back
     memsearch/               in-memory Search index
     system/                  Clock and IDGenerator
@@ -102,7 +102,7 @@ The Action lists are the v1 plan. Add Actions where the concern they belong to l
 
 | Layer | Owns | Must not |
 |---|---|---|
-| `domain` | Snippet, Fragment, Folder, Tag, IDs, the Library; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors; `ImportLosses`, what an Import from another app leaves behind, Trash count included, because the reader adapter reports it and no adapter may return an `app` type; `Restoration`, where a restored Trash item lands and why, because the restore rule needs the live check inside the adapter's write transaction | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
+| `domain` | Snippet, Fragment, Folder, Tag, IDs, the Library; every entity rule from `docs/spec/v1.md` that needs no I/O; the search weight table; `FieldError`; entity sentinel errors; `ImportLosses`, what an Import from another app leaves behind, because the reader adapter reports it and no adapter may return an `app` type; `Restoration`, where a restored Trash item lands and why, because the restore rule needs the live check inside the adapter's write transaction | import anything outside the standard library and `domain/value`; generate IDs or read the clock |
 | `domain/value` | Title, Description, Content, FolderName, TagName, Language, FragmentTitle: parsing, normalisation, and the sentinels for their rules | import anything outside the standard library, `domain` included |
 | `app/<concern>` | Actions and the interfaces they need | import another concern, any adapter, or third-party modules; log; touch `os`, `os/exec`, `net`, or `database/sql` |
 | driven adapters | one outside system each | import `app`, another adapter (except `atomicfile`), or `bootstrap` |

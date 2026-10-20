@@ -7,13 +7,11 @@ import (
 
 type Sanitizer struct {
 	replaceNewLine []rune
-	replaceTab     []rune
 }
 
 func NewSanitizer(opts ...Option) *Sanitizer {
 	sanitizer := Sanitizer{
 		replaceNewLine: []rune("\n"),
-		replaceTab:     []rune("    "),
 	}
 	for _, option := range opts {
 		sanitizer = option(sanitizer)
@@ -38,9 +36,7 @@ func (s *Sanitizer) write(out *sanitizedRunes, src int, char rune) {
 	switch {
 	case char == '\r' || char == '\n':
 		out.replace(src, s.replaceNewLine)
-	case char == '\t':
-		out.replace(src, s.replaceTab)
-	case char != utf8.RuneError && !unicode.IsControl(char):
+	case char == '\t' || (char != utf8.RuneError && !unicode.IsControl(char)):
 		out.dstrunes = append(out.dstrunes, char)
 	}
 }

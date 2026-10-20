@@ -17,6 +17,7 @@ import (
 	rw "github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tabstop"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea/memoization"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea/runeutil"
 )
@@ -51,7 +52,7 @@ func (w line) Hash() string {
 }
 
 type Model struct {
-	cache *memoization.MemoCache[line, [][]rune]
+	cache *memoization.MemoCache[line, []wrappedLine]
 
 	// When changing the value of Prompt after the model has been
 	// initialized, ensure that SetWidth() gets called afterwards.
@@ -139,7 +140,7 @@ func New() Model {
 		Prompt:               lipgloss.ThickBorder().Left + " ",
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
-		cache:                memoization.NewMemoCache[line, [][]rune](maxLines),
+		cache:                memoization.NewMemoCache[line, []wrappedLine](maxLines),
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		useVirtualCursor:     true,
@@ -333,33 +334,35 @@ func (m *Model) LineInfo() LineInfo {
 
 	var counter int
 	for segment, line := range grid {
-		if counter+len(line) == m.col && segment+1 < len(grid) {
+		if counter+len(line.runes) == m.col && segment+1 < len(grid) {
 			// We wrap around to the next line if we are at the end of the
 			// previous line so that we can be at the very beginning of the row
 			return LineInfo{
-				CharOffset:   0,
-				ColumnOffset: 0,
-				Height:       len(grid),
-				RowOffset:    segment + 1,
-				StartColumn:  m.col,
-				Width:        len(grid[segment+1]),
-				CharWidth:    uniseg.StringWidth(string(line)),
+				CharOffset:      0,
+				ColumnOffset:    0,
+				Height:          len(grid),
+				RowOffset:       segment + 1,
+				StartColumn:     m.col,
+				StartCharOffset: grid[segment+1].startCell,
+				Width:           len(grid[segment+1].runes),
+				CharWidth:       line.width(),
 			}
 		}
 
-		if counter+len(line) >= m.col {
+		if counter+len(line.runes) >= m.col {
 			return LineInfo{
-				CharOffset:   uniseg.StringWidth(string(line[:max(0, m.col-counter)])),
-				ColumnOffset: m.col - counter,
-				Height:       len(grid),
-				RowOffset:    segment,
-				StartColumn:  counter,
-				Width:        len(line),
-				CharWidth:    uniseg.StringWidth(string(line)),
+				CharOffset:      line.widthBefore(max(0, m.col-counter)),
+				ColumnOffset:    m.col - counter,
+				Height:          len(grid),
+				RowOffset:       segment,
+				StartColumn:     counter,
+				StartCharOffset: line.startCell,
+				Width:           len(line.runes),
+				CharWidth:       line.width(),
 			}
 		}
 
-		counter += len(line)
+		counter += len(line.runes)
 	}
 
 	return LineInfo{}
@@ -567,9 +570,6 @@ func (m *Model) updateVirtualCursorStyle() {
 }
 
 func (m *Model) insertRunesFromUserInput(runes []rune) {
-	// Clean up any special characters in the input provided by the
-	// clipboard. This avoids bugs due to e.g. tab characters and
-	// whatnot.
 	runes, fits := m.fitCharLimit(m.san().Sanitize(runes))
 	if !fits {
 		return
@@ -722,7 +722,14 @@ func (m *Model) moveToCharOffset(charOffset int) {
 			break
 		}
 
-		offset += rw.RuneWidth(m.value[m.row][m.col])
+		char := m.value[m.row][m.col]
+
+		next := offset + tabstop.RuneCellsAt(char, nli.StartCharOffset+offset)
+		if next > charOffset && tabstop.IsTab(char) {
+			break
+		}
+
+		offset = next
 		m.col++
 	}
 }
@@ -956,7 +963,7 @@ func (m *Model) prepareForMsg() {
 	}
 
 	if m.MaxHeight > 0 && m.MaxHeight != m.cache.Capacity() {
-		m.cache = memoization.NewMemoCache[line, [][]rune](m.MaxHeight)
+		m.cache = memoization.NewMemoCache[line, []wrappedLine](m.MaxHeight)
 	}
 }
 
@@ -1314,7 +1321,7 @@ func (m *Model) updateKeyboardSelection() {
 	m.selHead = Position{Row: m.row, Col: m.col}
 }
 
-func (m *Model) memoizedWrap(runes []rune, width int) [][]rune {
+func (m *Model) memoizedWrap(runes []rune, width int) []wrappedLine {
 	input := line{runes: runes, width: width}
 	if v, ok := m.cache.Get(input); ok {
 		return v
@@ -1514,7 +1521,7 @@ type wrappedSegment struct {
 	index      int
 	base       int
 	lineLength int
-	runes      []rune
+	wrapped    wrappedLine
 }
 
 func (v *contentRenderer) writeLine(row int, line []rune) {
@@ -1528,8 +1535,8 @@ func (v *contentRenderer) writeLine(row int, line []rune) {
 	// selection coordinates.
 	wrappedBase := 0
 
-	for index, wrappedLine := range v.model.memoizedWrap(line, v.model.width) {
-		segment := wrappedSegment{row: row, index: index, base: wrappedBase, lineLength: len(line), runes: wrappedLine}
+	for index, wrapped := range v.model.memoizedWrap(line, v.model.width) {
+		segment := wrappedSegment{row: row, index: index, base: wrappedBase, lineLength: len(line), wrapped: wrapped}
 		wrappedBase += v.writeSegment(segment, style)
 	}
 }
@@ -1547,34 +1554,32 @@ func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.St
 
 	v.out.WriteString(model.lineNumberFor(segment.row, lineNumber))
 
-	strwidth := uniseg.StringWidth(string(segment.runes))
-	// If the trailing space causes the line to be wider than the
+	wrappedLength := len(segment.wrapped.runes)
+	// If the trailing space or tab causes the line to be wider than the
 	// width, we should not draw it to the screen since it will result
 	// in an extra space at the end of the line which can look off when
 	// the cursor line is showing.
-	if strwidth > model.width {
-		// The character causing the line to be wider than the width is
-		// guaranteed to be a space since any other character would
-		// have been wrapped.
-		segment.runes = []rune(strings.TrimSuffix(string(segment.runes), " "))
+	if segment.wrapped.width() > model.width {
+		segment.wrapped = segment.wrapped.withoutTrailingWhitespace()
 	}
 
 	v.writeSegmentText(segment, style)
 
-	v.out.WriteString(style.Render(strings.Repeat(" ", max(0, model.width-strwidth))))
+	v.out.WriteString(style.Render(strings.Repeat(" ", max(0, model.width-segment.wrapped.width()))))
 	v.out.WriteRune('\n')
 
-	return len(segment.runes)
+	return wrappedLength
 }
 
 func (v *contentRenderer) writeSegmentText(segment wrappedSegment, style lipgloss.Style) {
 	// A selection covering this segment takes precedence over the
 	// inline cursor: during a drag the highlight is the meaningful
 	// affordance, and mixing the two would double-style the same cell.
-	if span, selected := v.model.selectionSpanFor(segment.row, segment.base, len(segment.runes)); selected {
-		v.out.WriteString(style.Render(string(segment.runes[:span.from])))
-		v.out.WriteString(v.styles.computedSelection().Render(string(segment.runes[span.from:span.to])))
-		v.out.WriteString(style.Render(string(segment.runes[span.to:])))
+	if span, selected := v.model.selectionSpanFor(segment.row, segment.base, len(segment.wrapped.runes)); selected {
+		drawn := segment.wrapped.split(span.from, span.to)
+		v.out.WriteString(style.Render(drawn.before))
+		v.out.WriteString(v.styles.computedSelection().Render(drawn.inside))
+		v.out.WriteString(style.Render(drawn.after))
 
 		return
 	}
@@ -1585,14 +1590,15 @@ func (v *contentRenderer) writeSegmentText(segment wrappedSegment, style lipglos
 		return
 	}
 
-	v.out.WriteString(style.Render(string(segment.runes)))
+	v.out.WriteString(style.Render(segment.wrapped.drawn()))
 }
 
 func (v *contentRenderer) writeCursorSegment(segment wrappedSegment, style lipgloss.Style) {
 	model := v.model
 	cursorAt := v.lineInfo.ColumnOffset
+	drawn := segment.wrapped.split(cursorAt, min(cursorAt+1, len(segment.wrapped.runes)))
 
-	v.out.WriteString(style.Render(string(segment.runes[:cursorAt])))
+	v.out.WriteString(style.Render(drawn.before))
 
 	if model.col >= segment.lineLength && v.lineInfo.CharOffset >= model.width {
 		model.virtualCursor.SetChar(" ")
@@ -1601,9 +1607,9 @@ func (v *contentRenderer) writeCursorSegment(segment wrappedSegment, style lipgl
 		return
 	}
 
-	model.virtualCursor.SetChar(string(segment.runes[cursorAt]))
+	model.virtualCursor.SetChar(drawn.inside)
 	v.out.WriteString(style.Render(model.virtualCursor.View()))
-	v.out.WriteString(style.Render(string(segment.runes[cursorAt+1:])))
+	v.out.WriteString(style.Render(drawn.after))
 }
 
 func (v *contentRenderer) writeEndOfBuffer() {
@@ -1690,8 +1696,8 @@ func splitLines(runes []rune) [][]rune {
 	return lines
 }
 
-func wrap(runes []rune, width int) [][]rune {
-	wrapper := wrapping{width: width, lines: [][]rune{{}}, word: []rune{}, row: 0, spaces: 0}
+func wrap(runes []rune, width int) []wrappedLine {
+	wrapper := wrapping{width: width, lines: []wrappedLine{{runes: []rune{}, startCell: 0}}, word: []rune{}, row: 0}
 
 	for _, r := range runes {
 		wrapper.add(r)
@@ -1701,38 +1707,30 @@ func wrap(runes []rune, width int) [][]rune {
 }
 
 type wrapping struct {
-	width  int
-	lines  [][]rune
-	word   []rune
-	row    int
-	spaces int
+	width int
+	lines []wrappedLine
+	word  []rune
+	row   int
 }
 
-func (w *wrapping) add(r rune) {
-	if unicode.IsSpace(r) {
-		w.spaces++
-	} else {
-		w.word = append(w.word, r)
-	}
-
-	if w.spaces > 0 {
-		w.placeWordAndSpaces()
+func (w *wrapping) add(char rune) {
+	if unicode.IsSpace(char) {
+		w.placeWordAnd(char)
 
 		return
 	}
 
+	w.word = append(w.word, char)
 	w.breakOverlongWord()
 }
 
-func (w *wrapping) placeWordAndSpaces() {
-	if uniseg.StringWidth(string(w.lines[w.row]))+uniseg.StringWidth(string(w.word))+w.spaces > w.width {
+func (w *wrapping) placeWordAnd(space rune) {
+	if len(w.lines[w.row].runes) > 0 && w.lines[w.row].widthWith(w.word, []rune{space}) > w.width {
 		w.startLine()
 	}
 
-	w.lines[w.row] = append(w.lines[w.row], w.word...)
-	w.lines[w.row] = append(w.lines[w.row], repeatSpaces(w.spaces)...)
-	w.spaces = 0
-	w.word = nil
+	w.placeWord()
+	w.place(space)
 }
 
 func (w *wrapping) breakOverlongWord() {
@@ -1743,38 +1741,40 @@ func (w *wrapping) breakOverlongWord() {
 		return
 	}
 
-	if len(w.lines[w.row]) > 0 {
+	if len(w.lines[w.row].runes) > 0 {
 		w.startLine()
 	}
 
-	w.lines[w.row] = append(w.lines[w.row], w.word...)
-	w.word = nil
+	w.placeWord()
 }
 
-func (w *wrapping) finish() [][]rune {
-	if uniseg.StringWidth(string(w.lines[w.row]))+uniseg.StringWidth(string(w.word))+w.spaces >= w.width {
+func (w *wrapping) finish() []wrappedLine {
+	if w.lines[w.row].widthWith(w.word) >= w.width {
 		w.startLine()
 	}
 
-	w.lines[w.row] = append(w.lines[w.row], w.word...)
+	w.placeWord()
 	// We add an extra space at the end of the line to account for the
 	// trailing space at the end of the previous soft-wrapped lines so that
 	// behaviour when navigating is consistent and so that we don't need to
 	// continually add edges to handle the last line of the wrapped input.
-	w.spaces++
-	w.lines[w.row] = append(w.lines[w.row], repeatSpaces(w.spaces)...)
+	w.place(' ')
 
 	return w.lines
 }
 
-func (w *wrapping) startLine() {
-	w.row++
-
-	w.lines = append(w.lines, []rune{})
+func (w *wrapping) placeWord() {
+	w.place(w.word...)
+	w.word = nil
 }
 
-func repeatSpaces(n int) []rune {
-	return []rune(strings.Repeat(string(' '), n))
+func (w *wrapping) place(runes ...rune) {
+	w.lines[w.row].runes = append(w.lines[w.row].runes, runes...)
+}
+
+func (w *wrapping) startLine() {
+	w.lines = append(w.lines, w.lines[w.row].following())
+	w.row++
 }
 
 func numDigits(number int) int {

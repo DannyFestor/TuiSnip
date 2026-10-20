@@ -104,7 +104,7 @@ func (f form) withDraft(draft fragmentDraft) form {
 	next := f
 	next.fragmentTitle.SetValue(draft.title)
 	next.language = draft.language
-	next.readOnly = readOnlyIfUneditable(draft.content, draft.language, f.codeStyle)
+	next.readOnly = readOnlyIfOverlong(draft.content, draft.language, f.codeStyle)
 	next.content.SetValue("")
 
 	return next.withContent(draft.content)

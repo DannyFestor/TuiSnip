@@ -70,6 +70,7 @@ internal/
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
       snippetlist/           the Snippet list: rows, cursor, scrolling, the Snippet that takes the cursor's row after a delete
       snippetpane/           the Snippet pane: header, the tab strip, the highlighted and scrolled Shown Fragment, Copy of the Shown Fragment
+      tabstop/               where a tab in Content ends: the 4-cell tab stops the Content textarea and highlighted Content share
       tagchoice/             the Tags a Snippet carries while the edit overlay is open: stored Tags and the names of Tags to create on save
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one

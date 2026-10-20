@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	tabbedContent  = "if x {\n\treturn\n}\n"
-	readOnlyNotice = "Contains tabs: read-only here, edit with ctrl+e ($EDITOR)"
-	listHintsShown = "y Copy · e edit · E external editor · n new"
+	tabbedContent    = "if x {\n\treturn\n}\n"
+	contentEntryHint = "enter or down to edit"
+	listHintsShown   = "y Copy · e edit · E external editor · n new"
 )
 
 func TestEditSnippetKeepsTabbedContent(t *testing.T) {
@@ -32,7 +32,7 @@ func TestEditSnippetKeepsTabbedContent(t *testing.T) {
 	screen.waitForFrame(rootTitle)
 
 	screen.press(keypress.Letter('3'), keypress.Letter('e'))
-	screen.waitForFrame(readOnlyNotice)
+	screen.waitForFrame(contentEntryHint)
 	screen.press(keypress.Typed(" edited")...)
 	screen.press(keypress.Ctrl('s'))
 	screen.waitForFrame(listHintsShown)

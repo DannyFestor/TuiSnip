@@ -2,7 +2,7 @@
 
 The Content textarea is TuiSnip's own copy of the Bubbles v2.2.1 `textarea`, in `internal/adapters/tui/textarea`, with its tests, its MIT licence notice, and its own copies of upstream's internal `runeutil` and `memoization`. The stock textarea can't keep tabs or highlight while editing, and no other component does both. Decided in [Can an existing component keep tabs and highlight while editing?](https://github.com/DannyFestor/TuiSnip/issues/205#issuecomment-6181629638) and [How the editor behaves in the edit overlay and Capture](https://github.com/DannyFestor/TuiSnip/issues/207#issuecomment-6184772817).
 
-The fork exists for four changes against upstream. None of them is made yet. Each has its own issue:
+The fork exists for four changes against upstream. The two of #223 are made. Each has its own issue:
 
 - The sanitiser keeps tabs ([#223](https://github.com/DannyFestor/TuiSnip/issues/223)). Upstream turns every tab into four spaces on typing, pasting, `SetValue`, and `InsertString`, and nothing outside the module can pass the option that stops it.
 - One tab-aware width function, used by wrap, the cursor, and rendering ([#223](https://github.com/DannyFestor/TuiSnip/issues/223)). `uniseg.StringWidth("\t")` is 0.

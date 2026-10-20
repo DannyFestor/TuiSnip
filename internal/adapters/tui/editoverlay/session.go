@@ -58,7 +58,7 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 		},
 		0,
 	)
-	opened := blank.withExternalContent(captured.Content)
+	opened := blank.withContent(captured.Content)
 
 	return newSession(keys, styles, options, opened).aimedAt(newSnippet{destination: destination}), cmd
 }
@@ -206,8 +206,8 @@ func (s Session) requested(asked request) outcome.Step {
 		return s.editingTags()
 	case requestPickLanguage:
 		return s.pickingLanguage()
-	case requestRefuseOverlongPaste:
-		return s.pasteRefused(pasteOverflowsContent)
+	case requestRefuseOversizedPaste:
+		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: pasteTooLarge})
 	case requestExternalEditor:
 		return s.externalEditAsked()
 	case requestAddFragment, requestRemoveFragment, requestRefuseRemovingLastFragment:
@@ -227,7 +227,7 @@ func (s Session) fragmentRequested(asked request) outcome.Step {
 	case requestRefuseRemovingLastFragment:
 		return outcome.Stay(s).Passing(outcome.NoticeShown{Text: lastFragmentRefusal})
 	case requestNothing, requestSave, requestCancel, requestEditTags, requestPickLanguage,
-		requestRefuseOverlongPaste, requestExternalEditor:
+		requestRefuseOversizedPaste, requestExternalEditor:
 	}
 
 	return outcome.Stay(s)
@@ -259,7 +259,7 @@ func (s Session) externalEditAsked() outcome.Step {
 }
 
 func (s Session) withExternalContent(content string) Session {
-	s.form = s.form.withExternalContent(content)
+	s.form = s.form.withContent(content)
 
 	return s
 }
@@ -285,10 +285,6 @@ func (s Session) pickingLanguage() outcome.Step {
 	})
 
 	return outcome.Stay(s).Opening(picker).Running(cmd)
-}
-
-func (s Session) pasteRefused(refusal string) outcome.Step {
-	return outcome.Stay(s).Passing(outcome.NoticeShown{Text: refusalText(refusal, s.form.externalEditorKey())})
 }
 
 func (s Session) saveStarted() outcome.Step {

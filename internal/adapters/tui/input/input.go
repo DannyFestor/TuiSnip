@@ -20,6 +20,7 @@ func NewContentArea(styles look.Styles) textarea.Model {
 	area := textarea.New()
 	area.Prompt = ""
 	area.MaxHeight = 0
+	area.MaxLines = 0
 
 	return RestyledArea(area, styles)
 }

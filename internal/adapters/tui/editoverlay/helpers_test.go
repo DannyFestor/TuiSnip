@@ -36,6 +36,9 @@ const (
 
 	languagePickerTitle = "Pick a Language"
 
+	maxContentBytes = 256 << 10
+	pasteTooLarge   = "Paste would make Content larger than 256 KiB"
+
 	goneElsewhereTitle = "Gone elsewhere"
 	folderGoneQuestion = `Folder "docker" was moved to the Trash or deleted in another TuiSnip. ` +
 		"Save the Snippet at the Root instead?"
@@ -80,11 +83,11 @@ func editingIn(t *testing.T, filedIn editoverlay.Destination) *overlaytest.Drive
 	return overlaytest.Open(t, screenSize(), opened)
 }
 
-func destinationIn(t *testing.T, languageName string) editoverlay.Destination {
+func destinationInGo(t *testing.T) editoverlay.Destination {
 	t.Helper()
 
 	filedIn := destination()
-	filedIn.Language = language(t, languageName)
+	filedIn.Language = language(t, "Go")
 
 	return filedIn
 }
@@ -156,43 +159,43 @@ func destinationFolderID() domain.FolderID {
 	return testkit.NewSequentialIDs().NewFolderID()
 }
 
-func editingStored(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
-	t.Helper()
+func editingStored(tb testing.TB, stored domain.Snippet) *overlaytest.Driver {
+	tb.Helper()
 
-	return editingStoredWith(t, testsettings.Default(t).Keys, stored)
+	return editingStoredWith(tb, testsettings.Default(tb).Keys, stored)
 }
 
-func editingStoredWith(t *testing.T, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
-	t.Helper()
+func editingStoredWith(tb testing.TB, keys binding.Keys, stored domain.Snippet) *overlaytest.Driver {
+	tb.Helper()
 
-	return editingStoredStyled(t, keys, look.NewStyles(look.SchemeDark), stored)
+	return editingStoredStyled(tb, keys, look.NewStyles(look.SchemeDark), stored)
 }
 
 func editingStoredStyled(
-	t *testing.T,
+	tb testing.TB,
 	keys binding.Keys,
 	styles look.Styles,
 	stored domain.Snippet,
 ) *overlaytest.Driver {
-	t.Helper()
+	tb.Helper()
 
 	opened, _ := editoverlay.Editing(
 		keys, styles, editoverlay.Options{}, editoverlay.BrowsedSnippet{Snippet: stored, Selection: browsed()},
 	)
 
-	return overlaytest.Open(t, screenSize(), opened)
+	return overlaytest.Open(tb, screenSize(), opened)
 }
 
 func browsed() browseselection.Selection {
 	return browseselection.WithTag(testkit.NewSequentialIDs().NewTagID())
 }
 
-func storedSnippet(t *testing.T, content string) domain.Snippet {
-	t.Helper()
+func storedSnippet(tb testing.TB, content string) domain.Snippet {
+	tb.Helper()
 
 	ids := testkit.NewSequentialIDs()
 
-	return testkit.Snippet(t, testkit.SnippetSpec{
+	return testkit.Snippet(tb, testkit.SnippetSpec{
 		ID:          ids.NewSnippetID(),
 		Title:       "Prune",
 		Description: "Reclaim",
@@ -243,20 +246,22 @@ func language(t *testing.T, name string) value.Language {
 	return parsed
 }
 
-func withoutLanguageRow(screen string) string {
-	lines := strings.Split(screen, "\n")
+func twentyThousandShortLines() string {
+	return strings.Join(slices.Repeat([]string{"line"}, 20_000), "\n")
+}
 
-	return strings.Join(slices.DeleteFunc(lines, func(line string) bool {
-		return strings.Contains(line, "Language")
-	}), "\n")
+func textOfSize(size int) string {
+	const line = "\tfmt.Println(\"a line of typical code, indented by a tab\")\n"
+
+	return strings.Repeat(line, size/len(line)) + line[:size%len(line)]
+}
+
+func shiftLeft() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
 }
 
 func shiftTab() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
-}
-
-func shiftUp() tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
 }
 
 func save() tea.KeyPressMsg {

@@ -495,10 +495,6 @@ func (s Screen) asking(question confirm.Question, onYes outcome.Outcome) outcome
 }
 
 func (s Screen) captured(content string) outcome.Step {
-	if refusal, refused := editoverlay.CaptureRefusal(s.keys, content); refused {
-		return outcome.Stay(s.withStatus(refusal))
-	}
-
 	captured := editoverlay.Captured{Destination: s.destination(), Content: content}
 
 	return s.opening(editoverlay.Capturing(s.keys, s.styles, s.overlayOptions(), captured))

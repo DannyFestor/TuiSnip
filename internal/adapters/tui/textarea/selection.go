@@ -35,7 +35,7 @@ func (m *Model) PositionAt(cellX, cellY int) Position {
 	for row, line := range m.value {
 		base := 0
 
-		for _, wrapped := range m.memoizedWrap(line, m.width) {
+		for _, wrapped := range m.wrappedRow(row) {
 			if display == targetLine {
 				col := base + wrapped.runeIndexAt(contentX)
 

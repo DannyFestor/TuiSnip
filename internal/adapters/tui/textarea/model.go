@@ -1,11 +1,11 @@
 package textarea
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"charm.land/bubbles/v2/cursor"
@@ -30,7 +30,8 @@ const (
 	defaultMaxHeight = 99
 	defaultMaxWidth  = 500
 
-	maxLines = 10000
+	defaultMaxLines   = 10000
+	wrapCacheCapacity = 10000
 
 	// 2 columns to account for the trailing space wrapping.
 	trailingSpace = 2
@@ -46,13 +47,12 @@ type line struct {
 }
 
 func (w line) Hash() string {
-	v := fmt.Sprintf("%s:%d", string(w.runes), w.width)
-
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(v)))
+	return strconv.Itoa(w.width) + ":" + string(w.runes)
 }
 
 type Model struct {
-	cache *memoization.MemoCache[line, []wrappedLine]
+	cache    *memoization.MemoCache[line, []wrappedLine]
+	rowWraps *rowWraps
 
 	// When changing the value of Prompt after the model has been
 	// initialized, ensure that SetWidth() gets called afterwards.
@@ -69,6 +69,8 @@ type Model struct {
 	// CharLimit is the maximum number of characters this input element will
 	// accept. If 0 or less, there's no limit.
 	CharLimit int
+
+	MaxLines int
 
 	// MaxHeight is the maximum height of the text area in rows. If 0 or less,
 	// there's no limit.
@@ -135,12 +137,14 @@ func New() Model {
 
 	model := Model{
 		CharLimit:            defaultCharLimit,
+		MaxLines:             defaultMaxLines,
 		MaxHeight:            defaultMaxHeight,
 		MaxWidth:             defaultMaxWidth,
 		Prompt:               lipgloss.ThickBorder().Left + " ",
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
-		cache:                memoization.NewMemoCache[line, []wrappedLine](maxLines),
+		cache:                memoization.NewMemoCache[line, []wrappedLine](wrapCacheCapacity),
+		rowWraps:             &rowWraps{mutex: sync.Mutex{}, rows: nil},
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		useVirtualCursor:     true,
@@ -161,7 +165,7 @@ func New() Model {
 		hasSelection:         false,
 		selecting:            false,
 
-		value: make([][]rune, minHeight, maxLines),
+		value: make([][]rune, minHeight, defaultMaxLines),
 		focus: false,
 		col:   0,
 		row:   0,
@@ -291,7 +295,7 @@ func (m *Model) Blur() {
 }
 
 func (m *Model) Reset() {
-	m.value = make([][]rune, minHeight, maxLines)
+	m.value = make([][]rune, minHeight, defaultMaxLines)
 	m.col = 0
 	m.row = 0
 	m.viewport.GotoTop()
@@ -330,7 +334,7 @@ func (m *Model) Word() string {
 }
 
 func (m *Model) LineInfo() LineInfo {
-	grid := m.memoizedWrap(m.value[m.row], m.width)
+	grid := m.wrappedRow(m.row)
 
 	var counter int
 	for segment, line := range grid {
@@ -597,8 +601,8 @@ func (m *Model) fitCharLimit(runes []rune) ([]rune, bool) {
 }
 
 func (m *Model) fitMaxLines(lines [][]rune) [][]rune {
-	if maxLines > 0 && len(m.value)+len(lines)-1 > maxLines {
-		allowedHeight := max(0, maxLines-len(m.value)+1)
+	if m.MaxLines > 0 && len(m.value)+len(lines)-1 > m.MaxLines {
+		allowedHeight := max(0, m.MaxLines-len(m.value)+1)
 		lines = lines[:allowedHeight]
 	}
 
@@ -1110,7 +1114,7 @@ func (m *Model) updateVirtualCursor(msg tea.Msg, oldRow, oldCol int) tea.Cmd {
 }
 
 func (m *Model) contentView() string {
-	if m.Value() == "" && m.row == 0 && m.col == 0 && m.Placeholder != "" {
+	if m.empty() && m.row == 0 && m.col == 0 && m.Placeholder != "" {
 		return m.placeholderView()
 	}
 
@@ -1120,6 +1124,7 @@ func (m *Model) contentView() string {
 		model:       m,
 		styles:      m.activeStyle(),
 		lineInfo:    m.LineInfo(),
+		drawn:       m.rowsWithinAPageOfViewport(),
 		out:         strings.Builder{},
 		displayLine: 0,
 	}
@@ -1130,6 +1135,17 @@ func (m *Model) contentView() string {
 	view.writeEndOfBuffer()
 
 	return view.out.String()
+}
+
+func (m *Model) empty() bool {
+	return len(m.value) == 0 || (len(m.value) == 1 && len(m.value[0]) == 0)
+}
+
+func (m *Model) rowsWithinAPageOfViewport() drawnRows {
+	top := m.viewport.YOffset()
+	page := m.viewport.Height()
+
+	return drawnRows{first: top - page, end: top + 2*page}
 }
 
 func (m *Model) promptView(displayLine int) string {
@@ -1333,11 +1349,23 @@ func (m *Model) memoizedWrap(runes []rune, width int) []wrappedLine {
 	return v
 }
 
+func (m *Model) wrappedRow(row int) []wrappedLine {
+	source := m.value[row]
+	if wrapped, ok := m.rowWraps.lookup(row, source, m.width); ok {
+		return wrapped
+	}
+
+	wrapped := m.memoizedWrap(source, m.width)
+	m.rowWraps.store(row, source, m.width, wrapped)
+
+	return wrapped
+}
+
 // This accounts for soft wrapped lines.
 func (m *Model) cursorLineNumber() int {
 	line := 0
 	for i := range m.row {
-		line += len(m.memoizedWrap(m.value[i], m.width))
+		line += len(m.wrappedRow(i))
 	}
 
 	line += m.LineInfo().RowOffset
@@ -1347,8 +1375,8 @@ func (m *Model) cursorLineNumber() int {
 
 func (m *Model) totalVisualLines() int {
 	n := 0
-	for _, line := range m.value {
-		n += len(m.memoizedWrap(line, m.width))
+	for row := range m.value {
+		n += len(m.wrappedRow(row))
 	}
 
 	return n
@@ -1390,7 +1418,7 @@ func (m *Model) visualLinesForInsert(lines [][]rune) int {
 		return 0
 	}
 
-	currentRowVisual := len(m.memoizedWrap(m.value[m.row], m.width))
+	currentRowVisual := len(m.wrappedRow(m.row))
 
 	merged := make([]rune, 0, m.col+len(lines[0]))
 	merged = append(merged, m.value[m.row][:m.col]...)
@@ -1512,6 +1540,7 @@ type contentRenderer struct {
 	model       *Model
 	styles      *StyleState
 	lineInfo    LineInfo
+	drawn       drawnRows
 	out         strings.Builder
 	displayLine int
 }
@@ -1525,6 +1554,13 @@ type wrappedSegment struct {
 }
 
 func (v *contentRenderer) writeLine(row int, line []rune) {
+	wrappedLines := v.model.wrappedRow(row)
+	if !v.drawn.overlaps(v.displayLine, len(wrappedLines)) {
+		v.skipRows(len(wrappedLines))
+
+		return
+	}
+
 	style := v.styles.computedText()
 	if v.model.row == row {
 		style = v.styles.computedCursorLine()
@@ -1535,10 +1571,17 @@ func (v *contentRenderer) writeLine(row int, line []rune) {
 	// selection coordinates.
 	wrappedBase := 0
 
-	for index, wrapped := range v.model.memoizedWrap(line, v.model.width) {
+	for index, wrapped := range wrappedLines {
 		segment := wrappedSegment{row: row, index: index, base: wrappedBase, lineLength: len(line), wrapped: wrapped}
 		wrappedBase += v.writeSegment(segment, style)
 	}
+}
+
+// Skipped rows still take their lines, so the viewport's offsets keep
+// pointing at the rows that are drawn.
+func (v *contentRenderer) skipRows(count int) {
+	v.out.WriteString(strings.Repeat("\n", count))
+	v.displayLine += count
 }
 
 func (v *contentRenderer) writeSegment(segment wrappedSegment, style lipgloss.Style) int {

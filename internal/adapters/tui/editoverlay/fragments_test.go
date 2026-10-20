@@ -221,7 +221,7 @@ func TestEditing_FragmentChanges(t *testing.T) {
 	t.Run("adds a Fragment to a new Snippet in the destination's Language", func(t *testing.T) {
 		t.Parallel()
 
-		screen := editingIn(t, destinationIn(t, "Go"))
+		screen := editingIn(t, destinationInGo(t))
 		screen.Press(addFragment(), save())
 
 		requested, ok := screen.Outcomes()[0].(outcome.SaveRequested)

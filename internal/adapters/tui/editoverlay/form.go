@@ -19,23 +19,19 @@ import (
 )
 
 const (
-	overlayTitle      = "Editing"
-	unsavedMarker     = " •"
-	fieldCursor       = "› "
-	fieldIndent       = "  "
-	fieldLabelWidth   = 15
-	fieldRows         = 6
-	tagPrefix         = "#"
-	tagSeparator      = " "
-	lineBreak         = "\n"
-	carriageReturn    = "\r"
-	maxContentLines   = 10_000
-	emptyContentLines = 1
-	entryKeysJoiner   = " or "
-	entrySuffix       = " to edit"
-	pickSuffix        = " to pick"
-	keysHintOpen      = "   ("
-	keysHintClose     = ")"
+	overlayTitle    = "Editing"
+	unsavedMarker   = " •"
+	fieldCursor     = "› "
+	fieldIndent     = "  "
+	fieldLabelWidth = 15
+	fieldRows       = 6
+	tagPrefix       = "#"
+	tagSeparator    = " "
+	entryKeysJoiner = " or "
+	entrySuffix     = " to edit"
+	pickSuffix      = " to pick"
+	keysHintOpen    = "   ("
+	keysHintClose   = ")"
 )
 
 type form struct {
@@ -46,9 +42,7 @@ type form struct {
 	fragmentTitle textinput.Model
 	language      value.Language
 	content       textarea.Model
-	readOnly      readOnlyContent
 	tabs          fragmentTabs
-	codeStyle     string
 	outer         look.Size
 	original      entered
 	field         domain.Field
@@ -65,9 +59,7 @@ func newForm(keys formKeys, styles look.Styles, original entered, shown int) (fo
 		fragmentTitle: input.NewLine("", styles),
 		language:      value.Language{},
 		content:       input.NewContentArea(styles),
-		readOnly:      editableContent(),
 		tabs:          newFragmentTabs(styles, original.fragments, shown),
-		codeStyle:     styles.CodeStyle,
 		outer:         look.Size{Width: 0, Height: 0},
 		original:      original,
 		field:         domain.FieldTitle,
@@ -81,22 +73,9 @@ func newForm(keys formKeys, styles look.Styles, original entered, shown int) (fo
 }
 
 func (f form) withContent(content string) form {
-	if !f.readOnly.held() {
-		f.content.SetValue(content)
-	}
+	f.content.SetValue(content)
 
 	return f
-}
-
-func (f form) withExternalContent(content string) form {
-	next := f
-	next.readOnly = readOnlyIfOverlong(content, f.language, f.codeStyle)
-
-	if next.readOnly.held() {
-		next = next.leftContent()
-	}
-
-	return next.withContent(content)
 }
 
 func (f form) update(msg tea.Msg) (form, request, tea.Cmd) {
@@ -142,8 +121,6 @@ func (f form) restyled(styles look.Styles) form {
 	f.fragmentTitle = input.RestyledLine(f.fragmentTitle, styles)
 	f.content = input.RestyledArea(f.content, styles)
 	f.tabs = f.tabs.restyled(styles)
-	f.codeStyle = styles.CodeStyle
-	f.readOnly = f.readOnly.highlightedIn(styles.CodeStyle)
 
 	return f
 }
@@ -159,7 +136,6 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 
 func (f form) withLanguage(language value.Language) form {
 	f.language = language
-	f.readOnly = f.readOnly.inLanguage(language, f.codeStyle)
 
 	return f
 }
@@ -171,15 +147,23 @@ func (f form) withTags(chosen tagchoice.Chosen) form {
 }
 
 func (f form) changed() bool {
-	return !f.entered().equal(f.original)
+	return f.differsFromOriginal(f.entered())
+}
+
+func (f form) differsFromOriginal(shown entered) bool {
+	return !shown.equal(f.original)
 }
 
 func (f form) entered() entered {
+	return f.enteredIn(f.fragments())
+}
+
+func (f form) enteredIn(tabs fragmentTabs) entered {
 	return entered{
 		title:       f.title.Value(),
 		description: f.description.Value(),
 		tags:        f.tags,
-		fragments:   f.fragments().all(),
+		fragments:   tabs.all(),
 	}
 }
 
@@ -191,18 +175,15 @@ func (f form) hints() []key.Binding {
 	return f.keys.fields.ShortHelp()
 }
 
-func (f form) externalEditorKey() string {
-	return f.keys.externalEditorKey()
-}
-
 func (f form) view(styles look.Styles, outer look.Size) string {
+	tabs := f.fragments()
 	lines := []string{
 		f.fieldLine(styles, domain.FieldTitle, f.title.View()),
 		f.fieldLine(styles, domain.FieldDescription, f.description.View()),
 		f.fieldLine(styles, domain.FieldTagName, f.tagsEntry(styles)),
 	}
 
-	if tabs := f.fragments(); tabs.visible() {
+	if tabs.visible() {
 		lines = append(lines, fieldIndent+tabs.view(outer.Inner().Width-len(fieldIndent)))
 	}
 
@@ -210,18 +191,10 @@ func (f form) view(styles look.Styles, outer look.Size) string {
 		f.fieldLine(styles, domain.FieldFragmentTitle, f.fragmentTitle.View()),
 		f.fieldLine(styles, domain.FieldLanguage, f.languageEntry(styles)),
 		f.fieldLine(styles, domain.FieldContent, f.contentEntryHint(styles)),
-		f.contentView(),
+		f.content.View(),
 	)
 
-	return look.Frame(styles.Focused, f.frameTitle(), strings.Join(lines, "\n"), outer)
-}
-
-func (f form) contentView() string {
-	if f.readOnly.held() {
-		return f.readOnly.highlighted
-	}
-
-	return f.content.View()
+	return look.Frame(styles.Focused, f.frameTitle(f.enteredIn(tabs)), strings.Join(lines, "\n"), outer)
 }
 
 func (f form) fieldPressed(msg tea.KeyPressMsg) (form, request, tea.Cmd) {
@@ -311,10 +284,6 @@ func (f form) fieldClicked(line int) (form, request, tea.Cmd) {
 
 func (f form) contentClicked() (form, request, tea.Cmd) {
 	onContent, _ := f.focused(domain.FieldContent)
-	if f.readOnly.held() {
-		return onContent, requestNothing, nil
-	}
-
 	next, cmd := onContent.enteredContent()
 
 	return next, requestNothing, cmd
@@ -333,28 +302,15 @@ func (f form) leavesContentUpward(msg tea.KeyPressMsg) bool {
 }
 
 func (f form) pasted(msg tea.PasteMsg) (form, request, tea.Cmd) {
-	if !f.inContent {
-		return f.typed(msg)
-	}
-
-	if f.linesAfterPaste(msg.Content) > maxContentLines {
-		return f, requestRefuseOverlongPaste, nil
+	if f.inContent && !value.ContentFits(f.bytesAfterPaste(msg.Content)) {
+		return f, requestRefuseOversizedPaste, nil
 	}
 
 	return f.typed(msg)
 }
 
-func (f form) linesAfterPaste(pasted string) int {
-	return f.content.LineCount() - lineBreaksOnInsert(f.content.SelectedText()) + lineBreaksOnInsert(pasted)
-}
-
-func overflowsEmptyContent(text string) bool {
-	return emptyContentLines+lineBreaksOnInsert(text) > maxContentLines
-}
-
-// The textarea turns every carriage return into a line break before it inserts text, so "\r\n" becomes two.
-func lineBreaksOnInsert(text string) int {
-	return strings.Count(text, lineBreak) + strings.Count(text, carriageReturn)
+func (f form) bytesAfterPaste(pasted string) int {
+	return len(f.content.Value()) - len(f.content.SelectedText()) + len(pasted)
 }
 
 func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
@@ -379,10 +335,6 @@ func (f form) typed(msg tea.Msg) (form, request, tea.Cmd) {
 
 func (f form) advanced() (form, request, tea.Cmd) {
 	if f.field == domain.FieldContent {
-		if f.readOnly.held() {
-			return f, requestNothing, nil
-		}
-
 		next, cmd := f.enteredContent()
 
 		return next, requestNothing, cmd
@@ -456,10 +408,6 @@ func (f form) fieldLine(styles look.Styles, field domain.Field, entered string) 
 }
 
 func (f form) contentEntryHint(styles look.Styles) string {
-	if f.readOnly.held() {
-		return styles.Dim.Render(f.readOnly.text(f.externalEditorKey()))
-	}
-
 	if f.inContent {
 		return ""
 	}
@@ -505,8 +453,8 @@ func (f form) firstKeysOf(names ...string) []string {
 	return binding.BoundOnly(firstKeys...)
 }
 
-func (f form) frameTitle() string {
-	if f.changed() {
+func (f form) frameTitle(shown entered) string {
+	if f.differsFromOriginal(shown) {
 		return overlayTitle + unsavedMarker
 	}
 

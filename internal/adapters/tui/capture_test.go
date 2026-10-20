@@ -81,21 +81,19 @@ func TestModel_capture(t *testing.T) {
 		})
 	}
 
-	t.Run("refuses a clipboard over 10,000 lines and opens nothing", func(t *testing.T) {
+	t.Run("opens a clipboard of 20,000 short lines in the edit overlay", func(t *testing.T) {
 		t.Parallel()
 
-		overlong := strings.Repeat("line\n", 10_000)
 		screen := start(
 			t,
-			modelWith(t, capturingActions(t, capturerReading(t, overlong), listerOf(t))),
+			modelWith(t, capturingActions(t, capturerReading(t, strings.Repeat("line\n", 20_000)), listerOf(t))),
 			wideWidth,
 			wideHeight,
 		)
 
 		screen.press(keypress.Letter('p'))
 
-		assert.Contains(t, screen.screen(), "Clipboard is longer than 10,000 lines; use ctrl+e to edit in $EDITOR")
-		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), editOverlayTitle)
 	})
 
 	t.Run("keeps the Tag as the Browse selection after saving a new Snippet for it", func(t *testing.T) {

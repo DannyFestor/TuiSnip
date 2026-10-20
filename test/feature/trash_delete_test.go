@@ -29,7 +29,7 @@ func TestPermanentlyDeletingAFolderKeepsASeparatelyTrashedSnippetInTheTrash(t *t
 	err := app.DeletePermanently.Run(t.Context(), trash.DeletePermanentlyInput{Item: trash.FolderItem(docker.ID())})
 
 	require.NoError(t, err)
-	listed := trashItems(t, app)
+	listed := testapp.TrashItems(t, app)
 	require.Len(t, listed, 1)
 	assert.Equal(t, prune.ID(), listed[0].Snippet.ID())
 	assert.Equal(t, []string{"docker"}, listed[0].Path)
@@ -55,14 +55,14 @@ func TestEmptyingTheTrashSparesASnippetTrashedAfterThePromptOpened(t *testing.T)
 	late := testapp.SeedSnippet(t, app, snippet.CreateInput{Title: "Trashed later"})
 	require.NoError(t, app.DeleteFolder.Run(t.Context(), folder.DeleteInput{FolderID: docker.ID()}))
 	require.NoError(t, app.Delete.Run(t.Context(), snippet.DeleteInput{SnippetID: prune.ID()}))
-	counted := itemIDs(trashItems(t, app))
+	counted := itemIDs(testapp.TrashItems(t, app))
 	require.NoError(t, app.Delete.Run(t.Context(), snippet.DeleteInput{SnippetID: late.ID()}))
 
 	emptied, err := app.EmptyTrash.Run(t.Context(), trash.EmptyInput{Items: counted})
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.TrashEmptied{Folders: 1, Snippets: 2}, emptied)
-	listed := trashItems(t, app)
+	listed := testapp.TrashItems(t, app)
 	require.Len(t, listed, 1)
 	assert.Equal(t, late.ID(), listed[0].Snippet.ID())
 }
@@ -81,10 +81,10 @@ func TestPermanentDeletionNeverDeletesTags(t *testing.T) {
 	require.NoError(t, app.DeletePermanently.Run(
 		t.Context(), trash.DeletePermanentlyInput{Item: trash.SnippetItem(deleted.ID())},
 	))
-	_, err := app.EmptyTrash.Run(t.Context(), trash.EmptyInput{Items: itemIDs(trashItems(t, app))})
+	_, err := app.EmptyTrash.Run(t.Context(), trash.EmptyInput{Items: itemIDs(testapp.TrashItems(t, app))})
 
 	require.NoError(t, err)
-	assert.Empty(t, trashItems(t, app))
+	assert.Empty(t, testapp.TrashItems(t, app))
 	assert.Equal(
 		t, []browse.TagCount{{Tag: golang, SnippetCount: 0}, {Tag: shell, SnippetCount: 0}}, listedTags(t, app),
 	)

@@ -8,7 +8,7 @@ const (
 	requestCancel
 	requestEditTags
 	requestPickLanguage
-	requestRefuseOverlongPaste
+	requestRefuseOversizedPaste
 	requestExternalEditor
 	requestAddFragment
 	requestRemoveFragment

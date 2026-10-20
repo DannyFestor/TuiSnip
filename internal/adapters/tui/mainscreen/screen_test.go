@@ -973,15 +973,15 @@ func TestScreen_newSnippet(t *testing.T) {
 		assert.Contains(t, screen.Screen(), strings.TrimSpace(capturedText))
 	})
 
-	t.Run("captured content over 10,000 lines is refused on the status line and opens nothing", func(t *testing.T) {
+	t.Run("captured content of 20,000 short lines opens the edit overlay", func(t *testing.T) {
 		t.Parallel()
 
 		screen := showing(t, wide())
 
-		screen.Send(mainscreen.Captured{Content: strings.Repeat("line\n", 10_000)})
+		screen.Send(mainscreen.Captured{Content: strings.Repeat("line\n", 20_000)})
 
-		assert.Contains(t, statusLine(screen), "Clipboard is longer than 10,000 lines; use ctrl+e to edit in $EDITOR")
-		assert.NotContains(t, screen.Screen(), "Editing")
+		assert.Contains(t, screen.Screen(), "Editing •")
+		assert.NotContains(t, screen.Screen(), "read-only")
 	})
 
 	t.Run("captured content with tabs opens editable in the selected Folder's Default Language", func(t *testing.T) {

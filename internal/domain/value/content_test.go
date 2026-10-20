@@ -51,6 +51,26 @@ func TestContent_New(t *testing.T) {
 	}
 }
 
+func TestContentFits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		bytes int
+		want  bool
+	}{
+		{name: "fits 256 KiB", bytes: maxContentBytes, want: true},
+		{name: "does not fit one byte over 256 KiB", bytes: maxContentBytes + 1, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, value.ContentFits(tt.bytes))
+		})
+	}
+}
+
 func TestContent_WithoutTrailingNewline(t *testing.T) {
 	t.Parallel()
 

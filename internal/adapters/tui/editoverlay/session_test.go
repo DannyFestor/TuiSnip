@@ -3,7 +3,6 @@ package editoverlay_test
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 
@@ -623,180 +622,78 @@ func TestSession_paste(t *testing.T) {
 		assert.Contains(t, screen.Screen(), "Pasted")
 	})
 
-	t.Run("names the configured external editor key", func(t *testing.T) {
-		t.Parallel()
-
-		keys := testsettings.Default(t).Keys
-		keys[binding.ScopeContent][binding.OpenInEditor] = []string{"ctrl+o"}
-		screen := editingWith(t, keys)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
-
-		want := outcome.NoticeShown{
-			Text: "Paste would make Content longer than 10,000 lines; use ctrl+o to edit in $EDITOR",
-		}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
-
-	t.Run("names no key when the external editor is unbound", func(t *testing.T) {
-		t.Parallel()
-
-		keys := testsettings.Default(t).Keys
-		keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
-		screen := editingWith(t, keys)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
-
-		want := outcome.NoticeShown{Text: "Paste would make Content longer than 10,000 lines"}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-	})
-
-	t.Run("refuses a paste over 10,000 lines into Content", func(t *testing.T) {
+	t.Run("refuses a paste over 256 KiB into Content and leaves it unchanged", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
+		screen.Send(tea.PasteMsg{Content: textOfSize(maxContentBytes + 1)})
 
-		want := outcome.NoticeShown{
-			Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
-		}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{outcome.NoticeShown{Text: pasteTooLarge}}, screen.Outcomes())
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
 	})
 
-	t.Run("refuses a short paste that makes Content longer than 10,000 lines", func(t *testing.T) {
+	t.Run("refuses a paste that makes Content larger than 256 KiB", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
-		existing := linesOf(5_000)
+		existing := textOfSize(maxContentBytes / 2)
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: existing})
-		screen.Send(tea.PasteMsg{Content: linesOf(5_002)})
+		screen.Send(tea.PasteMsg{Content: textOfSize(maxContentBytes/2 + 1)})
 		screen.Press(save())
 
 		want := []outcome.Outcome{
-			outcome.NoticeShown{
-				Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
-			},
+			outcome.NoticeShown{Text: pasteTooLarge},
 			outcome.SaveRequested{Input: input("", "", existing)},
 		}
 		assert.Equal(t, want, screen.Outcomes())
 	})
 
-	t.Run("inserts a paste that makes Content exactly 10,000 lines", func(t *testing.T) {
+	t.Run("inserts a paste that makes Content exactly 256 KiB", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
+		half := textOfSize(maxContentBytes / 2)
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(5_000)})
-		screen.Send(tea.PasteMsg{Content: linesOf(5_001)})
+		screen.Send(tea.PasteMsg{Content: half})
+		screen.Send(tea.PasteMsg{Content: half})
 		screen.Press(save())
 
-		want := linesOf(4_999) + "\nlineline\n" + linesOf(5_000)
-		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
-	})
-
-	t.Run("counts each carriage return as a line break", func(t *testing.T) {
-		t.Parallel()
-
-		tests := []struct {
-			name   string
-			pasted string
-		}{
-			{name: "carriage return and line feed endings", pasted: linesJoinedBy(5_001, "\r\n")},
-			{name: "lone carriage return endings", pasted: linesJoinedBy(10_001, "\r")},
-		}
-
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				t.Parallel()
-
-				screen := editing(t)
-
-				screen.Press(enterContent()...)
-				screen.Send(tea.PasteMsg{Content: test.pasted})
-
-				want := outcome.NoticeShown{
-					Text: "Paste would make Content longer than 10,000 lines; use ctrl+e to edit in $EDITOR",
-				}
-				assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
-			})
-		}
-	})
-
-	t.Run("inserts a carriage return and line feed paste that makes Content exactly 10,000 lines", func(t *testing.T) {
-		t.Parallel()
-
-		screen := editing(t)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(2)})
-		screen.Send(tea.PasteMsg{Content: linesJoinedBy(5_000, "\r\n")})
-		screen.Press(save())
-
-		want := linesOf(2) + linesJoinedBy(5_000, "\n\n")
-		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
-	})
-
-	t.Run("inserts a lone carriage return paste that makes Content exactly 10,000 lines", func(t *testing.T) {
-		t.Parallel()
-
-		screen := editing(t)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesJoinedBy(10_000, "\r")})
-		screen.Press(save())
-
-		want := linesOf(10_000)
-		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", half+half)}}, screen.Outcomes())
 	})
 
 	t.Run("counts the selection a paste replaces", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
+		full := textOfSize(maxContentBytes-len("\nend")) + "\nend"
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(10_000)})
-		screen.Press(shiftUp())
-		screen.Send(tea.PasteMsg{Content: "a\nb"})
+		screen.Send(tea.PasteMsg{Content: full})
+		screen.Press(shiftLeft(), shiftLeft(), shiftLeft())
+		screen.Send(tea.PasteMsg{Content: "fin"})
 		screen.Press(save())
 
-		want := linesOf(9_999) + "a\nb"
+		want := strings.TrimSuffix(full, "end") + "fin"
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", want)}}, screen.Outcomes())
 	})
 
-	t.Run("inserts a paste of 10,000 lines into Content", func(t *testing.T) {
+	t.Run("lets typing take Content past 256 KiB", func(t *testing.T) {
 		t.Parallel()
 
 		screen := editing(t)
-		pasted := linesOf(10_000)
+		full := textOfSize(maxContentBytes)
 
 		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: pasted})
+		screen.Send(tea.PasteMsg{Content: full})
+		screen.Press(keypress.Typed("!")...)
 		screen.Press(save())
 
-		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", pasted)}}, screen.Outcomes())
-	})
-
-	t.Run("names no key for a long paste when the external editor is unbound", func(t *testing.T) {
-		t.Parallel()
-
-		keys := testsettings.Default(t).Keys
-		keys[binding.ScopeContent][binding.OpenInEditor] = []string{}
-		screen := editingWith(t, keys)
-
-		screen.Press(enterContent()...)
-		screen.Send(tea.PasteMsg{Content: linesOf(10_001)})
-
-		want := outcome.NoticeShown{Text: "Paste would make Content longer than 10,000 lines"}
-		assert.Equal(t, []outcome.Outcome{want}, screen.Outcomes())
+		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", full+"!")}}, screen.Outcomes())
 	})
 }
 
@@ -925,7 +822,7 @@ func TestSession_language(t *testing.T) {
 	t.Run("starts a new Snippet in the Destination's Language with nothing unsaved", func(t *testing.T) {
 		t.Parallel()
 
-		screen := editingIn(t, destinationIn(t, "Go"))
+		screen := editingIn(t, destinationInGo(t))
 
 		assert.Contains(t, screen.Screen(), "  Language       Go   (enter or ctrl+l to pick)")
 		assert.NotContains(t, screen.Screen(), unsavedTitle)
@@ -938,7 +835,7 @@ func TestSession_language(t *testing.T) {
 	t.Run("saves a new Snippet in a picked Language instead of the Destination's", func(t *testing.T) {
 		t.Parallel()
 
-		screen := editingIn(t, destinationIn(t, "Go"))
+		screen := editingIn(t, destinationInGo(t))
 
 		screen.Press(pickLanguage())
 		screen.Press(keypress.Typed("bash")...)
@@ -1076,10 +973,50 @@ func TestSession_language(t *testing.T) {
 	})
 }
 
-func linesOf(count int) string {
-	return linesJoinedBy(count, "\n")
+func BenchmarkSession_keypress(b *testing.B) {
+	toStart := []tea.KeyPressMsg{keypress.Ctrl(tea.KeyHome)}
+	tests := []struct {
+		name    string
+		moves   []tea.KeyPressMsg
+		pressed tea.KeyPressMsg
+	}{
+		{name: "typing at the end of 256 KiB", moves: nil, pressed: keypress.Letter('x')},
+		{name: "typing at the start of 256 KiB", moves: toStart, pressed: keypress.Letter('x')},
+		{name: "breaking a line at the start of 256 KiB", moves: toStart, pressed: keypress.Special(tea.KeyEnter)},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			screen := editingStored(b, storedSnippet(b, typicalGoOfSize(maxContentBytes)))
+			screen.Press(enterContent()...)
+			screen.Press(tt.moves...)
+
+			for b.Loop() {
+				screen.Press(tt.pressed)
+				_ = screen.StyledScreen()
+			}
+		})
+	}
 }
 
-func linesJoinedBy(count int, separator string) string {
-	return strings.Join(slices.Repeat([]string{"line"}, count), separator)
+func typicalGoOfSize(size int) string {
+	const block = `func handle%d(w http.ResponseWriter, r *http.Request) {
+	if err := process(r, %d); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	fmt.Fprintf(w, "handled %d\n")
+}
+
+`
+
+	var source strings.Builder
+
+	for index := 0; source.Len() < size; index++ {
+		fmt.Fprintf(&source, block, index, index, index)
+	}
+
+	return source.String()[:size]
 }

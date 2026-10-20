@@ -87,7 +87,7 @@ internal/
 test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
-  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions, and Snippets with several Fragments inserted through the repository
+  testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions, the Trash read back, and Snippets with several Fragments inserted through the repository
   keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
   overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
   screencell/                finds the cell that shows a text on a rendered screen, so tests click what the user sees

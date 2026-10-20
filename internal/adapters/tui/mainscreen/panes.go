@@ -177,9 +177,10 @@ func (p panes) destination(filedIn browseselection.Selection) editoverlay.Destin
 	folderID, _ := filedIn.Folder()
 
 	return editoverlay.Destination{
-		Selection: filedIn,
-		Tags:      p.tagsFor(filedIn),
-		Language:  p.folders.DefaultLanguageOf(folderID),
+		Selection:  filedIn,
+		FolderName: p.paths.Name(folderID),
+		Tags:       p.tagsFor(filedIn),
+		Language:   p.folders.DefaultLanguageOf(folderID),
 	}
 }
 

@@ -536,8 +536,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.runTagAction(reported)
 	case outcome.CollapsedFoldersChanged:
 		return m, m.saveCollapsedFolders(reported.IDs)
-	case outcome.DiscardConfirmed, outcome.FragmentRemoveConfirmed, outcome.LanguagePicked, outcome.TagsEdited,
-		outcome.ContentEdited:
+	case outcome.DiscardConfirmed, outcome.FragmentRemoveConfirmed, outcome.SaveAtRootConfirmed,
+		outcome.LanguagePicked, outcome.TagsEdited, outcome.ContentEdited:
 	case outcome.QuitAsked, outcome.QuitConfirmed:
 		return m, tea.Quit
 	}

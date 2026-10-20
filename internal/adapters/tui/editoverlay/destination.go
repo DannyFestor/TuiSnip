@@ -7,9 +7,10 @@ import (
 )
 
 type Destination struct {
-	Selection browseselection.Selection
-	Tags      []domain.Tag
-	Language  value.Language
+	Selection  browseselection.Selection
+	FolderName string
+	Tags       []domain.Tag
+	Language   value.Language
 }
 
 func (d Destination) folderID() domain.FolderID {

@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -16,7 +17,6 @@ import (
 )
 
 const (
-	rows            = 1
 	titlePadding    = 2
 	answerSeparator = "/"
 	answersOpen     = "["
@@ -28,10 +28,17 @@ type Confirmation struct {
 	styles   look.Styles
 	question Question
 	onYes    outcome.Outcome
+	screen   look.Size
 }
 
 func New(keys binding.Keys, styles look.Styles, question Question, onYes outcome.Outcome) Confirmation {
-	return Confirmation{keys: keys.For(binding.ScopeConfirm), styles: styles, question: question, onYes: onYes}
+	return Confirmation{
+		keys:     keys.For(binding.ScopeConfirm),
+		styles:   styles,
+		question: question,
+		onYes:    onYes,
+		screen:   look.Size{Width: 0, Height: 0},
+	}
 }
 
 func (c Confirmation) Update(msg tea.Msg) outcome.Step {
@@ -40,6 +47,8 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 		return c.pressed(msg)
 	case look.Restyled:
 		return outcome.Stay(c.restyled(msg.Styles))
+	case look.Resized:
+		return outcome.Stay(c.resized(msg.Box))
 	case pointer.ClickedOutside:
 		return outcome.Close()
 	}
@@ -48,9 +57,9 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 }
 
 func (c Confirmation) View() string {
-	prompt := c.prompt()
-	width := max(ansi.StringWidth(prompt), ansi.StringWidth(c.question.Title)+titlePadding)
-	outer := look.Size{Width: width + look.BorderWidth, Height: rows + look.BorderWidth}
+	prompt := ansi.Wrap(c.prompt(), c.screen.Inner().Width, "")
+	width := max(lipgloss.Width(prompt), ansi.StringWidth(c.question.Title)+titlePadding)
+	outer := look.Size{Width: width + look.BorderWidth, Height: lipgloss.Height(prompt) + look.BorderWidth}
 
 	return look.Frame(c.styles.Focused, c.question.Title, prompt, outer)
 }
@@ -76,6 +85,12 @@ func (c Confirmation) pressed(pressed tea.KeyPressMsg) outcome.Step {
 
 func (c Confirmation) restyled(styles look.Styles) Confirmation {
 	c.styles = styles
+
+	return c
+}
+
+func (c Confirmation) resized(screen look.Size) Confirmation {
+	c.screen = screen
 
 	return c
 }

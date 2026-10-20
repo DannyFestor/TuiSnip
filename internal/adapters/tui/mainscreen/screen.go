@@ -102,7 +102,7 @@ func (s Screen) Received(received outcome.Outcome) outcome.Step {
 	case outcome.ContentEdited:
 		return s.externallyEdited(received)
 	case outcome.SnippetSaved:
-		return s.browsed().saved(s, received)
+		return s.saved(received)
 	default:
 		return outcome.Stay(s).Passing(received)
 	}
@@ -408,6 +408,17 @@ func (s Screen) pasted(msg tea.PasteMsg) outcome.Step {
 	}
 
 	return s.focusedUpdated(msg)
+}
+
+func (s Screen) saved(saved outcome.SnippetSaved) outcome.Step {
+	folderID, inFolder := saved.Selection.Folder()
+	if !inFolder || saved.Selection == s.selection() {
+		return outcome.Stay(s).Passing(saved)
+	}
+
+	next, expanded := s.selectingFolder(folderID)
+
+	return outcome.Stay(next).Passing(expanded...).Passing(saved)
 }
 
 func (s Screen) goneElsewhereShown(text string) outcome.Step {

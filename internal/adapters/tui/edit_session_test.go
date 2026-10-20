@@ -23,6 +23,8 @@ const (
 	quitQuestion     = "Quit and discard the unsaved changes? [y/N]"
 	reloadQuestion   = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
 	genericFailure   = "Something went wrong; see the log"
+
+	snippetGoneQuestion = "Save your changes as a new Snippet at the Root?"
 )
 
 func TestModel_editOverlay(t *testing.T) {
@@ -268,6 +270,68 @@ func TestModel_editOverlayStaleSave(t *testing.T) {
 		assert.Contains(t, screen.screen(), "Snippet 1 mine")
 		assert.NotContains(t, screen.screen(), reloadQuestion)
 	})
+}
+
+func TestModel_editOverlayGoneElsewhere(t *testing.T) {
+	t.Parallel()
+
+	t.Run("saves the edits as a new Snippet at the Root and selects it", func(t *testing.T) {
+		t.Parallel()
+
+		snippets := numberedSnippets(t, 3)
+		savedAtRoot := renamed(t, snippets[2], "Snippet 1 mine")
+		creator := NewMockSnippetCreator(t)
+		creator.EXPECT().Run(mock.Anything, snippet.CreateInput{
+			Title:       "Snippet 1 mine",
+			Description: "Description 1",
+			Fragments: []snippet.FragmentInput{{
+				ID:       snippets[0].FirstFragment().ID(),
+				Language: "plaintext",
+			}},
+		}).Return(savedAtRoot, nil)
+
+		with := snippetChangingActions(t, listerReturning(t, snippets[:2], []domain.Snippet{snippets[1], savedAtRoot}))
+		with.updater = goneUpdater(t)
+		with.creator = creator
+		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e mine")...)
+		screen.press(keypress.Ctrl('s'))
+		asked := screen.screen()
+		screen.press(keypress.Letter('y'))
+
+		assert.Contains(t, asked, snippetGoneQuestion)
+		assert.NotContains(t, asked, genericFailure)
+		assert.NotContains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), `Saved "Snippet 1 mine" as a new Snippet at the Root`)
+		assert.Contains(t, screen.screen(), "Description 3")
+	})
+
+	t.Run("keeps the edits open when saving at the Root is declined", func(t *testing.T) {
+		t.Parallel()
+
+		with := snippetChangingActions(t, listerOf(t, numberedSnippets(t, 2)...))
+		with.updater = goneUpdater(t)
+		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+
+		screen.press(keypress.Typed("3e mine")...)
+		screen.press(keypress.Ctrl('s'), keypress.Letter('n'))
+
+		assert.Contains(t, screen.screen(), editOverlayTitle)
+		assert.Contains(t, screen.screen(), "Snippet 1 mine")
+		assert.NotContains(t, screen.screen(), snippetGoneQuestion)
+	})
+}
+
+func goneUpdater(t *testing.T) *MockSnippetUpdater {
+	t.Helper()
+
+	updater := NewMockSnippetUpdater(t)
+	updater.EXPECT().
+		Run(mock.Anything, mock.Anything).
+		Return(domain.Snippet{}, fmt.Errorf("snippet.Update: %w", domain.ErrNotFound))
+
+	return updater
 }
 
 func TestModel_editOverlayForcedQuit(t *testing.T) {

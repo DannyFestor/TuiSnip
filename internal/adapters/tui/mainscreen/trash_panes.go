@@ -1,6 +1,7 @@
 package mainscreen
 
 import (
+	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
@@ -48,6 +49,14 @@ func (p panes) trashBody(framed pane, frame look.FrameStyle) string {
 	}
 
 	return p.preview.View()
+}
+
+func (p panes) trashKeyMaps() map[pane]help.KeyMap {
+	if p.selectedTrashFolder() {
+		return p.keyMaps(p.trash, p.outline)
+	}
+
+	return p.keyMaps(p.trash, p.preview)
 }
 
 func (p panes) withTrash(items []trash.Item) panes {

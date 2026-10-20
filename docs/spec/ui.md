@@ -94,7 +94,7 @@ These Bindings live in the `global` Scope, active whenever a Pane has focus and 
 - `d` in the Snippet list moves the Snippet to the Trash at once: `Moved Snippet "Prune everything" to the Trash`. `d` in Folders does the same for the Folder and its subtree: `Moved Folder "docker" to the Trash`, and the Folder's parent becomes the Browse selection. After a delete the cursor keeps its row: the Snippet below takes it, or the one above when the last row was deleted.
 - `N`, `r`, `m`, `space`, `L`, and `d` do nothing on the `▪ Trash` row.
 - In the Trash, `y` copies the Shown Fragment of a Snippet item. On a Folder item it does nothing, and the status line says "Only a Snippet can be copied". `r` restores the item under the cursor ([v1: Rename and delete](v1.md#rename-and-delete)). The cursor keeps its row, the Browse selection stays on the Trash, and the restored item isn't revealed.
-- A trashed Snippet in the Snippet pane keeps the `snippet_pane` Bindings for Copy, wrap, `]`/`[`, and scrolling. `e` and `E` do nothing, and the status line says "Restore the Snippet to edit it". On a trashed Folder, `y` in the Snippet pane says "Only a Snippet can be copied", as in the list.
+- A trashed Snippet in the Snippet pane keeps the `snippet_pane` Bindings for Copy, wrap, `]`/`[`, and scrolling. `e` and `E` do nothing, and the status line says "Restore the Snippet to edit it". On a trashed Folder, `y` in the Snippet pane says "Only a Snippet can be copied", as in the list. Only scrolling and zoom work on a trashed Folder's outline, so the [status hint](#status-hint) and [Help](#help) leave out the `snippet_pane` Bindings there.
 - `m` in Folders or the Snippet list opens the [Folder picker](#other-overlays) for the row under the cursor.
   - A moved Folder keeps the cursor and the Browse selection in its new place, and its new parent expands if it was collapsed. When a Tag held the Browse selection, the Folders take it back.
   - A moved Snippet leaves the Browse selection as it is. When the Snippet leaves the listed Folder or the Root, the cursor keeps its row as after a delete. When it is still listed, as under a Tag, the cursor stays on it and only its Folder path changes.
@@ -244,7 +244,7 @@ Typing filters the list, ignoring case and the space around the filter: the entr
 ╰──────────────────────────────────────────╯
 ```
 
-- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right.
+- Help lists the Bindings active on the main screen: the `global` Bindings in the left column, and the focused Pane's Scope in the right. On a trashed Folder in the Snippet pane the right column is empty, because only the `global` scrolling and zoom work there.
 - Each row shows every key the user configured for the Binding, joined with `, `, then the Binding's label. A Binding with no keys is left out.
 - Help closes with its own `help` key or the `global` `back` key, `?` and `esc` by default. Every other key does nothing.
 - A terminal too small for help cuts it to fit: a column that doesn't fit is dropped, and rows past the bottom are cut off.
@@ -280,6 +280,7 @@ The right end of the status line lists the focused Scope's main Bindings with th
 | `snippet_list` | Copy · edit · external editor · new · move · duplicate · delete · sort · zoom · search · help |
 | `trash` | Copy · restore · zoom · search · help |
 | `snippet_pane` | Copy · edit · external editor · wrap · next Fragment · previous Fragment · zoom · search · help |
+| `snippet_pane`, on a trashed Folder | zoom · search · help |
 | `editor` | save · cancel · field · Tags · Language · external editor · next Fragment · previous Fragment · add Fragment · remove Fragment · move Fragment left · move Fragment right |
 | `content` | save · leave · indent · dedent · external editor |
 | `search` | move · reveal · Copy · close |

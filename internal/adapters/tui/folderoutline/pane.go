@@ -1,9 +1,11 @@
 package folderoutline
 
 import (
+	"slices"
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -25,6 +27,7 @@ const (
 
 type Pane struct {
 	global   binding.Set
+	hints    []key.Binding
 	styles   look.Styles
 	location *time.Location
 	header   []string
@@ -35,6 +38,7 @@ type Pane struct {
 func New(keys binding.Keys, styles look.Styles, location *time.Location) Pane {
 	return Pane{
 		global:   keys.For(binding.ScopeGlobal),
+		hints:    keys.TrashedFolderHints(),
 		styles:   styles,
 		location: location,
 		header:   nil,
@@ -72,6 +76,14 @@ func (p Pane) View() string {
 	lines = append(lines, p.styles.Dim.Render(strings.Repeat("─", p.box.Width)), p.viewport.View())
 
 	return strings.Join(lines, "\n")
+}
+
+func (p Pane) ShortHelp() []key.Binding {
+	return slices.Clone(p.hints)
+}
+
+func (Pane) FullHelp() [][]key.Binding {
+	return nil
 }
 
 func (p Pane) Showing(item trash.Item, place string) Pane {

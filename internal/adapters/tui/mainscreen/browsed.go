@@ -69,17 +69,11 @@ func (b browsed) body(p panes, framed pane, frame look.FrameStyle) string {
 }
 
 func (b browsed) keyMaps(shown panes) map[pane]help.KeyMap {
-	list := help.KeyMap(shown.list)
 	if b == browsedTrash {
-		list = shown.trash
+		return shown.trashKeyMaps()
 	}
 
-	return map[pane]help.KeyMap{
-		paneFolders: shown.folders,
-		paneTags:    shown.tags,
-		paneList:    list,
-		paneSnippet: shown.preview,
-	}
+	return shown.keyMaps(shown.list, shown.preview)
 }
 
 func (b browsed) listTitle(p panes, selection browseselection.Selection) string {

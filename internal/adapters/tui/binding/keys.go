@@ -30,6 +30,10 @@ func (k Keys) EmptyListHints() []key.Binding {
 	return k.resolvedHints(emptyListHintList())
 }
 
+func (k Keys) TrashedFolderHints() []key.Binding {
+	return k.resolvedHints(paneGlobalHintList())
+}
+
 func (k Keys) HelpOverlayHints() []key.Binding {
 	return k.resolvedHints(helpOverlayHintList())
 }

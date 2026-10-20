@@ -25,7 +25,11 @@ func statusHintList(scope Scope) []labelledRef {
 }
 
 func paneHintList(scope Scope) []labelledRef {
-	return append(paneOwnHintList(scope), withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)...)
+	return append(paneOwnHintList(scope), paneGlobalHintList()...)
+}
+
+func paneGlobalHintList() []labelledRef {
+	return withRowLabels(refsIn(ScopeGlobal, Zoom, Search, Help)...)
 }
 
 func paneOwnHintList(scope Scope) []labelledRef {

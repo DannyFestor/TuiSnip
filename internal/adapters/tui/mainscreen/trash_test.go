@@ -20,8 +20,11 @@ import (
 )
 
 const (
-	trashListTitle  = "3 Trash"
-	trashListHint   = "y Copy · r restore · z zoom · / search · ? help"
+	trashListTitle        = "3 Trash"
+	trashListHint         = "y Copy · r restore · z zoom · / search · ? help"
+	trashedFolderPaneHint = "z zoom · / search · ? help"
+	snippetPaneHint       = "y Copy · e edit · E external editor · w wrap · ] next Fragment · [ previous Fragment · " +
+		"z zoom · / search · ? help"
 	deletedOnText   = "deleted 2026-10-14"
 	trashedPath     = "Root / go / testing"
 	trashedSnippet  = "Table test skeleton"
@@ -222,6 +225,41 @@ func TestScreen_trashListing(t *testing.T) {
 		driver.Press(keypress.Letter('3'))
 
 		assert.Equal(t, trashListHint, driver.Hints())
+	})
+
+	t.Run("hints only zoom, search and help in the Snippet pane on a trashed Folder", func(t *testing.T) {
+		t.Parallel()
+
+		driver, _ := inTrash(t, trashedFolderItem(t))
+
+		driver.Press(keypress.Letter('4'))
+
+		assert.Equal(t, trashedFolderPaneHint, driver.Hints())
+	})
+
+	t.Run("lists no Snippet pane Bindings in Help on a trashed Folder", func(t *testing.T) {
+		t.Parallel()
+
+		driver, _ := inTrash(t, trashedFolderItem(t))
+
+		driver.Press(keypress.Typed("4?")...)
+
+		assert.Regexp(t, `j, down\s+down`, driver.Screen())
+		assert.Regexp(t, `z\s+zoom`, driver.Screen())
+
+		for _, label := range []string{"Copy", "edit", "external editor", "wrap", "next Fragment", "previous Fragment"} {
+			assert.NotContains(t, driver.Screen(), label)
+		}
+	})
+
+	t.Run("keeps the Snippet pane hints on a trashed Snippet", func(t *testing.T) {
+		t.Parallel()
+
+		driver, _ := inTrash(t, trashedSnippetItem(t))
+
+		driver.Press(keypress.Letter('4'))
+
+		assert.Equal(t, snippetPaneHint, driver.Hints())
 	})
 }
 

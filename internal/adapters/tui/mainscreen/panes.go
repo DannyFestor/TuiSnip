@@ -3,6 +3,7 @@ package mainscreen
 import (
 	"time"
 
+	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
@@ -107,6 +108,15 @@ func (p panes) hasRowAt(shown browsed, of pane, cell pointer.Point) bool {
 	}
 
 	return false
+}
+
+func (p panes) keyMaps(list, snippet help.KeyMap) map[pane]help.KeyMap {
+	return map[pane]help.KeyMap{
+		paneFolders: p.folders,
+		paneTags:    p.tags,
+		paneList:    list,
+		paneSnippet: snippet,
+	}
 }
 
 func (p panes) resized(arranged layout) panes {

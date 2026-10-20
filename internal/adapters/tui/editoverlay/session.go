@@ -145,23 +145,10 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 		return outcome.Close()
 	case outcome.SnippetReloaded:
 		return outcome.Close().Passing(received)
-	case outcome.LanguagePicked:
-		next := s
-		next.form = s.form.withLanguage(received.Language)
-
-		return outcome.Stay(next)
-	case outcome.FragmentRemoveConfirmed:
-		next := s
-		next.form = s.form.withShownFragmentRemoved()
-
-		return outcome.Stay(next)
-	case outcome.TagsEdited:
-		next := s
-		next.form = s.form.withTags(received.Chosen)
-
-		return outcome.Stay(next)
-	case outcome.ContentEdited:
-		return outcome.Stay(s.withExternalContent(received.Content))
+	case outcome.SaveAtRootConfirmed:
+		return s.aimedAt(snippetAtRoot{}).saveStarted()
+	case outcome.LanguagePicked, outcome.FragmentRemoveConfirmed, outcome.TagsEdited, outcome.ContentEdited:
+		return outcome.Stay(s.formChangedBy(received))
 	case outcome.QuitAsked:
 		if s.form.changed() {
 			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
@@ -182,6 +169,22 @@ func (s Session) ShortHelp() []key.Binding {
 
 func (s Session) FullHelp() [][]key.Binding {
 	return [][]key.Binding{s.ShortHelp()}
+}
+
+func (s Session) formChangedBy(received outcome.Outcome) Session {
+	switch received := received.(type) {
+	case outcome.LanguagePicked:
+		s.form = s.form.withLanguage(received.Language)
+	case outcome.FragmentRemoveConfirmed:
+		s.form = s.form.withShownFragmentRemoved()
+	case outcome.TagsEdited:
+		s.form = s.form.withTags(received.Chosen)
+	case outcome.ContentEdited:
+		return s.withExternalContent(received.Content)
+	default:
+	}
+
+	return s
 }
 
 func (s Session) formUpdated(msg tea.Msg) outcome.Step {
@@ -326,6 +329,10 @@ func (s Session) saved(msg SaveFinished) outcome.Step {
 }
 
 func (s Session) refused(err error) outcome.Step {
+	if question, gone := s.target.goneQuestion(err); gone {
+		return s.confirming(question, outcome.SaveAtRootConfirmed{})
+	}
+
 	if reload, ok := s.target.reloaded(); ok && errors.Is(err, domain.ErrConflict) {
 		return s.confirming(confirm.Question{Title: staleTitle, Text: reloadQuestion}, reload)
 	}

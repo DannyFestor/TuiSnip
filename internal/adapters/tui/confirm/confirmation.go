@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	rows            = 1
 	titlePadding    = 2
 	answerSeparator = "/"
 	answersOpen     = "["
@@ -28,10 +27,17 @@ type Confirmation struct {
 	styles   look.Styles
 	question Question
 	onYes    outcome.Outcome
+	screen   look.Size
 }
 
 func New(keys binding.Keys, styles look.Styles, question Question, onYes outcome.Outcome) Confirmation {
-	return Confirmation{keys: keys.For(binding.ScopeConfirm), styles: styles, question: question, onYes: onYes}
+	return Confirmation{
+		keys:     keys.For(binding.ScopeConfirm),
+		styles:   styles,
+		question: question,
+		onYes:    onYes,
+		screen:   look.Size{Width: 0, Height: 0},
+	}
 }
 
 func (c Confirmation) Update(msg tea.Msg) outcome.Step {
@@ -40,6 +46,8 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 		return c.pressed(msg)
 	case look.Restyled:
 		return outcome.Stay(c.restyled(msg.Styles))
+	case look.Resized:
+		return outcome.Stay(c.resized(msg.Box))
 	case pointer.ClickedOutside:
 		return outcome.Close()
 	}
@@ -48,11 +56,11 @@ func (c Confirmation) Update(msg tea.Msg) outcome.Step {
 }
 
 func (c Confirmation) View() string {
-	prompt := c.prompt()
-	width := max(ansi.StringWidth(prompt), ansi.StringWidth(c.question.Title)+titlePadding)
-	outer := look.Size{Width: width + look.BorderWidth, Height: rows + look.BorderWidth}
+	lines := strings.Split(ansi.Wrap(c.prompt(), c.screen.Inner().Width, ""), "\n")
+	width := max(widest(lines), ansi.StringWidth(c.question.Title)+titlePadding)
+	outer := look.Size{Width: width + look.BorderWidth, Height: len(lines) + look.BorderWidth}
 
-	return look.Frame(c.styles.Focused, c.question.Title, prompt, outer)
+	return look.Frame(c.styles.Focused, c.question.Title, strings.Join(lines, "\n"), outer)
 }
 
 func (c Confirmation) ShortHelp() []key.Binding {
@@ -78,6 +86,21 @@ func (c Confirmation) restyled(styles look.Styles) Confirmation {
 	c.styles = styles
 
 	return c
+}
+
+func (c Confirmation) resized(screen look.Size) Confirmation {
+	c.screen = screen
+
+	return c
+}
+
+func widest(lines []string) int {
+	width := 0
+	for _, line := range lines {
+		width = max(width, ansi.StringWidth(line))
+	}
+
+	return width
 }
 
 func (c Confirmation) prompt() string {

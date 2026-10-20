@@ -137,9 +137,10 @@ func capturingIn(t *testing.T, filedIn editoverlay.Destination, captured string)
 
 func destination() editoverlay.Destination {
 	return editoverlay.Destination{
-		Selection: browseselection.InFolder(destinationFolderID()),
-		Tags:      nil,
-		Language:  value.PlainText(),
+		Selection:  browseselection.InFolder(destinationFolderID()),
+		FolderName: "docker",
+		Tags:       nil,
+		Language:   value.PlainText(),
 	}
 }
 

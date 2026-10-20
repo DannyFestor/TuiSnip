@@ -1,6 +1,7 @@
 package confirm_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -77,6 +78,20 @@ func TestConfirmation_View(t *testing.T) {
 		screen := askingWith(t, testsettings.Default(t).Keys, "Go?")
 
 		assert.Equal(t, len(" "+title+" ")+2, screen.TopBorderWidth())
+	})
+
+	t.Run("wraps a question wider than the screen onto more rows inside it", func(t *testing.T) {
+		t.Parallel()
+
+		screen := askingWith(t, testsettings.Default(t).Keys, strings.Repeat(" "+question, 3)[1:])
+
+		assert.LessOrEqual(t, screen.TopBorderWidth(), screenSize().Width)
+		assert.Contains(
+			t,
+			screen.Screen(),
+			"│Discard the unsaved changes? Discard the unsaved changes? Discard the unsaved",
+		)
+		assert.Regexp(t, `│changes\? \[y/N\] +│`, screen.Screen())
 	})
 
 	t.Run("draws in the new Styles", func(t *testing.T) {

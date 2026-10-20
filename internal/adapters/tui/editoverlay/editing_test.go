@@ -8,12 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/snippet"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
@@ -25,9 +27,18 @@ const (
 
 	changedElsewhereTitle = "Changed elsewhere"
 	reloadQuestion        = "This Snippet changed in another TuiSnip. Reload it and discard your changes? [y/N]"
+
+	goneElsewhereTitle  = "Gone elsewhere"
+	savedAtRootQuestion = "This Snippet was moved to the Trash or deleted in another TuiSnip. " +
+		"Save your changes as a new Snippet at the Root?"
+	folderGoneQuestion = `Folder "docker" was moved to the Trash or deleted in another TuiSnip. ` +
+		"Save the Snippet at the Root instead?"
 )
 
-var errChangedElsewhere = fmt.Errorf("snippet.Update: %w", domain.ErrConflict)
+var (
+	errChangedElsewhere = fmt.Errorf("snippet.Update: %w", domain.ErrConflict)
+	errGoneElsewhere    = fmt.Errorf("snippet.Update: %w", domain.ErrNotFound)
+)
 
 func TestEditing_View(t *testing.T) {
 	t.Parallel()
@@ -410,6 +421,77 @@ func TestEditing_staleSave(t *testing.T) {
 	})
 }
 
+func TestEditing_goneElsewhere(t *testing.T) {
+	t.Parallel()
+
+	t.Run("offers to save a Snippet gone elsewhere as a new Snippet at the Root", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsGone(t, storedSnippet(t, "echo hi"))
+
+		assert.Contains(t, screen.Screen(), goneElsewhereTitle)
+		assert.Contains(t, screen.Screen(), savedAtRootQuestion)
+		assert.Len(t, screen.Outcomes(), 1, "only the update request, no failure")
+	})
+
+	t.Run("asks to create every Fragment and Tag it holds at the Root on yes", func(t *testing.T) {
+		t.Parallel()
+
+		docker := testkit.Tag(t, testkit.TagSpec{Name: "docker"})
+		stored := storedSnippet(t, "echo hi").Retagged([]domain.Tag{docker})
+		screen := refusedAsGone(t, stored)
+		screen.Press(keypress.Letter('y'))
+
+		want := outcome.SaveRequested{Input: snippet.CreateInput{
+			Title:       "Prunex",
+			Description: "Reclaim",
+			Fragments:   updateInput(stored, "Prunex", "echo hi").Fragments,
+			FolderID:    domain.FolderID{},
+			Tags:        []domain.Tag{docker},
+			NewTags:     nil,
+		}}
+		assert.Equal(t, outcome.Outcome(want), screen.Outcomes()[1])
+		assert.True(t, screen.IsOpen())
+	})
+
+	t.Run("closes on the Root with the saved Snippet and names it", func(t *testing.T) {
+		t.Parallel()
+
+		saved := savedSnippet(t)
+		screen := refusedAsGone(t, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('y'))
+		screen.Send(editoverlay.SaveFinished{Snippet: saved, Err: nil})
+
+		assert.Equal(t, []outcome.Outcome{
+			outcome.SnippetSaved{ID: saved.ID(), Selection: browseselection.Selection{}},
+			outcome.NoticeShown{Text: `Saved "Snippet" as a new Snippet at the Root`},
+		}, screen.Outcomes()[2:])
+		assert.False(t, screen.IsOpen())
+	})
+
+	t.Run("keeps the edits open on no", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsGone(t, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('n'))
+
+		assert.Contains(t, screen.Screen(), unsavedTitle)
+		assert.Contains(t, screen.Screen(), "Prunex")
+		assert.NotContains(t, screen.Screen(), savedAtRootQuestion)
+		assert.Len(t, screen.Outcomes(), 1, "only the update request, no save at the Root")
+	})
+
+	t.Run("asks to update again on the next save after no", func(t *testing.T) {
+		t.Parallel()
+
+		screen := refusedAsGone(t, storedSnippet(t, "echo hi"))
+		screen.Press(keypress.Letter('n'), save())
+
+		assert.Len(t, screen.Outcomes(), 2)
+		assert.IsType(t, outcome.UpdateRequested{}, screen.Outcomes()[1])
+	})
+}
+
 func TestEditing_cancel(t *testing.T) {
 	t.Parallel()
 
@@ -441,6 +523,16 @@ func refusedAsStale(t *testing.T, keys binding.Keys, stored domain.Snippet) *ove
 func refuseAsStale(screen *overlaytest.Driver) *overlaytest.Driver {
 	screen.Press(keypress.Letter('x'), save())
 	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errChangedElsewhere})
+
+	return screen
+}
+
+func refusedAsGone(t *testing.T, stored domain.Snippet) *overlaytest.Driver {
+	t.Helper()
+
+	screen := editingStored(t, stored)
+	screen.Press(keypress.Letter('x'), save())
+	screen.Send(editoverlay.SaveFinished{Snippet: domain.Snippet{}, Err: errGoneElsewhere})
 
 	return screen
 }

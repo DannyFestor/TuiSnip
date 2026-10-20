@@ -27,12 +27,12 @@ func trashActionsOf(deps Deps) trashActions {
 
 func (m Model) loadTrash() tea.Cmd {
 	return func() tea.Msg {
-		items, err := m.trash.lister.Run(m.ctx, trash.ListInput{})
+		trashItems, err := m.trash.lister.Run(m.ctx, trash.ListInput{})
 		if err != nil {
 			return operationFailedMsg{operation: operationListTrash, err: err}
 		}
 
-		return mainscreen.TrashLoaded{Items: items}
+		return mainscreen.TrashLoaded{Items: trashItems}
 	}
 }
 

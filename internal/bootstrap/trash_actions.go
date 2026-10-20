@@ -12,9 +12,9 @@ type trashActions struct {
 	restore *trash.Restore
 }
 
-func newTrashActions(items *sqlite.TrashRepository) (trashActions, error) {
-	list, listErr := trash.NewList(items)
-	restore, restoreErr := trash.NewRestore(items)
+func newTrashActions(repository *sqlite.TrashRepository) (trashActions, error) {
+	list, listErr := trash.NewList(repository)
+	restore, restoreErr := trash.NewRestore(repository)
 
 	return trashActions{list: list, restore: restore}, errors.Join(listErr, restoreErr)
 }

@@ -110,9 +110,9 @@ func (b browsed) listedSnippetID(p panes) domain.SnippetID {
 	return listed.ID()
 }
 
-func (b browsed) trashLoaded(p panes, items []trash.Item) panes {
+func (b browsed) trashLoaded(p panes, trashItems []trash.Item) panes {
 	if b == browsedTrash {
-		return p.withTrash(items)
+		return p.withTrash(trashItems)
 	}
 
 	return p

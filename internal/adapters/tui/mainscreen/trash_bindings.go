@@ -15,15 +15,15 @@ const (
 )
 
 func (s Screen) trashPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
-	item, ok := s.panes.trash.Selected()
+	trashItem, ok := s.panes.trash.Selected()
 
 	switch {
 	case !ok:
 		return outcome.Stay(s), false
 	case s.focus == paneList:
-		return s.trashListPressed(item, msg)
+		return s.trashListPressed(trashItem, msg)
 	case s.focus == paneSnippet:
-		return s.trashPanePressed(item, msg)
+		return s.trashPanePressed(trashItem, msg)
 	}
 
 	return outcome.Stay(s), false
@@ -35,36 +35,36 @@ func (s Screen) savedFromTrash(saved outcome.SnippetSaved) outcome.Step {
 	return outcome.Stay(next).Passing(expanded...).Passing(saved)
 }
 
-func (s Screen) trashListPressed(item trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
+func (s Screen) trashListPressed(trashItem trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
 	switch {
 	case s.trashKeys.Matches(msg, binding.Copy):
-		return s.trashCopyAsked(item), true
+		return s.trashCopyAsked(trashItem), true
 	case s.trashKeys.Matches(msg, binding.Restore):
 		return outcome.Stay(s).Passing(outcome.TrashRestoreRequested{
-			Input: trash.RestoreInput{Item: item.ID()},
-			Name:  item.Name(),
-			Path:  item.Path,
+			Input: trash.RestoreInput{Item: trashItem.ID()},
+			Name:  trashItem.Name(),
+			Path:  trashItem.Path,
 		}), true
 	}
 
 	return outcome.Stay(s), false
 }
 
-func (s Screen) trashPanePressed(item trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
+func (s Screen) trashPanePressed(trashItem trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {
 	editing := s.paneKeys.Matches(msg, binding.Edit) || s.paneKeys.Matches(msg, binding.OpenInEditor)
 
 	switch {
 	case s.paneKeys.Matches(msg, binding.Copy):
-		return s.trashCopyAsked(item), true
-	case item.Kind == trash.ItemKindSnippet && editing:
+		return s.trashCopyAsked(trashItem), true
+	case trashItem.Kind == trash.ItemKindSnippet && editing:
 		return outcome.Stay(s.withStatus(restoreToEditText)), true
 	}
 
 	return outcome.Stay(s), false
 }
 
-func (s Screen) trashCopyAsked(item trash.Item) outcome.Step {
-	if item.Kind.IsFolder() {
+func (s Screen) trashCopyAsked(trashItem trash.Item) outcome.Step {
+	if trashItem.Kind.IsFolder() {
 		return outcome.Stay(s.withStatus(onlySnippetsCopyText))
 	}
 

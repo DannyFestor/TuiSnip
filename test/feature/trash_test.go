@@ -57,11 +57,11 @@ func TestDeletingAFolderHidesItsSubtreeUntilItIsRestored(t *testing.T) {
 	_, found := testapp.FindSnippet(t, app, nested.ID())
 	assert.False(t, found)
 
-	items := trashItems(t, app)
-	require.Len(t, items, 1)
-	assert.Equal(t, docker, items[0].Folder)
-	assert.Equal(t, 1, items[0].Contents.SubfolderCount)
-	assert.Equal(t, 1, items[0].Contents.SnippetCount)
+	listed := trashItems(t, app)
+	require.Len(t, listed, 1)
+	assert.Equal(t, docker, listed[0].Folder)
+	assert.Equal(t, 1, listed[0].Contents.SubfolderCount)
+	assert.Equal(t, 1, listed[0].Contents.SnippetCount)
 
 	restored, err := app.Restore.Run(t.Context(), trash.RestoreInput{Item: trash.FolderItem(docker.ID())})
 
@@ -86,12 +86,12 @@ func TestASnippetWhoseFolderIsInTheTrashRestoresToTheRoot(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.RestoreFallbackFolderInTrash, restored.Fallback)
 	assert.True(t, testapp.StoredSnippet(t, app, prune.ID()).AtRoot())
-	items := trashItems(t, app)
-	require.Len(t, items, 1)
-	assert.Equal(t, docker, items[0].Folder)
+	listed := trashItems(t, app)
+	require.Len(t, listed, 1)
+	assert.Equal(t, docker, listed[0].Folder)
 }
 
-func TestRestoringAnItemNoLongerInTheTrashIsReportedNotFound(t *testing.T) {
+func TestRestoringATrashItemAlreadyRestoredIsReportedNotFound(t *testing.T) {
 	t.Parallel()
 
 	_, app := testapp.Start(t, testapp.RecordingTool)
@@ -148,10 +148,10 @@ func searched(t *testing.T, app *bootstrap.App, text string) []domain.SearchHit 
 func trashItems(t *testing.T, app *bootstrap.App) []trash.Item {
 	t.Helper()
 
-	items, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
+	listed, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
 	require.NoError(t, err)
 
-	return items
+	return listed
 }
 
 func TestMovingASnippetIntoAFolderInTheTrashFails(t *testing.T) {

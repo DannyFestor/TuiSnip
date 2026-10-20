@@ -65,7 +65,7 @@ func TestList_Run(t *testing.T) {
 		assert.Empty(t, got[1].Path)
 	})
 
-	t.Run("marks each item as a Snippet or a Folder", func(t *testing.T) {
+	t.Run("marks each Trash item as a Snippet or a Folder", func(t *testing.T) {
 		t.Parallel()
 
 		shelved := newShelved(t)
@@ -81,7 +81,7 @@ func TestList_Run(t *testing.T) {
 		assert.Equal(t, trash.ItemKindFolder, got[1].Kind)
 	})
 
-	t.Run("gives a detached item its former path", func(t *testing.T) {
+	t.Run("gives a detached Trash item its former path", func(t *testing.T) {
 		t.Parallel()
 
 		shelved := newShelved(t)
@@ -128,7 +128,7 @@ func TestList_Run(t *testing.T) {
 		assert.Equal(t, []string{"docker"}, got[1].Path)
 	})
 
-	t.Run("lists an empty Trash as no items", func(t *testing.T) {
+	t.Run("lists an empty Trash as no Trash items", func(t *testing.T) {
 		t.Parallel()
 
 		shelved := newShelved(t)

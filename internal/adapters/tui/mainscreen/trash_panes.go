@@ -59,37 +59,37 @@ func (p panes) trashKeyMaps() map[pane]help.KeyMap {
 	return p.keyMaps(p.trash, p.preview)
 }
 
-func (p panes) withTrash(items []trash.Item) panes {
+func (p panes) withTrash(trashItems []trash.Item) panes {
 	next := p
-	next.trash = p.trash.WithItems(items)
+	next.trash = p.trash.WithItems(trashItems)
 
 	return next.previewTrashSelected()
 }
 
 func (p panes) previewTrashSelected() panes {
-	item, ok := p.trash.Selected()
+	trashItem, ok := p.trash.Selected()
 	if !ok {
 		p.preview = p.preview.Cleared()
 
 		return p
 	}
 
-	if item.Kind.IsFolder() {
-		p.outline = p.outline.Showing(item, folderpath.FullOf(item.Path))
+	if trashItem.Kind.IsFolder() {
+		p.outline = p.outline.Showing(trashItem, folderpath.FullOf(trashItem.Path))
 
 		return p
 	}
 
-	p.preview = p.preview.ShowingInTrash(item.Snippet, snippetpane.Trashed{
-		Place:     folderpath.FullOf(item.Path),
-		DeletedAt: item.DeletedAt,
+	p.preview = p.preview.ShowingInTrash(trashItem.Snippet, snippetpane.Trashed{
+		Place:     folderpath.FullOf(trashItem.Path),
+		DeletedAt: trashItem.DeletedAt,
 	})
 
 	return p
 }
 
 func (p panes) selectedTrashFolder() bool {
-	item, ok := p.trash.Selected()
+	trashItem, ok := p.trash.Selected()
 
-	return ok && item.Kind.IsFolder()
+	return ok && trashItem.Kind.IsFolder()
 }

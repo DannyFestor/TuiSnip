@@ -34,13 +34,13 @@ func TestModel_trash(t *testing.T) {
 
 	restorations := []struct {
 		name        string
-		item        func(t *testing.T) trash.Item
+		trashItem   func(t *testing.T) trash.Item
 		restoration domain.Restoration
 		want        string
 	}{
 		{
-			name: "says where a restored item went",
-			item: trashedPrune,
+			name:      "says where a restored Trash item went",
+			trashItem: trashedPrune,
 			restoration: domain.Restoration{
 				FolderID: foldertree.New(t).Tests.ID(),
 				Fallback: domain.RestoreFallbackNone,
@@ -48,32 +48,32 @@ func TestModel_trash(t *testing.T) {
 			want: `Restored "Prune everything" to go / testing`,
 		},
 		{
-			name:        "says an item restored to the Root went to the Root",
-			item:        trashedPrune,
+			name:        "says a Trash item restored to the Root went to the Root",
+			trashItem:   trashedPrune,
 			restoration: domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackNone},
 			want:        `Restored "Prune everything" to the Root`,
 		},
 		{
 			name:        "says a restored Snippet whose Folder is in the Trash went to the Root",
-			item:        trashedPrune,
+			trashItem:   trashedPrune,
 			restoration: domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackFolderInTrash},
 			want:        `Restored "Prune everything" to the Root; its Folder is in the Trash`,
 		},
 		{
 			name:        "says a restored Snippet whose Folder was deleted went to the Root",
-			item:        trashedPrune,
+			trashItem:   trashedPrune,
 			restoration: domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackFolderDeleted},
 			want:        `Restored "Prune everything" to the Root; its Folder was deleted`,
 		},
 		{
 			name:        "says a restored Folder whose parent is in the Trash went to the Root",
-			item:        trashedDocker,
+			trashItem:   trashedDocker,
 			restoration: domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackFolderInTrash},
 			want:        `Restored "docker" to the Root; its parent Folder is in the Trash`,
 		},
 		{
 			name:        "says a restored Folder whose parent was deleted went to the Root",
-			item:        trashedDocker,
+			trashItem:   trashedDocker,
 			restoration: domain.Restoration{FolderID: domain.FolderID{}, Fallback: domain.RestoreFallbackFolderDeleted},
 			want:        `Restored "docker" to the Root; its parent Folder was deleted`,
 		},
@@ -82,11 +82,11 @@ func TestModel_trash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			item := tt.item(t)
+			trashItem := tt.trashItem(t)
 			restorer := NewMockTrashRestorer(t)
-			restorer.EXPECT().Run(mock.Anything, trash.RestoreInput{Item: item.ID()}).Return(tt.restoration, nil)
+			restorer.EXPECT().Run(mock.Anything, trash.RestoreInput{Item: trashItem.ID()}).Return(tt.restoration, nil)
 
-			with := trashActions(t, listingTrashThen(t, []trash.Item{item}, nil))
+			with := trashActions(t, listingTrashThen(t, []trash.Item{trashItem}, nil))
 			with.trashRestorer = restorer
 			screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 
@@ -97,7 +97,7 @@ func TestModel_trash(t *testing.T) {
 		})
 	}
 
-	t.Run("says an item restored elsewhere is no longer in the Trash and reloads", func(t *testing.T) {
+	t.Run("says a Trash item restored elsewhere is no longer in the Trash and reloads", func(t *testing.T) {
 		t.Parallel()
 
 		prune := trashedPrune(t)
@@ -133,7 +133,7 @@ func TestModel_trash(t *testing.T) {
 		assert.Contains(t, screen.screen(), "Copied")
 	})
 
-	t.Run("says a copied item restored elsewhere is no longer in the Trash", func(t *testing.T) {
+	t.Run("says a copied Trash item restored elsewhere is no longer in the Trash", func(t *testing.T) {
 		t.Parallel()
 
 		prune := trashedPrune(t)
@@ -160,11 +160,11 @@ func trashActions(t *testing.T, lister *MockTrashLister) actions {
 	return with
 }
 
-func listingTrash(t *testing.T, items ...trash.Item) *MockTrashLister {
+func listingTrash(t *testing.T, trashItems ...trash.Item) *MockTrashLister {
 	t.Helper()
 
 	lister := NewMockTrashLister(t)
-	lister.EXPECT().Run(mock.Anything, trash.ListInput{}).Return(items, nil)
+	lister.EXPECT().Run(mock.Anything, trash.ListInput{}).Return(trashItems, nil)
 
 	return lister
 }

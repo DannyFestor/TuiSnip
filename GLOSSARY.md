@@ -33,8 +33,12 @@ A named node in a strict tree that files Snippets. A Snippet is in at most one F
 _Avoid_: Group, category, directory, collection
 
 **Trash**:
-Where deleted Snippets and Folders wait, restorable, until the user permanently deletes them. A deleted Folder waits with its whole subtree as one item, restored or permanently deleted together. Snippets in the Trash keep their Tags but don't count toward them.
+Where deleted Snippets and Folders wait, restorable, until the user permanently deletes them. A deleted Folder waits with its whole subtree as one Trash item, restored or permanently deleted together. Snippets in the Trash keep their Tags but don't count toward them.
 _Avoid_: Bin, recycle bin, archive, deleted items
+
+**Trash item**:
+A Snippet or a Folder moved to the Trash on its own. A trashed Folder counts as one Trash item, its subtree included; a Snippet or subfolder in it that was moved to the Trash before it stays a separate Trash item.
+_Avoid_: Item, deleted item, trashed entry
 
 **Default Language**:
 The Language a Folder gives each Fragment created directly within it. Every Folder has one; at the Root it is always plain text. It sets a Fragment's Language only at creation; afterwards only the user changes it.

@@ -86,10 +86,12 @@ func (Pane) FullHelp() [][]key.Binding {
 	return nil
 }
 
-func (p Pane) Showing(item trash.Item, place string) Pane {
+func (p Pane) Showing(trashed trash.Item, place string) Pane {
 	next := p
-	next.header = []string{item.Name(), place, countsOf(item.Contents), look.DeletedOn(item.DeletedAt, p.location)}
-	next.viewport.SetContent(strings.Join(outlineLines(item.Contents.Outline, ""), "\n"))
+	next.header = []string{
+		trashed.Name(), place, countsOf(trashed.Contents), look.DeletedOn(trashed.DeletedAt, p.location),
+	}
+	next.viewport.SetContent(strings.Join(outlineLines(trashed.Contents.Outline, ""), "\n"))
 	next.viewport.GotoTop()
 
 	return next

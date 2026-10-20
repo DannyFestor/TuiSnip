@@ -31,7 +31,7 @@ func TestRestore_Run(t *testing.T) {
 	ids := testkit.NewSequentialIDs()
 	landed := domain.Restoration{FolderID: ids.NewFolderID(), Fallback: domain.RestoreFallbackNone}
 
-	t.Run("restores a Snippet item and says where it landed", func(t *testing.T) {
+	t.Run("restores a trashed Snippet and says where it landed", func(t *testing.T) {
 		t.Parallel()
 
 		snippetID := ids.NewSnippetID()
@@ -44,7 +44,7 @@ func TestRestore_Run(t *testing.T) {
 		assert.Equal(t, landed, got)
 	})
 
-	t.Run("restores a Folder item and says where it landed", func(t *testing.T) {
+	t.Run("restores a trashed Folder and says where it landed", func(t *testing.T) {
 		t.Parallel()
 
 		folderID := ids.NewFolderID()
@@ -57,7 +57,7 @@ func TestRestore_Run(t *testing.T) {
 		assert.Equal(t, landed, got)
 	})
 
-	t.Run("passes up an item no longer in the Trash", func(t *testing.T) {
+	t.Run("passes up a Trash item no longer in the Trash", func(t *testing.T) {
 		t.Parallel()
 
 		repo := NewMockRestoreRepository(t)

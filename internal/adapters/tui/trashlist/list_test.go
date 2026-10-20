@@ -72,7 +72,7 @@ func TestList_Update(t *testing.T) {
 		assert.Equal(t, "docker", selectedName(t, list))
 	})
 
-	t.Run("keeps the cursor's row when the items change", func(t *testing.T) {
+	t.Run("keeps the cursor's row when the Trash items change", func(t *testing.T) {
 		t.Parallel()
 
 		items := sampleItems(t)

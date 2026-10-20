@@ -70,7 +70,7 @@ func TestNewLibrary(t *testing.T) {
 
 		got := domain.NewLibrary(
 			[]domain.LibraryEntry[domain.Folder]{
-				libraryEntry(t, liveFolder, time.Time{}, value.FolderPath{}),
+				domain.NewLiveEntry(liveFolder),
 				libraryEntry(t, trashedFolder, deleted, value.FolderPath{}),
 			},
 			[]domain.Tag{tag},

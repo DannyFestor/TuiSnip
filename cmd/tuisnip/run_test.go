@@ -147,15 +147,16 @@ func TestRun(t *testing.T) {
 
 		assert.Equal(t, exitOK, got.code, got.stderr)
 		assert.Equal(t, ""+
-			"Imported 1 Folder, 1 Tag, 2 Snippets, 4 Fragments\n"+
-			"Skipped 1 Snippet in the Trash\n"+
+			"Imported 1 Folder, 1 Tag, 3 Snippets, 5 Fragments\n"+
+			"Put 1 Snippet in the Trash\n"+
 			"Lost a pin: loop; parser\n"+
-			"Lost a Gist link: loop\n"+
+			"Lost a Gist link: loop; old\n"+
 			"Lost an attachment: parser\n"+
 			"Fell back to plaintext:\n"+
 			"  Folder grammars: YaccLexer\n"+
 			"  Snippet parser, Fragment 2 (grammar.y): YaccLexer\n"+
-			"  Snippet parser, Fragment 3: no lexer\n",
+			"  Snippet parser, Fragment 3: no lexer\n"+
+			"  Snippet old, Fragment 1: no lexer\n",
 			got.stdout)
 	})
 
@@ -171,7 +172,7 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, exitOK, got.code, got.stderr)
 		assert.True(
 			t,
-			strings.HasPrefix(got.stdout, "Imported 1 Folder, 0 Tags, 2 Snippets, 4 Fragments\n"),
+			strings.HasPrefix(got.stdout, "Imported 1 Folder, 0 Tags, 3 Snippets, 5 Fragments\n"),
 			got.stdout,
 		)
 	})
@@ -459,6 +460,7 @@ func snippetsLabExport(t *testing.T) string {
       },
       {
         "uuid": "S3", "title": "old", "dateDeleted": "2024-06-01T00:00:00Z",
+        "gistIdentifier": "fedcba9876543210fedcba9876543210",
         "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z",
         "fragments": [{"content": "gone",
           "dateCreated": "2024-05-01T09:30:00Z", "dateModified": "2024-05-01T09:30:00Z"}]

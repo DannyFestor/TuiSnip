@@ -145,15 +145,6 @@ func searched(t *testing.T, app *bootstrap.App, text string) []domain.SearchHit 
 	return hits
 }
 
-func trashItems(t *testing.T, app *bootstrap.App) []trash.Item {
-	t.Helper()
-
-	listed, err := app.ListTrash.Run(t.Context(), trash.ListInput{})
-	require.NoError(t, err)
-
-	return listed
-}
-
 func TestMovingASnippetIntoAFolderInTheTrashFails(t *testing.T) {
 	t.Parallel()
 

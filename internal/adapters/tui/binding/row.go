@@ -21,6 +21,7 @@ const (
 	labelEdit              = "edit"
 	labelDuplicate         = "duplicate"
 	labelSort              = "sort"
+	labelRestore           = "restore"
 	labelWrap              = "wrap"
 	labelNextFragment      = "next Fragment"
 	labelPrevFragment      = "previous Fragment"
@@ -114,6 +115,8 @@ func snippetRows() []Row {
 		{Scope: ScopeSnippetList, Name: Duplicate, Label: labelDuplicate},
 		{Scope: ScopeSnippetList, Name: Delete, Label: labelDelete},
 		{Scope: ScopeSnippetList, Name: CycleSort, Label: labelSort},
+		{Scope: ScopeTrash, Name: Copy, Label: labelCopy},
+		{Scope: ScopeTrash, Name: Restore, Label: labelRestore},
 		{Scope: ScopeSnippetPane, Name: Copy, Label: labelCopy},
 		{Scope: ScopeSnippetPane, Name: Edit, Label: labelEdit},
 		{Scope: ScopeSnippetPane, Name: OpenInEditor, Label: labelExternalEditor},

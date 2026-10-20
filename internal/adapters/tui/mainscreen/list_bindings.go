@@ -13,6 +13,10 @@ func (s Screen) listPressed(msg tea.KeyPressMsg) (outcome.Step, bool) {
 		return outcome.Stay(s), false
 	}
 
+	if s.inTrash() {
+		return s.trashPressed(msg)
+	}
+
 	switch {
 	case s.listKeys.Matches(msg, binding.Copy):
 		return s.copyAsked(), true

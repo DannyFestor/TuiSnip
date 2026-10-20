@@ -13,6 +13,8 @@ import (
 const (
 	rootPrefix      = "◆ "
 	rootName        = "Root"
+	trashPrefix     = "▪ "
+	trashName       = "Trash"
 	expandedMarker  = "▾ "
 	collapsedMarker = "▸ "
 	leafMarker      = "  "
@@ -27,6 +29,7 @@ type row struct {
 	childIndent  string
 	snippetCount int
 	collapsible  bool
+	trash        bool
 }
 
 type line struct {
@@ -43,9 +46,23 @@ func rowsOf(tree browse.Tree, collapsed collapsedSet) []row {
 		childIndent:  "",
 		snippetCount: tree.RootSnippetCount,
 		collapsible:  false,
+		trash:        false,
 	}}
 
-	return appendNodes(rows, tree.Folders, 0, collapsed)
+	return append(appendNodes(rows, tree.Folders, 0, collapsed), trashRow(tree.TrashCount))
+}
+
+func trashRow(count int) row {
+	return row{
+		folderID:     domain.FolderID{},
+		folder:       domain.Folder{},
+		prefix:       trashPrefix,
+		name:         trashName,
+		childIndent:  "",
+		snippetCount: count,
+		collapsible:  false,
+		trash:        true,
+	}
 }
 
 func appendNodes(rows []row, nodes []browse.FolderNode, depth int, collapsed collapsedSet) []row {
@@ -62,6 +79,7 @@ func appendNodes(rows []row, nodes []browse.FolderNode, depth int, collapsed col
 			childIndent:  indent + indentPerLevel,
 			snippetCount: node.SnippetCount,
 			collapsible:  len(node.Children) > 0,
+			trash:        false,
 		})
 
 		if !isCollapsed {

@@ -72,11 +72,20 @@ func TestKeys_For(t *testing.T) {
 		keys := testsettings.Default(t).Keys
 
 		for _, scope := range []binding.Scope{
-			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeSnippetPane,
+			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeTrash,
+			binding.ScopeSnippetPane,
 		} {
 			hints := hintTexts(keys.For(scope).ShortHelp())
 			assert.Equal(t, "? help", hints[len(hints)-1], "%s", scope)
 		}
+	})
+
+	t.Run("Trash hints Copy and restore before zoom, search and help", func(t *testing.T) {
+		t.Parallel()
+
+		got := testsettings.Default(t).Keys.For(binding.ScopeTrash).ShortHelp()
+
+		assert.Equal(t, []string{"y Copy", "r restore", "z zoom", "/ search", "? help"}, hintTexts(got))
 	})
 
 	t.Run("Snippet pane hints Copy, edit, wrap and the Fragment switches before zoom", func(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
@@ -27,7 +28,7 @@ func TestPane_View(t *testing.T) {
 
 		pane := paneIn(t, look.Size{Width: boxWidth, Height: boxHeight})
 
-		assert.Equal(t, []string{"◆ ROOT                0"}, viewLines(pane))
+		assert.Equal(t, []string{"◆ ROOT                0", "▪ Trash               0"}, viewLines(pane))
 	})
 
 	t.Run("shows the Root above the indented tree with each Snippet count", func(t *testing.T) {
@@ -40,6 +41,7 @@ func TestPane_View(t *testing.T) {
 			"  docker              3",
 			"▾ go                  2",
 			"    testing           1",
+			"▪ Trash               0",
 		}, viewLines(pane))
 	})
 
@@ -51,7 +53,7 @@ func TestPane_View(t *testing.T) {
 			browse.Tree{RootSnippetCount: 42, Folders: nil},
 		)
 
-		assert.Equal(t, []string{"◆ … 42"}, viewLines(pane))
+		assert.Equal(t, []string{"◆ … 42", "▪ T… 0"}, viewLines(pane))
 	})
 
 	t.Run("scrolls to keep the cursor in a short box", func(t *testing.T) {
@@ -61,7 +63,7 @@ func TestPane_View(t *testing.T) {
 
 		pane = pressed(pane, keypress.Letter('G'))
 
-		assert.Equal(t, []string{"▾ go                  2", "    TESTING           1"}, viewLines(pane))
+		assert.Equal(t, []string{"    testing           1", "▪ TRASH               0"}, viewLines(pane))
 	})
 
 	t.Run("draws a Folder name being typed in the new Styles", func(t *testing.T) {
@@ -94,19 +96,14 @@ func TestPane_Update(t *testing.T) {
 			want: func(sample foldertree.Sample) domain.FolderID { return sample.Docker.ID() },
 		},
 		{
-			name: "bottom selects the last Folder",
-			keys: []tea.KeyPressMsg{keypress.Letter('G')},
+			name: "up from the bottom selects the last Folder",
+			keys: []tea.KeyPressMsg{keypress.Letter('G'), keypress.Letter('k')},
 			want: func(sample foldertree.Sample) domain.FolderID { return sample.Tests.ID() },
 		},
 		{
 			name: "top selects the Root",
 			keys: []tea.KeyPressMsg{keypress.Letter('G'), keypress.Letter('g')},
 			want: func(foldertree.Sample) domain.FolderID { return domain.FolderID{} },
-		},
-		{
-			name: "page down moves a page",
-			keys: []tea.KeyPressMsg{keypress.Special(tea.KeyPgDown)},
-			want: func(sample foldertree.Sample) domain.FolderID { return sample.Tests.ID() },
 		},
 	}
 	for _, tt := range tests {
@@ -121,6 +118,22 @@ func TestPane_Update(t *testing.T) {
 			assert.Equal(t, tt.want(sample), pane.Selected())
 		})
 	}
+
+	t.Run("bottom selects the Trash", func(t *testing.T) {
+		t.Parallel()
+
+		pane := pressed(samplePane(t, foldertree.New(t)), keypress.Letter('G'))
+
+		assert.Equal(t, browseselection.InTrash(), pane.Selection())
+	})
+
+	t.Run("page down moves a page", func(t *testing.T) {
+		t.Parallel()
+
+		pane := pressed(samplePane(t, foldertree.New(t)), keypress.Special(tea.KeyPgDown))
+
+		assert.Equal(t, browseselection.InTrash(), pane.Selection())
+	})
 
 	t.Run("reports the Folder the cursor moves onto", func(t *testing.T) {
 		t.Parallel()

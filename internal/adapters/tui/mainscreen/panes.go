@@ -9,6 +9,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderoutline"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -19,6 +20,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/snippetpane"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/tagpane"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/trashlist"
 	"github.com/DannyFestor/TuiSnip/internal/app/browse"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
@@ -27,7 +29,12 @@ type panes struct {
 	folders    folderpane.Pane
 	tags       tagpane.Pane
 	list       snippetlist.List
+	trash      trashlist.List
 	preview    snippetpane.Pane
+	outline    folderoutline.Pane
+	trashShown bool
+	styles     look.Styles
+	location   *time.Location
 	paths      folderpath.Paths
 	orderLabel string
 }
@@ -37,7 +44,12 @@ func newPanes(keys binding.Keys, styles look.Styles, location *time.Location, co
 		folders:    folderpane.New(keys, styles, collapsed),
 		tags:       tagpane.New(keys, styles),
 		list:       snippetlist.New(keys, styles, snippetlist.Language),
+		trash:      trashlist.New(keys, styles, snippetlist.Language),
 		preview:    snippetpane.New(keys, styles, location),
+		outline:    folderoutline.New(keys, styles),
+		trashShown: false,
+		styles:     styles,
+		location:   location,
 		paths:      folderpath.Paths{},
 		orderLabel: "",
 	}
@@ -54,6 +66,10 @@ func (p panes) naming() bool {
 }
 
 func (p panes) updated(focus pane, msg tea.Msg) (panes, []outcome.Outcome, tea.Cmd) {
+	if p.trashShown && focus.showsTrash() {
+		return p.trashUpdated(focus, msg)
+	}
+
 	switch focus {
 	case paneList:
 		list, outcomes, cmd := p.list.Update(msg)
@@ -87,6 +103,10 @@ func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
 	case paneTags:
 		return p.tags.HasRowAt(cell)
 	case paneList:
+		if p.trashShown {
+			return p.trash.HasRowAt(cell)
+		}
+
 		return p.list.HasRowAt(cell)
 	case paneSnippet:
 	}
@@ -94,11 +114,13 @@ func (p panes) hasRowAt(of pane, cell pointer.Point) bool {
 	return false
 }
 
-func (p panes) resized(to layout) panes {
-	p.folders, _, _ = p.folders.Update(look.Resized{Box: to.folders.Inner()})
-	p.tags, _, _ = p.tags.Update(look.Resized{Box: to.tags.Inner()})
-	p.list, _, _ = p.list.Update(look.Resized{Box: to.list.Inner()})
-	p.preview, _, _ = p.preview.Update(look.Resized{Box: to.snippet.Inner()})
+func (p panes) resized(arranged layout) panes {
+	p.folders, _, _ = p.folders.Update(look.Resized{Box: arranged.folders.Inner()})
+	p.tags, _, _ = p.tags.Update(look.Resized{Box: arranged.tags.Inner()})
+	p.list, _, _ = p.list.Update(look.Resized{Box: arranged.list.Inner()})
+	p.trash, _, _ = p.trash.Update(look.Resized{Box: arranged.list.Inner()})
+	p.preview, _, _ = p.preview.Update(look.Resized{Box: arranged.snippet.Inner()})
+	p.outline, _, _ = p.outline.Update(look.Resized{Box: arranged.snippet.Inner()})
 
 	return p
 }
@@ -107,7 +129,10 @@ func (p panes) restyled(msg look.Restyled) panes {
 	p.folders, _, _ = p.folders.Update(msg)
 	p.tags, _, _ = p.tags.Update(msg)
 	p.list, _, _ = p.list.Update(msg)
+	p.trash, _, _ = p.trash.Update(msg)
 	p.preview, _, _ = p.preview.Update(msg)
+	p.outline, _, _ = p.outline.Update(msg)
+	p.styles = msg.Styles
 
 	return p
 }
@@ -140,15 +165,20 @@ func (p panes) selectionIn(holder pane) browseselection.Selection {
 		return browseselection.WithTag(tagID)
 	}
 
-	return browseselection.InFolder(p.folders.Selected())
+	return p.folders.Selection()
 }
 
 func (p panes) destination(selection browseselection.Selection) editoverlay.Destination {
-	folderID, _ := selection.Folder()
+	filedIn := selection
+	if selection.Trash() {
+		filedIn = browseselection.InFolder(domain.FolderID{})
+	}
+
+	folderID, _ := filedIn.Folder()
 
 	return editoverlay.Destination{
-		Selection: selection,
-		Tags:      p.tagsFor(selection),
+		Selection: filedIn,
+		Tags:      p.tagsFor(filedIn),
 		Language:  p.folders.DefaultLanguageOf(folderID),
 	}
 }
@@ -198,6 +228,10 @@ func (p panes) selectingFolder(id domain.FolderID) (panes, []outcome.Outcome) {
 }
 
 func (p panes) selectionAndOrder(selection browseselection.Selection) string {
+	if selection.Trash() {
+		return trashTitle
+	}
+
 	return p.selectionTitle(selection) + listTitleSeparator + p.orderLabel
 }
 
@@ -211,8 +245,12 @@ func (p panes) selectionTitle(selection browseselection.Selection) string {
 	return p.paths.Full(folderID)
 }
 
-func (p panes) listing() searchpopup.Listing {
-	return searchpopup.Listing{Snippets: p.list.Snippets(), Paths: p.paths}
+func (p panes) listing(selection browseselection.Selection) searchpopup.Listing {
+	if selection.Trash() {
+		return searchpopup.Listing{Snippets: nil, Paths: p.paths, EmptyQueryNote: searchSkipsTrashText}
+	}
+
+	return searchpopup.Listing{Snippets: p.list.Snippets(), Paths: p.paths, EmptyQueryNote: ""}
 }
 
 func (p panes) previewSelected() panes {
@@ -227,6 +265,10 @@ func (p panes) previewSelected() panes {
 }
 
 func (p panes) body(of pane, frame look.FrameStyle) string {
+	if p.trashShown && of.showsTrash() {
+		return p.trashBody(of, frame)
+	}
+
 	switch of {
 	case paneFolders:
 		return p.folders.View(frame)
@@ -242,10 +284,15 @@ func (p panes) body(of pane, frame look.FrameStyle) string {
 }
 
 func (p panes) keyMaps() map[pane]help.KeyMap {
+	list := help.KeyMap(p.list)
+	if p.trashShown {
+		list = p.trash
+	}
+
 	return map[pane]help.KeyMap{
 		paneFolders: p.folders,
 		paneTags:    p.tags,
-		paneList:    p.list,
+		paneList:    list,
 		paneSnippet: p.preview,
 	}
 }

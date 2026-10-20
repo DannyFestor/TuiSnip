@@ -26,15 +26,23 @@ func New(tree browse.Tree) Paths {
 }
 
 func (p Paths) Full(id domain.FolderID) string {
-	return strings.Join(append([]string{Root}, p.namesOf(id)...), separator)
+	return FullOf(p.namesOf(id))
 }
 
-func (p Paths) Short(id domain.FolderID) string {
-	if id.IsNil() {
+func FullOf(names []string) string {
+	return strings.Join(append([]string{Root}, names...), separator)
+}
+
+func ShortOf(names []string) string {
+	if len(names) == 0 {
 		return Root
 	}
 
-	return strings.Join(p.namesOf(id), separator)
+	return strings.Join(names, separator)
+}
+
+func (p Paths) Short(id domain.FolderID) string {
+	return ShortOf(p.namesOf(id))
 }
 
 func (p Paths) Name(id domain.FolderID) string {

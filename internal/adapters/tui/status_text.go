@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
@@ -26,10 +27,33 @@ const (
 	movedToTrashFormat = "Moved %s %q to the Trash"
 )
 
+const (
+	restoredFormat       = "Restored %q to %s"
+	restoredToRootFormat = "Restored %q to the Root"
+	folderInTrashReason  = "; its Folder is in the Trash"
+	folderDeletedReason  = "; its Folder was deleted"
+)
+
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
 
 func movedToTrashText(noun, name string) string {
 	return fmt.Sprintf(movedToTrashFormat, noun, name)
+}
+
+func restoredText(name string, path []string, restoration domain.Restoration) string {
+	switch restoration.Fallback {
+	case domain.RestoreFallbackFolderInTrash:
+		return fmt.Sprintf(restoredToRootFormat, name) + folderInTrashReason
+	case domain.RestoreFallbackFolderDeleted:
+		return fmt.Sprintf(restoredToRootFormat, name) + folderDeletedReason
+	case domain.RestoreFallbackNone:
+	}
+
+	if restoration.FolderID.IsNil() {
+		return fmt.Sprintf(restoredToRootFormat, name)
+	}
+
+	return fmt.Sprintf(restoredFormat, name, folderpath.ShortOf(path))
 }
 
 func deliveryText(delivery domain.CopyDelivery) (string, error) {

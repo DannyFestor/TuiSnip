@@ -59,6 +59,7 @@ type Model struct {
 	tagLister             TagLister
 	tagSnippetsLister     TagSnippetsLister
 	copier                SnippetCopier
+	trash                 trashActions
 	creator               SnippetCreator
 	capturer              SnippetCapturer
 	updater               SnippetUpdater
@@ -127,6 +128,7 @@ func modelEndingCopyWith(ctx context.Context, deps Deps, afterCopy tea.Cmd) (Mod
 		tagLister:             deps.TagLister,
 		tagSnippetsLister:     deps.TagSnippetsLister,
 		copier:                deps.Copier,
+		trash:                 trashActionsOf(deps),
 		creator:               deps.Creator,
 		capturer:              deps.Capturer,
 		updater:               deps.Updater,
@@ -178,6 +180,9 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("tagLister", deps.TagLister),
 		domain.RequireDependency("tagSnippetsLister", deps.TagSnippetsLister),
 		domain.RequireDependency("copier", deps.Copier),
+		domain.RequireDependency("trashCopier", deps.TrashCopier),
+		domain.RequireDependency("trashLister", deps.TrashLister),
+		domain.RequireDependency("trashRestorer", deps.TrashRestorer),
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("capturer", deps.Capturer),
 		domain.RequireDependency("updater", deps.Updater),
@@ -223,7 +228,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.restyledOn(msg)
 	case tea.WindowSizeMsg, tea.PasteMsg,
 		editoverlay.SaveFinished, searchpopup.HitsFound, mainscreen.SnippetsLoaded, mainscreen.TreeLoaded,
-		mainscreen.TreeChanged, mainscreen.TagsLoaded,
+		mainscreen.TreeChanged, mainscreen.TrashLoaded, mainscreen.TagsLoaded,
 		mainscreen.TagCreated, mainscreen.TagsChanged, mainscreen.TagDeletePreviewed:
 		return m.overlaysUpdatedSharingArrivals(msg)
 	case folderTreeChangedMsg, folderEditedMsg, tagCreatedMsg, tagsChangedMsg, snippetsChangedMsg:
@@ -383,6 +388,10 @@ func (m Model) loadSnippetsShowing(
 		}
 	}
 
+	if selection.Trash() {
+		return m.loadTrash()
+	}
+
 	if tagID, ok := selection.Tag(); ok {
 		return func() tea.Msg {
 			return loaded(m.tagSnippetsLister.Run(m.ctx, browse.SnippetsWithTagInput{TagID: tagID, Order: order}))
@@ -509,10 +518,10 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
 		outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested,
-		outcome.SnippetMoveRequested:
+		outcome.SnippetMoveRequested, outcome.TrashRestoreRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
-		outcome.TagSelected, outcome.TagsChanged, outcome.SortCycleAsked, outcome.ReloadAsked:
+		outcome.TagSelected, outcome.TrashSelected, outcome.TagsChanged, outcome.SortCycleAsked, outcome.ReloadAsked:
 		return m.relisted(reported)
 	case outcome.SaveFailed, outcome.SortOrderRejected:
 		return m.reportedFailure(reported)
@@ -557,16 +566,27 @@ func (m Model) relisted(reported outcome.Outcome) (Model, tea.Cmd) {
 		return m, m.reloadSelecting(reported.Selection, reported.Selecting)
 	case outcome.SnippetRevealed:
 		return m, m.loadSnippetsShowing(browseselection.InFolder(reported.FolderID), reported.ID, reported.FragmentID)
-	case outcome.FolderSelected:
-		return m, m.loadSnippets(browseselection.InFolder(reported.ID), domain.SnippetID{})
-	case outcome.TagSelected:
-		return m, m.loadSnippets(browseselection.WithTag(reported.ID), domain.SnippetID{})
+	case outcome.FolderSelected, outcome.TagSelected, outcome.TrashSelected:
+		return m, m.selectionChanged(reported)
 	case outcome.TagsChanged:
 		return m, m.loadSnippets(reported.Selection, reported.Selecting)
 	case outcome.SortCycleAsked:
 		return m.sortCycled(reported)
 	default:
 		return m, nil
+	}
+}
+
+func (m Model) selectionChanged(reported outcome.Outcome) tea.Cmd {
+	switch reported := reported.(type) {
+	case outcome.FolderSelected:
+		return m.loadSnippets(browseselection.InFolder(reported.ID), domain.SnippetID{})
+	case outcome.TagSelected:
+		return m.loadSnippets(browseselection.WithTag(reported.ID), domain.SnippetID{})
+	case outcome.TrashSelected:
+		return tea.Batch(m.loadTree(), m.loadTrash())
+	default:
+		return nil
 	}
 }
 
@@ -682,12 +702,17 @@ func (m Model) querySnippets(text string) tea.Cmd {
 }
 
 func (m Model) copySnippet(requested outcome.CopyRequested) tea.Cmd {
-	in := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
+	input := snippet.CopyInput{SnippetID: requested.ID, FragmentID: requested.FragmentID}
+	copier, gone := m.copier, goneItem(snippetNoun, requested.Title)
+
+	if requested.InTrash {
+		copier, gone = m.trash.copier, goneFromTrash(requested.Title)
+	}
 
 	return func() tea.Msg {
-		result, err := m.copier.Run(m.ctx, in)
+		result, err := copier.Run(m.ctx, input)
 		if err != nil {
-			return itemActionFailedMsg{operation: operationCopy, err: err, gone: goneItem(snippetNoun, requested.Title)}
+			return itemActionFailedMsg{operation: operationCopy, err: err, gone: gone}
 		}
 
 		return copyFinishedMsg{result: result}

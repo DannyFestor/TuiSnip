@@ -11,7 +11,10 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain"
 )
 
-const goneElsewhereFormat = "%s %q was moved to the Trash or deleted in another TuiSnip"
+const (
+	goneElsewhereFormat   = "%s %q was moved to the Trash or deleted in another TuiSnip"
+	noLongerInTrashFormat = "%q is no longer in the Trash"
+)
 
 type gone struct {
 	notFound   string
@@ -26,6 +29,10 @@ type itemActionFailedMsg struct {
 
 func goneItem(noun, name string) gone {
 	return gone{notFound: fmt.Sprintf(goneElsewhereFormat, noun, name), folderGone: ""}
+}
+
+func goneFromTrash(name string) gone {
+	return gone{notFound: fmt.Sprintf(noLongerInTrashFormat, name), folderGone: ""}
 }
 
 func (g gone) placingInto(folderName string) gone {

@@ -25,7 +25,7 @@ func TestBrowseIntoNestedFolder(t *testing.T) {
 	screen := open(t, app)
 	screen.waitForFrame("    testing")
 
-	screen.press(keypress.Letter('G'))
+	screen.press(keypress.Letter('G'), keypress.Letter('k'))
 
 	screen.waitForFrame(filedHeader)
 	screen.waitForFrame("3 Root / go / testing")

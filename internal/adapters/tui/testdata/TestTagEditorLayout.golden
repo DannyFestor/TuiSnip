@@ -3,7 +3,7 @@
 │  doc╭ Editing ─────────────────────────────────────────────────────────────────────────────────────────────────╮     │
 │▾ go │› Title                                                                                                   │     │
 │    t│  Description                                                                                             │     │
-│     │  Tags              (enter or ctrl+t to edit)                                                             │─────│
+│▪ Tra│  Tags              (enter or ctrl+t to edit)                                                             │─────│
 │     │  Fragment title                                                                                          │{    │
 │     │  Language       plaintext   (enter or ctrl+l to pick)                                                    │     │
 │     │  Content        ╭──────────────────────────────────────────────────────────────────────╮                 │     │

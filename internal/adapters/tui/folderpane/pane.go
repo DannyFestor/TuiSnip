@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/nameinput"
@@ -110,7 +111,7 @@ func (p Pane) WithTree(tree browse.Tree) (Pane, []outcome.Outcome) {
 	next := p
 	next.tree = tree
 	next.collapsed = collapsedSetOf(present)
-	next = next.withRows().withCursor(p.cursor.Index()).cursorOn(p.Selected()).withFieldSized()
+	next = next.withRows().withCursor(p.cursor.Index()).cursorOnSelection(p.Selection()).withFieldSized()
 
 	if len(present) == len(p.collapsed) {
 		return next, nil
@@ -134,6 +135,14 @@ func (p Pane) Selected() domain.FolderID {
 	return p.selectedRow().folderID
 }
 
+func (p Pane) Selection() browseselection.Selection {
+	if p.onTrash() {
+		return browseselection.InTrash()
+	}
+
+	return browseselection.InFolder(p.Selected())
+}
+
 func (p Pane) SelectedFolder() (domain.Folder, bool) {
 	return p.selectedRow().folder, !p.Selected().IsNil()
 }
@@ -150,7 +159,7 @@ func (p Pane) HasRowAt(at pointer.Point) bool {
 
 func (p Pane) pressed(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	switch {
-	case p.keys.Matches(msg, binding.NewFolder):
+	case p.keys.Matches(msg, binding.NewFolder) && !p.onTrash():
 		return p.newFolderStarted()
 	case p.keys.Matches(msg, binding.Rename) && !p.Selected().IsNil():
 		return p.startedNaming(
@@ -250,11 +259,33 @@ func (p Pane) moved(msg tea.KeyPressMsg) (Pane, []outcome.Outcome, tea.Cmd) {
 	next := p
 	next.cursor = p.cursor.Moved(direction, len(p.rows), p.box.Height)
 
-	if next.Selected() == p.Selected() {
+	if next.Selection() == p.Selection() {
 		return next, nil, nil
 	}
 
-	return next, []outcome.Outcome{outcome.FolderSelected{ID: next.Selected()}}, nil
+	return next, next.selectedOutcomes(), nil
+}
+
+func (p Pane) selectedOutcomes() []outcome.Outcome {
+	if p.onTrash() {
+		return []outcome.Outcome{outcome.TrashSelected{}}
+	}
+
+	return []outcome.Outcome{outcome.FolderSelected{ID: p.Selected()}}
+}
+
+func (p Pane) onTrash() bool {
+	return p.selectedRow().trash
+}
+
+func (p Pane) cursorOnSelection(selection browseselection.Selection) Pane {
+	if selection.Trash() {
+		return p.withCursor(len(p.rows) - 1)
+	}
+
+	folderID, _ := selection.Folder()
+
+	return p.cursorOn(folderID)
 }
 
 func (p Pane) startedNaming(started naming, initial string) (Pane, []outcome.Outcome, tea.Cmd) {

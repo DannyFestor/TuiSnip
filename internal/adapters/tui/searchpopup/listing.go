@@ -7,8 +7,9 @@ import (
 )
 
 type Listing struct {
-	Snippets []domain.Snippet
-	Paths    folderpath.Paths
+	Snippets       []domain.Snippet
+	Paths          folderpath.Paths
+	EmptyQueryNote string
 }
 
 func shortPathIn(paths folderpath.Paths) snippetlist.Meta {

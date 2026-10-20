@@ -4,7 +4,7 @@ import "slices"
 
 //go:generate go-enum --marshal --names
 
-// ENUM(global, folders, tags, snippet_list, snippet_pane, editor, content, search, picker, name_input, confirm).
+// ENUM(global, folders, tags, snippet_list, trash, snippet_pane, editor, content, search, picker, name_input, confirm).
 type Scope string
 
 func (s Scope) isTextEntry() bool {
@@ -12,5 +12,5 @@ func (s Scope) isTextEntry() bool {
 }
 
 func (s Scope) isPane() bool {
-	return slices.Contains([]Scope{ScopeFolders, ScopeTags, ScopeSnippetList, ScopeSnippetPane}, s)
+	return slices.Contains([]Scope{ScopeFolders, ScopeTags, ScopeSnippetList, ScopeTrash, ScopeSnippetPane}, s)
 }

@@ -46,6 +46,7 @@ type Popup struct {
 	styles  look.Styles
 	query   textinput.Model
 	browse  []domain.Snippet
+	note    string
 	results snippetlist.List
 	opensOn map[domain.SnippetID]domain.FragmentID
 	preview snippetpane.Pane
@@ -58,6 +59,7 @@ func New(keys binding.Keys, styles look.Styles, preview snippetpane.Pane, listin
 		styles:  styles,
 		query:   input.NewLine(searchPrompt, styles),
 		browse:  listing.Snippets,
+		note:    listing.EmptyQueryNote,
 		results: snippetlist.New(keys, styles, shortPathIn(listing.Paths)).WithSnippets(listing.Snippets),
 		opensOn: nil,
 		preview: preview.WithPaths(listing.Paths),
@@ -256,11 +258,15 @@ func (p Popup) halves() halves {
 }
 
 func (p Popup) resultRows() string {
-	if p.noResults() {
-		return p.styles.Dim.Render(noMatchesText)
+	if !p.noResults() {
+		return p.results.View(p.styles.Focused)
 	}
 
-	return p.results.View(p.styles.Focused)
+	if p.note != "" && value.NewSearchQuery(p.text()).IsBlank() {
+		return p.styles.Dim.Render(p.note)
+	}
+
+	return p.styles.Dim.Render(noMatchesText)
 }
 
 func (p Popup) previewBody() string {
@@ -294,6 +300,6 @@ func revealing(selected domain.Snippet, fragmentID domain.FragmentID) outcome.St
 
 func copying(selected domain.Snippet, fragmentID domain.FragmentID) outcome.Step {
 	return outcome.Close().Passing(outcome.CopyRequested{
-		ID: selected.ID(), FragmentID: fragmentID, Title: selected.Title().String(),
+		ID: selected.ID(), FragmentID: fragmentID, Title: selected.Title().String(), InTrash: false,
 	})
 }

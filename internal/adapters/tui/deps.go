@@ -8,6 +8,9 @@ type Deps struct {
 	TagLister                   TagLister
 	TagSnippetsLister           TagSnippetsLister
 	Copier                      SnippetCopier
+	TrashCopier                 SnippetCopier
+	TrashLister                 TrashLister
+	TrashRestorer               TrashRestorer
 	Creator                     SnippetCreator
 	Capturer                    SnippetCapturer
 	Updater                     SnippetUpdater

@@ -42,6 +42,7 @@ func TestPane_UpdateClick(t *testing.T) {
 			"◆ Root                2",
 			"  docker              3",
 			"▸ GO                  2",
+			"▪ Trash               0",
 		}, viewLines(pane))
 		assert.Equal(t, []outcome.Outcome{
 			outcome.CollapsedFoldersChanged{IDs: []domain.FolderID{sample.Go.ID()}},
@@ -78,7 +79,7 @@ func TestPane_UpdateClick(t *testing.T) {
 
 		sample := foldertree.New(t)
 		pane := pressed(samplePane(t, sample), keypress.Letter('j'))
-		below := clickOn(t, pane, "testing")
+		below := clickOn(t, pane, "Trash")
 		below.At.Y++
 
 		pane, outcomes, _ := pane.Update(below)
@@ -102,7 +103,7 @@ func TestPane_HasRowAt(t *testing.T) {
 	t.Parallel()
 
 	pane := samplePane(t, foldertree.New(t))
-	last := cellOf(t, pane, "testing")
+	last := cellOf(t, pane, "Trash")
 	below := pointer.Point{X: last.X, Y: last.Y + 1}
 
 	assert.True(t, pane.HasRowAt(last))
@@ -120,7 +121,7 @@ func TestPane_UpdateWheel(t *testing.T) {
 
 		pane, _, _ = pane.Update(wheelDown(t, pane))
 
-		assert.Equal(t, []string{"▾ go                  2", "    testing           1"}, viewLines(pane))
+		assert.Equal(t, []string{"    testing           1", "▪ Trash               0"}, viewLines(pane))
 		assert.True(t, pane.Selected().IsNil())
 	})
 
@@ -133,7 +134,7 @@ func TestPane_UpdateWheel(t *testing.T) {
 		pane, _, _ = pane.Update(wheelDown(t, pane))
 		pane, _, _ = pane.Update(look.Resized{Box: box})
 
-		assert.Equal(t, []string{"▾ go                  2", "    testing           1"}, viewLines(pane))
+		assert.Equal(t, []string{"    testing           1", "▪ Trash               0"}, viewLines(pane))
 	})
 }
 

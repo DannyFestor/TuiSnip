@@ -57,6 +57,8 @@ packages:
       TagLister: {}
       TagSnippetsLister: {}
       SnippetCopier: {}
+      TrashLister: {}
+      TrashRestorer: {}
       SnippetCreator: {}
       SnippetCapturer: {}
       SnippetUpdater: {}

@@ -55,6 +55,9 @@ type actions struct {
 	tagLister             tui.TagLister
 	tagSnippetsLister     tui.TagSnippetsLister
 	copier                tui.SnippetCopier
+	trashCopier           tui.SnippetCopier
+	trashLister           tui.TrashLister
+	trashRestorer         tui.TrashRestorer
 	creator               tui.SnippetCreator
 	capturer              tui.SnippetCapturer
 	updater               tui.SnippetUpdater
@@ -150,6 +153,9 @@ func modelBuiltBy(t *testing.T, build modelConstructor, with actions, settings t
 			func() tui.TagSnippetsLister { return NewMockTagSnippetsLister(t) },
 		),
 		Copier:        with.copier,
+		TrashCopier:   orMock(with.trashCopier, func() tui.SnippetCopier { return NewMockSnippetCopier(t) }),
+		TrashLister:   orMock(with.trashLister, func() tui.TrashLister { return NewMockTrashLister(t) }),
+		TrashRestorer: orMock(with.trashRestorer, func() tui.TrashRestorer { return NewMockTrashRestorer(t) }),
 		Creator:       with.creator,
 		Capturer:      orMock(with.capturer, func() tui.SnippetCapturer { return NewMockSnippetCapturer(t) }),
 		Updater:       orMock(with.updater, func() tui.SnippetUpdater { return NewMockSnippetUpdater(t) }),

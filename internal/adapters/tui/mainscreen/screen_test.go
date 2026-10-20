@@ -105,7 +105,7 @@ func TestScreen_cursor(t *testing.T) {
 	t.Run("moving down in Folders keeps the Snippet", func(t *testing.T) {
 		t.Parallel()
 
-		screen := showing(t, wide(), sampleSnippets(t)...)
+		screen, _ := browsing(t)
 
 		screen.Press(keypress.Letter('j'))
 
@@ -217,7 +217,7 @@ func TestScreen_browse(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
-		screen.Press(keypress.Typed("G")...)
+		screen.Press(keypress.Typed("Gk")...)
 
 		screen.Send(
 			mainscreen.SnippetsLoaded{
@@ -233,7 +233,7 @@ func TestScreen_browse(t *testing.T) {
 		t.Parallel()
 
 		screen, sample := browsing(t)
-		screen.Press(keypress.Typed("G")...)
+		screen.Press(keypress.Typed("Gk")...)
 		screen.Send(
 			mainscreen.SnippetsLoaded{
 				Selection: browseselection.InFolder(sample.Tests.ID()),

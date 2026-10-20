@@ -59,8 +59,8 @@ func TestRows(t *testing.T) {
 		keys := testsettings.Default(t).Keys
 
 		for _, scope := range []binding.Scope{
-			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeSnippetPane,
-			binding.ScopeEditor, binding.ScopeContent, binding.ScopeSearch, binding.ScopePicker, binding.ScopeNameInput,
+			binding.ScopeFolders, binding.ScopeTags, binding.ScopeSnippetList, binding.ScopeTrash,
+			binding.ScopeSnippetPane, binding.ScopeEditor, binding.ScopeContent, binding.ScopeSearch, binding.ScopePicker, binding.ScopeNameInput,
 			binding.ScopeConfirm,
 		} {
 			for _, hint := range keys.For(scope).ShortHelp() {

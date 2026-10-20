@@ -85,6 +85,11 @@ duplicate = ["c"]
 delete = ["d"]
 cycle_sort = ["s"]
 
+# The Snippet list while the Trash is the Browse selection, in place of snippet_list.
+[bindings.trash]
+copy = ["y"]
+restore = ["r"]
+
 [bindings.snippet_pane]
 copy = ["y"]
 edit = ["e"]

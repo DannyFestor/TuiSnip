@@ -208,7 +208,9 @@ func assertBindingRulesHold(t *testing.T, cfg config.Config) {
 
 func isPaneScope(scope config.Scope) bool {
 	return slices.Contains(
-		[]config.Scope{config.ScopeFolders, config.ScopeTags, config.ScopeSnippetList, config.ScopeSnippetPane},
+		[]config.Scope{
+			config.ScopeFolders, config.ScopeTags, config.ScopeSnippetList, config.ScopeTrash, config.ScopeSnippetPane,
+		},
 		scope,
 	)
 }

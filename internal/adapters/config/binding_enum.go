@@ -79,6 +79,8 @@ const (
 	BindingDuplicate Binding = "duplicate"
 	// BindingCycleSort is a Binding of type cycle_sort.
 	BindingCycleSort Binding = "cycle_sort"
+	// BindingRestore is a Binding of type restore.
+	BindingRestore Binding = "restore"
 	// BindingWrap is a Binding of type wrap.
 	BindingWrap Binding = "wrap"
 	// BindingNextFragment is a Binding of type next_fragment.
@@ -160,6 +162,7 @@ var _BindingNames = []string{
 	string(BindingOpenInEditor),
 	string(BindingDuplicate),
 	string(BindingCycleSort),
+	string(BindingRestore),
 	string(BindingWrap),
 	string(BindingNextFragment),
 	string(BindingPrevFragment),
@@ -237,6 +240,7 @@ var _BindingValue = map[string]Binding{
 	"open_in_editor":      BindingOpenInEditor,
 	"duplicate":           BindingDuplicate,
 	"cycle_sort":          BindingCycleSort,
+	"restore":             BindingRestore,
 	"wrap":                BindingWrap,
 	"next_fragment":       BindingNextFragment,
 	"prev_fragment":       BindingPrevFragment,

@@ -101,7 +101,7 @@ func TestPane_UpdateWhileNaming(t *testing.T) {
 
 		assert.Empty(t, outcomes)
 		assert.False(t, pane.Naming())
-		assert.Len(t, viewLines(pane), 4)
+		assert.Len(t, viewLines(pane), 5)
 	})
 
 	t.Run("movement keys type instead of moving the cursor", func(t *testing.T) {
@@ -203,7 +203,7 @@ func TestPane_ViewWhileNaming(t *testing.T) {
 
 		lines := viewLines(pane)
 
-		require.Len(t, lines, 4)
+		require.Len(t, lines, 5)
 		assert.Regexp(t, `^  DOCKER +3$`, lines[1])
 	})
 }

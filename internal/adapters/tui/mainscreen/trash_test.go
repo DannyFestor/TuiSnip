@@ -21,7 +21,7 @@ import (
 
 const (
 	trashListTitle        = "3 Trash"
-	trashListHint         = "y Copy · r restore · z zoom · / search · ? help"
+	trashListHint         = "y Copy · r restore · d delete permanently · D empty Trash · z zoom · / search · ? help"
 	trashedFolderPaneHint = "z zoom · / search · ? help"
 	snippetPaneHint       = "y Copy · e edit · E external editor · w wrap · ] next Fragment · [ previous Fragment · " +
 		"z zoom · / search · ? help"
@@ -322,7 +322,7 @@ func TestScreen_trashActions(t *testing.T) {
 	t.Run("the Snippet list keys that change Snippets report nothing", func(t *testing.T) {
 		t.Parallel()
 
-		for _, letter := range "eEmcds" {
+		for _, letter := range "eEmcs" {
 			t.Run(string(letter), func(t *testing.T) {
 				t.Parallel()
 

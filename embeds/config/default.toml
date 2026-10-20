@@ -89,6 +89,9 @@ cycle_sort = ["s"]
 [bindings.trash]
 copy = ["y"]
 restore = ["r"]
+# Both ask first, and neither can be undone.
+delete = ["d"]
+empty = ["D"]
 
 [bindings.snippet_pane]
 copy = ["y"]

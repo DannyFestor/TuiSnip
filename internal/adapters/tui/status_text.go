@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/folderpath"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
@@ -37,6 +38,12 @@ const (
 	parentPrefix         = "parent "
 )
 
+const (
+	emptiedTrashText = "Emptied the Trash"
+	emptiedSeparator = ": "
+	countsSeparator  = ", "
+)
+
 var errUnknownDelivery = errors.New("tui: unknown copy delivery")
 
 func movedToTrashText(noun, name string) string {
@@ -59,6 +66,18 @@ func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Re
 	}
 
 	return fmt.Sprintf(restoredFormat, requested.Name, folderpath.ShortOf(requested.Path))
+}
+
+func emptiedText(emptied domain.TrashEmptied) string {
+	counts := look.NonZeroCounts(
+		look.Tally{Count: emptied.Folders, Noun: folderNoun},
+		look.Tally{Count: emptied.Snippets, Noun: snippetNoun},
+	)
+	if len(counts) == 0 {
+		return emptiedTrashText
+	}
+
+	return emptiedTrashText + emptiedSeparator + strings.Join(counts, countsSeparator)
 }
 
 func homeNoun(restored trash.ItemID) string {

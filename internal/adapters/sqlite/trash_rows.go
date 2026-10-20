@@ -58,12 +58,21 @@ func formerPathFromColumn(column string) (value.FolderPath, error) {
 }
 
 func trashColumnsOf(mark domain.TrashMark) (trashColumns, error) {
-	encoded, err := json.Marshal(mark.FormerPath().Strings())
+	formerPath, err := formerPathColumn(mark.FormerPath().Strings())
 	if err != nil {
-		return trashColumns{}, fmt.Errorf("encode former path: %w", err)
+		return trashColumns{}, err
 	}
 
-	return trashColumns{deletedAt: new(sqltype.Timestamp(mark.DeletedAt())), formerPath: string(encoded)}, nil
+	return trashColumns{deletedAt: new(sqltype.Timestamp(mark.DeletedAt())), formerPath: formerPath}, nil
+}
+
+func formerPathColumn(names []string) (string, error) {
+	encoded, err := json.Marshal(names)
+	if err != nil {
+		return "", fmt.Errorf("encode former path: %w", err)
+	}
+
+	return string(encoded), nil
 }
 
 func folderTrashMarkParams(id domain.FolderID, columns trashColumns) sqlcgen.SetFolderTrashMarkParams {

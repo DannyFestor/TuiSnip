@@ -33,6 +33,35 @@ func (q *Queries) CountFolders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const deleteFolderTrashItem = `-- name: DeleteFolderTrashItem :execrows
+DELETE FROM folders
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+func (q *Queries) DeleteFolderTrashItem(ctx context.Context, id sqltype.ID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteFolderTrashItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const detachFolderTrashItem = `-- name: DetachFolderTrashItem :exec
+UPDATE folders
+SET parent_id = NULL, former_parent_path = ?
+WHERE id = ? AND deleted_at IS NOT NULL
+`
+
+type DetachFolderTrashItemParams struct {
+	FormerParentPath string
+	ID               sqltype.ID
+}
+
+func (q *Queries) DetachFolderTrashItem(ctx context.Context, arg DetachFolderTrashItemParams) error {
+	_, err := q.db.ExecContext(ctx, detachFolderTrashItem, arg.FormerParentPath, arg.ID)
+	return err
+}
+
 const getFolder = `-- name: GetFolder :one
 SELECT id, parent_id, name, default_language, created_at, updated_at, deleted_at, former_parent_path
 FROM live_folders

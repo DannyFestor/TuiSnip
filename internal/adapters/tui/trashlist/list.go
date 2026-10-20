@@ -69,6 +69,10 @@ func (l List) WithItems(trashItems []trash.Item) List {
 	return l
 }
 
+func (l List) Items() []trash.Item {
+	return l.trashItems.Rows()
+}
+
 func (l List) Selected() (trash.Item, bool) {
 	return l.trashItems.Selected()
 }

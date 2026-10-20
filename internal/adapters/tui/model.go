@@ -183,6 +183,8 @@ func missingDependencies(deps Deps) error {
 		domain.RequireDependency("trashCopier", deps.TrashCopier),
 		domain.RequireDependency("trashLister", deps.TrashLister),
 		domain.RequireDependency("trashRestorer", deps.TrashRestorer),
+		domain.RequireDependency("trashDeleter", deps.TrashDeleter),
+		domain.RequireDependency("trashEmptier", deps.TrashEmptier),
 		domain.RequireDependency("creator", deps.Creator),
 		domain.RequireDependency("capturer", deps.Capturer),
 		domain.RequireDependency("updater", deps.Updater),
@@ -518,7 +520,8 @@ func (m Model) concluded(reported outcome.Outcome) (Model, tea.Cmd) {
 	switch reported := reported.(type) {
 	case outcome.SaveRequested, outcome.UpdateRequested, outcome.SearchTyped, outcome.CopyRequested,
 		outcome.TrashCopyRequested, outcome.CaptureAsked, outcome.ExternalEditAsked, outcome.SnippetDuplicateRequested, outcome.SnippetDeleteRequested,
-		outcome.SnippetMoveRequested, outcome.TrashRestoreRequested:
+		outcome.SnippetMoveRequested, outcome.TrashRestoreRequested, outcome.TrashDeleteRequested,
+		outcome.TrashEmptyRequested:
 		return m, m.runSnippetAction(reported)
 	case outcome.SnippetSaved, outcome.SnippetReloaded, outcome.SnippetRevealed, outcome.FolderSelected,
 		outcome.TagSelected, outcome.TrashSelected, outcome.TagsChanged, outcome.SortCycleAsked, outcome.ReloadAsked:

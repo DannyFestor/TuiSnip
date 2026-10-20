@@ -52,6 +52,8 @@ type App struct {
 	DeleteTag                *tag.Delete
 	ListTrash                *trash.List
 	Restore                  *trash.Restore
+	DeletePermanently        *trash.DeletePermanently
+	EmptyTrash               *trash.Empty
 	Export                   *library.Export
 	Import                   *library.Import
 	ImportSnippetsLab        *library.ImportSnippetsLab
@@ -154,6 +156,8 @@ func wire(ctx context.Context, cfg config.Config, options Options, opened openRe
 		TrashCopier:                 app.CopyFromTrash,
 		TrashLister:                 app.ListTrash,
 		TrashRestorer:               app.Restore,
+		TrashDeleter:                app.DeletePermanently,
+		TrashEmptier:                app.EmptyTrash,
 		Creator:                     app.Create,
 		Capturer:                    app.Capture,
 		Updater:                     app.Update,
@@ -257,6 +261,8 @@ func newActions(cfg config.Config, options Options, repos repositories, logger *
 		DeleteTag:                tags.delete,
 		ListTrash:                trashing.list,
 		Restore:                  trashing.restore,
+		DeletePermanently:        trashing.deletePermanently,
+		EmptyTrash:               trashing.empty,
 		Export:                   libraries.export,
 		Import:                   libraries.importExport,
 		ImportSnippetsLab:        libraries.importSnippetsLab,

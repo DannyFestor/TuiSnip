@@ -45,9 +45,27 @@ func (s Screen) trashListPressed(trashItem trash.Item, msg tea.KeyPressMsg) (out
 			Name:  trashItem.Name(),
 			Path:  trashItem.Path,
 		}), true
+	case s.trashKeys.Matches(msg, binding.Delete):
+		return s.asking(deletePermanentlyQuestion(trashItem), outcome.TrashDeleteRequested{
+			Input: trash.DeletePermanentlyInput{Item: trashItem.ID()},
+			Name:  trashItem.Name(),
+		}), true
+	case s.trashKeys.Matches(msg, binding.Empty):
+		return s.emptyTrashAsked(), true
 	}
 
 	return outcome.Stay(s), false
+}
+
+func (s Screen) emptyTrashAsked() outcome.Step {
+	counted := s.panes.trash.Items()
+	ids := make([]trash.ItemID, 0, len(counted))
+
+	for index := range counted {
+		ids = append(ids, counted[index].ID())
+	}
+
+	return s.asking(emptyTrashQuestion(counted), outcome.TrashEmptyRequested{Input: trash.EmptyInput{Items: ids}})
 }
 
 func (s Screen) trashPanePressed(trashItem trash.Item, msg tea.KeyPressMsg) (outcome.Step, bool) {

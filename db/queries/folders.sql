@@ -61,3 +61,12 @@ SELECT COUNT(*) FROM folders WHERE deleted_at IS NOT NULL;
 UPDATE folders
 SET deleted_at = NULL, parent_id = ?, former_parent_path = '[]'
 WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: DetachFolderTrashItem :exec
+UPDATE folders
+SET parent_id = NULL, former_parent_path = ?
+WHERE id = ? AND deleted_at IS NOT NULL;
+
+-- name: DeleteFolderTrashItem :execrows
+DELETE FROM folders
+WHERE id = ? AND deleted_at IS NOT NULL;

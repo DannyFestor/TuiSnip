@@ -80,13 +80,18 @@ func TestKeys_For(t *testing.T) {
 		}
 	})
 
-	t.Run("Trash hints Copy and restore before zoom, search and help", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"Trash hints Copy, restore, delete permanently and empty Trash before zoom, search and help",
+		func(t *testing.T) {
+			t.Parallel()
 
-		got := testsettings.Default(t).Keys.For(binding.ScopeTrash).ShortHelp()
+			got := testsettings.Default(t).Keys.For(binding.ScopeTrash).ShortHelp()
 
-		assert.Equal(t, []string{"y Copy", "r restore", "z zoom", "/ search", "? help"}, hintTexts(got))
-	})
+			assert.Equal(t, []string{
+				"y Copy", "r restore", "d delete permanently", "D empty Trash", "z zoom", "/ search", "? help",
+			}, hintTexts(got))
+		},
+	)
 
 	t.Run("Snippet pane hints Copy, edit, wrap and the Fragment switches before zoom", func(t *testing.T) {
 		t.Parallel()

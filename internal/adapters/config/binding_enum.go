@@ -81,6 +81,8 @@ const (
 	BindingCycleSort Binding = "cycle_sort"
 	// BindingRestore is a Binding of type restore.
 	BindingRestore Binding = "restore"
+	// BindingEmpty is a Binding of type empty.
+	BindingEmpty Binding = "empty"
 	// BindingWrap is a Binding of type wrap.
 	BindingWrap Binding = "wrap"
 	// BindingNextFragment is a Binding of type next_fragment.
@@ -163,6 +165,7 @@ var _BindingNames = []string{
 	string(BindingDuplicate),
 	string(BindingCycleSort),
 	string(BindingRestore),
+	string(BindingEmpty),
 	string(BindingWrap),
 	string(BindingNextFragment),
 	string(BindingPrevFragment),
@@ -241,6 +244,7 @@ var _BindingValue = map[string]Binding{
 	"duplicate":           BindingDuplicate,
 	"cycle_sort":          BindingCycleSort,
 	"restore":             BindingRestore,
+	"empty":               BindingEmpty,
 	"wrap":                BindingWrap,
 	"next_fragment":       BindingNextFragment,
 	"prev_fragment":       BindingPrevFragment,

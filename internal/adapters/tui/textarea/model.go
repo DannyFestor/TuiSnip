@@ -1577,6 +1577,8 @@ func (v *contentRenderer) writeLine(row int, line []rune) {
 	}
 }
 
+// Skipped rows still take their lines, so the viewport's offsets keep
+// pointing at the rows that are drawn.
 func (v *contentRenderer) skipRows(count int) {
 	v.out.WriteString(strings.Repeat("\n", count))
 	v.displayLine += count

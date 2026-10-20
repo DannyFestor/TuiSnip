@@ -345,7 +345,7 @@ func (p Pane) timestamps() string {
 		return dates
 	}
 
-	return dates + metaSeparator + look.DeletedOn(p.trashed.DeletedAt, p.location)
+	return look.DeletedOn(p.trashed.DeletedAt, p.location) + metaSeparator + dates
 }
 
 func lineNumbers(styles look.Styles) viewport.GutterFunc {

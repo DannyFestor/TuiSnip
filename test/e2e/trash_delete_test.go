@@ -29,9 +29,10 @@ func TestDeleteAFolderPermanentlyThenRestoreASnippetTrashedFromIt(t *testing.T) 
 	screen.press(keypress.Letter('G'))
 	screen.waitForFrame("▸ docker")
 	screen.press(keypress.Letter('3'), keypress.Letter('d'))
-	screen.waitForFrame(`Permanently delete Folder "docker", 0 subfolders, and 1 Snippet? This cannot be undone. [y/N]`)
+	screen.waitForFrame(`Permanently delete Folder "docker" and 1 Snippet? This cannot be undone. [y/N]`)
 
 	screen.press(keypress.Letter('y'))
+	screen.waitForFrame(`Permanently deleted Folder "docker"`)
 	screen.waitForMatch(trashCountedOnce)
 	screen.waitForFrame("Root / docker")
 

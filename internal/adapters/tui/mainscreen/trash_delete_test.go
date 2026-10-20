@@ -33,6 +33,26 @@ func TestScreen_trashDeletePermanently(t *testing.T) {
 			trashItem: trashedFolderItem,
 			want:      `Permanently delete Folder "docker", 1 subfolder, and 15 Snippets? This cannot be undone. [y/N]`,
 		},
+		{
+			name:      "d on a trashed Folder leaves out a zero count of subfolders",
+			trashItem: trashedFolderHolding(0, 15),
+			want:      `Permanently delete Folder "docker" and 15 Snippets? This cannot be undone. [y/N]`,
+		},
+		{
+			name:      "d on a trashed Folder leaves out a zero count of Snippets",
+			trashItem: trashedFolderHolding(2, 0),
+			want:      `Permanently delete Folder "docker" and 2 subfolders? This cannot be undone. [y/N]`,
+		},
+		{
+			name:      "d on an empty trashed Folder counts nothing",
+			trashItem: trashedFolderHolding(0, 0),
+			want:      `Permanently delete Folder "docker"? This cannot be undone. [y/N]`,
+		},
+		{
+			name:      "d on a trashed Folder says 1 Snippet for one",
+			trashItem: trashedFolderHolding(0, 1),
+			want:      `Permanently delete Folder "docker" and 1 Snippet? This cannot be undone. [y/N]`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,6 +107,18 @@ func TestScreen_trashDeletePermanently(t *testing.T) {
 
 		assert.NotContains(t, driver.Screen(), deletePermanentlyTitle)
 	})
+}
+
+func trashedFolderHolding(subfolders, snippets int) func(t *testing.T) trash.Item {
+	return func(t *testing.T) trash.Item {
+		t.Helper()
+
+		folderItem := trashedFolderItem(t)
+		folderItem.Contents.SubfolderCount = subfolders
+		folderItem.Contents.SnippetCount = snippets
+
+		return folderItem
+	}
 }
 
 func TestScreen_trashEmpty(t *testing.T) {

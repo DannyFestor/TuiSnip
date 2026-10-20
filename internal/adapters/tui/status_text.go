@@ -25,9 +25,10 @@ const (
 )
 
 const (
-	snippetNoun        = "Snippet"
-	folderNoun         = "Folder"
-	movedToTrashFormat = "Moved %s %q to the Trash"
+	snippetNoun              = "Snippet"
+	folderNoun               = "Folder"
+	movedToTrashFormat       = "Moved %s %q to the Trash"
+	permanentlyDeletedFormat = "Permanently deleted %s %q"
 )
 
 const (
@@ -48,6 +49,18 @@ var errUnknownDelivery = errors.New("tui: unknown copy delivery")
 
 func movedToTrashText(noun, name string) string {
 	return fmt.Sprintf(movedToTrashFormat, noun, name)
+}
+
+func permanentlyDeletedText(requested outcome.TrashDeleteRequested) string {
+	return fmt.Sprintf(permanentlyDeletedFormat, trashItemNoun(requested.Input.Item), requested.Name)
+}
+
+func trashItemNoun(trashItemID trash.ItemID) string {
+	if trashItemID.Kind().IsFolder() {
+		return folderNoun
+	}
+
+	return snippetNoun
 }
 
 func restoredText(requested outcome.TrashRestoreRequested, restoration domain.Restoration) string {

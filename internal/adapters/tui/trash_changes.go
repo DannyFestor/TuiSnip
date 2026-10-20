@@ -77,7 +77,7 @@ func (m Model) restoreFromTrash(requested outcome.TrashRestoreRequested) tea.Cmd
 func (m Model) deleteFromTrash(requested outcome.TrashDeleteRequested) tea.Cmd {
 	report := reporter(
 		actionFailure{operation: operationDeletePermanently, whenGone: goneFromTrash(requested.Name)},
-		func(struct{}) tea.Msg { return trashChanged("") },
+		func(struct{}) tea.Msg { return trashChanged(permanentlyDeletedText(requested)) },
 	)
 
 	return func() tea.Msg { return report(withoutResult(m.trash.deleter.Run(m.ctx, requested.Input))) }

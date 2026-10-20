@@ -15,21 +15,40 @@ import (
 func TestModel_trashDeletePermanently(t *testing.T) {
 	t.Parallel()
 
-	t.Run("deletes the Trash item for good once confirmed and reloads the Trash", func(t *testing.T) {
-		t.Parallel()
+	deletions := []struct {
+		name      string
+		trashItem func(t *testing.T) trash.Item
+		want      string
+	}{
+		{
+			name:      "deletes a trashed Snippet for good once confirmed, says so, and reloads the Trash",
+			trashItem: trashedPrune,
+			want:      `Permanently deleted Snippet "Prune everything"`,
+		},
+		{
+			name:      "deletes a trashed Folder for good once confirmed, says so, and reloads the Trash",
+			trashItem: trashedDocker,
+			want:      `Permanently deleted Folder "docker"`,
+		},
+	}
+	for _, tt := range deletions {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		prune := trashedPrune(t)
-		deleter := NewMockTrashDeleter(t)
-		deleter.EXPECT().Run(mock.Anything, trash.DeletePermanentlyInput{Item: prune.ID()}).Return(nil)
+			trashItem := tt.trashItem(t)
+			deleter := NewMockTrashDeleter(t)
+			deleter.EXPECT().Run(mock.Anything, trash.DeletePermanentlyInput{Item: trashItem.ID()}).Return(nil)
 
-		with := trashActions(t, listingTrashThen(t, []trash.Item{prune}, nil))
-		with.trashDeleter = deleter
-		screen := start(t, modelWith(t, with), wideWidth, wideHeight)
+			with := trashActions(t, listingTrashThen(t, []trash.Item{trashItem}, nil))
+			with.trashDeleter = deleter
+			screen := start(t, modelWith(t, with), wideWidth, wideHeight)
 
-		screen.press(keypress.Letter('G'), keypress.Letter('3'), keypress.Letter('d'), keypress.Letter('y'))
+			screen.press(keypress.Letter('G'), keypress.Letter('3'), keypress.Letter('d'), keypress.Letter('y'))
 
-		assert.Contains(t, screen.screen(), "The Trash is empty.")
-	})
+			assert.Contains(t, screen.screen(), tt.want)
+			assert.Contains(t, screen.screen(), "The Trash is empty.")
+		})
+	}
 
 	t.Run("says a Trash item restored elsewhere is no longer in the Trash and reloads", func(t *testing.T) {
 		t.Parallel()

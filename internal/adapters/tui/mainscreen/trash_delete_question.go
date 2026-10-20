@@ -10,14 +10,17 @@ import (
 )
 
 const (
-	deletePermanentlyTitle = "Delete permanently"
-	snippetDeleteFormat    = "Permanently delete Snippet %q? This cannot be undone."
-	folderDeleteFormat     = "Permanently delete Folder %q, %s, and %s? This cannot be undone."
-	emptyTrashTitle        = "Empty Trash"
-	emptyTrashFormat       = "Permanently delete %s in the Trash? This cannot be undone."
-	countsJoint            = " and "
-	subfolderNoun          = "subfolder"
-	snippetNoun            = "Snippet"
+	deletePermanentlyTitle  = "Delete permanently"
+	deletePermanentlyFormat = "Permanently delete %s? This cannot be undone."
+	snippetSubjectFormat    = "Snippet %q"
+	folderSubjectFormat     = "Folder %q"
+	emptyTrashTitle         = "Empty Trash"
+	emptyTrashFormat        = "Permanently delete %s in the Trash? This cannot be undone."
+	pairLength              = 2
+	pairJoint               = " and "
+	listSeparator           = ", "
+	lastListJoint           = ", and "
+	snippetNoun             = "Snippet"
 )
 
 type trashTally struct {
@@ -26,17 +29,31 @@ type trashTally struct {
 }
 
 func deletePermanentlyQuestion(trashItem trash.Item) confirm.Question {
-	text := fmt.Sprintf(snippetDeleteFormat, trashItem.Name())
-	if trashItem.Kind.IsFolder() {
-		text = fmt.Sprintf(
-			folderDeleteFormat,
-			trashItem.Name(),
-			look.Counted(trashItem.Contents.SubfolderCount, subfolderNoun),
-			look.Counted(trashItem.Contents.SnippetCount, snippetNoun),
-		)
+	return confirm.Question{
+		Title: deletePermanentlyTitle,
+		Text:  fmt.Sprintf(deletePermanentlyFormat, joinedAsList(subjectAndCounts(trashItem))),
+	}
+}
+
+func subjectAndCounts(trashItem trash.Item) []string {
+	if !trashItem.Kind.IsFolder() {
+		return []string{fmt.Sprintf(snippetSubjectFormat, trashItem.Name())}
 	}
 
-	return confirm.Question{Title: deletePermanentlyTitle, Text: text}
+	subject := fmt.Sprintf(folderSubjectFormat, trashItem.Name())
+	counts := look.SubfolderAndSnippetCounts(trashItem.Contents.SubfolderCount, trashItem.Contents.SnippetCount)
+
+	return append([]string{subject}, counts...)
+}
+
+func joinedAsList(parts []string) string {
+	if len(parts) <= pairLength {
+		return strings.Join(parts, pairJoint)
+	}
+
+	last := len(parts) - 1
+
+	return strings.Join(parts[:last], listSeparator) + lastListJoint + parts[last]
 }
 
 func emptyTrashQuestion(trashItems []trash.Item) confirm.Question {
@@ -57,7 +74,7 @@ func tallyOf(trashItems []trash.Item) trashTally {
 }
 
 func (t trashTally) String() string {
-	return strings.Join(look.FolderAndSnippetCounts(t.folders, t.snippets), countsJoint)
+	return joinedAsList(look.FolderAndSnippetCounts(t.folders, t.snippets))
 }
 
 func (t trashTally) with(trashItem trash.Item) trashTally {

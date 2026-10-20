@@ -51,6 +51,7 @@ internal/
       binding/               the Binding table: each Binding's Scope and hint label, declared once; the hint lists; Keys resolved per Scope
       browseselection/       the Browse selection: the Folder, the Root, the Tag, or the Trash whose contents the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away or a Tag is deleted
+      cursorlist/            the rows a list shows, the cursor kept in view, scrolling, moving by keys, clicks, and the wheel, the row that takes the cursor's after a delete; the Snippet list and the Trash list each embed one
       editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
       folderoutline/         the Snippet pane's view of a Folder in the Trash: its counts, the day it was deleted, and its subtree outline
       folderpane/            the Folder pane: the Root, the Folder tree with Snippet counts, and the Trash row, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
@@ -70,9 +71,9 @@ internal/
       pointer/               clicks and wheel turns at a cell, the click outside an Overlay, and telling a double click from two single ones
       savegate/              keeps saves of remembered state landing in the order they were started
       searchpopup/           the Search popup: the query, its results in a Snippet list, a Snippet pane preview
-      snippetlist/           the Snippet list: rows, cursor, scrolling, the Snippet that takes the cursor's row after a delete
+      snippetlist/           the Snippet list: a row per Snippet with its meta column, the empty hint
       snippetpane/           the Snippet pane: header, the tab strip, the highlighted and scrolled Shown Fragment, Copy of the Shown Fragment, a trashed Snippet's place and deletion date
-      trashlist/             the Snippet list while the Trash is the Browse selection: a row per Trash item, the cursor, scrolling
+      trashlist/             the Snippet list while the Trash is the Browse selection: a row per Trash item, "The Trash is empty."
       tagchoice/             the Tags a Snippet carries while the edit overlay is open: stored Tags and the names of Tags to create on save
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one

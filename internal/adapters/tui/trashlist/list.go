@@ -5,8 +5,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/cursorlist"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
-	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/move"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/pointer"
 	"github.com/DannyFestor/TuiSnip/internal/app/trash"
@@ -19,57 +19,40 @@ const (
 )
 
 type List struct {
-	global          binding.Set
 	keys            binding.Set
 	styles          look.Styles
 	snippetLanguage func(domain.Snippet) string
-	items           []trash.Item
-	cursor          move.Cursor
-	box             look.Size
+	items           cursorlist.List[trash.Item]
 }
 
 func New(keys binding.Keys, styles look.Styles, snippetLanguage func(domain.Snippet) string) List {
 	return List{
-		global:          keys.For(binding.ScopeGlobal),
 		keys:            keys.For(binding.ScopeTrash),
 		styles:          styles,
 		snippetLanguage: snippetLanguage,
-		items:           nil,
-		cursor:          move.Cursor{},
-		box:             look.Size{Width: 0, Height: 0},
+		items:           cursorlist.New[trash.Item](keys),
 	}
 }
 
 //nolint:unparam // every embedded child returns a Cmd (architecture.md), so parents handle each child alike.
 func (l List) Update(msg tea.Msg) (List, []outcome.Outcome, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		return l.pressed(msg), nil, nil
-	case look.Resized:
-		return l.resized(msg.Box), nil, nil
-	case look.Restyled:
-		l.styles = msg.Styles
-
-		return l, nil, nil
-	case pointer.Clicked:
-		l.cursor, _ = l.cursor.ClickedAt(msg.At.Y, len(l.items), l.box.Height)
-
-		return l, nil, nil
-	case pointer.Wheeled:
-		l.cursor = l.cursor.Scrolled(msg.Lines, len(l.items), l.box.Height)
+	if restyled, ok := msg.(look.Restyled); ok {
+		l.styles = restyled.Styles
 
 		return l, nil, nil
 	}
+
+	l.items = l.items.Update(msg)
 
 	return l, nil, nil
 }
 
 func (l List) View(frame look.FrameStyle) string {
-	if len(l.items) == 0 {
+	if len(l.items.Rows()) == 0 {
 		return look.EmptyTrash(l.styles)
 	}
 
-	return l.cursor.VisibleRows(len(l.items), l.box.Height, l.rowAt, frame.CursorOn)
+	return l.items.View(l.row, frame)
 }
 
 func (l List) ShortHelp() []key.Binding {
@@ -81,55 +64,23 @@ func (l List) FullHelp() [][]key.Binding {
 }
 
 func (l List) WithItems(items []trash.Item) List {
-	next := l
-	next.items = items
+	l.items = l.items.WithRows(items)
 
-	return next.withCursor(l.cursor.Index())
+	return l
 }
 
 func (l List) Selected() (trash.Item, bool) {
-	if len(l.items) == 0 {
-		return trash.Item{}, false
-	}
-
-	return l.items[l.cursor.Index()], true
+	return l.items.Selected()
 }
 
 func (l List) HasRowAt(at pointer.Point) bool {
-	_, ok := l.cursor.RowAt(at.Y, len(l.items), l.box.Height)
-
-	return ok
+	return l.items.HasRowAt(at)
 }
 
-func (l List) pressed(msg tea.KeyPressMsg) List {
-	direction, ok := move.Pressed(l.global, msg)
-	if !ok {
-		return l
-	}
-
-	l.cursor = l.cursor.Moved(direction, len(l.items), l.box.Height)
-
-	return l
-}
-
-func (l List) resized(box look.Size) List {
-	next := l
-	next.box = box
-
-	return next.withCursor(l.cursor.Index())
-}
-
-func (l List) withCursor(index int) List {
-	l.cursor = l.cursor.At(index, len(l.items), l.box.Height)
-
-	return l
-}
-
-func (l List) rowAt(index int) string {
-	item := l.items[index]
+func (l List) row(item trash.Item, width int) string {
 	if item.Kind == trash.ItemKindFolder {
-		return look.Row(folderMarker+item.Name(), look.Counted(item.Contents.SnippetCount, snippetNoun), l.box.Width)
+		return look.Row(folderMarker+item.Name(), look.Counted(item.Contents.SnippetCount, snippetNoun), width)
 	}
 
-	return look.Row(item.Name(), l.snippetLanguage(item.Snippet), l.box.Width)
+	return look.Row(item.Name(), l.snippetLanguage(item.Snippet), width)
 }

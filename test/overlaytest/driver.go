@@ -19,15 +19,15 @@ const (
 )
 
 type Driver struct {
-	t        *testing.T
+	t        testing.TB
 	stack    outcome.Stack
 	outcomes []outcome.Outcome
 }
 
-func Open(t *testing.T, screen look.Size, opened outcome.Overlay) *Driver {
-	t.Helper()
+func Open(tb testing.TB, screen look.Size, opened outcome.Overlay) *Driver {
+	tb.Helper()
 
-	driver := &Driver{t: t, stack: outcome.NewStack(), outcomes: nil}
+	driver := &Driver{t: tb, stack: outcome.NewStack(), outcomes: nil}
 	driver.Send(tea.WindowSizeMsg{Width: screen.Width, Height: screen.Height})
 	driver.settle(driver.stack.Pushed(opened))
 

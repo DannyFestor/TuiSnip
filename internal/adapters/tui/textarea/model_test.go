@@ -2794,20 +2794,20 @@ func TestModel_View_longContent(t *testing.T) {
 	}{
 		{
 			name:  "draws the rows at the end once scrolled there",
-			moves: []tea.KeyPressMsg{{Code: tea.KeyEnd, Mod: tea.ModCtrl}},
+			moves: []tea.KeyPressMsg{keypress.Ctrl(tea.KeyEnd)},
 			want:  numbered[44:],
 		},
 		{
 			name:  "draws the rows at the start once scrolled back",
-			moves: []tea.KeyPressMsg{{Code: tea.KeyEnd, Mod: tea.ModCtrl}, {Code: tea.KeyHome, Mod: tea.ModCtrl}},
+			moves: []tea.KeyPressMsg{keypress.Ctrl(tea.KeyEnd), keypress.Ctrl(tea.KeyHome)},
 			want:  numbered[:6],
 		},
 		{
 			name: "draws the rows a page down",
 			moves: []tea.KeyPressMsg{
-				{Code: tea.KeyHome, Mod: tea.ModCtrl},
-				{Code: tea.KeyPgDown},
-				{Code: tea.KeyPgDown},
+				keypress.Ctrl(tea.KeyHome),
+				keypress.Special(tea.KeyPgDown),
+				keypress.Special(tea.KeyPgDown),
 			},
 			want: numbered[6:12],
 		},

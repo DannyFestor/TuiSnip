@@ -29,7 +29,8 @@ const (
 	defaultMaxHeight = 99
 	defaultMaxWidth  = 500
 
-	defaultMaxLines = 10000
+	defaultMaxLines   = 10000
+	wrapCacheCapacity = 10000
 
 	// 2 columns to account for the trailing space wrapping.
 	trailingSpace = 2
@@ -141,7 +142,7 @@ func New() Model {
 		Prompt:               lipgloss.ThickBorder().Left + " ",
 		Placeholder:          "",
 		styles:               DefaultDarkStyles(),
-		cache:                memoization.NewMemoCache[line, []wrappedLine](defaultMaxLines),
+		cache:                memoization.NewMemoCache[line, []wrappedLine](wrapCacheCapacity),
 		rowWraps:             &rowWraps{rows: nil},
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
@@ -1553,7 +1554,7 @@ type wrappedSegment struct {
 
 func (v *contentRenderer) writeLine(row int, line []rune) {
 	wrappedLines := v.model.wrappedRow(row)
-	if !v.drawn.overlap(v.displayLine, len(wrappedLines)) {
+	if !v.drawn.overlaps(v.displayLine, len(wrappedLines)) {
 		v.skipRows(len(wrappedLines))
 
 		return

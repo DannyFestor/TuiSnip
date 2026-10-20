@@ -944,3 +944,51 @@ func TestSession_language(t *testing.T) {
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: inputIn("", "", "Go", "")}}, screen.Outcomes())
 	})
 }
+
+func BenchmarkSession_keypress(b *testing.B) {
+	toStart := []tea.KeyPressMsg{keypress.Ctrl(tea.KeyHome)}
+	tests := []struct {
+		name    string
+		moves   []tea.KeyPressMsg
+		pressed tea.KeyPressMsg
+	}{
+		{name: "typing at the end of 256 KiB", moves: nil, pressed: keypress.Letter('x')},
+		{name: "typing at the start of 256 KiB", moves: toStart, pressed: keypress.Letter('x')},
+		{name: "breaking a line at the start of 256 KiB", moves: toStart, pressed: keypress.Special(tea.KeyEnter)},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			screen := editingStored(b, storedSnippet(b, typicalGoOfSize(maxContentBytes)))
+			screen.Press(enterContent()...)
+			screen.Press(tt.moves...)
+
+			for b.Loop() {
+				screen.Press(tt.pressed)
+				_ = screen.StyledScreen()
+			}
+		})
+	}
+}
+
+func typicalGoOfSize(size int) string {
+	const block = `func handle%d(w http.ResponseWriter, r *http.Request) {
+	if err := process(r, %d); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	fmt.Fprintf(w, "handled %d\n")
+}
+
+`
+
+	var source strings.Builder
+
+	for index := 0; source.Len() < size; index++ {
+		fmt.Fprintf(&source, block, index, index, index)
+	}
+
+	return source.String()[:size]
+}

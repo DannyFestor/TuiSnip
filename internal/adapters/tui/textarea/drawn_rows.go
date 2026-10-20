@@ -5,6 +5,6 @@ type drawnRows struct {
 	end   int
 }
 
-func (d drawnRows) overlap(first, count int) bool {
+func (d drawnRows) overlaps(first, count int) bool {
 	return first < d.end && first+count > d.first
 }

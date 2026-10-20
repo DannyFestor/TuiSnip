@@ -94,7 +94,7 @@ func TestImportFromSnippetsLabPutsItsTrashInTheTrashAndRestoresEachToItsFolderOr
 	_, err := app.ImportSnippetsLab.Run(t.Context(), library.ImportSnippetsLabInput{Path: snippetsLabFixture})
 
 	require.NoError(t, err)
-	listed := trashItems(t, app)
+	listed := testapp.TrashItems(t, app)
 	require.Len(t, listed, 2)
 	trashed, oldFlags := listed[0], listed[1]
 	assert.Equal(t, "trashed", trashed.Name())
@@ -109,7 +109,7 @@ func TestImportFromSnippetsLabPutsItsTrashInTheTrashAndRestoresEachToItsFolderOr
 	assert.Equal(t, cli.ID(), testapp.StoredSnippet(t, app, oldFlags.Snippet.ID()).FolderID())
 	assert.Equal(t, restoredTo(domain.FolderID{}), restore(t, app, trashed))
 	assert.True(t, testapp.StoredSnippet(t, app, trashed.Snippet.ID()).AtRoot())
-	assert.Empty(t, trashItems(t, app))
+	assert.Empty(t, testapp.TrashItems(t, app))
 }
 
 func TestImportFromSnippetsLabReusesAStoredTagOfTheSameName(t *testing.T) {

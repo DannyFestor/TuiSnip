@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
@@ -25,7 +24,7 @@ func TestEditing_highlighting(t *testing.T) {
 
 		for _, text := range []string{"second */", "func"} {
 			assert.Equal(t,
-				snippetPaneForeground(t, look.SchemeDark, content, text),
+				goInSnippetPane(look.SchemeDark, content).Foreground(t, text),
 				screencolour.Foreground(t, screen.StyledScreen(), text),
 				text,
 			)
@@ -43,7 +42,7 @@ func TestEditing_highlighting(t *testing.T) {
 		screen.Press(keypress.Typed("// note")...)
 
 		assert.Equal(t,
-			snippetPaneForeground(t, look.SchemeDark, content, "func"),
+			goInSnippetPane(look.SchemeDark, content).Foreground(t, "func"),
 			screencolour.Foreground(t, screen.StyledScreen(), "func"),
 		)
 		assert.Empty(t, screencolour.Foreground(t, screen.StyledScreen(), "// note"))
@@ -51,7 +50,7 @@ func TestEditing_highlighting(t *testing.T) {
 		screen.RunCommands()
 
 		assert.Equal(t,
-			snippetPaneForeground(t, look.SchemeDark, content+"// note", "// note"),
+			goInSnippetPane(look.SchemeDark, content+"// note").Foreground(t, "// note"),
 			screencolour.Foreground(t, screen.StyledScreen(), "// note"),
 		)
 	})
@@ -76,7 +75,7 @@ func TestEditing_highlighting(t *testing.T) {
 		screen.RunCommands()
 
 		assert.Equal(t,
-			snippetPaneForeground(t, look.SchemeDark, content, "func"),
+			goInSnippetPane(look.SchemeDark, content).Foreground(t, "func"),
 			screencolour.Foreground(t, screen.StyledScreen(), "func"),
 		)
 	})
@@ -92,18 +91,12 @@ func TestEditing_highlighting(t *testing.T) {
 		screen.RunCommands()
 
 		assert.Equal(t,
-			snippetPaneForeground(t, look.SchemeLight, content, "func"),
+			goInSnippetPane(look.SchemeLight, content).Foreground(t, "func"),
 			screencolour.Foreground(t, screen.StyledScreen(), "func"),
 		)
 	})
 }
 
-func snippetPaneForeground(t *testing.T, scheme look.Scheme, content, text string) string {
-	t.Helper()
-
-	highlighted := look.Highlight(content, "Go", look.NewStyles(scheme).CodeStyle)
-	coloured := screencolour.Foreground(t, highlighted, text)
-	require.NotEmpty(t, coloured, "the Snippet pane doesn't colour %q", text)
-
-	return coloured
+func goInSnippetPane(scheme look.Scheme, content string) screencolour.InSnippetPane {
+	return screencolour.InSnippetPane{Content: content, Language: "Go", Scheme: scheme}
 }

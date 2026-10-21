@@ -52,7 +52,7 @@ internal/
       browseselection/       the Browse selection: the Folder, the Root, the Tag, or the Trash whose contents the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away, a Tag is deleted, or the Trash is emptied in part or whole
       cursorlist/            the rows a list shows, the cursor kept in view, scrolling, moving by keys, clicks, and the wheel, the row that takes the cursor's after a delete; the Snippet list and the Trash list each embed one
-      editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
+      editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, its confirmations, and the Content colours it lexes off the UI thread once typing pauses
       folderoutline/         the Snippet pane's view of a Folder in the Trash: its counts, the day it was deleted, and its subtree outline
       folderpane/            the Folder pane: the Root, the Folder tree with Snippet counts, and the Trash row, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled

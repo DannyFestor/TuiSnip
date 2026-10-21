@@ -1,18 +1,18 @@
 package textarea_test
 
 import (
-	"regexp"
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/textarea"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/screencolour"
 )
 
-var redText = regexp.MustCompile(`\x1b\[(?:[0-9;]*;)?38;2;255;0;0(?:;[0-9;]*)?m([^\x1b]*)`)
+const red = "255;0;0"
 
 type fixedColours map[int][]lipgloss.Range
 
@@ -24,67 +24,76 @@ func TestModel_View_highlighted(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		content string
-		width   int
-		colours fixedColours
-		want    []string
+		name     string
+		content  string
+		width    int
+		colours  fixedColours
+		coloured []string
+		plain    []string
 	}{
 		{
-			name:    "colours the runes a range covers",
-			content: "let x",
-			width:   20,
-			colours: fixedColours{0: {red(0, 3)}},
-			want:    []string{"let"},
+			name:     "colours the runes a range covers",
+			content:  "let x",
+			width:    20,
+			colours:  fixedColours{0: {redRange(0, 3)}},
+			coloured: []string{"let"},
+			plain:    []string{"x"},
 		},
 		{
-			name:    "colours the logical line the range belongs to",
-			content: "one\ntwo",
-			width:   20,
-			colours: fixedColours{1: {red(1, 3)}},
-			want:    []string{"wo"},
+			name:     "colours the logical line the range belongs to",
+			content:  "one\ntwo",
+			width:    20,
+			colours:  fixedColours{1: {redRange(1, 3)}},
+			coloured: []string{"wo"},
+			plain:    []string{"one"},
 		},
 		{
-			name:    "counts a range on a wrapped row from the start of the line",
-			content: wrappedTabLine,
-			width:   10,
-			colours: fixedColours{0: {red(10, 12)}},
-			want:    []string{"jk"},
+			name:     "counts a range on a wrapped row from the start of the line",
+			content:  wrappedTabLine,
+			width:    10,
+			colours:  fixedColours{0: {redRange(10, 12)}},
+			coloured: []string{"jk"},
+			plain:    []string{"abcdefghi"},
 		},
 		{
-			name:    "colours each row a range runs across",
-			content: wrappedTabLine,
-			width:   10,
-			colours: fixedColours{0: {red(6, 12)}},
-			want:    []string{"ghi", "jk"},
+			name:     "colours each row a range runs across",
+			content:  wrappedTabLine,
+			width:    10,
+			colours:  fixedColours{0: {redRange(6, 12)}},
+			coloured: []string{"ghi", "jk"},
+			plain:    []string{"abcdef"},
 		},
 		{
-			name:    "draws a tab inside a range up to the next tab stop",
-			content: "a\tb",
-			width:   20,
-			colours: fixedColours{0: {red(0, 3)}},
-			want:    []string{"a   b"},
+			name:     "draws a tab inside a range up to the next tab stop",
+			content:  "a\tb",
+			width:    20,
+			colours:  fixedColours{0: {redRange(0, 3)}},
+			coloured: []string{"a   b"},
+			plain:    nil,
 		},
 		{
-			name:    "clips a range that runs past the end of the line",
-			content: "ab\ncd",
-			width:   20,
-			colours: fixedColours{0: {red(1, 40)}},
-			want:    []string{"b"},
+			name:     "clips a range that runs past the end of the line",
+			content:  "ab\ncd",
+			width:    20,
+			colours:  fixedColours{0: {redRange(1, 40)}},
+			coloured: []string{"b"},
+			plain:    []string{"a", "cd"},
 		},
 		{
-			name:    "skips a range that starts past the end of the line",
-			content: "ab\ncd",
-			width:   20,
-			colours: fixedColours{0: {red(5, 9)}},
-			want:    nil,
+			name:     "skips a range that starts past the end of the line",
+			content:  "ab\ncd",
+			width:    20,
+			colours:  fixedColours{0: {redRange(5, 9)}},
+			coloured: nil,
+			plain:    []string{"ab", "cd"},
 		},
 		{
-			name:    "colours only the part of a range after an earlier one it overlaps",
-			content: "abcd",
-			width:   20,
-			colours: fixedColours{0: {red(0, 2), red(1, 3)}},
-			want:    []string{"ab", "c"},
+			name:     "colours only the part of a range after an earlier one it overlaps",
+			content:  "abcd",
+			width:    20,
+			colours:  fixedColours{0: {redRange(0, 2), redRange(1, 3)}},
+			coloured: []string{"ab", "c"},
+			plain:    []string{"d"},
 		},
 	}
 
@@ -96,7 +105,7 @@ func TestModel_View_highlighted(t *testing.T) {
 			area.SetWidth(tt.width)
 			area.SetHighlighter(tt.colours)
 
-			assert.Equal(t, tt.want, colouredRed(area.View()))
+			assertColoured(t, area, tt.coloured, tt.plain)
 		})
 	}
 
@@ -104,46 +113,48 @@ func TestModel_View_highlighted(t *testing.T) {
 		t.Parallel()
 
 		area := newPlainTextarea(t, "abc")
-		area.SetHighlighter(fixedColours{0: {red(0, 3)}})
+		area.SetHighlighter(fixedColours{0: {redRange(0, 3)}})
 		area.SetCursorColumn(1)
 
-		assert.Equal(t, []string{"a", "c"}, colouredRed(area.View()))
+		assertColoured(t, area, []string{"a", "c"}, []string{"b"})
 	})
 
 	t.Run("leaves selected text to the selection", func(t *testing.T) {
 		t.Parallel()
 
 		area := newPlainTextarea(t, "abc")
-		area.SetHighlighter(fixedColours{0: {red(0, 3)}})
+		area.SetHighlighter(fixedColours{0: {redRange(0, 3)}})
 		area.SetCursorColumn(1)
 		area, _ = area.Update(keypress.Shift(tea.KeyRight))
 
-		assert.Equal(t, []string{"a", "c"}, colouredRed(area.View()))
+		assertColoured(t, area, []string{"a", "c"}, []string{"b"})
 	})
 
 	t.Run("draws the text uncoloured without a highlighter", func(t *testing.T) {
 		t.Parallel()
 
 		area := newPlainTextarea(t, "abc")
-		area.SetHighlighter(fixedColours{0: {red(0, 3)}})
+		area.SetHighlighter(fixedColours{0: {redRange(0, 3)}})
 		area.SetHighlighter(nil)
 
-		assert.Empty(t, colouredRed(area.View()))
+		assertColoured(t, area, nil, []string{"abc"})
 	})
 }
 
-func red(start, end int) lipgloss.Range {
+func redRange(start, end int) lipgloss.Range {
 	return lipgloss.NewRange(start, end, lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")))
 }
 
-func colouredRed(view string) []string {
-	var coloured []string
+func assertColoured(t *testing.T, area textarea.Model, coloured, plain []string) {
+	t.Helper()
 
-	for _, match := range redText.FindAllStringSubmatch(view, -1) {
-		if text := strings.TrimRight(match[1], " "); text != "" {
-			coloured = append(coloured, text)
-		}
+	view := area.View()
+
+	for _, text := range coloured {
+		assert.Equal(t, red, screencolour.Foreground(t, view, text), text)
 	}
 
-	return coloured
+	for _, text := range plain {
+		assert.Empty(t, screencolour.Foreground(t, view, text), text)
+	}
 }

@@ -140,7 +140,7 @@ func (f form) withLanguage(language value.Language) form {
 	return f
 }
 
-func (f form) withColours(colours textarea.LineHighlighter) form {
+func (f form) withContentColours(colours look.LineColours) form {
 	f.content.SetHighlighter(colours)
 
 	return f

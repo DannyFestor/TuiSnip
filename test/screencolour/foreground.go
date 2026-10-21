@@ -8,6 +8,8 @@ import (
 
 const (
 	parameterSeparator = ";"
+	resetCode          = "0"
+	defaultForeground  = "39"
 	foregroundCode     = "38"
 	backgroundCode     = "48"
 	rgbMode            = "2"
@@ -37,19 +39,25 @@ func Foreground(tb testing.TB, screen, text string) string {
 func foregroundIn(parameters []string, current string) string {
 	for index := 0; index < len(parameters); index++ {
 		code := parameters[index]
-		isRGB := (code == foregroundCode || code == backgroundCode) &&
-			index+rgbParameters <= len(parameters) && parameters[index+1] == rgbMode
 
-		if !isRGB {
-			continue
+		switch {
+		case code == "" || code == resetCode || code == defaultForeground:
+			current = ""
+		case isRGB(parameters, index):
+			if code == foregroundCode {
+				current = strings.Join(parameters[index+2:index+rgbParameters], parameterSeparator)
+			}
+
+			index += rgbParameters - 1
 		}
-
-		if code == foregroundCode {
-			current = strings.Join(parameters[index+2:index+rgbParameters], parameterSeparator)
-		}
-
-		index += rgbParameters - 1
 	}
 
 	return current
+}
+
+func isRGB(parameters []string, index int) bool {
+	code := parameters[index]
+
+	return (code == foregroundCode || code == backgroundCode) &&
+		index+rgbParameters <= len(parameters) && parameters[index+1] == rgbMode
 }

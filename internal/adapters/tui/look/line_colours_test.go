@@ -1,7 +1,6 @@
 package look_test
 
 import (
-	"fmt"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -25,7 +24,7 @@ func TestLineColours_Highlight(t *testing.T) {
 		keyword := rangeAt(t, colours.Highlight(0, nil), 0)
 
 		assert.Equal(t, 4, keyword.End)
-		assert.Equal(t, snippetPaneForeground(t, "func main() {}", "Go", "func"), foreground(keyword.Style))
+		assert.Equal(t, inSnippetPane("func main() {}").Foreground(t, "func"), foreground(t, keyword.Style))
 	})
 
 	t.Run("colours every line of a block comment as a comment", func(t *testing.T) {
@@ -37,7 +36,7 @@ func TestLineColours_Highlight(t *testing.T) {
 		second := rangeAt(t, colours.Highlight(1, nil), 0)
 
 		assert.Equal(t, len("second */"), second.End)
-		assert.Equal(t, snippetPaneForeground(t, content, "Go", "second */"), foreground(second.Style))
+		assert.Equal(t, inSnippetPane(content).Foreground(t, "second */"), foreground(t, second.Style))
 	})
 
 	t.Run("counts a tab as one rune", func(t *testing.T) {
@@ -91,18 +90,14 @@ func rangeAt(t *testing.T, ranges []lipgloss.Range, start int) lipgloss.Range {
 	return lipgloss.Range{}
 }
 
-func foreground(style lipgloss.Style) string {
-	red, green, blue, _ := style.GetForeground().RGBA()
-
-	return fmt.Sprintf("%d;%d;%d", red>>8, green>>8, blue>>8)
-}
-
-func snippetPaneForeground(t *testing.T, content, language, text string) string {
+func foreground(t *testing.T, style lipgloss.Style) string {
 	t.Helper()
 
-	highlighted := look.Highlight(content, language, look.NewStyles(look.SchemeDark).CodeStyle)
-	coloured := screencolour.Foreground(t, highlighted, text)
-	require.NotEmpty(t, coloured, "the Snippet pane doesn't colour %q", text)
+	const token = "token"
 
-	return coloured
+	return screencolour.Foreground(t, style.Render(token), token)
+}
+
+func inSnippetPane(content string) screencolour.InSnippetPane {
+	return screencolour.InSnippetPane{Content: content, Language: "Go", Scheme: look.SchemeDark}
 }

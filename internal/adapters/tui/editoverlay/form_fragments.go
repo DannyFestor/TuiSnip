@@ -24,6 +24,10 @@ func (f form) shownDraft() fragmentDraft {
 	return draft
 }
 
+func (f form) highlightSource(codeStyle string) highlightSource {
+	return highlightSource{content: f.content.Value(), language: f.language, codeStyle: codeStyle}
+}
+
 func (f form) shownFragmentName() string {
 	return f.shownDraft().tab().Label()
 }

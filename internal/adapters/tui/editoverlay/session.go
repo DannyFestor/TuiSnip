@@ -59,11 +59,10 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 		},
 		0,
 	)
-	opened, pause := newSession(keys, styles, options, blank.withContent(captured.Content)).
-		aimedAt(newSnippet{destination: destination}).
-		highlightRescheduled()
 
-	return opened, tea.Batch(cmd, pause)
+	return newSession(keys, styles, options, blank.withContent(captured.Content)).
+		aimedAt(newSnippet{destination: destination}).
+		highlightRescheduledAlong(cmd)
 }
 
 func Editing(keys binding.Keys, styles look.Styles, options Options, browsed BrowsedSnippet) (Session, tea.Cmd) {
@@ -102,9 +101,7 @@ func editingFragment(
 		defaultLanguage: opened.browsed.DefaultLanguage,
 	}
 
-	editing, pause := newSession(keys, styles, options, filled).aimedAt(target).highlightRescheduled()
-
-	return editing, tea.Batch(cmd, pause)
+	return newSession(keys, styles, options, filled).aimedAt(target).highlightRescheduledAlong(cmd)
 }
 
 func newSession(keys binding.Keys, styles look.Styles, options Options, opened form) Session {
@@ -206,35 +203,30 @@ func (s Session) formUpdated(msg tea.Msg) outcome.Step {
 	)
 
 	next.form, asked, cmd = s.form.update(msg)
-	next, pause := next.highlightRescheduled()
+	next, cmd = next.highlightRescheduledAlong(cmd)
 
-	return next.requested(asked).Running(tea.Batch(cmd, pause))
+	return next.requested(asked).Running(cmd)
 }
 
 func (s Session) stayingRescheduled() outcome.Step {
-	next, pause := s.highlightRescheduled()
+	next, pause := s.highlightRescheduledAlong(nil)
 
 	return outcome.Stay(next).Running(pause)
 }
 
-func (s Session) highlightRescheduled() (Session, tea.Cmd) {
+func (s Session) highlightRescheduledAlong(cmd tea.Cmd) (Session, tea.Cmd) {
 	var pause tea.Cmd
 
 	s.highlight, pause = s.highlight.rescheduled()
 
-	return s, pause
+	return s, tea.Batch(cmd, pause)
 }
 
 func (s Session) highlightDue(msg HighlightDue) outcome.Step {
 	var lexing tea.Cmd
 
 	next := s
-	shown := s.form.shownDraft()
-	next.highlight, lexing = s.highlight.due(msg, highlightSource{
-		content:   shown.content,
-		language:  shown.language,
-		codeStyle: s.styles.CodeStyle,
-	})
+	next.highlight, lexing = s.highlight.due(msg, s.form.highlightSource(s.styles.CodeStyle))
 
 	return outcome.Stay(next).Running(lexing)
 }
@@ -244,7 +236,7 @@ func (s Session) highlighted(msg ContentHighlighted) Session {
 
 	s.highlight, landed = s.highlight.landed(msg)
 	if landed {
-		s.form = s.form.withColours(msg.colours)
+		s.form = s.form.withContentColours(msg.colours)
 	}
 
 	return s

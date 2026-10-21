@@ -10,14 +10,14 @@ import (
 )
 
 type LineColours struct {
-	looks []lipgloss.Style
-	lines [][]colouredSpan
+	tokenStyles []lipgloss.Style
+	lines       [][]colouredSpan
 }
 
 func ColourLines(content, language, codeStyle string) LineColours {
 	iterator, err := tokenise(content, language)
 	if err != nil {
-		return LineColours{looks: nil, lines: nil}
+		return LineColours{tokenStyles: nil, lines: nil}
 	}
 
 	colouring := newLineColouring(styles.Get(codeStyle))
@@ -25,7 +25,7 @@ func ColourLines(content, language, codeStyle string) LineColours {
 		colouring.add(token)
 	}
 
-	return LineColours{looks: colouring.looks, lines: colouring.lines}
+	return LineColours{tokenStyles: colouring.tokenStyles, lines: colouring.lines}
 }
 
 func (c LineColours) Highlight(row int, _ []rune) []lipgloss.Range {
@@ -35,35 +35,35 @@ func (c LineColours) Highlight(row int, _ []rune) []lipgloss.Range {
 
 	ranges := make([]lipgloss.Range, 0, len(c.lines[row]))
 	for _, span := range c.lines[row] {
-		ranges = append(ranges, lipgloss.NewRange(span.start, span.end, c.looks[span.look]))
+		ranges = append(ranges, lipgloss.NewRange(span.start, span.end, c.tokenStyles[span.tokenStyle]))
 	}
 
 	return ranges
 }
 
 // A lipgloss.Style is over 600 bytes, and 256 KiB of Content holds tens of
-// thousands of tokens, so a span points into a table of looks instead.
+// thousands of tokens, so a span points into a table of styles instead.
 type colouredSpan struct {
-	start int
-	end   int
-	look  int
+	start      int
+	end        int
+	tokenStyle int
 }
 
 type lineColouring struct {
-	style     *chroma.Style
-	looks     []lipgloss.Style
-	lookIndex map[chroma.TokenType]int
-	lines     [][]colouredSpan
-	column    int
+	codeStyle   *chroma.Style
+	tokenStyles []lipgloss.Style
+	styleIndex  map[chroma.TokenType]int
+	lines       [][]colouredSpan
+	column      int
 }
 
-func newLineColouring(style *chroma.Style) *lineColouring {
+func newLineColouring(codeStyle *chroma.Style) *lineColouring {
 	return &lineColouring{
-		style:     withoutBackground(style),
-		looks:     nil,
-		lookIndex: map[chroma.TokenType]int{},
-		lines:     [][]colouredSpan{nil},
-		column:    0,
+		codeStyle:   withoutBackground(codeStyle),
+		tokenStyles: nil,
+		styleIndex:  map[chroma.TokenType]int{},
+		lines:       [][]colouredSpan{nil},
+		column:      0,
 	}
 }
 
@@ -82,57 +82,61 @@ func (c *lineColouring) colour(tokenType chroma.TokenType, runes int) {
 	start := c.column
 	c.column += runes
 
-	entry := c.style.Get(tokenType)
+	entry := c.codeStyle.Get(tokenType)
 	if runes == 0 || entry.IsZero() {
 		return
 	}
 
 	row := len(c.lines) - 1
-	c.lines[row] = append(c.lines[row], colouredSpan{start: start, end: c.column, look: c.lookOf(tokenType, entry)})
+	c.lines[row] = append(c.lines[row], colouredSpan{
+		start:      start,
+		end:        c.column,
+		tokenStyle: c.styleIndexOf(tokenType, entry),
+	})
 }
 
-func (c *lineColouring) lookOf(tokenType chroma.TokenType, entry chroma.StyleEntry) int {
-	if index, ok := c.lookIndex[tokenType]; ok {
+func (c *lineColouring) styleIndexOf(tokenType chroma.TokenType, entry chroma.StyleEntry) int {
+	if index, ok := c.styleIndex[tokenType]; ok {
 		return index
 	}
 
-	index := len(c.looks)
-	c.looks = append(c.looks, entryLook(entry))
-	c.lookIndex[tokenType] = index
+	index := len(c.tokenStyles)
+	c.tokenStyles = append(c.tokenStyles, entryStyle(entry))
+	c.styleIndex[tokenType] = index
 
 	return index
 }
 
-func entryLook(entry chroma.StyleEntry) lipgloss.Style {
-	look := lipgloss.NewStyle()
+func entryStyle(entry chroma.StyleEntry) lipgloss.Style {
+	style := lipgloss.NewStyle()
 
 	if entry.Bold == chroma.Yes {
-		look = look.Bold(true)
+		style = style.Bold(true)
 	}
 
 	if entry.Underline == chroma.Yes {
-		look = look.Underline(true)
+		style = style.Underline(true)
 	}
 
 	if entry.Italic == chroma.Yes {
-		look = look.Italic(true)
+		style = style.Italic(true)
 	}
 
 	if entry.Colour.IsSet() {
-		look = look.Foreground(lipgloss.Color(entry.Colour.String()))
+		style = style.Foreground(lipgloss.Color(entry.Colour.String()))
 	}
 
 	if entry.Background.IsSet() {
-		look = look.Background(lipgloss.Color(entry.Background.String()))
+		style = style.Background(lipgloss.Color(entry.Background.String()))
 	}
 
-	return look
+	return style
 }
 
 // The Snippet pane's TTY16m formatter clears the style's background before
 // colouring, so the textarea drops it too to show the same colours.
-func withoutBackground(style *chroma.Style) *chroma.Style {
-	builder := style.Builder()
+func withoutBackground(codeStyle *chroma.Style) *chroma.Style {
+	builder := codeStyle.Builder()
 	background := builder.Get(chroma.Background)
 	background.Background = 0
 	background.NoInherit = true
@@ -140,7 +144,7 @@ func withoutBackground(style *chroma.Style) *chroma.Style {
 
 	cleared, err := builder.Build()
 	if err != nil {
-		return style
+		return codeStyle
 	}
 
 	return cleared

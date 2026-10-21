@@ -37,12 +37,13 @@ fi
 	worktreeDir     = ".claude/worktrees/wt"
 	worktreeBranch  = "agent"
 
-	commentSession  = "session-1"
-	commentedPath   = "internal/domain/folder.go"
-	restatement     = "// Trim the name."
-	selfCheckHint   = "Delete it if it says what the code does"
-	askHint         = "the user will be asked"
-	resubmittedHint = "submitted it again after a self-check"
+	commentSession   = "session-1"
+	commentedPath    = "internal/domain/folder.go"
+	restatement      = "// Trim the name."
+	selfCheckHint    = "Delete it if it says what the code does"
+	smallestEditHint = "the smallest edit that adds every comment listed above"
+	askHint          = "The guard then asks the user."
+	resubmittedHint  = "submitted it again after a self-check"
 )
 
 type result struct {
@@ -306,6 +307,7 @@ func TestClaudeAdapter_PreEditComment(t *testing.T) {
 
 	assert.Equal(t, exitDeny, first.code)
 	assert.Contains(t, first.stderr, restatement)
+	assert.Contains(t, first.stderr, smallestEditHint)
 	assert.Contains(t, first.stderr, askHint)
 	assert.Equal(t, exitPass, second.code, second.stderr)
 	assert.Equal(t, "ask", decode[claudeOutput](t, second.stdout).HookSpecificOutput.PermissionDecision)
@@ -624,6 +626,7 @@ func TestOpenCodeAdapter_PreEdit(t *testing.T) {
 
 		assert.Equal(t, exitDeny, first.code)
 		assert.Contains(t, first.stderr, restatement)
+		assert.Contains(t, first.stderr, smallestEditHint)
 		assert.NotContains(t, first.stderr, askHint)
 		assert.Equal(t, exitPass, second.code, second.stderr)
 	})
@@ -727,6 +730,7 @@ func TestGuardGoComments(t *testing.T) {
 
 		assert.Equal(t, exitDeny, first.code)
 		assert.Contains(t, first.stderr, selfCheckHint)
+		assert.Contains(t, first.stderr, smallestEditHint)
 		assert.Equal(t, exitAsk, second.code)
 		assert.Contains(t, second.stderr, resubmittedHint)
 	})

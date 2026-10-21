@@ -52,7 +52,7 @@ internal/
       browseselection/       the Browse selection: the Folder, the Root, the Tag, or the Trash whose contents the Snippet list shows
       confirm/               the [y/N] confirmation opened before work is thrown away, a Tag is deleted, or the Trash is emptied in part or whole
       cursorlist/            the rows a list shows, the cursor kept in view, scrolling, moving by keys, clicks, and the wheel, the row that takes the cursor's after a delete; the Snippet list and the Trash list each embed one
-      editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, and its confirmations
+      editoverlay/           the edit overlay: the form, the Fragments it adds, removes, reorders and titles, the Tag editor and the Language picker it opens, the save it asks for, its confirmations, and the Content colours it lexes off the UI thread once typing pauses
       folderoutline/         the Snippet pane's view of a Folder in the Trash: its counts, the day it was deleted, and its subtree outline
       folderpane/            the Folder pane: the Root, the Folder tree with Snippet counts, and the Trash row, the cursor that sets the Browse selection, new and renamed Folders typed in place, the ask to delete one, collapsing and expanding Folders
       folderpath/            how a Snippet's Folder path is spelled
@@ -61,7 +61,7 @@ internal/
       helpoverlay/           the help overlay: the main screen's Bindings with every configured key and their labels
       input/                 the text inputs components embed, with clipboard access turned off
       languagepicker/        the Language picker: the curated or every Language, and the outcome its opener builds for the pick
-      look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting, the empty hint, the generic failure text
+      look/                  sizes and the resized message, frames, rows, the themes, colour schemes, styles, and the restyled message, syntax highlighting and the per-line colours the Content textarea draws, the empty hint, the generic failure text
       mainscreen/            the main screen at the bottom of the Overlay stack: the four Panes, focus, the layout, the status line, the asks to copy, duplicate, and delete the selected Snippet, and the Trash list and its outline in place of the Snippet list and pane while the Trash is the Browse selection, with the questions that delete a Trash item permanently and empty the Trash
       nameinput/             the row a Folder or Tag name is typed into in place, refusing a name its owner's rule rejects
       move/                  the ways a cursor or a scrolled view moves, and the movement Bindings that ask for each
@@ -79,7 +79,7 @@ internal/
       tageditor/             the Tag editor: every Tag with its Snippet count, toggled for the edited Snippet, new Tags named in the filter, the toggles reported on close
       tagpane/               the Tag pane: each Tag with its Snippet count, the cursor that sets the Browse selection, "No Tags yet." until Tags exist, new and renamed Tags typed in place, the ask to delete one
       tagrefusal/            how a Tag name that breaks a name rule is refused, shared by the Tag pane and the Tag editor
-      textarea/              TuiSnip's fork of the Bubbles v2.2.1 textarea, the Content textarea of the edit overlay and Capture (ADR 0004)
+      textarea/              TuiSnip's fork of the Bubbles v2.2.1 textarea, the Content textarea of the edit overlay and Capture, with the bubbles#1030 line highlighter hook (ADR 0004)
         runeutil/            the fork's copy of upstream's internal rune sanitiser
         memoization/         the fork's copy of upstream's internal LRU cache for wrapped lines
   bootstrap/                 composition root
@@ -88,9 +88,10 @@ test/
   feature/                   Actions against a temporary SQLite file (build tag feature)
   e2e/                       teatest against the full TUI (build tag e2e)
   testapp/                   the harness both tiers start the app with: temporary HOME, fake clipboard tool, Folders, Tags, and Snippets seeded and read back through Actions, the Trash read back, and Snippets with several Fragments inserted through the repository
-  keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl chords, typed text
-  overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests
+  keypress/                  the fake key presses every TUI test and the e2e tier send: letters, named keys, Ctrl and Shift chords, typed text
+  overlaytest/               drives one Overlay through a real Overlay stack, for each stack member's black-box tests, running the commands it returns on request
   screencell/                finds the cell that shows a text on a rendered screen, so tests click what the user sees
+  screencolour/              reads the colour a rendered screen draws a text in, so tests compare the colours the user sees
   foldertree/                the sample Folder tree TUI tests browse
   testsettings/              the default tui.Settings, loaded from the embedded config through config and bootstrap, for TUI tests
 sqlc.yaml

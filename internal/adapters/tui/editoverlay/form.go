@@ -48,6 +48,7 @@ type form struct {
 	field         domain.Field
 	inContent     bool
 	invalid       []domain.Field
+	colourResets  int
 }
 
 func newForm(keys formKeys, styles look.Styles, original entered, shown int) (form, tea.Cmd) {
@@ -65,6 +66,7 @@ func newForm(keys formKeys, styles look.Styles, original entered, shown int) (fo
 		field:         domain.FieldTitle,
 		inContent:     false,
 		invalid:       nil,
+		colourResets:  0,
 	}
 	filled.title.SetValue(original.title)
 	filled.description.SetValue(original.description)
@@ -136,6 +138,22 @@ func (f form) withInvalid(fieldErrors []domain.FieldError) form {
 
 func (f form) withLanguage(language value.Language) form {
 	f.language = language
+	if language == value.PlainText() {
+		return f.withoutColours()
+	}
+
+	return f
+}
+
+func (f form) withoutColours() form {
+	f.content.SetHighlighter(nil)
+	f.colourResets++
+
+	return f
+}
+
+func (f form) withContentColours(colours look.LineColours) form {
+	f.content.SetHighlighter(colours)
 
 	return f
 }

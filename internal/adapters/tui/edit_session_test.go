@@ -15,6 +15,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/domain/value"
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
+	"github.com/DannyFestor/TuiSnip/test/screencolour"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -160,6 +161,20 @@ func TestModel_editOverlay(t *testing.T) {
 
 		assert.NotContains(t, screen.screen(), editOverlayTitle)
 		assert.Contains(t, screen.screen(), "Snippet 1 edited")
+	})
+
+	t.Run("colours the Content as the Snippet pane does", func(t *testing.T) {
+		t.Parallel()
+
+		lister := listerOf(t, sampleSnippets(t)...)
+		screen := start(t, updatingModel(t, NewMockSnippetUpdater(t), lister), wideWidth, wideHeight)
+		inSnippetPane := screencolour.Foreground(t, screen.styledScreen(), "return")
+
+		screen.press(keypress.Typed("3e")...)
+
+		assert.Contains(t, screen.screen(), editOverlayTitle)
+		assert.NotEmpty(t, inSnippetPane)
+		assert.Equal(t, inSnippetPane, screencolour.Foreground(t, screen.styledScreen(), "return"))
 	})
 
 	t.Run("keeps a Tag as the Browse selection after the save", func(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/binding"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/browseselection"
@@ -20,6 +21,7 @@ import (
 	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/overlaytest"
+	"github.com/DannyFestor/TuiSnip/test/screencolour"
 	"github.com/DannyFestor/TuiSnip/test/testsettings"
 )
 
@@ -674,7 +676,7 @@ func TestSession_paste(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: full})
-		screen.Press(shiftLeft(), shiftLeft(), shiftLeft())
+		screen.Press(keypress.Shift(tea.KeyLeft), keypress.Shift(tea.KeyLeft), keypress.Shift(tea.KeyLeft))
 		screen.Send(tea.PasteMsg{Content: "fin"})
 		screen.Press(save())
 
@@ -715,31 +717,31 @@ func TestSession_indent(t *testing.T) {
 		{
 			name:    "dedent removes four spaces from the cursor's line only",
 			pasted:  "    first\n      second\n    third",
-			pressed: shiftTab(),
+			pressed: keypress.Shift(tea.KeyTab),
 			want:    "    first\n  second\n    third",
 		},
 		{
 			name:    "dedent removes the spaces a line has when it has fewer than four",
 			pasted:  "first\n  second\nthird",
-			pressed: shiftTab(),
+			pressed: keypress.Shift(tea.KeyTab),
 			want:    "first\nsecond\nthird",
 		},
 		{
 			name:    "dedent removes one tab from a line that starts with a tab",
 			pasted:  "first\n\t\t  second\nthird",
-			pressed: shiftTab(),
+			pressed: keypress.Shift(tea.KeyTab),
 			want:    "first\n\t  second\nthird",
 		},
 		{
 			name:    "dedent removes the leading spaces before a tab",
 			pasted:  "first\n  \tsecond\nthird",
-			pressed: shiftTab(),
+			pressed: keypress.Shift(tea.KeyTab),
 			want:    "first\n\tsecond\nthird",
 		},
 		{
 			name:    "dedent leaves an unindented line unchanged",
 			pasted:  "first\nsecond\nthird",
-			pressed: shiftTab(),
+			pressed: keypress.Shift(tea.KeyTab),
 			want:    "first\nsecond\nthird",
 		},
 	}
@@ -777,7 +779,7 @@ func TestSession_indent(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "    ab"})
-		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
+		screen.Press(keypress.Special(tea.KeyLeft), keypress.Shift(tea.KeyTab), keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())
 	})
@@ -789,7 +791,7 @@ func TestSession_indent(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "\tab"})
-		screen.Press(keypress.Special(tea.KeyLeft), shiftTab(), keypress.Letter('x'), save())
+		screen.Press(keypress.Special(tea.KeyLeft), keypress.Shift(tea.KeyTab), keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "axb")}}, screen.Outcomes())
 	})
@@ -801,7 +803,7 @@ func TestSession_indent(t *testing.T) {
 
 		screen.Press(enterContent()...)
 		screen.Send(tea.PasteMsg{Content: "      a"})
-		screen.Press(keypress.Special(tea.KeyHome), keypress.Special(tea.KeyRight), shiftTab())
+		screen.Press(keypress.Special(tea.KeyHome), keypress.Special(tea.KeyRight), keypress.Shift(tea.KeyTab))
 		screen.Press(keypress.Letter('x'), save())
 
 		assert.Equal(t, []outcome.Outcome{outcome.SaveRequested{Input: input("", "", "x  a")}}, screen.Outcomes())
@@ -990,6 +992,12 @@ func BenchmarkSession_keypress(b *testing.B) {
 			screen := editingStored(b, storedSnippet(b, typicalGoOfSize(maxContentBytes)))
 			screen.Press(enterContent()...)
 			screen.Press(tt.moves...)
+			screen.RunCommands()
+			require.NotEmpty(
+				b,
+				screencolour.Foreground(b, screen.StyledScreen(), "return"),
+				"Content is not highlighted",
+			)
 
 			for b.Loop() {
 				screen.Press(tt.pressed)

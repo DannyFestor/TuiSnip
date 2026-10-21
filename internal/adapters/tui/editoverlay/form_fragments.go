@@ -24,6 +24,15 @@ func (f form) shownDraft() fragmentDraft {
 	return draft
 }
 
+func (f form) highlightSource(codeStyle string) highlightSource {
+	return highlightSource{
+		content:      f.content.Value(),
+		language:     f.language,
+		codeStyle:    codeStyle,
+		colourResets: f.colourResets,
+	}
+}
+
 func (f form) shownFragmentName() string {
 	return f.shownDraft().tab().Label()
 }
@@ -94,6 +103,10 @@ func (f form) withTabsChanged(change func(fragmentTabs) fragmentTabs) form {
 
 func (f form) withDraft(draft fragmentDraft) form {
 	next := f
+	if draft.content != f.content.Value() {
+		next = next.withoutColours()
+	}
+
 	next.fragmentTitle.SetValue(draft.title)
 	next.language = draft.language
 

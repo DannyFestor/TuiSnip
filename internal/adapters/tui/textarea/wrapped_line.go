@@ -26,10 +26,6 @@ func (w wrappedLine) widthWith(tail ...[]rune) int {
 	return tabstop.WidthFrom(slices.Concat(append([][]rune{w.runes}, tail...)...), w.startCell)
 }
 
-func (w wrappedLine) drawn() string {
-	return tabstop.ExpandFrom(w.runes, w.startCell)
-}
-
 func (w wrappedLine) following() wrappedLine {
 	return wrappedLine{runes: []rune{}, startCell: w.startCell + w.width()}
 }
@@ -42,15 +38,8 @@ func (w wrappedLine) withoutTrailingWhitespace() wrappedLine {
 	return w
 }
 
-func (w wrappedLine) split(start, end int) drawnSplit {
-	insideCell := w.startCell + w.widthBefore(start)
-	afterCell := insideCell + tabstop.WidthFrom(w.runes[start:end], insideCell)
-
-	return drawnSplit{
-		before: tabstop.ExpandFrom(w.runes[:start], w.startCell),
-		inside: tabstop.ExpandFrom(w.runes[start:end], insideCell),
-		after:  tabstop.ExpandFrom(w.runes[end:], afterCell),
-	}
+func (w wrappedLine) drawnBetween(start, end int) string {
+	return tabstop.ExpandFrom(w.runes[start:end], w.startCell+w.widthBefore(start))
 }
 
 func (w wrappedLine) runeIndexAt(cell int) int {

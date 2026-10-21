@@ -32,13 +32,14 @@ const (
 )
 
 type Session struct {
-	keys    binding.Keys
-	options Options
-	form    form
-	target  saveTarget
-	styles  look.Styles
-	outer   look.Size
-	saving  bool
+	keys      binding.Keys
+	options   Options
+	form      form
+	target    saveTarget
+	styles    look.Styles
+	outer     look.Size
+	saving    bool
+	highlight contentHighlight
 }
 
 func New(keys binding.Keys, styles look.Styles, options Options, destination Destination) (Session, tea.Cmd) {
@@ -58,9 +59,10 @@ func Capturing(keys binding.Keys, styles look.Styles, options Options, captured 
 		},
 		0,
 	)
-	opened := blank.withContent(captured.Content)
 
-	return newSession(keys, styles, options, opened).aimedAt(newSnippet{destination: destination}), cmd
+	return newSession(keys, styles, options, blank.withContent(captured.Content)).
+		aimedAt(newSnippet{destination: destination}).
+		highlightRescheduledAlong(cmd)
 }
 
 func Editing(keys binding.Keys, styles look.Styles, options Options, browsed BrowsedSnippet) (Session, tea.Cmd) {
@@ -99,7 +101,7 @@ func editingFragment(
 		defaultLanguage: opened.browsed.DefaultLanguage,
 	}
 
-	return newSession(keys, styles, options, filled).aimedAt(target), cmd
+	return newSession(keys, styles, options, filled).aimedAt(target).highlightRescheduledAlong(cmd)
 }
 
 func newSession(keys binding.Keys, styles look.Styles, options Options, opened form) Session {
@@ -111,6 +113,11 @@ func newSession(keys binding.Keys, styles look.Styles, options Options, opened f
 		styles:  styles,
 		outer:   look.Size{Width: 0, Height: 0},
 		saving:  false,
+		highlight: contentHighlight{
+			scheduled: 0,
+			shown:     0,
+			requested: highlightSource{content: "", language: value.Language{}, codeStyle: "", colourResets: 0},
+		},
 	}
 }
 
@@ -125,7 +132,11 @@ func (s Session) Update(msg tea.Msg) outcome.Step {
 	case look.Resized:
 		return outcome.Stay(s.resized(msg.Box))
 	case look.Restyled:
-		return outcome.Stay(s.restyled(msg.Styles))
+		return s.restyled(msg.Styles).stayingRescheduled()
+	case HighlightDue:
+		return s.highlightDue(msg)
+	case ContentHighlighted:
+		return outcome.Stay(s.highlighted(msg))
 	case SaveFinished:
 		return s.saved(msg)
 	case arrived.Tags:
@@ -144,7 +155,7 @@ func (s Session) Received(received outcome.Outcome) outcome.Step {
 	case outcome.SaveAtRootConfirmed:
 		return s.aimedAt(atRoot()).saveStarted()
 	case outcome.LanguagePicked, outcome.FragmentRemoveConfirmed, outcome.TagsEdited, outcome.ContentEdited:
-		return outcome.Stay(s.formChangedBy(received))
+		return s.formChangedBy(received).stayingRescheduled()
 	case outcome.QuitAsked:
 		if s.form.changed() {
 			return s.confirmingUnsaved(quitQuestion, outcome.QuitConfirmed{})
@@ -192,8 +203,43 @@ func (s Session) formUpdated(msg tea.Msg) outcome.Step {
 	)
 
 	next.form, asked, cmd = s.form.update(msg)
+	next, cmd = next.highlightRescheduledAlong(cmd)
 
 	return next.requested(asked).Running(cmd)
+}
+
+func (s Session) stayingRescheduled() outcome.Step {
+	next, pause := s.highlightRescheduledAlong(nil)
+
+	return outcome.Stay(next).Running(pause)
+}
+
+func (s Session) highlightRescheduledAlong(cmd tea.Cmd) (Session, tea.Cmd) {
+	var pause tea.Cmd
+
+	s.highlight, pause = s.highlight.rescheduled()
+
+	return s, tea.Batch(cmd, pause)
+}
+
+func (s Session) highlightDue(msg HighlightDue) outcome.Step {
+	var lexing tea.Cmd
+
+	next := s
+	next.highlight, lexing = s.highlight.due(msg, s.form.highlightSource(s.styles.CodeStyle))
+
+	return outcome.Stay(next).Running(lexing)
+}
+
+func (s Session) highlighted(msg ContentHighlighted) Session {
+	var landed bool
+
+	s.highlight, landed = s.highlight.landed(msg, s.form.colourResets)
+	if landed {
+		s.form = s.form.withContentColours(msg.colours)
+	}
+
+	return s
 }
 
 func (s Session) requested(asked request) outcome.Step {
@@ -333,7 +379,7 @@ func (s Session) refused(err error) outcome.Step {
 	next := s
 	next.form = s.form.showingFragmentOf(err).withInvalid(fieldErrors)
 
-	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
+	return next.stayingRescheduled().Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
 }
 
 func (s Session) confirmingUnsaved(question string, onYes outcome.Outcome) outcome.Step {

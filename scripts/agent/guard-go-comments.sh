@@ -65,10 +65,13 @@ listed_comments() {
 }
 
 deny_for_self_check() {
-	local retry_hint="$1"
+	local ask="$1"
 
 	echo "Delete it if it says what the code does (docs/standards/code.md#comments)."
-	echo "If it says why, $retry_hint"
+	echo "If it says why, submit the same comment again with the smallest edit that adds it, not by rewriting the whole file."
+	if [[ "$ask" == true ]]; then
+		echo "The guard then asks the user."
+	fi
 }
 
 decide() {
@@ -78,11 +81,7 @@ decide() {
 
 	if ! grep -qxF "$fingerprint" "$approvals_file" 2>/dev/null; then
 		echo "$fingerprint" >>"$approvals_file"
-		if [[ "$ask" == true ]]; then
-			deny_for_self_check "submit it again and the user will be asked."
-		else
-			deny_for_self_check "submit it again."
-		fi
+		deny_for_self_check "$ask"
 		return "$EXIT_DENY"
 	fi
 	if [[ "$ask" == true ]]; then

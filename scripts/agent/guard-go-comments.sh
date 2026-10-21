@@ -68,7 +68,8 @@ deny_for_self_check() {
 	local ask="$1"
 
 	echo "Delete it if it says what the code does (docs/standards/code.md#comments)."
-	echo "If it says why, submit the same comment again with the smallest edit that adds it, not by rewriting the whole file."
+	echo "If it says why, submit it again in the smallest edit that adds every comment listed above."
+	echo "Don't rewrite the whole file."
 	if [[ "$ask" == true ]]; then
 		echo "The guard then asks the user."
 	fi

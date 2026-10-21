@@ -17,7 +17,7 @@ import (
 
 const (
 	teaImportPath       = "charm.land/bubbletea/v2"
-	componentImportPath = "github.com/DannyFestor/TuiSnip/internal/adapters/tui/"
+	tuiSubpackagePrefix = "github.com/DannyFestor/TuiSnip/internal/adapters/tui/"
 	routingMethod       = "overlaysUpdatedSharingArrivals"
 	modelPackageDir     = "."
 	testFileSuffix      = "_test.go"
@@ -36,9 +36,9 @@ func TestModel_routesComponentMessages(t *testing.T) {
 }
 
 type sourceFile struct {
-	syntax      *ast.File
-	imports     map[string]string
-	isComponent bool
+	syntax       *ast.File
+	imports      map[string]string
+	inSubpackage bool
 }
 
 func parsedSources(t *testing.T) []sourceFile {
@@ -72,14 +72,14 @@ func isProductionGoFile(entry fs.DirEntry) bool {
 	return !entry.IsDir() && strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, testFileSuffix)
 }
 
-func newSourceFile(syntax *ast.File, isComponent bool) sourceFile {
+func newSourceFile(syntax *ast.File, inSubpackage bool) sourceFile {
 	imports := make(map[string]string, len(syntax.Imports))
 	for _, spec := range syntax.Imports {
 		importPath := strings.Trim(spec.Path.Value, "\"`")
 		imports[importName(spec, importPath)] = importPath
 	}
 
-	return sourceFile{syntax: syntax, imports: imports, isComponent: isComponent}
+	return sourceFile{syntax: syntax, imports: imports, inSubpackage: inSubpackage}
 }
 
 func importName(spec *ast.ImportSpec, importPath string) string {
@@ -90,26 +90,40 @@ func importName(spec *ast.ImportSpec, importPath string) string {
 	return path.Base(importPath)
 }
 
-func (f sourceFile) componentType(typeExpr ast.Expr) (string, bool) {
+func (f sourceFile) subpackageTypes(typeExprs []ast.Expr) []string {
+	var types []string
+
+	for _, typeExpr := range typeExprs {
+		if name, ok := f.subpackageType(typeExpr); ok {
+			types = append(types, name)
+		}
+	}
+
+	return types
+}
+
+func (f sourceFile) subpackageType(typeExpr ast.Expr) (string, bool) {
 	switch typeExpr := typeExpr.(type) {
 	case *ast.Ident:
-		return f.syntax.Name.Name + "." + typeExpr.Name, f.isComponent
+		return f.syntax.Name.Name + "." + typeExpr.Name, f.inSubpackage
 	case *ast.SelectorExpr:
-		return f.importedComponentType(typeExpr)
+		importPath, ok := f.importPathOf(typeExpr)
+
+		return path.Base(importPath) + "." + typeExpr.Sel.Name, ok && strings.HasPrefix(importPath, tuiSubpackagePrefix)
 	default:
 		return "", false
 	}
 }
 
-func (f sourceFile) importedComponentType(selector *ast.SelectorExpr) (string, bool) {
+func (f sourceFile) importPathOf(selector *ast.SelectorExpr) (string, bool) {
 	qualifier, ok := selector.X.(*ast.Ident)
 	if !ok {
 		return "", false
 	}
 
-	importPath := f.imports[qualifier.Name]
+	importPath, ok := f.imports[qualifier.Name]
 
-	return path.Base(importPath) + "." + selector.Sel.Name, strings.HasPrefix(importPath, componentImportPath)
+	return importPath, ok
 }
 
 func (f sourceFile) returnsMsg(signature *ast.FuncType) bool {
@@ -122,9 +136,9 @@ func (f sourceFile) returnsMsg(signature *ast.FuncType) bool {
 		return false
 	}
 
-	qualifier, ok := selector.X.(*ast.Ident)
+	importPath, ok := f.importPathOf(selector)
 
-	return ok && f.imports[qualifier.Name] == teaImportPath && selector.Sel.Name == "Msg"
+	return ok && importPath == teaImportPath && selector.Sel.Name == "Msg"
 }
 
 func componentMessagesReturnedAsMsg(sources []sourceFile) []string {
@@ -133,7 +147,7 @@ func componentMessagesReturnedAsMsg(sources []sourceFile) []string {
 	for _, source := range sources {
 		ast.Inspect(source.syntax, func(node ast.Node) bool {
 			if body, ok := source.msgFunctionBody(node); ok {
-				returned = append(returned, source.componentLiteralsReturnedBy(body)...)
+				returned = append(returned, source.subpackageTypes(literalTypesReturnedBy(body))...)
 			}
 
 			return true
@@ -154,34 +168,29 @@ func (f sourceFile) msgFunctionBody(node ast.Node) (*ast.BlockStmt, bool) {
 	}
 }
 
-func (f sourceFile) componentLiteralsReturnedBy(body *ast.BlockStmt) []string {
-	var returned []string
+func literalTypesReturnedBy(body *ast.BlockStmt) []ast.Expr {
+	var types []ast.Expr
 
 	ast.Inspect(body, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncLit:
 			return false
 		case *ast.ReturnStmt:
-			returned = append(returned, f.componentLiteralTypes(node.Results)...)
+			types = append(types, literalTypes(node.Results)...)
 		}
 
 		return true
 	})
 
-	return returned
+	return types
 }
 
-func (f sourceFile) componentLiteralTypes(results []ast.Expr) []string {
-	var types []string
+func literalTypes(results []ast.Expr) []ast.Expr {
+	var types []ast.Expr
 
 	for _, result := range results {
-		literal, ok := result.(*ast.CompositeLit)
-		if !ok {
-			continue
-		}
-
-		if name, isComponent := f.componentType(literal.Type); isComponent {
-			types = append(types, name)
+		if literal, ok := result.(*ast.CompositeLit); ok {
+			types = append(types, literal.Type)
 		}
 	}
 
@@ -203,7 +212,7 @@ func componentMessagesRouted(t *testing.T, sources []sourceFile) []string {
 }
 
 func (f sourceFile) modelUpdate() (*ast.FuncDecl, bool) {
-	if f.isComponent {
+	if f.inSubpackage {
 		return nil, false
 	}
 
@@ -235,7 +244,7 @@ func (f sourceFile) routedCaseTypes(t *testing.T, update *ast.FuncDecl) []string
 	ast.Inspect(update.Body, func(node ast.Node) bool {
 		clause, ok := node.(*ast.CaseClause)
 		if ok && callsMethod(clause.Body, routingMethod) {
-			routed = append(routed, f.componentTypes(clause.List)...)
+			routed = append(routed, f.subpackageTypes(clause.List)...)
 		}
 
 		return true
@@ -245,25 +254,16 @@ func (f sourceFile) routedCaseTypes(t *testing.T, update *ast.FuncDecl) []string
 	return routed
 }
 
-func (f sourceFile) componentTypes(typeExprs []ast.Expr) []string {
-	var types []string
-
-	for _, typeExpr := range typeExprs {
-		if name, isComponent := f.componentType(typeExpr); isComponent {
-			types = append(types, name)
-		}
-	}
-
-	return types
-}
-
 func callsMethod(statements []ast.Stmt, method string) bool {
 	calls := false
 
 	for _, statement := range statements {
 		ast.Inspect(statement, func(node ast.Node) bool {
-			selector, ok := node.(*ast.SelectorExpr)
-			calls = calls || (ok && selector.Sel.Name == method)
+			call, ok := node.(*ast.CallExpr)
+			if ok {
+				selector, isSelector := call.Fun.(*ast.SelectorExpr)
+				calls = calls || (isSelector && selector.Sel.Name == method)
+			}
 
 			return !calls
 		})

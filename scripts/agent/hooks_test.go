@@ -179,6 +179,10 @@ func (s *sandbox) in(dir string) *sandbox {
 	return &moved
 }
 
+func (s *sandbox) expand(command, worktree string) string {
+	return strings.NewReplacer(worktreePlaceholder, worktree, repoPlaceholder, s.repo).Replace(command)
+}
+
 func (s *sandbox) run(t *testing.T, stdin, script string, args ...string) result {
 	t.Helper()
 
@@ -335,6 +339,21 @@ func TestClaudeAdapter_PreBash(t *testing.T) {
 			wantCode:   exitDeny,
 			wantStderr: "edit tools",
 		},
+		{name: "passes git mv of a tracked file", fixture: "pre-bash-git-mv.json", wantCode: exitPass},
+		{
+			name:       "denies git mv out of the checkout",
+			fixture:    "pre-bash-git-mv-outside.json",
+			wantCode:   exitDeny,
+			wantStderr: "within the checkout",
+		},
+		{
+			name:       "denies git mv of an untracked file",
+			fixture:    "pre-bash-git-mv-untracked.json",
+			wantCode:   exitDeny,
+			wantStderr: "git add main.go",
+		},
+		{name: "denies mv", fixture: "pre-bash-mv.json", wantCode: exitDeny, wantStderr: "edit tools"},
+		{name: "denies cp", fixture: "pre-bash-cp.json", wantCode: exitDeny, wantStderr: "edit tools"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -357,6 +376,17 @@ func TestClaudeAdapter_PreBash(t *testing.T) {
 		got := box.adapter(t, "claude", "pre-bash", "pre-bash-worktree-push.json")
 
 		assert.Equal(t, exitPass, got.code, got.stderr)
+	})
+
+	t.Run("denies git mv from a linked worktree into the main checkout", func(t *testing.T) {
+		t.Parallel()
+		box := newSandbox(t)
+		box.addWorktree(t, filepath.Join(box.repo, worktreeDir))
+
+		got := box.adapter(t, "claude", "pre-bash", "pre-bash-worktree-git-mv-into-main.json")
+
+		assert.Equal(t, exitDeny, got.code, got.stderr)
+		assert.Contains(t, got.stderr, "within the checkout")
 	})
 }
 
@@ -949,7 +979,14 @@ func TestGuardCommand(t *testing.T) {
 		{name: "passes a copy out of the repo to /tmp", command: "cp main.go /tmp/main.go", wantCode: exitPass},
 		{name: "passes a move to TMPDIR", command: `mv main.go "$TMPDIR/main.go"`, wantCode: exitPass},
 		{name: "passes a copy outside the repo", command: "cp -r internal ../backup", wantCode: exitPass},
-		{name: "passes git mv", command: "git mv main.go app.go", wantCode: exitPass},
+		{name: "passes git mv of a tracked file", command: "git mv README.md GUIDE.md", wantCode: exitPass},
+		{name: "denies git mv out of the checkout", command: "git mv README.md ../README.md", wantCode: exitDeny},
+		{name: "denies git mv to /tmp", command: "git mv README.md /tmp/README.md", wantCode: exitDeny},
+		{name: "denies git mv into the git dir", command: "git mv README.md .git/hooks/pre-push", wantCode: exitDeny},
+		{name: "denies git mv of an untracked file", command: "git mv main.go app.go", wantCode: exitDeny},
+		{name: "denies git mv -f", command: "git mv -f README.md GUIDE.md", wantCode: exitDeny},
+		{name: "denies git mv -f in a cluster", command: "git mv -vf README.md GUIDE.md", wantCode: exitDeny},
+		{name: "denies git mv --force", command: "git mv --force README.md GUIDE.md", wantCode: exitDeny},
 		{name: "passes go install", command: "go install ./cmd/tuisnip", wantCode: exitPass},
 		{name: "passes rsync to a remote host", command: "rsync -a . host:backup/", wantCode: exitPass},
 		{name: "passes dd to /dev/null", command: "dd if=main.go of=/dev/null", wantCode: exitPass},
@@ -1052,8 +1089,7 @@ func TestGuardCommand(t *testing.T) {
 				worktree := filepath.Join(t.TempDir(), "wt")
 				box.addWorktree(t, worktree)
 
-				command := strings.NewReplacer(worktreePlaceholder, worktree, repoPlaceholder, box.repo).
-					Replace(tt.command)
+				command := box.expand(tt.command, worktree)
 				if tt.inWorktree {
 					box = box.in(worktree)
 				}
@@ -1063,5 +1099,61 @@ func TestGuardCommand(t *testing.T) {
 				assert.Equal(t, tt.wantCode, got.code, got.stderr)
 			})
 		}
+	})
+
+	t.Run("judges git mv by the checkout it runs in", func(t *testing.T) {
+		t.Parallel()
+
+		moveTests := []struct {
+			name     string
+			command  string
+			wantCode int
+		}{
+			{
+				name:     "passes after cd into a worktree that tracks the file",
+				command:  "cd {{WT}} && git mv branch.go renamed.go",
+				wantCode: exitPass,
+			},
+			{
+				name:     "passes with git -C on a worktree that tracks the file",
+				command:  "git -C {{WT}} mv branch.go renamed.go",
+				wantCode: exitPass,
+			},
+			{
+				name:     "denies in a checkout that does not track the file",
+				command:  "git mv branch.go renamed.go",
+				wantCode: exitDeny,
+			},
+			{
+				name:     "denies a move from a worktree into another checkout",
+				command:  "cd {{WT}} && git mv branch.go {{REPO}}/branch.go",
+				wantCode: exitDeny,
+			},
+		}
+		for _, tt := range moveTests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				box := newSandbox(t)
+				worktree := filepath.Join(t.TempDir(), "wt")
+				box.addWorktree(t, worktree)
+				writeFile(t, filepath.Join(worktree, "branch.go"), goFile, 0o644)
+				box.git(t, "-C", worktree, "add", "branch.go")
+				box.git(t, "-C", worktree, "commit", "--quiet", "-m", "feat: add branch.go")
+
+				got := box.run(t, box.expand(tt.command, worktree), "guard-command.sh")
+
+				assert.Equal(t, tt.wantCode, got.code, got.stderr)
+			})
+		}
+	})
+
+	t.Run("passes git mv in another clone", func(t *testing.T) {
+		t.Parallel()
+		box := newSandbox(t)
+		other := newSandbox(t)
+
+		got := box.run(t, "cd "+other.repo+" && git mv -f README.md GUIDE.md", "guard-command.sh")
+
+		assert.Equal(t, exitPass, got.code, got.stderr)
 	})
 }

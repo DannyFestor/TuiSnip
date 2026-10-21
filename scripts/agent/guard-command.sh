@@ -157,16 +157,18 @@ check_write_destination() {
 	deny "$program must not write into the repo: $USE_EDIT_TOOLS."
 }
 
-last_operand() {
-	local last=""
+operands() {
 	local arg
 
 	for arg in "$@"; do
 		if [[ "$arg" != -* ]]; then
-			last="$arg"
+			printf '%s\n' "$arg"
 		fi
 	done
-	echo "$last"
+}
+
+last_operand() {
+	operands "$@" | tail -n 1
 }
 
 target_directory() {
@@ -260,7 +262,7 @@ program_index() {
 	done
 }
 
-# Only the program in command position counts, so `git mv` and `go install` pass.
+# Only the program in command position counts, so `git mv` and `go install` are not read as mv and install.
 check_copy_programs() {
 	local -a words=("$@")
 	local i program
@@ -522,8 +524,15 @@ check_reset() {
 	done
 }
 
+has_force_switch() {
+	local program="$1"
+	shift
+
+	has_short_switch "$program" f "$@" || has_arg_matching --force "$@"
+}
+
 check_clean() {
-	if has_short_switch git-clean f "$@" || has_arg_matching --force "$@"; then
+	if has_force_switch git-clean "$@"; then
 		deny_destructive "clean -f"
 	fi
 }
@@ -581,6 +590,51 @@ check_apply() {
 	fi
 }
 
+runs_in_clone() {
+	checkout_root "$PWD" >/dev/null
+}
+
+is_in_current_checkout() {
+	[[ "$(checkout_root "$(canonical_path "$1")")" == "$(checkout_root "$PWD")" ]]
+}
+
+is_tracked() {
+	git ls-files --error-unmatch -- "$1" >/dev/null 2>&1
+}
+
+# git mv moves every operand but the last into the last.
+git_mv_sources() {
+	operands "$@" | sed '$d'
+}
+
+check_git_mv_destination() {
+	if ! is_in_current_checkout "$1"; then
+		deny "git mv may move files only within the checkout it runs in: $USE_EDIT_TOOLS."
+	fi
+}
+
+check_git_mv_sources() {
+	local source
+
+	while IFS= read -r source; do
+		if ! is_tracked "$source"; then
+			deny "git mv may move only tracked files: git add $source first, or $USE_EDIT_TOOLS."
+		fi
+	done < <(git_mv_sources "$@")
+}
+
+# A rename leaves the content as it was, but -f also overwrites whatever the destination held.
+check_git_mv() {
+	if ! runs_in_clone; then
+		return
+	fi
+	if has_force_switch git-mv "$@"; then
+		deny_destructive "mv -f"
+	fi
+	check_git_mv_destination "$(last_operand "$@")"
+	check_git_mv_sources "$@"
+}
+
 check_git_subcommand() {
 	local subcommand="$1"
 	shift
@@ -595,6 +649,7 @@ check_git_subcommand() {
 	restore) check_restore "$@" ;;
 	stash) check_stash "$@" ;;
 	apply) check_apply "$@" ;;
+	mv) check_git_mv "$@" ;;
 	esac
 }
 

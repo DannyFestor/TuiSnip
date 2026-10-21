@@ -84,7 +84,7 @@ Each of these has cost an agent a retry:
 - macOS has no `timeout`.
 - `tee` test output to a file, then grep that file. Rerunning the suite to grep it a second way repeats the whole run.
 - Write scratch output to an absolute path under `/tmp` or `$TMPDIR`, the only places `guard-command.sh` lets a redirect or `tee` write. It can't resolve a relative path after `cd`, even into `/tmp`.
-- Add an import in the same edit as the code that uses it, or after that code. After every Go edit, `check-go-file.sh` runs `golangci-lint fmt`, and its `goimports` deletes any import nothing uses yet.
+- Add an import in the same edit as the code that uses it, or after that code. After every Go edit, `check-go-file.sh` runs `golangci-lint fmt`, whose `goimports` formatter deletes any import nothing uses yet.
 
 ## CI and release
 

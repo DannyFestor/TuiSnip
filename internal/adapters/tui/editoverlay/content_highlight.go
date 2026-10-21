@@ -20,9 +20,10 @@ type contentHighlight struct {
 }
 
 type highlightSource struct {
-	content   string
-	language  value.Language
-	codeStyle string
+	content      string
+	language     value.Language
+	codeStyle    string
+	colourResets int
 }
 
 func (h contentHighlight) rescheduled() (contentHighlight, tea.Cmd) {
@@ -40,12 +41,16 @@ func (h contentHighlight) due(msg HighlightDue, source highlightSource) (content
 	h.requested = source
 
 	return h, func() tea.Msg {
-		return ContentHighlighted{generation: msg.generation, colours: source.colours()}
+		return ContentHighlighted{
+			generation:   msg.generation,
+			colourResets: source.colourResets,
+			colours:      source.colours(),
+		}
 	}
 }
 
-func (h contentHighlight) landed(msg ContentHighlighted) (contentHighlight, bool) {
-	if msg.generation <= h.shown {
+func (h contentHighlight) landed(msg ContentHighlighted, colourResets int) (contentHighlight, bool) {
+	if msg.generation <= h.shown || msg.colourResets != colourResets {
 		return h, false
 	}
 

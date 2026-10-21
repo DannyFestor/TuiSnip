@@ -1,14 +1,24 @@
 package editoverlay_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/editoverlay"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/look"
 	"github.com/DannyFestor/TuiSnip/internal/adapters/tui/outcome"
+	"github.com/DannyFestor/TuiSnip/internal/domain"
+	"github.com/DannyFestor/TuiSnip/internal/domain/value"
+	"github.com/DannyFestor/TuiSnip/internal/testkit"
 	"github.com/DannyFestor/TuiSnip/test/keypress"
 	"github.com/DannyFestor/TuiSnip/test/screencolour"
+)
+
+const (
+	firstGoFragment  = "func main() {}"
+	secondGoFragment = "var x = 1"
 )
 
 func TestEditing_highlighting(t *testing.T) {
@@ -80,6 +90,76 @@ func TestEditing_highlighting(t *testing.T) {
 		)
 	})
 
+	t.Run("shows no colours at once when plain text is picked", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, storedSnippet(t, "func main() {}"))
+		screen.RunCommands()
+		screen.Offer(outcome.LanguagePicked{Language: language(t, "plaintext")})
+
+		assert.Empty(t, screencolour.Foreground(t, screen.StyledScreen(), "func"))
+	})
+
+	t.Run("shows another Fragment without the colours of the one before", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, twoGoFragments(t))
+		screen.RunCommands()
+		screen.Press(nextFragment())
+
+		assert.Empty(t, screencolour.Foreground(t, screen.StyledScreen(), "var"))
+
+		screen.RunCommands()
+
+		assert.Equal(t,
+			goInSnippetPane(look.SchemeDark, secondGoFragment).Foreground(t, "var"),
+			screencolour.Foreground(t, screen.StyledScreen(), "var"),
+		)
+	})
+
+	t.Run("drops the colours lexed for a Fragment shown before", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, twoGoFragments(t))
+		screen.RunQueuedCommands()
+		screen.Press(nextFragment())
+		screen.RunQueuedCommands()
+
+		assert.Empty(t, screencolour.Foreground(t, screen.StyledScreen(), "var"))
+	})
+
+	t.Run("colours the Fragment a refused save shows", func(t *testing.T) {
+		t.Parallel()
+
+		titleTooLong := domain.OnField(domain.FieldFragmentTitle, value.ErrFragmentTitleTooLong)
+		screen := editingStored(t, twoGoFragments(t))
+		screen.Press(save())
+		screen.RunCommands()
+		screen.Send(editoverlay.SaveFinished{
+			Snippet: domain.Snippet{},
+			Err:     fmt.Errorf("snippet.Update: %w", domain.InFragment(1, titleTooLong)),
+		})
+		screen.RunCommands()
+
+		assert.Equal(t,
+			goInSnippetPane(look.SchemeDark, secondGoFragment).Foreground(t, "var"),
+			screencolour.Foreground(t, screen.StyledScreen(), "var"),
+		)
+	})
+
+	t.Run("keeps the colours of a Fragment moved along the strip", func(t *testing.T) {
+		t.Parallel()
+
+		screen := editingStored(t, twoGoFragments(t))
+		screen.RunCommands()
+		screen.Press(moveFragmentRight())
+
+		assert.Equal(t,
+			goInSnippetPane(look.SchemeDark, firstGoFragment).Foreground(t, "func"),
+			screencolour.Foreground(t, screen.StyledScreen(), "func"),
+		)
+	})
+
 	t.Run("colours the Content in the code style of a new scheme", func(t *testing.T) {
 		t.Parallel()
 
@@ -95,6 +175,15 @@ func TestEditing_highlighting(t *testing.T) {
 			screencolour.Foreground(t, screen.StyledScreen(), "func"),
 		)
 	})
+}
+
+func twoGoFragments(t *testing.T) domain.Snippet {
+	t.Helper()
+
+	return storedSnippetOf(t,
+		testkit.FragmentSpec{Language: "Go", Content: firstGoFragment},
+		testkit.FragmentSpec{Language: "Go", Content: secondGoFragment},
+	)
 }
 
 func goInSnippetPane(scheme look.Scheme, content string) screencolour.InSnippetPane {

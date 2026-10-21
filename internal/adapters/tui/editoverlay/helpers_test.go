@@ -199,6 +199,12 @@ func storedSnippet(tb testing.TB, content string) domain.Snippet {
 func storedSnippetIn(tb testing.TB, language, content string) domain.Snippet {
 	tb.Helper()
 
+	return storedSnippetOf(tb, testkit.FragmentSpec{Language: language, Content: content})
+}
+
+func storedSnippetOf(tb testing.TB, fragments ...testkit.FragmentSpec) domain.Snippet {
+	tb.Helper()
+
 	ids := testkit.NewSequentialIDs()
 
 	return testkit.Snippet(tb, testkit.SnippetSpec{
@@ -206,7 +212,7 @@ func storedSnippetIn(tb testing.TB, language, content string) domain.Snippet {
 		Title:       "Prune",
 		Description: "Reclaim",
 		FolderID:    ids.NewFolderID(),
-		Fragments:   []testkit.FragmentSpec{{Language: language, Content: content}},
+		Fragments:   fragments,
 		UpdatedAt:   time.Date(2026, time.March, 2, 12, 0, 0, 0, time.UTC),
 	})
 }

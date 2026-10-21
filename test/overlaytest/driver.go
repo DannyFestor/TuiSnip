@@ -1,6 +1,7 @@
 package overlaytest
 
 import (
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -49,11 +50,19 @@ func (d *Driver) RunCommands() {
 	d.t.Helper()
 
 	for len(d.pending) > 0 {
-		started := d.pending
-		d.pending = nil
+		d.RunQueuedCommands()
+	}
+}
 
-		for _, msg := range messagesOf(started) {
-			d.deliver(msg)
+func (d *Driver) RunQueuedCommands() {
+	d.t.Helper()
+
+	started := d.pending
+	d.pending = nil
+
+	for _, msg := range messagesOf(started) {
+		if msg != nil {
+			d.Send(msg)
 		}
 	}
 }
@@ -146,30 +155,29 @@ func (d *Driver) queue(cmd tea.Cmd) {
 	}
 }
 
-func (d *Driver) deliver(msg tea.Msg) {
-	d.t.Helper()
-
-	switch msg := msg.(type) {
-	case nil:
-	case tea.BatchMsg:
-		for _, cmd := range msg {
-			d.queue(cmd)
-		}
-	default:
-		d.Send(msg)
-	}
-}
-
 // Commands run at once, so the timers of many key presses cost one wait.
 func messagesOf(cmds []tea.Cmd) []tea.Msg {
 	var running sync.WaitGroup
 
-	msgs := make([]tea.Msg, len(cmds))
+	results := make([][]tea.Msg, len(cmds))
 	for index, cmd := range cmds {
-		running.Go(func() { msgs[index] = cmd() })
+		running.Go(func() { results[index] = messagesFrom(cmd) })
 	}
 
 	running.Wait()
 
-	return msgs
+	return slices.Concat(results...)
+}
+
+func messagesFrom(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+
+	msg := cmd()
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		return messagesOf(batch)
+	}
+
+	return []tea.Msg{msg}
 }

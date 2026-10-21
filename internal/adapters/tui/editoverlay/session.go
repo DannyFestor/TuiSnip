@@ -116,7 +116,7 @@ func newSession(keys binding.Keys, styles look.Styles, options Options, opened f
 		highlight: contentHighlight{
 			scheduled: 0,
 			shown:     0,
-			requested: highlightSource{content: "", language: value.Language{}, codeStyle: ""},
+			requested: highlightSource{content: "", language: value.Language{}, codeStyle: "", colourResets: 0},
 		},
 	}
 }
@@ -234,7 +234,7 @@ func (s Session) highlightDue(msg HighlightDue) outcome.Step {
 func (s Session) highlighted(msg ContentHighlighted) Session {
 	var landed bool
 
-	s.highlight, landed = s.highlight.landed(msg)
+	s.highlight, landed = s.highlight.landed(msg, s.form.colourResets)
 	if landed {
 		s.form = s.form.withContentColours(msg.colours)
 	}
@@ -379,7 +379,7 @@ func (s Session) refused(err error) outcome.Step {
 	next := s
 	next.form = s.form.showingFragmentOf(err).withInvalid(fieldErrors)
 
-	return outcome.Stay(next).Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
+	return next.stayingRescheduled().Passing(outcome.NoticeShown{Text: fieldErrorText(fieldErrors[0])})
 }
 
 func (s Session) confirmingUnsaved(question string, onYes outcome.Outcome) outcome.Step {

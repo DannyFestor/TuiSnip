@@ -157,16 +157,18 @@ check_write_destination() {
 	deny "$program must not write into the repo: $USE_EDIT_TOOLS."
 }
 
-last_operand() {
-	local last=""
+operands() {
 	local arg
 
 	for arg in "$@"; do
 		if [[ "$arg" != -* ]]; then
-			last="$arg"
+			printf '%s\n' "$arg"
 		fi
 	done
-	echo "$last"
+}
+
+last_operand() {
+	operands "$@" | tail -n 1
 }
 
 target_directory() {
@@ -581,6 +583,35 @@ check_apply() {
 	fi
 }
 
+is_in_working_checkout() {
+	local root
+
+	root="$(checkout_root "$PWD")" || return 1
+	[[ "$(checkout_root "$(canonical_path "$1")")" == "$root" ]]
+}
+
+is_tracked() {
+	git ls-files --error-unmatch -- "$1" >/dev/null 2>&1
+}
+
+# git mv moves every operand but the last into the last.
+git_mv_sources() {
+	operands "$@" | sed '$d'
+}
+
+check_git_mv() {
+	local source
+
+	if ! is_in_working_checkout "$(last_operand "$@")"; then
+		deny "git mv may move files only within the checkout it runs in: $USE_EDIT_TOOLS."
+	fi
+	while IFS= read -r source; do
+		if ! is_tracked "$source"; then
+			deny "git mv may move only tracked files: git add $source first, or $USE_EDIT_TOOLS."
+		fi
+	done < <(git_mv_sources "$@")
+}
+
 check_git_subcommand() {
 	local subcommand="$1"
 	shift
@@ -595,6 +626,7 @@ check_git_subcommand() {
 	restore) check_restore "$@" ;;
 	stash) check_stash "$@" ;;
 	apply) check_apply "$@" ;;
+	mv) check_git_mv "$@" ;;
 	esac
 }
 
